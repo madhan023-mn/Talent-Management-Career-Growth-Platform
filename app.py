@@ -72,68 +72,84 @@ def get_career_growth_illustration_b64() -> str:
 def render_html(html_str: str) -> None:
     """Directly renders pure HTML without markdown parser converting indented lines into code blocks."""
     clean_html = "\n".join(line.strip() for line in html_str.splitlines() if line.strip())
-    if hasattr(st, "html"):
-        st.html(clean_html)
-    else:
-        st.markdown(clean_html, unsafe_allow_html=True)
+    st.markdown(clean_html, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# CLEAN SVG ICON SYSTEM (Zero Emojis, Pixel-Perfect Vector Icons & Brand Mark)
+# CLEAN SVG ICON SYSTEM (Zero Emojis, Crisp Vector Icons via Data URIs)
 # ------------------------------------------------------------------------------
-def get_svg_icon(name: str, size: int = 18, color: str = "currentColor", extra_style: str = "") -> str:
-    """Returns an inline, standalone, crisp SVG icon string (Lucide/Feather styled)."""
-    icon_b64 = get_logo_b64("icon")
-    full_b64 = get_logo_b64("full")
-    icons = {
-        "dashboard": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
-        "employees": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
-        "performance": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg>',
-        "skills": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>',
-        "goals": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
-        "reports": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
-        "settings": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-        "logout": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>',
-        "search": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>',
-        "bell": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
-        "star": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="{color}" stroke="{color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-        "building": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>',
-        "clock": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
-        "check": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
-        "plus": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
-        "shield": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>',
-        "brand_logo": f'<img src="data:image/png;base64,{icon_b64}" style="width: {size}px; height: {size}px; border-radius: 8px; object-fit: contain; {extra_style}" alt="Talent Growth Logo" />',
-        "brand_full": f'<img src="data:image/png;base64,{full_b64}" style="height: {size}px; max-width: 100%; object-fit: contain; {extra_style}" alt="Talent Growth Logo" />',
-        "arrow_right": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
-        "code": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
-        "user_check": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>',
-        "profile": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
-        "coach": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M12 2a8 8 0 0 0-8 8c0 3 1.5 5.5 4 6.8V19a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.2c2.5-1.3 4-3.8 4-6.8a8 8 0 0 0-8-8z"/><path d="M9 22h6"/></svg>',
-        "lock": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
-        "user_plus": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>',
-        "user": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
-        "layers": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.9a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>',
-        "analytics": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>',
-        "sparkles": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>',
-        "target": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
-        "table": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
-        "card": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
-        "zap": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
-        "clipboard": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>',
-        "rocket": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
-        "cloud": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>',
-        "trending_up": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>',
-        "lightbulb": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>',
-        "database": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>',
-        "download": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>',
-        "key": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
-        "mail": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
-        "phone": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
-        "award": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>',
-        "calendar": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>',
-        "briefcase": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
-        "filter": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>'
-    }
-    return icons.get(name, f'<span style="{extra_style}"></span>')
+_SVG_RAW_PATHS = {
+    "dashboard": '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+    "employees": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    "performance": '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+    "skills": '<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>',
+    "goals": '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    "reports": '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    "settings": '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    "logout": '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+    "search": '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    "bell": '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+    "star": '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+    "building": '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+    "clock": '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    "check": '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    "plus": '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    "shield": '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+    "arrow_right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+    "arrow_left": '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+    "code": '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+    "user_check": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>',
+    "profile": '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    "coach": '<path d="M12 2a8 8 0 0 0-8 8c0 3 1.5 5.5 4 6.8V19a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.2c2.5-1.3 4-3.8 4-6.8a8 8 0 0 0-8-8z"/><path d="M9 22h6"/>',
+    "lock": '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    "user_plus": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>',
+    "user": '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    "layers": '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.9a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+    "analytics": '<line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/>',
+    "sparkles": '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>',
+    "target": '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    "table": '<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
+    "card": '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+    "zap": '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+    "clipboard": '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+    "rocket": '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
+    "cloud": '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+    "trending_up": '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+    "lightbulb": '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+    "database": '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>',
+    "download": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+    "key": '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+    "mail": '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+    "phone": '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+    "award": '<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>',
+    "calendar": '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
+    "briefcase": '<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+    "filter": '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
+    "chevron_down": '<polyline points="6 9 12 15 18 9"/>',
+    "external_link": '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'
+}
+
+@st.cache_data
+def _build_svg_data_uri(inner_svg: str, width: int, height: int, stroke_color: str, fill_color: str) -> str:
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 24 24" fill="{fill_color}" stroke="{stroke_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{inner_svg}</svg>'
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("utf-8")
+
+def get_svg_icon(name: str, size: int = 18, color: str = "#2563EB", extra_style: str = "") -> str:
+    """Returns an inline, standalone, crisp SVG vector icon as a data URI img (NEVER stripped by sanitizers)."""
+    if name == "brand_logo":
+        icon_b64 = get_logo_b64("icon")
+        return f'<img src="data:image/png;base64,{icon_b64}" style="width: {size}px; height: {size}px; border-radius: 8px; object-fit: contain; vertical-align: middle; {extra_style}" alt="Talent Growth Logo" />'
+    elif name == "brand_full":
+        full_b64 = get_logo_b64("full")
+        return f'<img src="data:image/png;base64,{full_b64}" style="height: {size}px; max-width: 100%; object-fit: contain; vertical-align: middle; {extra_style}" alt="Talent Growth Logo" />'
+
+    inner = _SVG_RAW_PATHS.get(name)
+    if not inner:
+        return f'<span style="display:inline-block; width:{size}px; height:{size}px; {extra_style}"></span>'
+
+    stroke_color = color if (color and color != "currentColor") else "#334155"
+    fill_color = stroke_color if name == "star" else "none"
+    uri = _build_svg_data_uri(inner, size, size, stroke_color, fill_color)
+    return f'<img src="{uri}" width="{size}" height="{size}" style="display: inline-block; vertical-align: middle; border: none; {extra_style}" alt="{name}" />'
 
 # ------------------------------------------------------------------------------
 # MODERN CORPORATE DESIGN SYSTEM & TOKENS (TalentManager / TalentPro Theme)
@@ -218,18 +234,32 @@ def get_prof_badge_html(level: str) -> str:
 
 def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
     if not emp_results:
-        return '<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No employee records found.</td></tr></tbody></table></div>'
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #EFF6FF; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("employees", size=26, color="#2563EB")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Workforce Records Found</div>
+            <div style="font-size: 0.84rem; color: #64748B;">Add a new employee or import a workforce dataset to get started.</div>
+        </div>"""
     rows = []
     for emp in emp_results:
         score = emp.get("avg_rating") or 0.0
         pct = min(100, max(0, int((score / 5.0) * 100)))
         bar_color = "#8B5CF6" if score >= 4.5 else ("#10B981" if score >= 3.8 else ("#3B82F6" if score >= 3.0 else "#F59E0B"))
+        initial = (emp.get("name") or "E")[:1].upper()
         rows.append(
             f"""<tr>
                 <td><span class="tbl-id-pill">{emp.get('employee_id', '')}</span></td>
                 <td>
-                    <div style="font-weight: 700; color: #0F172A;">{emp.get('name', '')}</div>
-                    <div style="font-size: 0.76rem; color: #64748B;">{emp.get('email', '')}</div>
+                    <div style="display: flex; align-items: center; gap: 9px;">
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; color: #2563EB; font-weight: 700; font-size: 0.76rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            {initial}
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; color: #0F172A;">{emp.get('name', '')}</div>
+                            <div style="font-size: 0.76rem; color: #64748B;">{emp.get('email', '')}</div>
+                        </div>
+                    </div>
                 </td>
                 <td>{get_dept_badge_html(emp.get('department', ''))}</td>
                 <td><span style="font-weight: 600; color: #334155;">{emp.get('designation', '')}</span></td>
@@ -264,19 +294,33 @@ def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
 
 def render_colored_review_table(reviews_list: List[Dict[str, Any]]) -> str:
     if not reviews_list:
-        return '<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No performance reviews recorded yet.</td></tr></tbody></table></div>'
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #F3E8FF; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("star", size=26, color="#8B5CF6")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Performance Evaluations Recorded</div>
+            <div style="font-size: 0.84rem; color: #64748B;">Conduct a performance review to establish historical evaluation trajectories.</div>
+        </div>"""
     rows = []
     for r in reviews_list:
         score = float(r.get("performance_score") or 0.0)
         pct = min(100, max(0, int((score / 5.0) * 100)))
         bar_color = "#8B5CF6" if score >= 4.5 else ("#10B981" if score >= 3.8 else ("#3B82F6" if score >= 3.0 else "#F59E0B"))
         dt = (r.get("created_at") or "")[:10]
+        initial = (r.get("employee_name") or "E")[:1].upper()
         rows.append(
             f"""<tr>
                 <td><span class="tbl-id-pill">{r.get('employee_id', '')}</span></td>
                 <td>
-                    <div style="font-weight: 700; color: #0F172A;">{r.get('employee_name', '')}</div>
-                    <div style="font-size: 0.76rem; color: #64748B;">{r.get('designation', '')}</div>
+                    <div style="display: flex; align-items: center; gap: 9px;">
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #F3E8FF; color: #8B5CF6; font-weight: 700; font-size: 0.76rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            {initial}
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; color: #0F172A;">{r.get('employee_name', '')}</div>
+                            <div style="font-size: 0.76rem; color: #64748B;">{r.get('designation', '')}</div>
+                        </div>
+                    </div>
                 </td>
                 <td>{get_dept_badge_html(r.get('department', ''))}</td>
                 <td><span class="tbl-badge tbl-badge-blue">{r.get('review_period', '')}</span></td>
@@ -289,10 +333,21 @@ def render_colored_review_table(reviews_list: List[Dict[str, Any]]) -> str:
                     </div>
                 </td>
                 <td>
-                    <div style="font-size: 0.8rem; color: #065F46; font-weight: 600;">{r.get('strengths') or 'Consistency'}</div>
-                    <div style="font-size: 0.76rem; color: #9A3412;">{r.get('improvements') or 'Leadership'}</div>
+                    <div style="font-size: 0.8rem; color: #065F46; font-weight: 600; display: flex; align-items: center; gap: 5px;">
+                        {get_svg_icon("check", size=13, color="#10B981")}
+                        <span>{r.get('strengths') or 'Consistency'}</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: #9A3412; display: flex; align-items: center; gap: 5px; margin-top: 3px;">
+                        {get_svg_icon("trending_up", size=13, color="#EA580C")}
+                        <span>{r.get('improvements') or 'Leadership'}</span>
+                    </div>
                 </td>
-                <td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{dt}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 5px; font-family: monospace; font-size: 0.8rem; color: #64748B;">
+                        {get_svg_icon("calendar", size=12, color="#94A3B8")}
+                        <span>{dt}</span>
+                    </div>
+                </td>
             </tr>"""
         )
     return f"""<div class="corporate-table-wrapper">
@@ -314,16 +369,32 @@ def render_colored_review_table(reviews_list: List[Dict[str, Any]]) -> str:
 
 def render_colored_skills_table(skills_list: List[Dict[str, Any]]) -> str:
     if not skills_list:
-        return '<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No competencies cataloged yet.</td></tr></tbody></table></div>'
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #ECFDF5; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("skills", size=26, color="#10B981")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Competencies Cataloged Yet</div>
+            <div style="font-size: 0.84rem; color: #64748B;">Add verified skills and proficiencies to evaluate benchmark readiness.</div>
+        </div>"""
     rows = []
     for s in skills_list:
         rows.append(
             f"""<tr>
-                <td><span style="font-weight: 700; color: #0F172A;">{s.get('skill_name', '')}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 7px;">
+                        {get_svg_icon("code", size=15, color="#2563EB")}
+                        <span style="font-weight: 700; color: #0F172A;">{s.get('skill_name', '')}</span>
+                    </div>
+                </td>
                 <td><span class="tbl-badge tbl-badge-blue">{s.get('category', 'Technical')}</span></td>
                 <td>{get_prof_badge_html(s.get('proficiency_level', 'Intermediate'))}</td>
                 <td><span style="font-weight: 700; color: #475569;">{s.get('years_exp', 1.0)} yrs</span></td>
-                <td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{(s.get('last_updated') or '')[:10]}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 5px; font-family: monospace; font-size: 0.8rem; color: #64748B;">
+                        {get_svg_icon("calendar", size=12, color="#94A3B8")}
+                        <span>{(s.get('last_updated') or '')[:10]}</span>
+                    </div>
+                </td>
             </tr>"""
         )
     return f"""<div class="corporate-table-wrapper">
@@ -343,7 +414,13 @@ def render_colored_skills_table(skills_list: List[Dict[str, Any]]) -> str:
 
 def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[int, str]) -> str:
     if not gaps_list:
-        return '<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #10B981; font-weight: 600;">All competency benchmarks met for this target role!</td></tr></tbody></table></div>'
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #ECFDF5; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("check", size=26, color="#10B981")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #065F46; margin-bottom: 4px;">All Competency Benchmarks Met</div>
+            <div style="font-size: 0.84rem; color: #047857;">Employee exceeds or meets all role requirements for this benchmark target.</div>
+        </div>"""
     rows = []
     for g in gaps_list:
         gap_val = g.get("gap", 0)
@@ -357,7 +434,12 @@ def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[
         req_lvl = levels_str.get(g.get("required_level", 0), str(g.get("required_level", 0)))
         rows.append(
             f"""<tr>
-                <td><span style="font-weight: 700; color: #0F172A;">{g.get('skill', '')}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 7px;">
+                        {get_svg_icon("target", size=15, color="#2563EB")}
+                        <span style="font-weight: 700; color: #0F172A;">{g.get('skill', '')}</span>
+                    </div>
+                </td>
                 <td>{get_prof_badge_html(curr_lvl)}</td>
                 <td>{get_prof_badge_html(req_lvl)}</td>
                 <td>{gap_badge}</td>
@@ -381,7 +463,13 @@ def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[
 
 def render_colored_goals_table(goals_list: List[Dict[str, Any]]) -> str:
     if not goals_list:
-        return '<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No active career milestones recorded yet.</td></tr></tbody></table></div>'
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #FFF7ED; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("goals", size=26, color="#EA580C")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Active Career Goals Recorded</div>
+            <div style="font-size: 0.84rem; color: #64748B;">Set SMART milestone roadmaps to guide career progression.</div>
+        </div>"""
     rows = []
     for g in goals_list:
         prog = int(g.get("progress") or 0)
@@ -389,11 +477,21 @@ def render_colored_goals_table(goals_list: List[Dict[str, Any]]) -> str:
         rows.append(
             f"""<tr>
                 <td>
-                    <div style="font-weight: 700; color: #0F172A;">{g.get('title', '')}</div>
-                    <div style="font-size: 0.78rem; color: #64748B;">{str(g.get('description', ''))[:70]}...</div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                        <span style="margin-top: 2px;">{get_svg_icon("target", size=15, color="#EA580C")}</span>
+                        <div>
+                            <div style="font-weight: 700; color: #0F172A;">{g.get('title', '')}</div>
+                            <div style="font-size: 0.78rem; color: #64748B;">{str(g.get('description', ''))[:70]}...</div>
+                        </div>
+                    </div>
                 </td>
                 <td><span class="tbl-badge tbl-badge-purple">{g.get('target_designation', 'Target Role')}</span></td>
-                <td><span style="font-family: monospace; font-size: 0.8rem; color: #475569;">{g.get('target_date', '')}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 5px; font-family: monospace; font-size: 0.8rem; color: #475569;">
+                        {get_svg_icon("calendar", size=12, color="#94A3B8")}
+                        <span>{g.get('target_date', '')}</span>
+                    </div>
+                </td>
                 <td>
                     <div class="tbl-progress-container">
                         <div class="tbl-progress-track">
@@ -422,7 +520,13 @@ def render_colored_goals_table(goals_list: List[Dict[str, Any]]) -> str:
 
 def render_colored_training_table(trainings_list: List[Dict[str, Any]]) -> str:
     if not trainings_list:
-        return '<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No training courses currently enrolled.</td></tr></tbody></table></div>'
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #EFF6FF; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("award", size=26, color="#2563EB")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Training Courses Assigned</div>
+            <div style="font-size: 0.84rem; color: #64748B;">Assign target upskilling programs to address competency shortfalls.</div>
+        </div>"""
     rows = []
     for t in trainings_list:
         score = float(t.get("score") or 0.0)
@@ -431,10 +535,20 @@ def render_colored_training_table(trainings_list: List[Dict[str, Any]]) -> str:
         rows.append(
             f"""<tr>
                 <td><span class="tbl-id-pill">{t.get('employee_id', '')}</span></td>
-                <td><span style="font-weight: 700; color: #0F172A;">{t.get('course_name', '')}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 7px;">
+                        {get_svg_icon("award", size=15, color="#2563EB")}
+                        <span style="font-weight: 700; color: #0F172A;">{t.get('course_name', '')}</span>
+                    </div>
+                </td>
                 <td><span class="tbl-badge tbl-badge-purple">{t.get('target_skill', '')}</span></td>
                 <td><span style="color: #475569; font-size: 0.82rem;">{t.get('provider', '')}</span></td>
-                <td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{t.get('target_completion_date', '')}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 5px; font-family: monospace; font-size: 0.8rem; color: #64748B;">
+                        {get_svg_icon("calendar", size=12, color="#94A3B8")}
+                        <span>{t.get('target_completion_date', '')}</span>
+                    </div>
+                </td>
                 <td>{get_status_badge_html(t.get('status', 'Enrolled'))}</td>
                 <td>
                     <div class="tbl-progress-container">
@@ -465,7 +579,13 @@ def render_colored_training_table(trainings_list: List[Dict[str, Any]]) -> str:
 
 def render_colored_dept_summary_table(dept_summary_list: List[Dict[str, Any]]) -> str:
     if not dept_summary_list:
-        return '<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No department metrics available.</td></tr></tbody></table></div>'
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #EFF6FF; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("building", size=26, color="#2563EB")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Department Metrics Available</div>
+            <div style="font-size: 0.84rem; color: #64748B;">Department analytics will populate as employee reviews are completed.</div>
+        </div>"""
     rows = []
     for ds in dept_summary_list:
         avg_s = float(ds.get("avg_score") or 0.0)
@@ -631,15 +751,15 @@ def landing_webpage():
                 <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
                     Full administrative governance, workforce directory CRUD, performance trajectory tracking, bulk CSV imports, and ATS studio.
                 </p>
-                <div style="font-size: 0.78rem; color: #047857; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 4px;">
-                    <div>✓ Workforce CRUD & Lifecycle</div>
-                    <div>✓ Trajectory Reviews & Analytics</div>
-                    <div>✓ Bulk CSV & Excel Importer</div>
+                <div style="font-size: 0.78rem; color: #047857; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Workforce CRUD & Lifecycle</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Trajectory Reviews & Analytics</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Bulk CSV & Excel Importer</span></div>
                 </div>
             </div>
             """
         )
-        if st.button("Sign In as HR Admin →", key="landing_btn_admin", use_container_width=True, type="primary"):
+        if st.button("Sign In as HR Admin", key="landing_btn_admin", use_container_width=True, type="primary"):
             admin_acc = login("admin@talentsphere.com", "Admin@12345")
             if admin_acc:
                 st.session_state.user = admin_acc
@@ -661,15 +781,15 @@ def landing_webpage():
                 <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
                     Employee self-service portal, 10-role skill benchmark matrix, target readiness radar, and SMART milestones roadmap.
                 </p>
-                <div style="font-size: 0.78rem; color: #1D4ED8; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 4px;">
-                    <div>✓ 10-Role Benchmark Matrix</div>
-                    <div>✓ Competency Gap Simulator</div>
-                    <div>✓ SMART Career Goals Roadmap</div>
+                <div style="font-size: 0.78rem; color: #1D4ED8; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#2563EB")} <span>10-Role Benchmark Matrix</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#2563EB")} <span>Competency Gap Simulator</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#2563EB")} <span>SMART Career Goals Roadmap</span></div>
                 </div>
             </div>
             """
         )
-        if st.button("Sign In as Alex Morgan →", key="landing_btn_alex", use_container_width=True, type="primary"):
+        if st.button("Sign In as Alex Morgan", key="landing_btn_alex", use_container_width=True, type="primary"):
             emp_acc = login("alex@company.com", "Password123")
             if emp_acc:
                 st.session_state.user = emp_acc
@@ -691,15 +811,15 @@ def landing_webpage():
                 <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
                     Competency portfolio tracking, historical review feedback, department skill gap analytics, and promotion milestones.
                 </p>
-                <div style="font-size: 0.78rem; color: #047857; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 4px;">
-                    <div>✓ Competency Portfolio Tracking</div>
-                    <div>✓ Training & Upskilling Records</div>
-                    <div>✓ AI Career Coach & Strategy</div>
+                <div style="font-size: 0.78rem; color: #047857; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Competency Portfolio Tracking</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Training & Upskilling Records</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>AI Career Coach & Strategy</span></div>
                 </div>
             </div>
             """
         )
-        if st.button("Sign In as Ravi Kumar →", key="landing_btn_ravi", use_container_width=True, type="primary"):
+        if st.button("Sign In as Ravi Kumar", key="landing_btn_ravi", use_container_width=True, type="primary"):
             ravi_acc = login("ravi@company.com", "Password123")
             if ravi_acc:
                 st.session_state.user = ravi_acc
@@ -813,11 +933,11 @@ def landing_webpage():
 
     c_cta1, c_cta_sp1, c_cta2 = st.columns([1.5, 0.2, 1.5], gap="small")
     with c_cta1:
-        if st.button("Sign In with Email & Password →", key="cta_btn_signin", use_container_width=True, type="secondary"):
+        if st.button("Sign In with Email & Password", key="cta_btn_signin", use_container_width=True, type="secondary"):
             st.session_state.auth_view = "login"
             st.rerun()
     with c_cta2:
-        if st.button("Create a New Account →", key="cta_btn_reg", use_container_width=True, type="primary"):
+        if st.button("Create a New Account", key="cta_btn_reg", use_container_width=True, type="primary"):
             st.session_state.auth_view = "register"
             st.rerun()
 
@@ -840,10 +960,10 @@ def landing_webpage():
 # 2. DEDICATED SIGN IN PAGE (WITH TOP-LEFT BACK BUTTON)
 # ------------------------------------------------------------------------------
 def login_page():
-    # Top Bar: Top-left "← Back to Home" button & Logo on right
+    # Top Bar: Top-left "Back to Home" button & Logo on right
     col_back, col_spacer, col_logo = st.columns([2.5, 4.5, 3], gap="small")
     with col_back:
-        if st.button("← Back to Home", key="btn_login_back_home", use_container_width=True, type="secondary"):
+        if st.button("Back to Home", key="btn_login_back_home", use_container_width=True, type="secondary"):
             st.session_state.auth_view = "landing"
             st.rerun()
     with col_logo:
@@ -903,7 +1023,7 @@ def login_page():
 
             render_html("<div style='border-top: 1px solid #E2E8F0; margin: 1.25rem 0 0.85rem 0;'></div>")
             render_html("<div style='text-align: center; font-size: 0.86rem; color: #64748B; margin-bottom: 0.5rem;'>Don't have an account yet?</div>")
-            if st.button("Create a New Account →", key="btn_login_to_register", use_container_width=True, type="secondary"):
+            if st.button("Create a New Account", key="btn_login_to_register", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "register"
                 st.rerun()
 
@@ -917,10 +1037,10 @@ def login_page():
 # 3. DEDICATED CREATE ACCOUNT PAGE (WITH TOP-LEFT BACK BUTTON)
 # ------------------------------------------------------------------------------
 def register_page():
-    # Top Bar: Top-left "← Back to Home" button & Logo on right
+    # Top Bar: Top-left "Back to Home" button & Logo on right
     col_back, col_spacer, col_logo = st.columns([2.5, 4.5, 3], gap="small")
     with col_back:
-        if st.button("← Back to Home", key="btn_reg_back_home", use_container_width=True, type="secondary"):
+        if st.button("Back to Home", key="btn_reg_back_home", use_container_width=True, type="secondary"):
             st.session_state.auth_view = "landing"
             st.rerun()
     with col_logo:
@@ -989,7 +1109,7 @@ def register_page():
 
             render_html("<div style='border-top: 1px solid #E2E8F0; margin: 1.25rem 0 0.85rem 0;'></div>")
             render_html("<div style='text-align: center; font-size: 0.86rem; color: #64748B; margin-bottom: 0.5rem;'>Already have an account?</div>")
-            if st.button("Sign In to Existing Account →", key="btn_reg_to_login", use_container_width=True, type="secondary"):
+            if st.button("Sign In to Existing Account", key="btn_reg_to_login", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "login"
                 st.rerun()
 
@@ -1126,10 +1246,10 @@ def analysis_bundle():
 col_top_back, col_top_trail = st.columns([2.5, 7.5], gap="small")
 with col_top_back:
     if page != "Dashboard":
-        if st.button("← Back to Dashboard", key=f"btn_universal_back_dash_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+        if st.button("Back to Dashboard", key=f"btn_universal_back_dash_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
             navigate_to("Dashboard")
     else:
-        if st.button("← Back to Home", key="btn_universal_back_home_dash", type="secondary", use_container_width=True):
+        if st.button("Back to Home", key="btn_universal_back_home_dash", type="secondary", use_container_width=True):
             st.session_state.user = None
             st.session_state.current_page = "Dashboard"
             st.session_state.page_to_navigate = "Dashboard"
@@ -1218,7 +1338,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
         goals_in_progress = 22
 
     # Row of 4 Solid Vibrant KPI Cards matching Image 1
-    st.markdown(
+    render_html(
         f"""
         <div class="kpi-row-grid-vibrant">
             <div class="kpi-card-vibrant kpi-vibrant-blue">
@@ -1229,7 +1349,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     <div class="kpi-vibrant-title">Total Employees</div>
                     <div class="kpi-vibrant-number">{total_emp_count}</div>
                     <div class="kpi-vibrant-sub">
-                        ↑ +2 this month
+                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} +2 this month
                     </div>
                 </div>
             </div>
@@ -1241,7 +1361,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     <div class="kpi-vibrant-title">Departments</div>
                     <div class="kpi-vibrant-number">{dept_count}</div>
                     <div class="kpi-vibrant-sub">
-                        ↑ +1 this month
+                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} +1 this month
                     </div>
                 </div>
             </div>
@@ -1253,7 +1373,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     <div class="kpi-vibrant-title">Avg Performance</div>
                     <div class="kpi-vibrant-number">{avg_perf} / 5</div>
                     <div class="kpi-vibrant-sub">
-                        ↑ +0.1 this month
+                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} +0.1 this month
                     </div>
                 </div>
             </div>
@@ -1265,13 +1385,12 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     <div class="kpi-vibrant-title">Goals In Progress</div>
                     <div class="kpi-vibrant-number">{goals_in_progress}</div>
                     <div class="kpi-vibrant-sub">
-                        ↑ 75% completion
+                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} 75% completion
                     </div>
                 </div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
     # Interactive Quick Actions Bar
@@ -1297,24 +1416,23 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
         with st.container(border=True):
             c_trend_h1, c_trend_h2 = st.columns([1.8, 1])
             with c_trend_h1:
-                st.markdown(
-                    """
-                    <div style="margin-bottom: 0.5rem;">
+                render_html(
+                    f"""
+                    <div style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+                        {get_svg_icon("analytics", size=18, color="#2563EB")}
                         <div style="font-weight: 800; font-size: 1.12rem; color: #0F172A;">Employee Performance Trend</div>
                     </div>
-                    """,
-                    unsafe_allow_html=True
+                    """
                 )
             with c_trend_h2:
-                st.markdown(
-                    """
+                render_html(
+                    f"""
                     <div style="text-align: right; padding-top: 2px;">
-                        <span style="font-size: 0.82rem; font-weight: 600; color: #475569; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 4px 10px; border-radius: 8px;">
-                            Last 6 Months ▾
+                        <span style="font-size: 0.82rem; font-weight: 600; color: #475569; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 4px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                            {get_svg_icon("calendar", size=13, color="#64748B")} Last 6 Months
                         </span>
                     </div>
-                    """,
-                    unsafe_allow_html=True
+                    """
                 )
 
             # Trend line matching Image 1
@@ -1411,7 +1529,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     unsafe_allow_html=True
                 )
             with c_pr2:
-                if st.button("View All →", key="va_rev_dash", type="secondary", use_container_width=True):
+                if st.button("View All", key="va_rev_dash", type="secondary", use_container_width=True):
                     navigate_to("Performance")
 
             st.markdown(
@@ -1466,7 +1584,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     unsafe_allow_html=True
                 )
             with c_sk2:
-                if st.button("View All →", key="va_skills_dash", type="secondary", use_container_width=True):
+                if st.button("View All", key="va_skills_dash", type="secondary", use_container_width=True):
                     navigate_to("Skills")
 
             st.markdown(
@@ -1512,7 +1630,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     unsafe_allow_html=True
                 )
             with c_cg2:
-                if st.button("View All →", key="va_goals_dash", type="secondary", use_container_width=True):
+                if st.button("View All", key="va_goals_dash", type="secondary", use_container_width=True):
                     navigate_to("Career Goals")
 
             st.markdown(
@@ -1637,11 +1755,11 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
         with st.expander("Profile sections to complete"):
             if missing:
                 st.markdown(f"**Still to add:** {', '.join(missing)}")
-                if st.button("Complete Profile Now →", key="dash_goto_prof_btn"):
+                if st.button("Complete Profile Now", key="dash_goto_prof_btn"):
                     navigate_to("My Profile")
             else:
                 st.success("All primary profile sections are complete!")
-                if st.button("Review Profile Details →", key="dash_rev_prof_btn"):
+                if st.button("Review Profile Details", key="dash_rev_prof_btn"):
                     navigate_to("My Profile")
 
     with col_dash_right:
@@ -1668,7 +1786,7 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
                 """
             )
             st.markdown("<div style='margin-top: 0.75rem;'></div>", unsafe_allow_html=True)
-            if st.button("Add Skills in Portfolio →", key="dash_add_skills_btn"):
+            if st.button("Add Skills in Portfolio", key="dash_add_skills_btn"):
                 navigate_to("Skills & Assessment")
         else:
             render_html(
@@ -2477,8 +2595,8 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                 st.markdown(
                     f"""
                     <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-top: 8px;">
-                        <span style="font-size: 0.84rem; color: #1E40AF;">
-                            Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> → <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
+                        <span style="font-size: 0.84rem; color: #1E40AF; display: inline-flex; align-items: center; gap: 6px;">
+                            Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> {get_svg_icon("arrow_right", size=14, color="#1D4ED8")} <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
                         </span>
                     </div>
                     """,
@@ -2598,8 +2716,8 @@ elif page in ["Role Match & Gaps", "Role Match & Competency Gaps", "Competency G
             st.markdown(
                 f"""
                 <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-top: 8px;">
-                    <span style="font-size: 0.84rem; color: #1E40AF;">
-                        Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> → <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
+                    <span style="font-size: 0.84rem; color: #1E40AF; display: inline-flex; align-items: center; gap: 6px;">
+                        Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> {get_svg_icon("arrow_right", size=14, color="#1D4ED8")} <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
                     </span>
                 </div>
                 """,
