@@ -57,6 +57,18 @@ def get_logo_b64(which: str = "icon") -> str:
             return base64.b64encode(f.read()).decode("utf-8")
     return ""
 
+@st.cache_data
+def get_career_growth_illustration_b64() -> str:
+    path = "assets/career_growth_transparent.png"
+    if not os.path.exists(path):
+        path = "assets/career_growth_clean.png"
+    if not os.path.exists(path):
+        path = "assets/career_growth_illustration.png"
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    return ""
+
 def render_html(html_str: str) -> None:
     """Directly renders pure HTML without markdown parser converting indented lines into code blocks."""
     clean_html = "\n".join(line.strip() for line in html_str.splitlines() if line.strip())
@@ -1144,7 +1156,7 @@ st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=Tru
 # ==============================================================================
 if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
     # Top Search & Profile Bar matching Image 1 & 2
-    st.markdown(
+    render_html(
         f"""
         <div class="top-header-bar">
             <div class="top-search-box">
@@ -1163,57 +1175,34 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                 </div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
-    # Team Collaboration & Growth Chart SVG Illustration matching Image 1
-    team_illustration_svg = """
-    <svg width="220" height="110" viewBox="0 0 240 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="max-height: 110px; width: auto;">
-        <!-- Upward trend bars -->
-        <rect x="180" y="66" width="13" height="42" rx="3" fill="#FFFFFF" fill-opacity="0.95"/>
-        <rect x="199" y="48" width="13" height="60" rx="3" fill="#FFFFFF" fill-opacity="0.95"/>
-        <rect x="218" y="26" width="13" height="82" rx="3" fill="#FFFFFF" fill-opacity="0.95"/>
-        <!-- Curved Arrow -->
-        <path d="M162 90 C 182 72, 204 46, 230 20" stroke="#FDE047" stroke-width="4.5" stroke-linecap="round"/>
-        <polygon points="234,16 222,19 228,30" fill="#FDE047"/>
-        <!-- Desk -->
-        <rect x="25" y="86" width="145" height="6" rx="3" fill="#1E3A8A" fill-opacity="0.7"/>
-        <rect x="45" y="92" width="6" height="22" rx="2" fill="#1E3A8A" fill-opacity="0.5"/>
-        <rect x="135" y="92" width="6" height="22" rx="2" fill="#1E3A8A" fill-opacity="0.5"/>
-        <!-- Laptop -->
-        <path d="M85 86 L105 86 L102 73 L88 73 Z" fill="#1E293B"/>
-        <rect x="83" y="85" width="24" height="2" rx="1" fill="#94A3B8"/>
-        <!-- Person 1 (Yellow shirt) -->
-        <circle cx="48" cy="48" r="9.5" fill="#FDE047"/>
-        <path d="M35 84 C35 69 42 63 48 63 C54 63 61 69 61 84 Z" fill="#F59E0B"/>
-        <!-- Person 2 (Blue shirt) -->
-        <circle cx="95" cy="45" r="10" fill="#93C5FD"/>
-        <path d="M80 84 C80 67 87 61 95 61 C103 61 110 67 110 84 Z" fill="#1D4ED8"/>
-        <!-- Person 3 (Red shirt) -->
-        <circle cx="140" cy="50" r="9" fill="#FCA5A5"/>
-        <path d="M127 84 C127 71 133 65 140 65 C147 65 153 71 153 84 Z" fill="#EF4444"/>
-    </svg>
-    """
+    # Professional Career Growth & Milestone Illustration (Replacing SVG shapes)
+    career_growth_b64 = get_career_growth_illustration_b64()
 
-    # Welcome Hero Banner (Matching Image 1)
-    st.markdown(
+    # Welcome Hero Banner with Career Growth Illustration
+    render_html(
         f"""
-        <div style="background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 55%, #3B82F6 100%); border-radius: 16px; padding: 1.65rem 2.2rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22); position: relative; overflow: hidden;">
-            <div style="z-index: 1;">
+        <div style="background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 55%, #3B82F6 100%); border-radius: 16px; padding: 1.6rem 2.2rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22); position: relative; overflow: hidden;">
+            <div style="z-index: 2; max-width: 62%;">
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.28); padding: 4px 11px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+                    {get_svg_icon("sparkles", size=13, color="#FEF08A")} Executive Talent Hub
+                </div>
                 <div style="font-size: 1.85rem; font-weight: 800; color: #FFFFFF; line-height: 1.25; margin-bottom: 6px;">
                     Welcome back, {user['name']}
                 </div>
-                <div style="font-size: 0.98rem; color: rgba(255, 255, 255, 0.92); font-weight: 400;">
-                    Here's an overview of your talent management platform.
+                <div style="font-size: 0.96rem; color: rgba(255, 255, 255, 0.92); font-weight: 400; line-height: 1.5;">
+                    Here's an overview of workforce performance, competency shortfalls, and career growth milestones.
                 </div>
             </div>
-            <div style="z-index: 1; flex-shrink: 0; display: flex; align-items: center;">
-                {team_illustration_svg}
+            <div style="z-index: 2; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end;">
+                <div style="background: #FFFFFF; border-radius: 14px; padding: 6px 14px; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14); display: flex; align-items: center; justify-content: center;">
+                    <img src="data:image/png;base64,{career_growth_b64}" alt="Career Growth Trajectory" style="max-height: 110px; width: auto; object-fit: contain; display: block;" />
+                </div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
     employees = get_employees()
