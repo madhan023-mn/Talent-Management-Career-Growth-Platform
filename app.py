@@ -57,8 +57,12 @@ def get_logo_b64(which: str = "icon") -> str:
     return ""
 
 def render_html(html_str: str) -> None:
-    """Safely renders HTML without markdown parser converting indented lines into code blocks."""
-    st.markdown(textwrap.dedent(html_str).strip(), unsafe_allow_html=True)
+    """Directly renders pure HTML without markdown parser converting indented lines into code blocks."""
+    clean_html = "\n".join(line.strip() for line in html_str.splitlines() if line.strip())
+    if hasattr(st, "html"):
+        st.html(clean_html)
+    else:
+        st.markdown(clean_html, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
 # CLEAN SVG ICON SYSTEM (Zero Emojis, Pixel-Perfect Vector Icons & Brand Mark)
@@ -200,131 +204,127 @@ def get_prof_badge_html(level: str) -> str:
         return f'<span class="tbl-badge tbl-prof-beg">{level}</span>'
 
 def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
+    if not emp_results:
+        return """<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No employee records found.</td></tr></tbody></table></div>"""
     rows = []
     for emp in emp_results:
         score = emp.get("avg_rating") or 0.0
         pct = min(100, max(0, int((score / 5.0) * 100)))
         bar_color = "#8B5CF6" if score >= 4.5 else ("#10B981" if score >= 3.8 else ("#3B82F6" if score >= 3.0 else "#F59E0B"))
-        rows.append(f"""
-        <tr>
-            <td><span class="tbl-id-pill">{emp.get('employee_id', '')}</span></td>
-            <td>
-                <div style="font-weight: 700; color: #0F172A;">{emp.get('name', '')}</div>
-                <div style="font-size: 0.76rem; color: #64748B;">{emp.get('email', '')}</div>
-            </td>
-            <td>{get_dept_badge_html(emp.get('department', ''))}</td>
-            <td><span style="font-weight: 600; color: #334155;">{emp.get('designation', '')}</span></td>
-            <td>{get_status_badge_html(emp.get('employment_status', 'Active'))}</td>
-            <td><span style="font-weight: 700; color: #475569;">{emp.get('years_experience', 0)} yrs</span></td>
-            <td>
-                <div class="tbl-progress-container">
-                    <div class="tbl-progress-track">
-                        <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
-                    </div>
-                    {get_rating_badge_html(score)}
-                </div>
-            </td>
-        </tr>
-        """)
-    return f"""
-    <div class="corporate-table-wrapper">
-        <table class="corporate-table">
-            <thead>
-                <tr>
-                    <th>Emp ID</th>
-                    <th>Full Name</th>
-                    <th>Department</th>
-                    <th>Designation</th>
-                    <th>Status</th>
-                    <th>Experience</th>
-                    <th>Performance Score</th>
-                </tr>
-            </thead>
-            <tbody>{''.join(rows)}</tbody>
-        </table>
-    </div>
-    """
+        rows.append(f"""<tr>
+<td><span class="tbl-id-pill">{emp.get('employee_id', '')}</span></td>
+<td>
+<div style="font-weight: 700; color: #0F172A;">{emp.get('name', '')}</div>
+<div style="font-size: 0.76rem; color: #64748B;">{emp.get('email', '')}</div>
+</td>
+<td>{get_dept_badge_html(emp.get('department', ''))}</td>
+<td><span style="font-weight: 600; color: #334155;">{emp.get('designation', '')}</span></td>
+<td>{get_status_badge_html(emp.get('employment_status', 'Active'))}</td>
+<td><span style="font-weight: 700; color: #475569;">{emp.get('years_experience', 0)} yrs</span></td>
+<td>
+<div class="tbl-progress-container">
+<div class="tbl-progress-track">
+<div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+</div>
+{get_rating_badge_html(score)}
+</div>
+</td>
+</tr>""")
+    return f"""<div class="corporate-table-wrapper">
+<table class="corporate-table">
+<thead>
+<tr>
+<th>Emp ID</th>
+<th>Full Name</th>
+<th>Department</th>
+<th>Designation</th>
+<th>Status</th>
+<th>Experience</th>
+<th>Performance Score</th>
+</tr>
+</thead>
+<tbody>{''.join(rows)}</tbody>
+</table>
+</div>"""
 
 def render_colored_review_table(reviews_list: List[Dict[str, Any]]) -> str:
+    if not reviews_list:
+        return """<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No performance reviews recorded yet.</td></tr></tbody></table></div>"""
     rows = []
     for r in reviews_list:
         score = float(r.get("performance_score") or 0.0)
         pct = min(100, max(0, int((score / 5.0) * 100)))
         bar_color = "#8B5CF6" if score >= 4.5 else ("#10B981" if score >= 3.8 else ("#3B82F6" if score >= 3.0 else "#F59E0B"))
         dt = (r.get("created_at") or "")[:10]
-        rows.append(f"""
-        <tr>
-            <td><span class="tbl-id-pill">{r.get('employee_id', '')}</span></td>
-            <td>
-                <div style="font-weight: 700; color: #0F172A;">{r.get('employee_name', '')}</div>
-                <div style="font-size: 0.76rem; color: #64748B;">{r.get('designation', '')}</div>
-            </td>
-            <td>{get_dept_badge_html(r.get('department', ''))}</td>
-            <td><span class="tbl-badge tbl-badge-blue">{r.get('review_period', '')}</span></td>
-            <td>
-                <div class="tbl-progress-container">
-                    <div class="tbl-progress-track">
-                        <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
-                    </div>
-                    {get_rating_badge_html(score)}
-                </div>
-            </td>
-            <td>
-                <div style="font-size: 0.8rem; color: #065F46; font-weight: 600;">{r.get('strengths') or 'Consistency'}</div>
-                <div style="font-size: 0.76rem; color: #9A3412;">{r.get('improvements') or 'Leadership'}</div>
-            </td>
-            <td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{dt}</span></td>
-        </tr>
-        """)
-    return f"""
-    <div class="corporate-table-wrapper">
-        <table class="corporate-table">
-            <thead>
-                <tr>
-                    <th>Emp ID</th>
-                    <th>Employee</th>
-                    <th>Department</th>
-                    <th>Period</th>
-                    <th>Rating & Score</th>
-                    <th>Key Highlights</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>{''.join(rows)}</tbody>
-        </table>
-    </div>
-    """
+        rows.append(f"""<tr>
+<td><span class="tbl-id-pill">{r.get('employee_id', '')}</span></td>
+<td>
+<div style="font-weight: 700; color: #0F172A;">{r.get('employee_name', '')}</div>
+<div style="font-size: 0.76rem; color: #64748B;">{r.get('designation', '')}</div>
+</td>
+<td>{get_dept_badge_html(r.get('department', ''))}</td>
+<td><span class="tbl-badge tbl-badge-blue">{r.get('review_period', '')}</span></td>
+<td>
+<div class="tbl-progress-container">
+<div class="tbl-progress-track">
+<div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+</div>
+{get_rating_badge_html(score)}
+</div>
+</td>
+<td>
+<div style="font-size: 0.8rem; color: #065F46; font-weight: 600;">{r.get('strengths') or 'Consistency'}</div>
+<div style="font-size: 0.76rem; color: #9A3412;">{r.get('improvements') or 'Leadership'}</div>
+</td>
+<td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{dt}</span></td>
+</tr>""")
+    return f"""<div class="corporate-table-wrapper">
+<table class="corporate-table">
+<thead>
+<tr>
+<th>Emp ID</th>
+<th>Employee</th>
+<th>Department</th>
+<th>Period</th>
+<th>Rating & Score</th>
+<th>Key Highlights</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody>{''.join(rows)}</tbody>
+</table>
+</div>"""
 
 def render_colored_skills_table(skills_list: List[Dict[str, Any]]) -> str:
+    if not skills_list:
+        return """<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No competencies cataloged yet.</td></tr></tbody></table></div>"""
     rows = []
     for s in skills_list:
-        rows.append(f"""
-        <tr>
-            <td><span style="font-weight: 700; color: #0F172A;">{s.get('skill_name', '')}</span></td>
-            <td><span class="tbl-badge tbl-badge-blue">{s.get('category', 'Technical')}</span></td>
-            <td>{get_prof_badge_html(s.get('proficiency_level', 'Intermediate'))}</td>
-            <td><span style="font-weight: 700; color: #475569;">{s.get('years_exp', 1.0)} yrs</span></td>
-            <td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{(s.get('last_updated') or '')[:10]}</span></td>
-        </tr>
-        """)
-    return f"""
-    <div class="corporate-table-wrapper">
-        <table class="corporate-table">
-            <thead>
-                <tr>
-                    <th>Competency</th>
-                    <th>Category</th>
-                    <th>Proficiency</th>
-                    <th>Experience</th>
-                    <th>Cataloged Date</th>
-                </tr>
-            </thead>
-            <tbody>{''.join(rows)}</tbody>
-        </table>
-    </div>
-    """
+        rows.append(f"""<tr>
+<td><span style="font-weight: 700; color: #0F172A;">{s.get('skill_name', '')}</span></td>
+<td><span class="tbl-badge tbl-badge-blue">{s.get('category', 'Technical')}</span></td>
+<td>{get_prof_badge_html(s.get('proficiency_level', 'Intermediate'))}</td>
+<td><span style="font-weight: 700; color: #475569;">{s.get('years_exp', 1.0)} yrs</span></td>
+<td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{(s.get('last_updated') or '')[:10]}</span></td>
+</tr>""")
+    return f"""<div class="corporate-table-wrapper">
+<table class="corporate-table">
+<thead>
+<tr>
+<th>Competency</th>
+<th>Category</th>
+<th>Proficiency</th>
+<th>Experience</th>
+<th>Cataloged Date</th>
+</tr>
+</thead>
+<tbody>{''.join(rows)}</tbody>
+</table>
+</div>"""
 
 def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[int, str]) -> str:
+    if not gaps_list:
+        return """<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #10B981; font-weight: 600;">All competency benchmarks met for this target role!</td></tr></tbody></table></div>"""
     rows = []
     for g in gaps_list:
         gap_val = g.get("gap", 0)
@@ -336,152 +336,142 @@ def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[
             gap_badge = f'<span class="tbl-badge tbl-gap-critical">-{gap_val} Levels</span>'
         curr_lvl = levels_str.get(g.get("current_level", 0), str(g.get("current_level", 0)))
         req_lvl = levels_str.get(g.get("required_level", 0), str(g.get("required_level", 0)))
-        rows.append(f"""
-        <tr>
-            <td><span style="font-weight: 700; color: #0F172A;">{g.get('skill', '')}</span></td>
-            <td>{get_prof_badge_html(curr_lvl)}</td>
-            <td>{get_prof_badge_html(req_lvl)}</td>
-            <td>{gap_badge}</td>
-            <td>{get_priority_badge_html(g.get('priority', 'Medium'))}</td>
-        </tr>
-        """)
-    return f"""
-    <div class="corporate-table-wrapper">
-        <table class="corporate-table">
-            <thead>
-                <tr>
-                    <th>Competency</th>
-                    <th>Current Level</th>
-                    <th>Required Benchmark</th>
-                    <th>Skill Shortfall</th>
-                    <th>Priority</th>
-                </tr>
-            </thead>
-            <tbody>{''.join(rows)}</tbody>
-        </table>
-    </div>
-    """
+        rows.append(f"""<tr>
+<td><span style="font-weight: 700; color: #0F172A;">{g.get('skill', '')}</span></td>
+<td>{get_prof_badge_html(curr_lvl)}</td>
+<td>{get_prof_badge_html(req_lvl)}</td>
+<td>{gap_badge}</td>
+<td>{get_priority_badge_html(g.get('priority', 'Medium'))}</td>
+</tr>""")
+    return f"""<div class="corporate-table-wrapper">
+<table class="corporate-table">
+<thead>
+<tr>
+<th>Competency</th>
+<th>Current Level</th>
+<th>Required Benchmark</th>
+<th>Skill Shortfall</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>{''.join(rows)}</tbody>
+</table>
+</div>"""
 
 def render_colored_goals_table(goals_list: List[Dict[str, Any]]) -> str:
+    if not goals_list:
+        return """<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No active career milestones recorded yet.</td></tr></tbody></table></div>"""
     rows = []
     for g in goals_list:
         prog = int(g.get("progress") or 0)
         bar_color = "#10B981" if prog == 100 else ("#3B82F6" if prog >= 50 else "#F59E0B")
-        rows.append(f"""
-        <tr>
-            <td>
-                <div style="font-weight: 700; color: #0F172A;">{g.get('title', '')}</div>
-                <div style="font-size: 0.78rem; color: #64748B;">{str(g.get('description', ''))[:70]}...</div>
-            </td>
-            <td><span class="tbl-badge tbl-badge-purple">{g.get('target_designation', 'Target Role')}</span></td>
-            <td><span style="font-family: monospace; font-size: 0.8rem; color: #475569;">{g.get('target_date', '')}</span></td>
-            <td>
-                <div class="tbl-progress-container">
-                    <div class="tbl-progress-track">
-                        <div class="tbl-progress-bar" style="width: {prog}%; background: {bar_color};"></div>
-                    </div>
-                    <span class="tbl-progress-text">{prog}%</span>
-                </div>
-            </td>
-            <td>{get_status_badge_html(g.get('status', 'In Progress'))}</td>
-        </tr>
-        """)
-    return f"""
-    <div class="corporate-table-wrapper">
-        <table class="corporate-table">
-            <thead>
-                <tr>
-                    <th>Goal & Action Steps</th>
-                    <th>Target Role</th>
-                    <th>Target Date</th>
-                    <th>Milestone Progress</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>{''.join(rows)}</tbody>
-        </table>
-    </div>
-    """
+        rows.append(f"""<tr>
+<td>
+<div style="font-weight: 700; color: #0F172A;">{g.get('title', '')}</div>
+<div style="font-size: 0.78rem; color: #64748B;">{str(g.get('description', ''))[:70]}...</div>
+</td>
+<td><span class="tbl-badge tbl-badge-purple">{g.get('target_designation', 'Target Role')}</span></td>
+<td><span style="font-family: monospace; font-size: 0.8rem; color: #475569;">{g.get('target_date', '')}</span></td>
+<td>
+<div class="tbl-progress-container">
+<div class="tbl-progress-track">
+<div class="tbl-progress-bar" style="width: {prog}%; background: {bar_color};"></div>
+</div>
+<span class="tbl-progress-text">{prog}%</span>
+</div>
+</td>
+<td>{get_status_badge_html(g.get('status', 'In Progress'))}</td>
+</tr>""")
+    return f"""<div class="corporate-table-wrapper">
+<table class="corporate-table">
+<thead>
+<tr>
+<th>Goal & Action Steps</th>
+<th>Target Role</th>
+<th>Target Date</th>
+<th>Milestone Progress</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>{''.join(rows)}</tbody>
+</table>
+</div>"""
 
 def render_colored_training_table(trainings_list: List[Dict[str, Any]]) -> str:
+    if not trainings_list:
+        return """<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No training courses currently enrolled.</td></tr></tbody></table></div>"""
     rows = []
     for t in trainings_list:
         score = float(t.get("score") or 0.0)
         pct = min(100, max(0, int(score)))
         bar_color = "#10B981" if pct >= 80 else ("#3B82F6" if pct >= 60 else "#F59E0B")
-        rows.append(f"""
-        <tr>
-            <td><span class="tbl-id-pill">{t.get('employee_id', '')}</span></td>
-            <td><span style="font-weight: 700; color: #0F172A;">{t.get('course_name', '')}</span></td>
-            <td><span class="tbl-badge tbl-badge-purple">{t.get('target_skill', '')}</span></td>
-            <td><span style="color: #475569; font-size: 0.82rem;">{t.get('provider', '')}</span></td>
-            <td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{t.get('target_completion_date', '')}</span></td>
-            <td>{get_status_badge_html(t.get('status', 'Enrolled'))}</td>
-            <td>
-                <div class="tbl-progress-container">
-                    <div class="tbl-progress-track">
-                        <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
-                    </div>
-                    <span class="tbl-progress-text">{pct}%</span>
-                </div>
-            </td>
-        </tr>
-        """)
-    return f"""
-    <div class="corporate-table-wrapper">
-        <table class="corporate-table">
-            <thead>
-                <tr>
-                    <th>Emp ID</th>
-                    <th>Course Title</th>
-                    <th>Target Skill</th>
-                    <th>Provider</th>
-                    <th>Target Date</th>
-                    <th>Status</th>
-                    <th>Grade / Completion</th>
-                </tr>
-            </thead>
-            <tbody>{''.join(rows)}</tbody>
-        </table>
-    </div>
-    """
+        rows.append(f"""<tr>
+<td><span class="tbl-id-pill">{t.get('employee_id', '')}</span></td>
+<td><span style="font-weight: 700; color: #0F172A;">{t.get('course_name', '')}</span></td>
+<td><span class="tbl-badge tbl-badge-purple">{t.get('target_skill', '')}</span></td>
+<td><span style="color: #475569; font-size: 0.82rem;">{t.get('provider', '')}</span></td>
+<td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{t.get('target_completion_date', '')}</span></td>
+<td>{get_status_badge_html(t.get('status', 'Enrolled'))}</td>
+<td>
+<div class="tbl-progress-container">
+<div class="tbl-progress-track">
+<div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+</div>
+<span class="tbl-progress-text">{pct}%</span>
+</div>
+</td>
+</tr>""")
+    return f"""<div class="corporate-table-wrapper">
+<table class="corporate-table">
+<thead>
+<tr>
+<th>Emp ID</th>
+<th>Course Title</th>
+<th>Target Skill</th>
+<th>Provider</th>
+<th>Target Date</th>
+<th>Status</th>
+<th>Grade / Completion</th>
+</tr>
+</thead>
+<tbody>{''.join(rows)}</tbody>
+</table>
+</div>"""
 
 def render_colored_dept_summary_table(dept_summary_list: List[Dict[str, Any]]) -> str:
+    if not dept_summary_list:
+        return """<div class="corporate-table-wrapper"><table class="corporate-table"><tbody><tr><td style="text-align:center; padding: 2.5rem; color: #64748B;">No department metrics available.</td></tr></tbody></table></div>"""
     rows = []
     for ds in dept_summary_list:
         avg_s = float(ds.get("avg_score") or 0.0)
         pct = min(100, max(0, int((avg_s / 5.0) * 100)))
         bar_color = "#8B5CF6" if avg_s >= 4.5 else ("#10B981" if avg_s >= 3.8 else ("#3B82F6" if avg_s >= 3.0 else "#F59E0B"))
-        rows.append(f"""
-        <tr>
-            <td>{get_dept_badge_html(ds.get('department', ''))}</td>
-            <td><span class="tbl-badge tbl-badge-blue">{ds.get('employee_count', 0)} active</span></td>
-            <td>
-                <div class="tbl-progress-container">
-                    <div class="tbl-progress-track">
-                        <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
-                    </div>
-                    {get_rating_badge_html(avg_s)}
-                </div>
-            </td>
-            <td><span style="font-weight: 700; color: #475569;">{ds.get('total_reviews', 0)} reviews</span></td>
-        </tr>
-        """)
-    return f"""
-    <div class="corporate-table-wrapper">
-        <table class="corporate-table">
-            <thead>
-                <tr>
-                    <th>Department</th>
-                    <th>Active Headcount</th>
-                    <th>Average Performance Rating</th>
-                    <th>Completed Reviews</th>
-                </tr>
-            </thead>
-            <tbody>{''.join(rows)}</tbody>
-        </table>
-    </div>
-    """
+        rows.append(f"""<tr>
+<td>{get_dept_badge_html(ds.get('department', ''))}</td>
+<td><span class="tbl-badge tbl-badge-blue">{ds.get('employee_count', 0)} active</span></td>
+<td>
+<div class="tbl-progress-container">
+<div class="tbl-progress-track">
+<div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+</div>
+{get_rating_badge_html(avg_s)}
+</div>
+</td>
+<td><span style="font-weight: 700; color: #475569;">{ds.get('total_reviews', 0)} reviews</span></td>
+</tr>""")
+    return f"""<div class="corporate-table-wrapper">
+<table class="corporate-table">
+<thead>
+<tr>
+<th>Department</th>
+<th>Active Headcount</th>
+<th>Average Performance Rating</th>
+<th>Completed Reviews</th>
+</tr>
+</thead>
+<tbody>{''.join(rows)}</tbody>
+</table>
+</div>"""
 
 
 

@@ -1307,6 +1307,7 @@ div[data-testid="stDataFrame"], div[data-testid="stTable"] {
     color: #475569;
     line-height: 1.55;
     margin-bottom: 0.85rem;
+    white-space: pre-line;
 }
 
 /* Sidebar Brand Styling */
