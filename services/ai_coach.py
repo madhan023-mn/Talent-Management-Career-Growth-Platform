@@ -291,7 +291,7 @@ def _build_rule_based_coaching(
     top_skills = [s['name'] for s in skills[:3]] if skills else ["Core Software Development"]
     gaps_list = [f"{g['skill']} (priority: {g['priority']})" for g in gap_data[:4]] if gap_data else ["Continuous Integration", "System Architecture"]
     
-    return f"""### 🚀 Strategic Career Blueprint for {user_name}
+    return f"""### Strategic Career Blueprint: {user_name}
 **Inquiry Focus:** *"{question}"*
 
 ---

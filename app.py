@@ -96,7 +96,25 @@ def get_svg_icon(name: str, size: int = 18, color: str = "currentColor", extra_s
         "user": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
         "layers": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.9a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>',
         "analytics": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>',
-        "sparkles": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>'
+        "sparkles": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>',
+        "target": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+        "table": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
+        "card": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
+        "zap": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+        "clipboard": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>',
+        "rocket": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
+        "cloud": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>',
+        "trending_up": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>',
+        "lightbulb": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>',
+        "database": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>',
+        "download": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>',
+        "key": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>',
+        "mail": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
+        "phone": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+        "award": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>',
+        "calendar": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>',
+        "briefcase": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+        "filter": f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{extra_style}"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>'
     }
     return icons.get(name, f'<span style="{extra_style}"></span>')
 
@@ -806,7 +824,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
         <div style="background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 55%, #3B82F6 100%); border-radius: 16px; padding: 1.65rem 2.2rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22); position: relative; overflow: hidden;">
             <div style="z-index: 1;">
                 <div style="font-size: 1.85rem; font-weight: 800; color: #FFFFFF; line-height: 1.25; margin-bottom: 6px;">
-                    Welcome back, {user['name']}! 👋
+                    Welcome back, {user['name']}
                 </div>
                 <div style="font-size: 0.98rem; color: rgba(255, 255, 255, 0.92); font-weight: 400;">
                     Here's an overview of your talent management platform.
@@ -892,16 +910,16 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
     # Interactive Quick Actions Bar
     col_qa1, col_qa2, col_qa3, col_qa4 = st.columns(4)
     with col_qa1:
-        if st.button("➕ Add Employee", key="qa_bar_add_emp", use_container_width=True, type="primary"):
+        if st.button("Add Employee", key="qa_bar_add_emp", use_container_width=True, type="primary"):
             navigate_to("Employees")
     with col_qa2:
-        if st.button("📝 Record Review", key="qa_bar_rec_rev", use_container_width=True):
+        if st.button("Record Review", key="qa_bar_rec_rev", use_container_width=True):
             navigate_to("Performance")
     with col_qa3:
-        if st.button("⚡ Add Skill", key="qa_bar_add_skill", use_container_width=True):
+        if st.button("Add Skill", key="qa_bar_add_skill", use_container_width=True):
             navigate_to("Skills")
     with col_qa4:
-        if st.button("🎯 Set Career Goal", key="qa_bar_set_goal", use_container_width=True):
+        if st.button("Set Career Goal", key="qa_bar_set_goal", use_container_width=True):
             navigate_to("Career Goals")
 
     st.markdown("<div style='margin-bottom: 1.15rem;'></div>", unsafe_allow_html=True)
@@ -1198,7 +1216,7 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
         <div style="background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 55%, #3B82F6 100%); border-radius: 16px; padding: 1.65rem 2.2rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22); position: relative; overflow: hidden;">
             <div style="z-index: 1;">
                 <div style="font-size: 1.85rem; font-weight: 800; color: #FFFFFF; line-height: 1.25; margin-bottom: 6px;">
-                    Welcome back, {user['name']}! 👋
+                    Welcome back, {user['name']}
                 </div>
                 <div style="font-size: 0.98rem; color: rgba(255, 255, 255, 0.92); font-weight: 400;">
                     Your personal career intelligence hub for competencies, milestones, and development pathways.
@@ -1289,16 +1307,16 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
     # Quick Actions for Employees
     col_eqa1, col_eqa2, col_eqa3, col_eqa4 = st.columns(4)
     with col_eqa1:
-        if st.button("🎯 Set Career Goal", key="eq_bar_goal", use_container_width=True, type="primary"):
+        if st.button("Set Career Goal", key="eq_bar_goal", use_container_width=True, type="primary"):
             navigate_to("Career Goals")
     with col_eqa2:
-        if st.button("⚡ Update Skills", key="eq_bar_skills", use_container_width=True):
+        if st.button("Update Skills", key="eq_bar_skills", use_container_width=True):
             navigate_to("Skills")
     with col_eqa3:
-        if st.button("📋 My Performance", key="eq_bar_perf", use_container_width=True):
+        if st.button("My Performance", key="eq_bar_perf", use_container_width=True):
             navigate_to("Performance")
     with col_eqa4:
-        if st.button("🤖 AI Career Coach", key="eq_bar_coach", use_container_width=True):
+        if st.button("AI Career Coach", key="eq_bar_coach", use_container_width=True):
             navigate_to("AI Career Coach")
 
     st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
@@ -1418,7 +1436,7 @@ elif page in ["Employees", "Employee Management"]:
             st.markdown("#### Workforce Directory & Talent Profiles")
             st.caption("Browse team personnel, filter competencies, and inspect real-time performance ratings.")
         with c_toggle:
-            view_mode = st.radio("Display Layout", ["📇 Interactive Cards", "📊 Data Table"], horizontal=True, key="emp_view_mode", label_visibility="collapsed")
+            view_mode = st.radio("Display Layout", ["Cards View", "Table View"], horizontal=True, key="emp_view_mode", label_visibility="collapsed")
 
         f1, f2, f3 = st.columns([2, 1, 1])
         s_query = f1.text_input("Live Search (Name, ID, Role, Skill)", placeholder="Search by name, designation, skill, or ID...", key="emp_live_search")
@@ -1440,13 +1458,13 @@ elif page in ["Employees", "Employee Management"]:
         m_d.metric("Avg Rating", f"{avg_rtg_val} / 5.0" if avg_rtg_val else "N/A", delta="Quarterly Cycle")
 
         if emp_results:
-            if view_mode == "📇 Interactive Cards":
+            if view_mode == "Cards View":
                 card_cols = st.columns(3)
                 for i, emp in enumerate(emp_results):
                     with card_cols[i % 3]:
                         n_parts = emp["name"].strip().split()
                         init = (n_parts[0][0] + (n_parts[-1][0] if len(n_parts) > 1 else "")).upper()
-                        rating_display = f"⭐ {emp['avg_rating']}/5.0" if emp['avg_rating'] else "New Talent"
+                        rating_display = f"{emp['avg_rating']} / 5.0" if emp['avg_rating'] else "New Talent"
                         status_cls = "badge-active" if emp['employment_status'] == 'Active' else ('badge-leave' if emp['employment_status'] == 'On Leave' else 'badge-overdue')
                         skills_list = [s.strip() for s in (emp['primary_skills'] or '').split(',') if s.strip()][:4]
                         skills_html = ''.join(f"<span class='skill-pill'>{s}</span>" for s in skills_list) if skills_list else "<span style='font-size: 0.75rem; color: #94A3B8;'>No skills listed</span>"
@@ -1464,8 +1482,8 @@ elif page in ["Employees", "Employee Management"]:
                                     </div>
                                     <span class="badge-status {status_cls}">{emp['employment_status'].upper()}</span>
                                 </div>
-                                <div style="font-size: 0.78rem; color: #64748B; margin-bottom: 6px;">
-                                    🏢 <strong>{emp['department']}</strong> · 🆔 <code>{emp['employee_id']}</code>
+                                <div style="font-size: 0.78rem; color: #64748B; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                                    {get_svg_icon("building", size=13, color="#64748B")} <strong>{emp['department']}</strong> · <span class="tbl-id-pill">{emp['employee_id']}</span>
                                 </div>
                                 <div class="talent-mini-stats">
                                     <div class="talent-stat-item">
@@ -1473,7 +1491,7 @@ elif page in ["Employees", "Employee Management"]:
                                         <div class="talent-stat-lbl">Experience</div>
                                     </div>
                                     <div class="talent-stat-item">
-                                        <div class="talent-stat-val" style="color: #D97706;">{rating_display}</div>
+                                        <div class="talent-stat-val" style="color: #2563EB;">{rating_display}</div>
                                         <div class="talent-stat-lbl">Performance</div>
                                     </div>
                                     <div class="talent-stat-item">
@@ -1489,13 +1507,26 @@ elif page in ["Employees", "Employee Management"]:
                             """
                         )
                         with st.expander(f"Contact & Profile ({emp['employee_id']})"):
-                            st.write(f"📧 **Email:** `{emp['email']}`")
-                            st.write(f"📞 **Phone:** `{emp['phone'] or 'Not provided'}`")
-                            st.write(f"💼 **Full Skills:** {emp['primary_skills'] or 'None recorded'}")
+                            st.write(f"**Email:** `{emp['email']}`")
+                            st.write(f"**Phone:** `{emp['phone'] or 'Not provided'}`")
+                            st.write(f"**Primary Skills:** {emp['primary_skills'] or 'None recorded'}")
             else:
                 df_display = pd.DataFrame(emp_results)[["employee_id", "name", "email", "phone", "department", "designation", "joining_date", "employment_status", "years_experience", "primary_skills", "avg_rating"]]
-                df_display.columns = ["ID", "Full Name", "Email", "Phone", "Department", "Designation", "Joined", "Status", "Exp (Yrs)", "Primary Skills", "Avg Rating (1–5)"]
-                st.dataframe(df_display, use_container_width=True, hide_index=True)
+                df_display.columns = ["ID", "Full Name", "Email", "Phone", "Department", "Designation", "Joined", "Status", "Exp (Yrs)", "Primary Skills", "Performance"]
+                st.dataframe(
+                    df_display,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "ID": st.column_config.TextColumn("ID", width="small"),
+                        "Full Name": st.column_config.TextColumn("Employee Name", width="medium"),
+                        "Department": st.column_config.TextColumn("Department", width="medium"),
+                        "Designation": st.column_config.TextColumn("Designation", width="medium"),
+                        "Status": st.column_config.TextColumn("Status", width="small"),
+                        "Exp (Yrs)": st.column_config.NumberColumn("Experience", format="%.1f yrs"),
+                        "Performance": st.column_config.ProgressColumn("Score (1–5)", min_value=1.0, max_value=5.0, format="%.2f"),
+                    }
+                )
 
             csv_data = pd.DataFrame(emp_results).to_csv(index=False).encode("utf-8")
             st.download_button(
@@ -1783,26 +1814,25 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                     st.markdown("#### Performance Review Records & Highlights")
                     st.caption("Quantitative evaluations (1.0 - 5.0), achievement highlights, and manager feedback.")
                 with c_head2:
-                    rev_view_mode = st.radio("Review Layout", ["🌟 Highlight Cards", "📊 Data Table"], horizontal=True, key="rev_layout_mode", label_visibility="collapsed")
+                    rev_view_mode = st.radio("Review Layout", ["Cards View", "Table View"], horizontal=True, key="rev_layout_mode", label_visibility="collapsed")
 
                 # Filter by rating tier
                 c_rf1, c_rf2 = st.columns([2, 1.5])
-                rating_filter = c_rf1.selectbox("Filter by Performance Tier", ["All Evaluations", "🏆 Top Performers (4.5–5.0)", "⭐ Exceeds Expectations (4.0–4.4)", "✅ Meets Expectations (3.0–3.9)", "📈 Needs Development (< 3.0)"], key="rev_tier_filter")
+                rating_filter = c_rf1.selectbox("Filter by Performance Tier", ["All Evaluations", "Top Performers (4.5–5.0)", "Exceeds Expectations (4.0–4.4)", "Meets Expectations (3.0–3.9)", "Needs Development (< 3.0)"], key="rev_tier_filter")
 
                 filtered_reviews = all_reviews
-                if rating_filter == "🏆 Top Performers (4.5–5.0)":
+                if rating_filter == "Top Performers (4.5–5.0)":
                     filtered_reviews = [r for r in all_reviews if r["performance_score"] >= 4.5]
-                elif rating_filter == "⭐ Exceeds Expectations (4.0–4.4)":
+                elif rating_filter == "Exceeds Expectations (4.0–4.4)":
                     filtered_reviews = [r for r in all_reviews if 4.0 <= r["performance_score"] < 4.5]
-                elif rating_filter == "✅ Meets Expectations (3.0–3.9)":
+                elif rating_filter == "Meets Expectations (3.0–3.9)":
                     filtered_reviews = [r for r in all_reviews if 3.0 <= r["performance_score"] < 4.0]
-                elif rating_filter == "📈 Needs Development (< 3.0)":
+                elif rating_filter == "Needs Development (< 3.0)":
                     filtered_reviews = [r for r in all_reviews if r["performance_score"] < 3.0]
 
-                if rev_view_mode == "🌟 Highlight Cards":
+                if rev_view_mode == "Cards View":
                     for r in filtered_reviews:
                         score = r["performance_score"]
-                        stars = "★★★★★" if score >= 4.5 else ("★★★★☆" if score >= 3.8 else "★★★☆☆")
                         tier_label = "TOP PERFORMER" if score >= 4.5 else ("EXCEEDS GOALS" if score >= 4.0 else "MEETS STANDARDS")
                         render_html(
                             f"""
@@ -1814,7 +1844,7 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 8px;">
                                         <span class="badge-status badge-progress">{r['review_period']}</span>
-                                        <span class="star-rating-pill">{stars} {score}/5.0 · {tier_label}</span>
+                                        <span class="tbl-rating-pill">{score} / 5.0 · {tier_label}</span>
                                     </div>
                                 </div>
                                 <div class="quote-box">
@@ -1822,22 +1852,34 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                                 </div>
                                 <div style="display: flex; gap: 14px; margin-top: 10px; font-size: 0.84rem;">
                                     <div style="flex: 1;">
-                                        <strong style="color: #065F46;">✅ Strengths:</strong>
+                                        <strong style="color: #065F46;">Strengths:</strong>
                                         <span style="color: #334155;"> {r['strengths'] or 'Consistency, technical proficiency'}</span>
                                     </div>
                                     <div style="flex: 1;">
-                                        <strong style="color: #9A3412;">📈 Growth Areas:</strong>
+                                        <strong style="color: #9A3412;">Growth Areas:</strong>
                                         <span style="color: #334155;"> {r['improvements'] or 'Leadership and cross-team alignment'}</span>
                                     </div>
                                 </div>
-                                {f'<div style="margin-top: 8px; font-size: 0.82rem; color: #475569;"><strong>💬 Manager Feedback:</strong> {r["manager_feedback"]}</div>' if r.get('manager_feedback') else ''}
+                                {f'<div style="margin-top: 8px; font-size: 0.82rem; color: #475569;"><strong>Manager Feedback:</strong> {r["manager_feedback"]}</div>' if r.get('manager_feedback') else ''}
                             </div>
                             """
                         )
                 else:
                     df_rev = pd.DataFrame(filtered_reviews)[["employee_id", "employee_name", "department", "designation", "review_period", "performance_score", "achievements", "strengths", "improvements", "manager_feedback", "created_at"]]
                     df_rev.columns = ["Emp ID", "Employee Name", "Department", "Designation", "Period", "Score (1–5)", "Key Achievements", "Demonstrated Strengths", "Growth Areas", "Manager Feedback", "Recorded On"]
-                    st.dataframe(df_rev, use_container_width=True, hide_index=True)
+                    st.dataframe(
+                        df_rev,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "Emp ID": st.column_config.TextColumn("ID", width="small"),
+                            "Employee Name": st.column_config.TextColumn("Employee", width="medium"),
+                            "Department": st.column_config.TextColumn("Department", width="medium"),
+                            "Period": st.column_config.TextColumn("Review Period", width="small"),
+                            "Score (1–5)": st.column_config.ProgressColumn("Performance Score", min_value=1.0, max_value=5.0, format="%.2f"),
+                            "Recorded On": st.column_config.DateColumn("Evaluation Date", format="YYYY-MM-DD")
+                        }
+                    )
 
                 # Performance Trajectory Chart
                 st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
@@ -2011,7 +2053,18 @@ elif page in ["Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
             if emp_skills:
                 df_sk = pd.DataFrame(emp_skills)[["id", "skill_name", "category", "proficiency_level", "years_exp", "last_updated"]]
                 df_sk.columns = ["ID", "Skill Name", "Category", "Proficiency", "Experience (Yrs)", "Last Updated"]
-                st.dataframe(df_sk.drop(columns=["ID"]), use_container_width=True, hide_index=True)
+                st.dataframe(
+                    df_sk.drop(columns=["ID"]),
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Skill Name": st.column_config.TextColumn("Competency", width="medium"),
+                        "Category": st.column_config.TextColumn("Category", width="small"),
+                        "Proficiency": st.column_config.TextColumn("Proficiency", width="small"),
+                        "Experience (Yrs)": st.column_config.NumberColumn("Experience", format="%.1f yrs"),
+                        "Last Updated": st.column_config.DateColumn("Cataloged Date", format="YYYY-MM-DD")
+                    }
+                )
 
                 sk_del_map = {f"{s['skill_name']} ({s['proficiency_level']})": s["id"] for s in emp_skills}
                 sel_del_sk = st.selectbox("Remove Competency", ["Select skill to remove..."] + list(sk_del_map.keys()))
@@ -2094,7 +2147,7 @@ elif page in ["Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
             st.info(f"{gap_result['criteria']}")
             
             # Interactive Skill Growth Simulator
-            st.markdown("##### ⚡ Interactive Growth Simulator")
+            st.markdown(f"##### {get_svg_icon('zap', size=16, color='#2563EB')} Interactive Growth Simulator", unsafe_allow_html=True)
             st.caption("Simulate upgrading a competency to see projected role match improvement:")
             if gap_result["gaps"]:
                 sim_skill = st.selectbox("Select Competency to Boost", [g["skill"] for g in gap_result["gaps"]], key="sim_sk_sel")
@@ -2123,7 +2176,18 @@ elif page in ["Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
                 "Skill Gap": g["gap"],
                 "Priority": g["priority"]
             } for g in gap_result["gaps"]])
-            st.dataframe(df_gaps, use_container_width=True, hide_index=True)
+            st.dataframe(
+                df_gaps,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Skill Required": st.column_config.TextColumn("Competency", width="medium"),
+                    "Current Level": st.column_config.TextColumn("Current Level", width="small"),
+                    "Benchmark Level": st.column_config.TextColumn("Required Benchmark", width="small"),
+                    "Skill Gap": st.column_config.ProgressColumn("Competency Gap", min_value=0, max_value=4, format="-%d"),
+                    "Priority": st.column_config.TextColumn("Priority", width="small"),
+                }
+            )
 
         if gap_result.get("recommended_training"):
             st.markdown("##### Recommended Targeted Training Courses")
@@ -2155,7 +2219,20 @@ elif page in ["Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
         if trainings:
             df_tr = pd.DataFrame(trainings)[["employee_id", "course_name", "target_skill", "provider", "target_completion_date", "status", "score"]]
             df_tr.columns = ["Emp ID", "Course Title", "Target Competency", "Provider", "Target Date", "Status", "Score"]
-            st.dataframe(df_tr, use_container_width=True, hide_index=True)
+            st.dataframe(
+                df_tr,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Emp ID": st.column_config.TextColumn("ID", width="small"),
+                    "Course Title": st.column_config.TextColumn("Course Title", width="medium"),
+                    "Target Competency": st.column_config.TextColumn("Target Skill", width="small"),
+                    "Provider": st.column_config.TextColumn("Provider", width="small"),
+                    "Target Date": st.column_config.DateColumn("Target Date", format="YYYY-MM-DD"),
+                    "Status": st.column_config.TextColumn("Status", width="small"),
+                    "Score": st.column_config.ProgressColumn("Grade", min_value=0, max_value=100, format="%d%%")
+                }
+            )
         else:
             st.info("No active training courses recorded.")
 
@@ -2230,13 +2307,13 @@ elif page in ["Career Goals", "Career Development Plans", "My Career Goals"]:
             st.markdown("#### Active Career Goals & Milestone Roadmap")
             st.caption("SMART goals aligned with career objectives, target milestones, and completion schedules.")
         with c_ghead2:
-            goal_view_mode = st.radio("Goal View Layout", ["🎯 Milestone Roadmap", "📊 Data Table"], horizontal=True, key="goal_view_mode", label_visibility="collapsed")
+            goal_view_mode = st.radio("Goal View Layout", ["Roadmap View", "Table View"], horizontal=True, key="goal_view_mode", label_visibility="collapsed")
 
         status_filter = st.selectbox("Filter Goals by Status", ["All Statuses", "Not Started", "In Progress", "Completed", "Overdue"], key="cg_status_sel")
         goals_data = get_goals(user_id=goal_user_id, status_filter=status_filter if status_filter != "All Statuses" else None)
 
         if goals_data:
-            if goal_view_mode == "🎯 Milestone Roadmap":
+            if goal_view_mode == "Roadmap View":
                 for g in goals_data:
                     status_bar_cls = "goal-bar-completed" if g["status"] == "Completed" else ("goal-bar-overdue" if g["status"] == "Overdue" else "goal-bar-progress")
                     badge_cls = "badge-completed" if g["status"] == "Completed" else ("badge-overdue" if g["status"] == "Overdue" else "badge-progress")
@@ -2248,7 +2325,7 @@ elif page in ["Career Goals", "Career Development Plans", "My Career Goals"]:
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                                 <div>
                                     <span style="font-weight: 800; font-size: 1.1rem; color: #0F172A;">{g['title']}</span>
-                                    <span style="font-size: 0.8rem; color: #2563EB; margin-left: 8px; font-weight: 600;">🎯 {g['target_designation'] or 'General Growth'}</span>
+                                    <span style="font-size: 0.8rem; color: #2563EB; margin-left: 8px; font-weight: 600;">{g['target_designation'] or 'General Growth'}</span>
                                 </div>
                                 <span class="badge-status {badge_cls}">{g['status'].upper()}</span>
                             </div>
@@ -2256,7 +2333,7 @@ elif page in ["Career Goals", "Career Development Plans", "My Career Goals"]:
                                 {g['description'] or 'Delivering measurable impact toward professional promotion benchmarks.'}
                             </div>
                             <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; color: #64748B; margin-bottom: 4px;">
-                                <span>📅 Target Completion: <strong>{g['target_date']}</strong></span>
+                                <span>Target Completion: <strong>{g['target_date']}</strong></span>
                                 <span style="font-weight: 800; color: #0F172A;">{g['progress']}% Complete</span>
                             </div>
                         </div>
@@ -2274,14 +2351,26 @@ elif page in ["Career Goals", "Career Development Plans", "My Career Goals"]:
                                 st.rerun()
                     with col_act3:
                         if g["progress"] < 100:
-                            if st.button("Mark 100% ✅", key=f"comp_btn_{g['id']}", type="primary", use_container_width=True):
+                            if st.button("Mark as Completed", key=f"comp_btn_{g['id']}", type="primary", use_container_width=True):
                                 update_goal_progress(g["id"], uid, 100)
                                 st.rerun()
                     st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
             else:
                 df_g = pd.DataFrame(goals_data)[["title", "target_designation", "description", "target_date", "progress", "status", "updated_at"]]
                 df_g.columns = ["Goal Title", "Target Designation", "Action Steps & Description", "Target Date", "Progress (%)", "Status", "Last Updated"]
-                st.dataframe(df_g, use_container_width=True, hide_index=True)
+                st.dataframe(
+                    df_g,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Goal Title": st.column_config.TextColumn("Goal Title", width="medium"),
+                        "Target Designation": st.column_config.TextColumn("Target Role", width="small"),
+                        "Target Date": st.column_config.DateColumn("Target Date", format="YYYY-MM-DD"),
+                        "Progress (%)": st.column_config.ProgressColumn("Milestone Completion", min_value=0, max_value=100, format="%d%%"),
+                        "Status": st.column_config.TextColumn("Status", width="small"),
+                        "Last Updated": st.column_config.TextColumn("Updated", width="small"),
+                    }
+                )
 
             fig_goals = px.bar(
                 pd.DataFrame(goals_data),
@@ -2451,14 +2540,37 @@ elif page in ["Reports", "Reports & Analytics", "Career Growth Report"]:
     reviews = get_performance_reviews()
     goals = get_goals()
     dept_summary = get_department_performance_summary()
-
     tab_rep_overview, tab_rep_csv, tab_rep_pdf = st.tabs(["Analytics Overview", "Download CSV Data Reports", "Generate PDF Dossier"])
 
     with tab_rep_overview:
-        st.markdown("#### Department Workforce & Performance Breakdown")
+        render_html(
+            f"""
+            <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 0.5rem 0 0.85rem 0;">
+                {get_svg_icon("briefcase", size=20, color="#2563EB")} Department Workforce & Performance Breakdown
+            </div>
+            """
+        )
         if dept_summary:
             df_ds = pd.DataFrame(dept_summary)
-            st.dataframe(df_ds, use_container_width=True, hide_index=True)
+            df_ds["avg_score"] = pd.to_numeric(df_ds["avg_score"], errors="coerce").fillna(0.0)
+            df_ds.columns = ["Department", "Headcount", "Average Rating", "Total Reviews Logged"]
+            st.dataframe(
+                df_ds,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Department": st.column_config.TextColumn("Department", width="medium"),
+                    "Headcount": st.column_config.NumberColumn("Headcount", format="%d active", width="small"),
+                    "Average Rating": st.column_config.ProgressColumn(
+                        "Average Rating",
+                        min_value=0.0,
+                        max_value=5.0,
+                        format="%.2f / 5.0",
+                        width="medium"
+                    ),
+                    "Total Reviews Logged": st.column_config.NumberColumn("Completed Reviews", format="%d", width="small")
+                }
+            )
 
         if employees:
             df_status = pd.DataFrame(employees)["employment_status"].value_counts().reset_index()
@@ -2674,7 +2786,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
     
     col_audit_btn, col_audit_opt = st.columns([2, 3])
     with col_audit_btn:
-        audit_clicked = st.button("✨ Run Deep AI Resume & Bullet Audit", type="primary", use_container_width=True)
+        audit_clicked = st.button("Run Deep AI Resume & Bullet Audit", type="primary", use_container_width=True)
     with col_audit_opt:
         audit_source = st.radio("Audit Content Source", ["Parsed Resume Text", "Profile Work Experience"], horizontal=True)
 
@@ -2689,7 +2801,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
             target_role = profile.get("target_role", "Senior Software Engineer")
             target_skills_list = list(ROLE_CATALOG.get(target_role, {}).get("skills", {}).keys())
             
-            with st.spinner("🔍 Running deep AI ATS audit and STAR bullet optimization..."):
+            with st.spinner("Running deep AI ATS audit and STAR bullet optimization..."):
                 audit_res = analyze_resume_with_ai(
                     resume_text=resume_source_text,
                     target_role=target_role,
@@ -2732,7 +2844,13 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
 
         bullets = res.get("bullet_optimizations", [])
         if bullets:
-            st.markdown("##### 🎯 AI Rewritten Bullet Points (STAR Format)")
+            render_html(
+                f"""
+                <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
+                    {get_svg_icon("target", size=18, color="#2563EB")} AI Rewritten Bullet Points (STAR Format)
+                </div>
+                """
+            )
             for idx, b in enumerate(bullets, 1):
                 with st.container(border=True):
                     col_orig, col_opt = st.columns(2)
@@ -2740,29 +2858,35 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                         st.markdown(f"**Original Bullet #{idx}:**")
                         st.markdown(f"> *{b.get('original_bullet', '')}*")
                     with col_opt:
-                        st.markdown(f"**✨ High-Impact STAR Rewrite:**")
+                        st.markdown(f"**High-Impact STAR Rewrite:**")
                         st.markdown(f"> **{b.get('rewritten_bullet', '')}**")
                     if b.get("improvement_reason"):
-                        st.caption(f"💡 **Why this works:** {b.get('improvement_reason')}")
+                        st.caption(f"Reasoning: {b.get('improvement_reason')}")
 
         weak_phrases = res.get("weak_phrases_to_replace", [])
         if weak_phrases:
-            with st.expander("🔄 Weak & Passive Phrases to Upgrade", expanded=True):
+            with st.expander("Weak & Passive Phrases to Upgrade", expanded=True):
                 for wp in weak_phrases:
                     c_old, c_new = st.columns(2)
-                    c_old.markdown(f"❌ *\"{wp.get('original', '')}\"*")
-                    c_new.markdown(f"✅ **\"{wp.get('suggested', '')}\"**")
+                    c_old.markdown(f'<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #FEE2E2; color: #991B1B; font-weight: 700; font-size: 0.74rem; margin-right: 6px;">WEAK</span> *"{wp.get("original", "")}"*', unsafe_allow_html=True)
+                    c_new.markdown(f'<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #DCFCE7; color: #166534; font-weight: 700; font-size: 0.74rem; margin-right: 6px;">RECOMMENDED</span> **"{wp.get("suggested", "")}"**', unsafe_allow_html=True)
 
         recs = res.get("top_recommendations", [])
         if recs:
-            st.markdown("##### 📌 High-Leverage Resume Optimizations")
+            render_html(
+                f"""
+                <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
+                    {get_svg_icon("clipboard", size=18, color="#2563EB")} High-Leverage Resume Optimizations
+                </div>
+                """
+            )
             for r in recs:
                 st.markdown(f"- {r}")
 
         if res.get("source") == "gemini":
-            st.success(f"✨ AI Resume Audit generated live via Google Gemini (`{res.get('model')}`).")
+            st.success(f"AI Resume Audit generated live via Google Gemini (`{res.get('model')}`).")
         else:
-            st.info("💡 Audit generated via deterministic heuristic engine. Add Gemini API Key for dynamic neural audits.")
+            st.info("Audit generated via deterministic heuristic engine. Add Gemini API Key for dynamic neural audits.")
     st.markdown("#### ATS Resume Generation & Export")
     from reportlab.pdfgen import canvas
     buf = BytesIO()
@@ -2876,7 +3000,7 @@ elif page == "AI Career Coach":
         """
     )
 
-    with st.expander("🔑 Gemini API Configuration & Model Settings", expanded=(not has_gemini)):
+    with st.expander("Gemini API Configuration & Model Settings", expanded=(not has_gemini)):
         st.caption("Powered by Google Gemini API. Set your key in `.env` (`GEMINI_API_KEY=your_key`) or paste it below for live generative coaching.")
         col_k1, col_k2 = st.columns([3, 1])
         with col_k1:
@@ -2894,19 +3018,25 @@ elif page == "AI Career Coach":
                     st.info("Cleared session API key.")
                     st.rerun()
 
-    st.markdown("##### 💡 Quick Strategy Prompts (1-Click Analysis)")
+    render_html(
+        f"""
+        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
+            {get_svg_icon("lightbulb", size=18, color="#2563EB")} Quick Strategy Prompts (1-Click Analysis)
+        </div>
+        """
+    )
     cp1, cp2, cp3, cp4 = st.columns(4)
     with cp1:
-        if st.button("🚀 Lead Role Roadmap", use_container_width=True):
+        if st.button("Lead Role Roadmap", use_container_width=True):
             st.session_state.coach_prompt_val = "What precise strategic roadmap should I follow to advance into a Lead / Principal designation over the next 12 months?"
     with cp2:
-        if st.button("☁️ Cloud & Architecture", use_container_width=True):
+        if st.button("Cloud & Architecture", use_container_width=True):
             st.session_state.coach_prompt_val = "Which high-leverage cloud and distributed architecture skills will maximize my competency valuation?"
     with cp3:
-        if st.button("📈 Promotion Blueprint", use_container_width=True):
+        if st.button("Promotion Blueprint", use_container_width=True):
             st.session_state.coach_prompt_val = "How should I structure my achievements and metrics for our upcoming annual performance review cycle?"
     with cp4:
-        if st.button("🎯 90-Day Action Plan", use_container_width=True):
+        if st.button("90-Day Action Plan", use_container_width=True):
             st.session_state.coach_prompt_val = "Generate a prioritized 90-day developmental sprint to close my most pressing skill gap."
 
     default_q = st.session_state.get("coach_prompt_val", "")
@@ -2920,7 +3050,7 @@ elif page == "AI Career Coach":
             gaps_info = gap_analysis(profile.get("target_role", "Software Engineer"), skills)
             target_role = profile.get("target_role", "Senior Engineer")
             
-            with st.spinner("🤖 Consulting AI Career Coach (evaluating profile benchmarks and skill gaps)..."):
+            with st.spinner("Consulting AI Career Coach (evaluating profile benchmarks and skill gaps)..."):
                 advice_res = generate_ai_coaching_guidance(
                     user_name=user["name"],
                     question=question,
@@ -2956,11 +3086,11 @@ elif page == "AI Career Coach":
                 st.markdown(advice_res["content"])
             
             if advice_res["source"] == "gemini":
-                st.success(f"✨ Generated live via Google Gemini (`{advice_res['model']}`) based on your verified skills, experience, and target benchmarks.")
+                st.success(f"Generated live via Google Gemini (`{advice_res['model']}`) based on your verified skills, experience, and target benchmarks.")
             elif advice_res["source"] == "offline_fallback":
-                st.warning(f"⚠️ Live Gemini API could not be reached ({advice_res['error']}). Displaying rule-based strategic blueprint.")
+                st.warning(f"Live Gemini API could not be reached ({advice_res['error']}). Displaying rule-based strategic blueprint.")
             else:
-                st.info("💡 Displayed in deterministic heuristic mode. Add your Gemini API key in the configuration above to unlock real-time generative coaching.")
+                st.info("Displayed in deterministic heuristic mode. Add your Gemini API key in the configuration above to unlock real-time generative coaching.")
 
 # ==============================================================================
 # 11. SETTINGS & SYSTEM
@@ -2990,7 +3120,13 @@ elif page in ["Settings", "Settings & System", "Settings & Privacy"]:
 
     st.write(f"Logged in as: **{user['name']}** (`{user['email']}`) · Role: `{user['role'].upper()}`")
 
-    st.markdown("#### 🗄️ SQLite Database Connection & Storage")
+    render_html(
+        f"""
+        <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
+            {get_svg_icon("database", size=20, color="#2563EB")} SQLite Database Connection & Storage
+        </div>
+        """
+    )
     render_html(
         f"""
         <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem;">
@@ -3033,15 +3169,21 @@ elif page in ["Settings", "Settings & System", "Settings & Privacy"]:
 
     col_db_act1, col_db_act2 = st.columns(2)
     with col_db_act1:
-        if st.button("🔍 Run PRAGMA Integrity Check", use_container_width=True):
+        if st.button("Run PRAGMA Integrity Check", use_container_width=True):
             st.success(f"Database Integrity Result: **{db_health['integrity'].upper()}** · Foreign Keys: ON · ACID Compliant")
     with col_db_act2:
         db_path = get_db_path()
         if db_path.is_file():
             with open(db_path, "rb") as f:
                 db_bytes = f.read()
-            st.download_button("💾 Download talentsphere.db File", db_bytes, file_name="talentsphere.db", mime="application/octet-stream", use_container_width=True)
+            st.download_button("Download talentsphere.db File", db_bytes, file_name="talentsphere.db", mime="application/octet-stream", use_container_width=True)
 
-    st.markdown("#### 📦 Export System Data Snapshot")
+    render_html(
+        f"""
+        <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.5rem 0 0.75rem 0;">
+            {get_svg_icon("download", size=20, color="#2563EB")} Export System Data Snapshot
+        </div>
+        """
+    )
     payload = json.dumps(export_user_data(uid), indent=2, default=str).encode("utf-8")
     st.download_button("Download Complete System Snapshot (JSON)", payload, file_name="talent_growth_snapshot.json", mime="application/json", type="primary")
