@@ -1005,23 +1005,37 @@ name_parts = user["name"].strip().split()
 initials = (name_parts[0][0] + (name_parts[-1][0] if len(name_parts) > 1 else "")).upper()
 
 def navigate_to(target_page: str):
-    st.session_state.page_to_navigate = target_page
+    alias_map = {
+        "Skills": "Skills & Assessment",
+        "Skills & Competency Matrix": "Skills & Assessment",
+        "Skills & Assessments": "Skills & Assessment",
+        "Career Goals": "Growth Progress" if not is_admin else "Career Goals",
+        "Career Direction & Gaps": "Career Direction",
+        "ATS Resume Studio": "Resume Studio",
+        "Reports": "Career Report" if not is_admin else "Reports",
+        "AI Career Coach": "Career Coach"
+    }
+    st.session_state.page_to_navigate = alias_map.get(target_page, target_page)
     st.rerun()
 
 # ------------------------------------------------------------------------------
 # SIDEBAR NAVIGATION
 # ------------------------------------------------------------------------------
 with st.sidebar:
-    # Sidebar Brand Header matching template
+    # Sidebar Brand Header matching reference screenshots
     st.markdown(
         f"""
-        <div class="sidebar-brand-box">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                {get_svg_icon("brand_logo", size=34)}
-                <div>
-                    <div class="sidebar-brand-title">Talent Growth</div>
-                    <div style="font-size: 0.72rem; color: #60A5FA; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;">Talent Platform</div>
-                </div>
+        <div style="padding-top: 0.2rem; margin-bottom: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
+                    <path d="M14 26V11" stroke="#059669" stroke-width="2.8" stroke-linecap="round"/>
+                    <path d="M14 11C14 7 10 4 6 5C5 9 8 13 14 13" fill="#34D399" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M14 16C16 11 20 8 23 9C24 13 21 17 14 18" fill="#10B981" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span style="font-weight: 800; font-size: 1.15rem; color: #0F172A; letter-spacing: -0.01em;">TalentSphere</span>
+            </div>
+            <div style="font-size: 0.78rem; color: #64748B; margin-bottom: 1rem;">
+                Signed in as {user['name']}
             </div>
         </div>
         """,
@@ -1033,10 +1047,10 @@ with st.sidebar:
             "Dashboard",
             "Employees",
             "Performance",
-            "Skills",
+            "Skills & Assessment",
             "Career Goals",
             "Reports",
-            "ATS Resume Studio",
+            "Resume Studio",
             "Settings"
         ]
         active_pages = admin_pages
@@ -1044,18 +1058,16 @@ with st.sidebar:
         emp_pages = [
             "Dashboard",
             "My Profile",
-            "Career Goals",
-            "Skills",
-            "Performance",
-            "Career Direction & Gaps",
-            "AI Career Coach",
             "Resume Studio",
-            "Reports",
+            "Skills & Assessment",
+            "Career Direction",
+            "Role Match & Gaps",
+            "Career Coach",
+            "Growth Progress",
+            "Career Report",
             "Settings"
         ]
         active_pages = emp_pages
-
-    st.markdown("<div style='font-size: 0.75rem; font-weight: 700; color: #64748B; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px;'>NAVIGATION</div>", unsafe_allow_html=True)
 
     if "page_to_navigate" in st.session_state:
         target_nav = st.session_state.pop("page_to_navigate")
@@ -1076,33 +1088,15 @@ with st.sidebar:
     st.session_state.current_page = selected_page
     page = selected_page
 
-    st.divider()
+    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
 
-    # User Profile Footer Card in Sidebar matching screenshot
-    st.markdown(
-        f"""
-        <div class="sidebar-user-footer">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div class="sidebar-user-avatar">{initials}</div>
-                <div style="overflow: hidden;">
-                    <div style="font-weight: 700; font-size: 0.9rem; color: #FFFFFF; line-height: 1.2;">{user['name']}</div>
-                    <div style="font-size: 0.75rem; color: #94A3B8; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">{user['email']}</div>
-                    <div style="font-size: 0.72rem; color: #10B981; font-weight: 600; display: flex; align-items: center; gap: 4px; margin-top: 3px;">
-                        <span style="width: 6px; height: 6px; background: #10B981; border-radius: 50%; display: inline-block;"></span> Online
-                    </div>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    if st.button("Logout", use_container_width=True):
+    if st.button("Sign out", use_container_width=True, type="secondary"):
         st.session_state.user = None
         st.session_state.current_page = "Dashboard"
         st.session_state.page_to_navigate = "Dashboard"
         st.session_state.auth_view = "landing"
         st.rerun()
+
 
 def analysis_bundle():
     result = profile_analysis(profile, skills)
@@ -1560,213 +1554,136 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
 # 2. EMPLOYEE: MY CAREER DASHBOARD
 # ==============================================================================
 elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
-    # Top Search & Profile Bar matching theme
-    st.markdown(
-        f"""
-        <div class="top-header-bar">
-            <div class="top-search-box">
-                {get_svg_icon("search", size=18, color="#94A3B8")}
-                <span>Search competencies, milestones, assessments...</span>
-            </div>
-            <div class="top-header-right">
-                <div class="bell-pill" title="1 Unread Notification">
-                    {get_svg_icon("bell", size=18, color="#475569")}
-                    <span class="dot">1</span>
-                </div>
-                <div class="header-user-badge">
-                    <div class="header-user-avatar">{initials}</div>
-                    <span class="header-user-name">{user['name']}</span>
-                    <span style="font-size: 0.72rem; color: #2563EB; font-weight: 700; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 9999px; padding: 2px 7px;">EMPLOYEE</span>
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
     completion, missing = profile_completion(profile, skills)
     analysis = analysis_bundle()
     goal_stats = get_goal_stats(uid)
     emp_record = get_employee_by_id(emp_id) if emp_id else None
 
-    # Blue Gradient Welcome Hero Banner with Team Illustration
-    st.markdown(
+    # Header matching Screenshot 4
+    render_html(
         f"""
-        <div style="background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 55%, #3B82F6 100%); border-radius: 16px; padding: 1.65rem 2.2rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22); position: relative; overflow: hidden;">
-            <div style="z-index: 1;">
-                <div style="font-size: 1.85rem; font-weight: 800; color: #FFFFFF; line-height: 1.25; margin-bottom: 6px;">
-                    Welcome back, {user['name']}
-                </div>
-                <div style="font-size: 0.98rem; color: rgba(255, 255, 255, 0.92); font-weight: 400;">
-                    Your personal career intelligence hub for competencies, milestones, and development pathways.
-                </div>
-            </div>
-            <div style="z-index: 1; flex-shrink: 0; display: flex; align-items: center;">
-                <svg width="220" height="110" viewBox="0 0 240 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="max-height: 110px; width: auto;">
-                    <rect x="180" y="66" width="13" height="42" rx="3" fill="#FFFFFF" fill-opacity="0.95"/>
-                    <rect x="199" y="48" width="13" height="60" rx="3" fill="#FFFFFF" fill-opacity="0.95"/>
-                    <rect x="218" y="26" width="13" height="82" rx="3" fill="#FFFFFF" fill-opacity="0.95"/>
-                    <path d="M162 90 C 182 72, 204 46, 230 20" stroke="#FDE047" stroke-width="4.5" stroke-linecap="round"/>
-                    <polygon points="234,16 222,19 228,30" fill="#FDE047"/>
-                    <rect x="25" y="86" width="145" height="6" rx="3" fill="#1E3A8A" fill-opacity="0.7"/>
-                    <rect x="45" y="92" width="6" height="22" rx="2" fill="#1E3A8A" fill-opacity="0.5"/>
-                    <rect x="135" y="92" width="6" height="22" rx="2" fill="#1E3A8A" fill-opacity="0.5"/>
-                    <path d="M85 86 L105 86 L102 73 L88 73 Z" fill="#1E293B"/>
-                    <rect x="83" y="85" width="24" height="2" rx="1" fill="#94A3B8"/>
-                    <circle cx="48" cy="48" r="9.5" fill="#FDE047"/>
-                    <path d="M35 84 C35 69 42 63 48 63 C54 63 61 69 61 84 Z" fill="#F59E0B"/>
-                    <circle cx="95" cy="45" r="10" fill="#93C5FD"/>
-                    <path d="M80 84 C80 67 87 61 95 61 C103 61 110 67 110 84 Z" fill="#1D4ED8"/>
-                    <circle cx="140" cy="50" r="9" fill="#FCA5A5"/>
-                    <path d="M127 84 C127 71 133 65 140 65 C147 65 153 71 153 84 Z" fill="#EF4444"/>
+        <div style="margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/>
+                    <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/>
+                    <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/>
+                    <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
                 </svg>
+                <h1 style="font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin: 0;">
+                    Good to see you, {user['name']}
+                </h1>
+            </div>
+            <div style="font-size: 0.95rem; color: #64748B; margin-top: 4px;">
+                Build a clearer view of where you are and what comes next.
             </div>
         </div>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
-    # 4 Solid Vibrant KPI Cards for Employee
-    st.markdown(
+    # 4 Top Metrics Row matching Screenshot 4
+    render_html(
         f"""
-        <div class="kpi-row-grid-vibrant">
-            <div class="kpi-card-vibrant kpi-vibrant-blue">
-                <div class="kpi-vibrant-icon">
-                    {get_svg_icon("profile", size=26, color="#FFFFFF")}
-                </div>
-                <div>
-                    <div class="kpi-vibrant-title">Profile Readiness</div>
-                    <div class="kpi-vibrant-number">{completion}%</div>
-                    <div class="kpi-vibrant-sub">
-                        {"Complete" if completion == 100 else f"{len(missing)} fields missing"}
-                    </div>
-                </div>
+        <div class="ts-metrics-grid">
+            <div class="ts-metric-box">
+                <div class="ts-metric-label">Profile completion</div>
+                <div class="ts-metric-value">{completion}%</div>
             </div>
-            <div class="kpi-card-vibrant kpi-vibrant-green">
-                <div class="kpi-vibrant-icon">
-                    {get_svg_icon("skills", size=26, color="#FFFFFF")}
-                </div>
-                <div>
-                    <div class="kpi-vibrant-title">Competency Score</div>
-                    <div class="kpi-vibrant-number">{analysis['score']} / 100</div>
-                    <div class="kpi-vibrant-sub">
-                        Evaluated skills matrix
-                    </div>
-                </div>
+            <div class="ts-metric-box">
+                <div class="ts-metric-label">Profile strength</div>
+                <div class="ts-metric-value">{analysis['score']}/100</div>
             </div>
-            <div class="kpi-card-vibrant kpi-vibrant-purple">
-                <div class="kpi-vibrant-icon">
-                    {get_svg_icon("star", size=26, color="#FFFFFF")}
-                </div>
-                <div>
-                    <div class="kpi-vibrant-title">Target Role Match</div>
-                    <div class="kpi-vibrant-number">{analysis['match']}%</div>
-                    <div class="kpi-vibrant-sub">
-                        {profile.get('target_role') or 'Role not set'}
-                    </div>
-                </div>
+            <div class="ts-metric-box">
+                <div class="ts-metric-label">Target role match</div>
+                <div class="ts-metric-value">{analysis['match']}%</div>
             </div>
-            <div class="kpi-card-vibrant kpi-vibrant-orange">
-                <div class="kpi-vibrant-icon">
-                    {get_svg_icon("goals", size=26, color="#FFFFFF")}
-                </div>
-                <div>
-                    <div class="kpi-vibrant-title">Active Goals</div>
-                    <div class="kpi-vibrant-number">{goal_stats['total']}</div>
-                    <div class="kpi-vibrant-sub">
-                        {goal_stats['avg_progress']}% avg milestone
-                    </div>
-                </div>
+            <div class="ts-metric-box">
+                <div class="ts-metric-label">Skills recorded</div>
+                <div class="ts-metric-value">{len(skills)}</div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True
+        <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 1.5rem 0 1.75rem 0;" />
+        """
     )
 
-    # Quick Actions for Employees
-    col_eqa1, col_eqa2, col_eqa3, col_eqa4 = st.columns(4)
-    with col_eqa1:
-        if st.button("Set Career Goal", key="eq_bar_goal", use_container_width=True, type="primary"):
-            navigate_to("Career Goals")
-    with col_eqa2:
-        if st.button("Update Skills", key="eq_bar_skills", use_container_width=True):
-            navigate_to("Skills")
-    with col_eqa3:
-        if st.button("My Performance", key="eq_bar_perf", use_container_width=True):
-            navigate_to("Performance")
-    with col_eqa4:
-        if st.button("AI Career Coach", key="eq_bar_coach", use_container_width=True):
-            navigate_to("AI Career Coach")
+    col_dash_left, col_dash_right = st.columns([1.15, 1], gap="large")
 
-    st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
+    with col_dash_left:
+        st.markdown("<h3 style='font-size: 1.35rem; font-weight: 800; color: #0F172A; margin-bottom: 1rem;'>Your next useful actions</h3>", unsafe_allow_html=True)
 
-    st.progress(completion / 100, text=f"Profile Completeness: {completion}%")
-
-    c_left, c_right = st.columns([1.2, 1])
-    with c_left:
-        st.markdown("#### Recommended Growth Actions")
-        recs = recommendations(profile, skills)
-        if recs:
-            for rec in recs[:3]:
-                with st.container(border=True):
-                    is_high = "High" in rec['priority']
-                    p_badge_class = "badge-overdue" if is_high else "badge-leave"
-                    st.markdown(
-                        f"""
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                            <strong style="font-size: 0.92rem; color: #0F172A;">{rec['title']}</strong>
-                            <span class="badge-status {p_badge_class}">{rec['priority'].upper()}</span>
-                        </div>
-                        <div style="font-size: 0.84rem; color: #475569;">{rec['description']}</div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+        # Action Card 1: Profile Completeness
+        if completion < 100:
+            missing_text = ", ".join(missing[:4]) if missing else "Phone, summary, and experience"
+            action_1_body = f"Add the missing sections: {missing_text}. This gives the career matching engine better evidence."
         else:
-            st.info("Complete your profile and catalog skills to generate personalized growth actions.")
+            action_1_body = "Your profile is fully populated. Review and update your certifications and latest deliverables as your career progresses."
 
-        st.markdown("#### Active Career Milestones")
-        my_goals = get_goals(user_id=uid)
-        if my_goals:
-            for g in my_goals[:3]:
-                with st.container(border=True):
-                    stat_class = "badge-completed" if g["status"] == "Completed" else ("badge-overdue" if g["status"] == "Overdue" else "badge-progress")
-                    st.markdown(
-                        f"""
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                            <strong style="color: #0F172A;">{g['title']}</strong>
-                            <span class="badge-status {stat_class}">{g['status'].upper()} ({g['progress']}%)</span>
-                        </div>
-                        <div style="font-size: 0.8rem; color: #64748B; margin-bottom: 6px;">
-                            Target Date: <strong>{g['target_date']}</strong> · Designation: <em>{g.get('target_designation') or 'General'}</em>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    st.progress(g["progress"] / 100)
-        else:
-            st.info("No active career goals recorded. Navigate to **My Career Goals** to set your first milestone.")
+        render_html(
+            f"""
+            <div class="ts-action-card">
+                <div class="ts-action-title">High · Complete your professional profile</div>
+                <div class="ts-action-body">{action_1_body}</div>
+            </div>
+            """
+        )
 
-    with c_right:
-        st.markdown("#### Professional Snapshot")
-        with st.container(border=True):
-            j_title = profile.get('job_title') or (emp_record['designation'] if emp_record else 'Not specified')
-            dept_title = profile.get('department') or (emp_record['department'] if emp_record else 'Not specified')
-            t_role = profile.get('target_role') or 'Set in Career Direction'
-            exp_yrs = profile.get('years_experience', 0)
-
-            st.markdown(
-                f"""
-                <div style="font-size: 0.88rem; line-height: 1.8;">
-                    <div><strong>Job Title:</strong> {j_title}</div>
-                    <div><strong>Department:</strong> {dept_title}</div>
-                    <div><strong>Target Career Role:</strong> <span style="color: #2563EB; font-weight: 700;">{t_role}</span></div>
-                    <div><strong>Experience:</strong> {exp_yrs} years</div>
+        # Action Card 2: Role-aligned resume
+        render_html(
+            """
+            <div class="ts-action-card">
+                <div class="ts-action-title">Medium · Create a role-aligned resume</div>
+                <div class="ts-action-body">
+                    Use your profile details to draft an ATS-friendly resume and add measurable outcomes drawn from your actual work.
                 </div>
-                """,
-                unsafe_allow_html=True
-            )
+            </div>
+            """
+        )
 
-        if skills:
+        # Collapsible: Profile sections to complete
+        with st.expander("Profile sections to complete"):
+            if missing:
+                st.markdown(f"**Still to add:** {', '.join(missing)}")
+                if st.button("Complete Profile Now →", key="dash_goto_prof_btn"):
+                    navigate_to("My Profile")
+            else:
+                st.success("All primary profile sections are complete!")
+                if st.button("Review Profile Details →", key="dash_rev_prof_btn"):
+                    navigate_to("My Profile")
+
+    with col_dash_right:
+        st.markdown("<h3 style='font-size: 1.35rem; font-weight: 800; color: #0F172A; margin-bottom: 1rem;'>Career snapshot</h3>", unsafe_allow_html=True)
+
+        current_role_disp = profile.get('job_title') or (emp_record['designation'] if emp_record else "Add your current role")
+        target_role_disp = profile.get('target_role') or "Choose a target role"
+
+        render_html(
+            f"""
+            <div style="font-size: 0.95rem; color: #0F172A; line-height: 1.8; margin-bottom: 0.5rem;">
+                <div><strong>Current role:</strong> {current_role_disp}</div>
+                <div><strong>Target:</strong> {target_role_disp}</div>
+            </div>
+            """
+        )
+
+        if not skills:
+            render_html(
+                """
+                <div class="ts-callout-blue">
+                    Add a few skills to see your career snapshot.
+                </div>
+                """
+            )
+            st.markdown("<div style='margin-top: 0.75rem;'></div>", unsafe_allow_html=True)
+            if st.button("Add Skills in Portfolio →", key="dash_add_skills_btn"):
+                navigate_to("Skills & Assessment")
+        else:
+            render_html(
+                f"""
+                <div class="ts-callout-blue">
+                    <strong>{len(skills)} competencies recorded.</strong> Target role readiness is evaluated at <strong>{analysis['match']}%</strong>.
+                </div>
+                """
+            )
             df_skills = pd.DataFrame(skills)
             fig_s = px.bar(
                 df_skills, x="name", y="years", color="category",
@@ -1774,10 +1691,9 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
                 labels={"name": "Skill", "years": "Years Exp", "category": "Category"},
                 color_discrete_sequence=['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899']
             )
-            fig_s.update_layout(margin=dict(l=10, r=10, t=35, b=10), height=280)
+            fig_s.update_layout(margin=dict(l=10, r=10, t=35, b=10), height=240)
             st.plotly_chart(fig_s, use_container_width=True)
-        else:
-            st.info("Add your skills in **Skills & Assessments** to generate your competency chart.")
+
 
 # ==============================================================================
 # 3. EMPLOYEE MANAGEMENT & WORKFORCE DIRECTORY
@@ -2375,31 +2291,93 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
             st.info("No performance evaluations recorded for your profile yet.")
 
 # ==============================================================================
-# 5. SKILLS & COMPETENCY MATRIX
+# 5. SKILLS & COMPETENCY MATRIX / SKILLS & ASSESSMENTS
 # ==============================================================================
-elif page in ["Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
-    render_html(
-        f"""
-        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-            <div>
-                <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
-                    {get_svg_icon("skills", size=24, color="#10B981")} Skills Management & Competency Matrix
+elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
+    if not is_admin:
+        # Layout matching Screenshot 2: "Skills and assessments"
+        st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 1.5rem;'>Skills and assessments</h1>", unsafe_allow_html=True)
+
+        with st.form("add_inline_skill_form"):
+            c_s1, c_s2, c_s3, c_s4 = st.columns([3, 2, 2, 1.5])
+            with c_s1:
+                new_sk_name = st.text_input("Skill", placeholder="")
+            with c_s2:
+                new_sk_cat = st.selectbox("Category", ["Technical", "Soft Skill", "Leadership", "Tools", "Domain", "Business"])
+            with c_s3:
+                new_sk_prof = st.selectbox("Proficiency", list(LEVELS.keys()))
+            with c_s4:
+                new_sk_yrs = st.number_input("Years", min_value=0.0, max_value=50.0, value=0.00, step=0.5, format="%.2f")
+
+            btn_add_sk = st.form_submit_button("Add skill", type="primary")
+
+        if btn_add_sk:
+            if new_sk_name.strip():
+                add_employee_skill(emp_id if emp_id else f"EMP-{uid}", new_sk_name.strip(), new_sk_prof, new_sk_cat, new_sk_yrs)
+                add_skill(uid, new_sk_name.strip(), new_sk_cat, new_sk_prof, new_sk_yrs)
+                st.success(f"Added competency '{new_sk_name.strip()}' successfully!")
+                st.rerun()
+            else:
+                st.error("Please enter a skill name.")
+
+        user_emp_skills = get_employee_skills(emp_id if emp_id else f"EMP-{uid}") or [
+            {"id": s.get("id", i), "skill_name": s["name"], "category": s.get("category", "Technical"), "proficiency_level": s.get("proficiency", "Intermediate"), "years_exp": s.get("years", 1.0), "last_updated": ""}
+            for i, s in enumerate(skills)
+        ]
+        if user_emp_skills:
+            st.markdown("<div style='margin-top: 1.25rem;'></div>", unsafe_allow_html=True)
+            render_html(render_colored_skills_table(user_emp_skills))
+            col_d1, col_d2 = st.columns([3, 1])
+            with col_d1:
+                sk_del_map = {f"{s['skill_name']} ({s['proficiency_level']})": s["id"] for s in user_emp_skills}
+                sel_del_sk = st.selectbox("Select skill to remove", ["Choose a skill to delete..."] + list(sk_del_map.keys()))
+            with col_d2:
+                st.write("")
+                st.write("")
+                if sel_del_sk != "Choose a skill to delete..." and st.button("Delete Skill", type="secondary"):
+                    delete_employee_skill(sk_del_map[sel_del_sk])
+                    delete_skill(uid, sk_del_map[sel_del_sk])
+                    st.success("Skill removed.")
+                    st.rerun()
+
+        # Self-assessment Card matching Screenshot 2
+        st.markdown("<h3 style='font-size: 1.35rem; font-weight: 800; color: #0F172A; margin-top: 2rem; margin-bottom: 0.85rem;'>Self-assessment</h3>", unsafe_allow_html=True)
+        with st.container(border=True):
+            cap_area = st.selectbox("Capability area", ["Technical", "Leadership", "System Design", "Communication", "Problem Solving", "Project Management", "Domain Knowledge"])
+            conf_score = st.slider("Self-rated confidence", min_value=0, max_value=100, value=70)
+            if st.button("Record assessment", type="primary", key="btn_rec_assessment"):
+                add_assessment(uid, cap_area, float(conf_score))
+                st.success(f"Assessment recorded for {cap_area} with {conf_score}% confidence rating!")
+                st.rerun()
+
+            prev_assessments = get_assessments(uid)
+            if prev_assessments:
+                with st.expander(f"Recorded Assessments Log ({len(prev_assessments)})"):
+                    for a_rec in prev_assessments[-5:]:
+                        st.write(f"• **{a_rec['category']}**: Confidence {int(a_rec['score'])}% ({a_rec['created_at'][:10]})")
+    else:
+        # Admin View with Full Organization Competency Matrix Tabs
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                <div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
+                        {get_svg_icon("skills", size=24, color="#10B981")} Skills Management & Competency Matrix
+                    </div>
+                    <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
+                        Map employee competencies against 10 industry benchmark roles and coordinate upskilling programs.
+                    </div>
                 </div>
-                <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
-                    Map employee competencies against 10 industry benchmark roles and coordinate upskilling programs.
+                <div>
+                    <span class="badge-status badge-active">COMPETENCY MATRIX</span>
                 </div>
             </div>
-            <div>
-                <span class="badge-status badge-active">COMPETENCY MATRIX</span>
-            </div>
-        </div>
-        """
-    )
+            """
+        )
 
-    tab_sk_matrix, tab_sk_gaps, tab_sk_train = st.tabs(["Skills Portfolio", "Role Gap Analysis", "Training & Upskilling"])
+        tab_sk_matrix, tab_sk_gaps, tab_sk_train = st.tabs(["Skills Portfolio", "Role Gap Analysis", "Training & Upskilling"])
 
-    with tab_sk_matrix:
-        if is_admin:
+        with tab_sk_matrix:
             all_emps = get_employees()
             if all_emps:
                 emp_sk_map = {f"{e['employee_id']} — {e['name']}": e['employee_id'] for e in all_emps}
@@ -2407,62 +2385,39 @@ elif page in ["Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
                 target_code = emp_sk_map[selected_sk_emp]
             else:
                 target_code = emp_id
-        else:
-            target_code = emp_id
 
-        col_sk_form, col_sk_table = st.columns([1, 1.5])
-        with col_sk_form:
-            with st.form("add_sk_form"):
-                st.markdown(f"##### Add Competency for `{target_code}`")
-                sk_name = st.text_input("Skill Name *", placeholder="e.g. Python, Docker, React, Kubernetes")
-                sk_cat = st.selectbox("Skill Category", ["Technical", "Domain", "Soft Skill", "Leadership", "Tool", "Business"])
-                sk_prof = st.selectbox("Proficiency Level", list(LEVELS.keys()))
-                sk_yrs = st.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.5, step=0.5)
-                submit_sk = st.form_submit_button("Add Skill to Portfolio", type="primary")
+            col_sk_form, col_sk_table = st.columns([1, 1.5])
+            with col_sk_form:
+                with st.form("add_sk_form"):
+                    st.markdown(f"##### Add Competency for `{target_code}`")
+                    sk_name = st.text_input("Skill Name *", placeholder="e.g. Python, Docker, React, Kubernetes")
+                    sk_cat = st.selectbox("Skill Category", ["Technical", "Domain", "Soft Skill", "Leadership", "Tool", "Business"])
+                    sk_prof = st.selectbox("Proficiency Level", list(LEVELS.keys()))
+                    sk_yrs = st.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.5, step=0.5)
+                    submit_sk = st.form_submit_button("Add Skill to Portfolio", type="primary")
 
-            if submit_sk:
-                ok_sk, msg_sk = add_employee_skill(target_code, sk_name, sk_prof, sk_cat, sk_yrs)
-                if not is_admin:
-                    add_skill(uid, sk_name, sk_cat, sk_prof, sk_yrs)
-                if ok_sk:
-                    st.success(msg_sk)
-                    st.rerun()
+                if submit_sk:
+                    ok_sk, msg_sk = add_employee_skill(target_code, sk_name, sk_prof, sk_cat, sk_yrs)
+                    if ok_sk:
+                        st.success(msg_sk)
+                        st.rerun()
+                    else:
+                        st.error(msg_sk)
+
+            with col_sk_table:
+                emp_skills = get_employee_skills(target_code)
+                st.markdown(f"##### Verified Skills Catalog ({len(emp_skills)})")
+                if emp_skills:
+                    render_html(render_colored_skills_table(emp_skills))
+                    sk_del_map = {f"{s['skill_name']} ({s['proficiency_level']})": s["id"] for s in emp_skills}
+                    sel_del_sk = st.selectbox("Remove Competency", ["Select skill to remove..."] + list(sk_del_map.keys()))
+                    if sel_del_sk != "Select skill to remove..." and st.button("Delete Skill"):
+                        delete_employee_skill(sk_del_map[sel_del_sk])
+                        st.success("Skill removed successfully.")
+                        st.rerun()
                 else:
-                    st.error(msg_sk)
+                    st.info("No skills cataloged for this employee profile yet.")
 
-        with col_sk_table:
-            emp_skills = get_employee_skills(target_code)
-            st.markdown(f"##### Verified Skills Catalog ({len(emp_skills)})")
-            if emp_skills:
-                render_html(render_colored_skills_table(emp_skills))
-
-                sk_del_map = {f"{s['skill_name']} ({s['proficiency_level']})": s["id"] for s in emp_skills}
-                sel_del_sk = st.selectbox("Remove Competency", ["Select skill to remove..."] + list(sk_del_map.keys()))
-                if sel_del_sk != "Select skill to remove..." and st.button("Delete Skill"):
-                    delete_employee_skill(sk_del_map[sel_del_sk])
-                    st.success("Skill removed successfully.")
-                    st.rerun()
-            else:
-                st.info("No skills cataloged for this employee profile yet.")
-
-        # Skill Gap Analysis Section matching reference mockup
-        st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
-        st.markdown("#### Skill Gap Analysis vs Benchmark Role")
-        quick_target_role = st.selectbox("Compare with Target Role Benchmark", list(ROLE_CATALOG.keys()), key="sk_tab1_role")
-        quick_gap = get_employee_skill_gaps(target_code, quick_target_role)
-        
-        c_m1, c_m2 = st.columns([1, 2])
-        with c_m1:
-            st.metric(f"Match Readiness for {quick_target_role}", f"{quick_gap['match_percentage']}%")
-            st.progress(quick_gap['match_percentage'] / 100)
-        with c_m2:
-            st.markdown(f"**Benchmark Standard:** {quick_gap['criteria']}")
-            if quick_gap["gaps"]:
-                for g in quick_gap["gaps"][:4]:
-                    lvl_cur = g['current_level']
-                    lvl_req = g['required_level']
-                    st.markdown(f"**{g['skill']}**: Level {lvl_cur} / Required {lvl_req} (Gap: -{g['gap']})")
-                    st.progress(min(1.0, max(0.0, lvl_cur / max(1, lvl_req))))
 
     with tab_sk_gaps:
         st.markdown("#### Benchmark Role Gap Analysis & Competency Radar")
@@ -2574,15 +2529,109 @@ elif page in ["Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
             st.info("No active training courses recorded.")
 
 # ==============================================================================
-# 6. CAREER DEVELOPMENT & SMART GOALS
+# 5B. ROLE MATCH & GAPS
 # ==============================================================================
-elif page in ["Career Goals", "Career Development Plans", "My Career Goals"]:
+elif page in ["Role Match & Gaps", "Role Match & Competency Gaps", "Competency Gaps"]:
+    render_html(
+        f"""
+        <div style="margin-bottom: 1.5rem;">
+            <h1 style="font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin: 0 0 4px 0;">
+                Role match & competency gap analysis
+            </h1>
+            <div style="font-size: 0.95rem; color: #64748B;">
+                Compare your verified competencies against 10 corporate benchmark roles to identify shortfalls and plan development.
+            </div>
+        </div>
+        """
+    )
+
+    all_roles = list(ROLE_CATALOG.keys())
+    default_role_idx = all_roles.index(profile["target_role"]) if profile.get("target_role") in all_roles else 0
+    target_role_eval = st.selectbox("Benchmark Target Role", all_roles, index=default_role_idx, key="sel_role_match_page")
+
+    gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval)
+
+    c_radar1, c_radar2 = st.columns([1.1, 1], gap="large")
+    with c_radar1:
+        st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
+        st.progress(gap_result['match_percentage'] / 100)
+
+        if gap_result["gaps"]:
+            top_gaps = gap_result["gaps"][:6]
+            cat_names = [g["skill"] for g in top_gaps]
+            c_vals = [g["current_level"] for g in top_gaps]
+            r_vals = [g["required_level"] for g in top_gaps]
+
+            fig_radar = go.Figure()
+            fig_radar.add_trace(go.Scatterpolar(
+                r=c_vals + [c_vals[0]],
+                theta=cat_names + [cat_names[0]],
+                fill='toself',
+                fillcolor='rgba(37, 99, 235, 0.15)',
+                name='Current Level',
+                line=dict(color='#2563EB', width=2)
+            ))
+            fig_radar.add_trace(go.Scatterpolar(
+                r=r_vals + [r_vals[0]],
+                theta=cat_names + [cat_names[0]],
+                fill='toself',
+                fillcolor='rgba(16, 185, 129, 0.10)',
+                name='Target Benchmark',
+                line=dict(color='#10B981', width=2, dash='dot')
+            ))
+            fig_radar.update_layout(
+                polar=dict(
+                    radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
+                ),
+                showlegend=True,
+                height=290,
+                margin=dict(l=25, r=25, t=25, b=25),
+                paper_bgcolor="#FFFFFF"
+            )
+            st.plotly_chart(fig_radar, use_container_width=True)
+
+    with c_radar2:
+        st.markdown(f"**Benchmark Role Standard:**")
+        st.info(f"{gap_result['criteria']}")
+        
+        st.markdown(f"##### {get_svg_icon('zap', size=16, color='#2563EB')} Interactive Growth Simulator", unsafe_allow_html=True)
+        st.caption("Simulate upgrading a competency to see projected role match improvement:")
+        if gap_result["gaps"]:
+            sim_skill = st.selectbox("Select Competency to Boost", [g["skill"] for g in gap_result["gaps"]], key="sim_sk_sel_page")
+            sim_level = st.select_slider("Target Simulated Level", options=[1, 2, 3, 4], value=3, format_func=lambda x: ['None', 'Beginner', 'Intermediate', 'Advanced', 'Expert'][x], key="sim_sk_lvl_page")
+            old_m = gap_result['match_percentage']
+            boosted_m = min(100, old_m + (sim_level * 5))
+            st.markdown(
+                f"""
+                <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-top: 8px;">
+                    <span style="font-size: 0.84rem; color: #1E40AF;">
+                        Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> → <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
+                    </span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+    if gap_result["gaps"]:
+        st.markdown("##### Detailed Priority Competency Breakdown")
+        levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
+        render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
+
+    if gap_result.get("recommended_training"):
+        st.markdown("##### Recommended Targeted Training Courses")
+        for t_item in gap_result["recommended_training"]:
+            st.markdown(f"• **{t_item}** — Focus program to close competency gaps.")
+
+# ==============================================================================
+# 6. CAREER DEVELOPMENT & SMART GOALS / GROWTH PROGRESS
+# ==============================================================================
+elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My Career Goals"]:
     render_html(
         f"""
         <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
             <div>
                 <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
-                    {get_svg_icon("goals", size=24, color="#F97316")} Career Development & SMART Goals
+                    {get_svg_icon("goals", size=24, color="#F97316")} Growth Progress & SMART Goals
                 </div>
                 <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
                     Define target designations, track milestone completion, and monitor achievement roadmaps.
@@ -2594,6 +2643,7 @@ elif page in ["Career Goals", "Career Development Plans", "My Career Goals"]:
         </div>
         """
     )
+
 
     goal_user_id = None if is_admin else uid
     goal_stats = get_goal_stats(user_id=goal_user_id)
@@ -2840,7 +2890,7 @@ elif page in ["Career Goals", "Career Development Plans", "My Career Goals"]:
 # ==============================================================================
 # 7. REPORTS & ANALYTICS
 # ==============================================================================
-elif page in ["Reports", "Reports & Analytics", "Career Growth Report"]:
+elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth Report"]:
     render_html(
         f"""
         <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
@@ -2953,50 +3003,37 @@ elif page in ["Reports", "Reports & Analytics", "Career Growth Report"]:
 # 8. MY PROFILE
 # ==============================================================================
 elif page == "My Profile":
-    render_html(
-        f"""
-        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-            <div>
-                <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
-                    {get_svg_icon("profile", size=24, color="#2563EB")} My Professional Profile
-                </div>
-                <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
-                    Manage your professional background, contact details, career experience, and portfolio.
-                </div>
-            </div>
-            <div>
-                <span class="badge-status badge-active">PROFILE HUB</span>
-            </div>
-        </div>
-        """
-    )
+    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 1.5rem;'>My professional profile</h1>", unsafe_allow_html=True)
 
     with st.form("my_profile_form"):
-        a, b = st.columns(2)
-        with a:
-            st.text_input("Full Name", value=user["name"], disabled=True)
-            phone = st.text_input("Contact Phone", value=profile.get("phone", ""))
-            location = st.text_input("Location / City", value=profile.get("location", ""))
-            job = st.text_input("Current Job Title", value=profile.get("job_title", ""))
-            company = st.text_input("Company / Organization", value=profile.get("company", ""))
+        col_p1, col_p2 = st.columns(2, gap="large")
+        with col_p1:
+            st.text_input("Full name", value=user["name"], disabled=True)
+            phone = st.text_input("Phone", value=profile.get("phone", ""))
+            location = st.text_input("Location", value=profile.get("location", ""))
+            job = st.text_input("Current job title", value=profile.get("job_title", ""))
+            company = st.text_input("Company", value=profile.get("company", ""))
             department = st.text_input("Department", value=profile.get("department", ""))
             industry = st.text_input("Industry", value=profile.get("industry", ""))
-        with b:
-            emp_types = ["Full-time", "Part-time", "Contract", "Self-employed", "Other"]
-            emp_idx = emp_types.index(profile.get("employment_type")) if profile.get("employment_type") in emp_types else 0
-            employment = st.selectbox("Employment Type", emp_types, index=emp_idx)
-            years = st.number_input("Years of Experience", min_value=0.0, max_value=60.0, value=float(profile.get("years_experience") or 0.0), step=0.5)
-            linkedin = st.text_input("LinkedIn Profile URL", value=profile.get("linkedin", ""))
-            github = st.text_input("GitHub Portfolio URL", value=profile.get("github", ""))
-            portfolio = st.text_input("Personal Website / Portfolio", value=profile.get("portfolio", ""))
-            education = st.text_area("Education", value=profile.get("education", ""), placeholder="Degree · University · Year")
-            certifications = st.text_area("Certifications & Licenses", value=profile.get("certifications", ""))
+        with col_p2:
+            emp_types = ["Full-time", "Part-time", "Contract", "Internship", "Freelance", "Other"]
+            curr_emp = profile.get("employment_type")
+            emp_idx = emp_types.index(curr_emp) if curr_emp in emp_types else 0
+            employment = st.selectbox("Employment type", emp_types, index=emp_idx)
+            years = st.number_input("Years of experience", min_value=0.0, max_value=60.0, value=float(profile.get("years_experience") or 0.0), step=0.5, format="%.2f")
+            linkedin = st.text_input("LinkedIn URL", value=profile.get("linkedin", ""))
+            github = st.text_input("GitHub URL", value=profile.get("github", ""))
+            portfolio = st.text_input("Portfolio URL", value=profile.get("portfolio", ""))
+            education = st.text_area("Education", value=profile.get("education", ""), placeholder="Degree - Institution - Year", height=68)
+            certifications = st.text_area("Certifications", value=profile.get("certifications", ""), height=68)
 
-        summary = st.text_area("Executive Summary", value=profile.get("summary", ""), height=100)
-        experience = st.text_area("Experience & Measurable Outcomes", value=profile.get("experience", ""), height=120)
-        projects = st.text_area("Notable Projects & Impact", value=profile.get("projects", ""), height=100)
+        summary = st.text_area("Professional summary", value=profile.get("summary", ""), height=80)
+        experience = st.text_area("Experience", value=profile.get("experience", ""), placeholder="Role, company, dates, responsibilities, measurable outcomes", height=90)
+        projects = st.text_area("Projects and achievements", value=profile.get("projects", ""), height=80)
 
-        if st.form_submit_button("Save Profile Information", type="primary", use_container_width=True):
+        submitted_prof = st.form_submit_button("Save profile", type="primary")
+
+        if submitted_prof:
             save_profile(uid, {
                 "phone": phone, "location": location, "job_title": job, "company": company,
                 "department": department, "industry": industry, "employment_type": employment,
@@ -3008,68 +3045,99 @@ elif page == "My Profile":
             st.rerun()
 
     completion, missing = profile_completion(profile, skills)
-    st.progress(completion / 100, text=f"Profile Completeness: {completion}%")
-    if missing:
-        st.caption("Fields to complete: " + ", ".join(missing))
+    st.markdown(f"<div style='font-size: 0.88rem; font-weight: 600; color: #475569; margin-top: 1rem;'>Profile completion {completion}%</div>", unsafe_allow_html=True)
+    st.progress(completion / 100)
 
-# ==============================================================================
-# 9. RESUME STUDIO
-# ==============================================================================
+    standard_missing_msg = "Phone and location, Current role and employer, Professional summary, Education, Skills, Experience, Certifications, Projects, Career goal and target role, Professional link, Resume content"
+    active_missing_msg = ", ".join(missing) if missing else "All essential sections complete!"
+    st.caption(f"Still to add: {active_missing_msg if missing else standard_missing_msg}")
+
+
 elif page == "ATS Resume Studio" or page == "Resume Studio":
-    render_html(
-        f"""
-        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-            <div>
-                <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
-                    {get_svg_icon("code", size=24, color="#2563EB")} ATS Resume Studio & Optimizer
-                </div>
-                <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
-                    Parse resume documents, match keyword alignment against benchmark roles, and export ATS-friendly PDFs.
-                </div>
-            </div>
-            <div>
-                <span class="badge-status badge-active">RESUME STUDIO</span>
-            </div>
-        </div>
-        """
-    )
+    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.35rem;'>Resume Studio</h1>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 0.95rem; color: #64748B; margin-bottom: 1.5rem;'>Create an ATS-friendly PDF from information you have entered. Check the draft before sending it to an employer.</div>", unsafe_allow_html=True)
 
-    upload = st.file_uploader("Import Existing Resume Document (PDF or DOCX)", type=["pdf", "docx"])
+    upload = st.file_uploader("Import an existing resume (PDF or DOCX)", type=["pdf", "docx"], help="200MB per file • PDF, DOCX")
     if upload:
         try:
             if upload.name.lower().endswith(".pdf"):
                 text = "\n".join(p.extract_text() or "" for p in PdfReader(upload).pages)
             else:
                 text = "\n".join(p.text for p in Document(upload).paragraphs)
-            if st.button("Save Parsed Resume Text", type="primary"):
-                save_profile(uid, {"resume_text": text})
-                st.success("Resume text saved for target keyword alignment review.")
-                st.rerun()
-            st.text_area("Parsed Text Preview", text, height=180)
+            save_profile(uid, {"resume_text": text})
+            st.success("Resume text uploaded and saved for alignment review.")
         except Exception as exc:
             st.error(f"Could not read file: {exc}")
 
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("#### Profile Content Preview")
-        st.write(f"**Summary:** {profile.get('summary') or 'Add a summary in My Profile.'}")
-        st.write("**Skills:** " + (", ".join(x["name"] for x in skills) or "None recorded"))
-        st.write(f"**Experience:** {profile.get('experience') or 'Add experience details in My Profile.'}")
-    with c2:
-        st.markdown("#### Target Role ATS Alignment")
-        resume = (profile.get("resume_text") or "").lower()
-        role_skills = ROLE_CATALOG.get(profile.get("target_role", ""), {}).get("skills", {})
-        if resume and role_skills:
-            matched = [s for s in role_skills if s.lower() in resume]
-            missing_kw = [s for s in role_skills if s.lower() not in resume]
-            score = round(100 * len(matched) / max(1, len(role_skills)))
-            st.metric("Target Keyword Match", f"{score}%")
-            st.write("**Detected Keywords:** " + (", ".join(matched) or "None"))
-            st.write("**Missing Keywords to Address:** " + (", ".join(missing_kw) or "None"))
-        else:
-            st.info("Import a resume or set a target role under Career Direction to evaluate ATS keyword alignment.")
+    col_r1, col_r2 = st.columns(2, gap="large")
+    with col_r1:
+        st.markdown("<h3 style='font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-bottom: 0.85rem;'>Resume content</h3>", unsafe_allow_html=True)
+        sum_disp = profile.get('summary') or 'Add a summary in My Profile.'
+        st.write(sum_disp)
+        skills_disp = f"Skills: {', '.join(s['name'] for s in skills)}" if skills else "Skills: None added"
+        st.write(skills_disp)
+        exp_disp = profile.get('experience') or 'Add experience details in My Profile.'
+        st.write(exp_disp)
 
-    st.divider()
+    with col_r2:
+        st.markdown("<h3 style='font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-bottom: 0.85rem;'>Resume alignment</h3>", unsafe_allow_html=True)
+        resume_text_raw = profile.get("resume_text", "")
+        role_skills = ROLE_CATALOG.get(profile.get("target_role", ""), {}).get("skills", {})
+        if resume_text_raw and role_skills:
+            matched_kws = [s for s in role_skills if s.lower() in resume_text_raw.lower()]
+            pct_score = round(100 * len(matched_kws) / max(1, len(role_skills)))
+            render_html(
+                f"""
+                <div class="ts-callout-blue">
+                    <strong>Target Role Match: {pct_score}%</strong> ({len(matched_kws)} of {len(role_skills)} benchmark keywords detected).
+                </div>
+                """
+            )
+        else:
+            render_html(
+                """
+                <div class="ts-callout-blue">
+                    Import a resume to compare its text with your target role.
+                </div>
+                """
+            )
+
+    st.markdown("<div style='margin-top: 1.75rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<h3 style='font-size: 1.35rem; font-weight: 800; color: #0F172A; margin-bottom: 0.85rem;'>ATS resume preview</h3>", unsafe_allow_html=True)
+
+    links_list = list(filter(None, [profile.get("linkedin"), profile.get("github"), profile.get("portfolio")]))
+    links_str = " | ".join(links_list) if links_list else ".."
+
+    render_html(
+        f"""
+        <div class="ts-resume-paper">
+            <div class="ts-resume-header-name">{user['name']}</div>
+            <a href="mailto:{user['email']}" class="ts-resume-contact-link">{user['email']}</a>
+
+            <div class="ts-resume-section-heading">Professional Summary</div>
+            <div class="ts-resume-section-text">{profile.get('summary') or 'Add a professional summary.'}</div>
+
+            <div class="ts-resume-section-heading">Skills</div>
+            <div class="ts-resume-section-text">{', '.join(s['name'] for s in skills) if skills else 'Add skills.'}</div>
+
+            <div class="ts-resume-section-heading">Experience</div>
+            <div class="ts-resume-section-text">{profile.get('experience') or 'Add experience.'}</div>
+
+            <div class="ts-resume-section-heading">Education</div>
+            <div class="ts-resume-section-text">{profile.get('education') or 'Add education.'}</div>
+
+            <div class="ts-resume-section-heading">Certifications</div>
+            <div class="ts-resume-section-text">{profile.get('certifications') or 'Add certifications.'}</div>
+
+            <div class="ts-resume-section-heading">Projects</div>
+            <div class="ts-resume-section-text">{profile.get('projects') or 'Add projects.'}</div>
+
+            <div class="ts-resume-section-heading">Links</div>
+            <div class="ts-resume-section-text">{links_str}</div>
+        </div>
+        """
+    )
+
     render_html(
         f"""
         <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.1rem 1.4rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
@@ -3218,48 +3286,34 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                 c.drawString(48, y, chunk)
                 y -= 14
     c.save()
-    st.download_button("Download ATS Resume (PDF)", buf.getvalue(), file_name="talentsphere_resume.pdf", mime="application/pdf", type="primary")
+    st.download_button("Download ATS resume PDF", buf.getvalue(), file_name="talentsphere_resume.pdf", mime="application/pdf", type="primary")
 
 # ==============================================================================
 # 10. CAREER DIRECTION & AI COACH
 # ==============================================================================
-elif page == "Career Direction & Gaps":
-    render_html(
-        f"""
-        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
-            <div>
-                <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
-                    {get_svg_icon("goals", size=24, color="#F97316")} Career Direction & Benchmark Targets
-                </div>
-                <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
-                    Define target roles, desired seniority levels, and growth timelines.
-                </div>
-            </div>
-            <div>
-                <span class="badge-status badge-active">CAREER ROADMAP</span>
-            </div>
-        </div>
-        """
-    )
+elif page in ["Career Direction", "Career Direction & Gaps"]:
+    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 1.5rem;'>Career direction</h1>", unsafe_allow_html=True)
 
     with st.form("career_direction_form"):
-        current = st.text_input("Current Title / Role", value=profile.get("job_title", ""))
+        current = st.text_input("Current role", value=profile.get("job_title", ""))
         roles_list = ["Choose a role"] + list(ROLE_CATALOG.keys())
         curr_role_idx = (roles_list.index(profile["target_role"])) if profile.get("target_role") in ROLE_CATALOG else 0
-        target = st.selectbox("Target Career Role", roles_list, index=curr_role_idx)
+        target = st.selectbox("Target role", roles_list, index=curr_role_idx)
 
-        levels = ["Individual contributor", "Senior", "Lead", "Manager", "Director"]
-        curr_lvl_idx = levels.index(profile.get("target_level")) if profile.get("target_level") in levels else 1
-        level = st.selectbox("Target Seniority Level", levels, index=curr_lvl_idx)
+        levels = ["Senior", "Lead", "Manager", "Director", "Principal", "Individual contributor"]
+        curr_lvl_idx = levels.index(profile.get("target_level")) if profile.get("target_level") in levels else 0
+        level = st.selectbox("Target level", levels, index=curr_lvl_idx)
 
         timelines = ["3–6 months", "6–12 months", "1–2 years", "Exploring"]
-        curr_time_idx = timelines.index(profile.get("timeline")) if profile.get("timeline") in timelines else 1
-        timeline = st.selectbox("Target Timeline", timelines, index=curr_time_idx)
+        curr_time_idx = timelines.index(profile.get("timeline")) if profile.get("timeline") in timelines else 0
+        timeline = st.selectbox("Target timeline", timelines, index=curr_time_idx)
 
-        industry = st.text_input("Target Industry", value=profile.get("target_industry", ""))
-        goal = st.text_area("What does career growth mean to you?", value=profile.get("career_goal", ""))
+        industry = st.text_input("Target industry", value=profile.get("target_industry", ""))
+        goal = st.text_area("What does career growth mean to you?", value=profile.get("career_goal", ""), height=100)
 
-        if st.form_submit_button("Save Career Direction", type="primary", use_container_width=True):
+        submit_dir = st.form_submit_button("Save career direction", type="primary")
+
+        if submit_dir:
             save_profile(uid, {
                 "job_title": current,
                 "target_role": "" if target == "Choose a role" else target,
@@ -3271,10 +3325,11 @@ elif page == "Career Direction & Gaps":
             st.success("Career direction saved successfully!")
             st.rerun()
 
-    if profile.get("target_role"):
+    if profile.get("target_role") and profile.get("target_role") in ROLE_CATALOG:
+        st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
         st.info(f"**Benchmark Standard Criteria for {profile['target_role']}:** {ROLE_CATALOG[profile['target_role']]['criteria']}")
 
-elif page == "AI Career Coach":
+elif page in ["Career Coach", "AI Career Coach"]:
     # Check Gemini API status
     current_key = get_gemini_api_key(st.session_state.get("gemini_user_key"))
     has_gemini = bool(current_key)

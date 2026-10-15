@@ -1171,3 +1171,182 @@ div[data-testid="stDataFrame"], div[data-testid="stTable"] {
     background: linear-gradient(90deg, #10B981, #059669);
 }
 
+/* ==============================================================================
+   TALENTSPHERE THEME & CONNECTED PAGES (MATCHING REFERENCE MOCKUPS)
+   ============================================================================== */
+
+/* Page Headers */
+.ts-page-header {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.35rem;
+    line-height: 1.25;
+}
+
+.ts-page-sub {
+    font-size: 0.95rem;
+    color: #64748B;
+    margin-bottom: 1.5rem;
+}
+
+/* Metric Display Row */
+.ts-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin: 1.25rem 0 1.25rem 0;
+}
+
+@media (max-width: 900px) {
+    .ts-metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.ts-metric-box {
+    display: flex;
+    flex-direction: column;
+}
+
+.ts-metric-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #0F172A;
+    margin-bottom: 0.35rem;
+}
+
+.ts-metric-value {
+    font-size: 2.4rem;
+    font-weight: 800;
+    color: #0F172A;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+/* Useful Action Cards */
+.ts-action-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 1.25rem 1.45rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+    transition: all 0.2s ease;
+}
+
+.ts-action-card:hover {
+    border-color: #CBD5E1;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.ts-action-title {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: #0F172A;
+    margin-bottom: 0.45rem;
+}
+
+.ts-action-body {
+    font-size: 0.9rem;
+    color: #475569;
+    line-height: 1.55;
+}
+
+/* Light Blue Callout Banner */
+.ts-callout-blue {
+    background: #EFF6FF;
+    border: 1px solid #DBEAFE;
+    border-radius: 10px;
+    padding: 1.15rem 1.4rem;
+    color: #1E40AF;
+    font-size: 0.92rem;
+    font-weight: 500;
+    line-height: 1.5;
+    margin-top: 0.75rem;
+}
+
+/* ATS Resume Preview Paper */
+.ts-resume-paper {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 2.2rem 2.5rem;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    margin: 1.25rem 0 1.5rem 0;
+    color: #0F172A;
+}
+
+.ts-resume-header-name {
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.2rem;
+}
+
+.ts-resume-contact-link {
+    font-size: 0.92rem;
+    color: #0284C7;
+    text-decoration: underline;
+    margin-bottom: 1.4rem;
+    display: inline-block;
+}
+
+.ts-resume-section-heading {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0F172A;
+    margin-top: 1.25rem;
+    margin-bottom: 0.35rem;
+}
+
+.ts-resume-section-text {
+    font-size: 0.92rem;
+    color: #475569;
+    line-height: 1.55;
+    margin-bottom: 0.85rem;
+}
+
+/* Sidebar Brand Styling */
+.ts-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 4px;
+}
+
+.ts-sidebar-title {
+    font-size: 1.18rem;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.01em;
+}
+
+.ts-sidebar-signed-in {
+    font-size: 0.82rem;
+    color: #64748B;
+    margin-bottom: 1.25rem;
+}
+
+/* Teal Primary Button Styling (Matching Screenshot Buttons) */
+.stButton > button[kind="primary"],
+.stFormSubmitButton > button {
+    background: #047857 !important;
+    background-color: #047857 !important;
+    border: 1px solid #047857 !important;
+    color: #FFFFFF !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+
+.stButton > button[kind="primary"]:hover,
+.stFormSubmitButton > button:hover {
+    background: #065F46 !important;
+    background-color: #065F46 !important;
+    border-color: #065F46 !important;
+    box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25) !important;
+}
+
+
