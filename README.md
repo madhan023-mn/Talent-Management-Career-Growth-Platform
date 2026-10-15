@@ -1,62 +1,156 @@
-# TalentSphere — Employee Career Growth Platform
+# TalentSphere — Talent Management & Career Growth Platform
 
-TalentSphere is a local-first, Python-only Streamlit application for building a professional profile, setting a target role, comparing current skills with role requirements, and tracking a practical development plan. It includes resume import and PDF generation, self-assessments, offline recommendations, and a current-data career report.
+TalentSphere is a modern, enterprise-ready Python Streamlit application for **Employee Performance Management, Workforce Competency Tracking, Skill Gap Analysis, and Career Goal Development**. Built with a local-first SQLite persistence architecture, it provides role-based access control (RBAC) for both **HR Administrators** and **Employees**.
 
-## Features
+---
 
-- Email registration and login with PBKDF2 password hashes
-- Private per-user profile, skills, assessments, and progress in SQLite
-- Profile completion and rule-based profile strength scoring
-- Ten sample role profiles and deterministic role-fit/skill-gap analysis
-- ATS resume preview, PDF export, and PDF/DOCX text import
-- Offline career coaching and prioritized development recommendations
-- Progress tracking, JSON export, and multi-page ReportLab career report
-- Optional environment configuration for a future Gemini integration; the current app does not require an API
+## 🌟 Core Features
 
-## Technology and architecture
+### 1. 📊 Executive & Personal Dashboards
+- **HR Executive Dashboard**: Workforce distribution by department, organization-wide average performance scores, interactive Plotly charts, review logs, and goal completion rates.
+- **Employee Career Dashboard**: Profile readiness score, competency radar, target role alignment percentage, actionable development recommendations, and milestone progress.
 
-Python 3.10+, Streamlit, SQLite, pandas, Plotly, ReportLab, pypdf, python-docx, python-dotenv. `app.py` contains the Streamlit presentation layer; `services/core.py` owns database and business logic; `services/reports.py` builds the PDF. The default database is created at `data/talentsphere.db` on first launch.
+### 2. 👥 Employee Management (Day 3 Classroom Task)
+- **Two Ingestion Workflows**:
+  - **Method 1: Manual Single Employee Form**: Real-time form with validation, clean form reset, and direct SQLite entry.
+  - **Method 2: Bulk Dataset Upload (CSV / Excel)**: High-throughput batch ingestion supporting `.csv` and `.xlsx` files, downloadable sample template (`talentsphere_sample_employees.csv`), dataframe preview, row-by-row validation, and duplicate skipping.
+- **Enterprise Fields**: Employee ID (Unique), Full Name, Corporate Email, Phone, Department, Designation, Joining Date, Employment Status (Active, On Leave, Terminated), Years of Experience, and Primary Skills.
+- **Search & Filtering**: Real-time search across names, IDs, designations, and skills, with department and status filters.
+- **Validation & Duplicate Prevention**: Rejects invalid/negative experience, missing required fields, and duplicate employee IDs/emails.
+- **Clean Form Reset**: Dedicated "Clear Form" action that resets form state across reruns.
+- **Export**: Instant CSV export of the entire filtered employee directory.
+
+### 3. ⭐ Performance Management & Reviews
+- **Structured Performance Reviews**: Log review period, performance score (1.0–5.0), achievements, strengths, improvement areas, and manager feedback.
+- **Performance History**: Historical review tracking per employee.
+- **Department Analytics**: Average rating calculation and visual score distributions.
+
+### 4. 💡 Skills & Competency Matrix
+- **Skills Catalog**: Manage technical, domain, and soft skills with proficiency levels (*Beginner*, *Intermediate*, *Advanced*, *Expert*).
+- **Deterministic Gap Analysis**: Compare an employee's cataloged skills against benchmark roles (e.g., Software Engineer, Senior Engineer, Data Scientist, ML Engineer, DevOps Architect, Product Manager, etc.).
+- **Training Assignments**: Recommend and assign internal/external training programs to close priority skill gaps.
+
+### 5. 🎯 Career Development & Goal Tracking (Weekend Assignment)
+- **SMART Career Goals**: Set goal title, target designation, description, target completion date, and discrete progress milestones (**0%**, **25%**, **50%**, **75%**, **100%**).
+- **Dynamic Status**: Automatically calculates status: *Not Started* (0%), *In Progress* (25%–75%), *Completed* (100%), or *Overdue* (when deadline has passed).
+- **Visual Milestones**: Interactive Plotly progress charts and quick inline progress updaters.
+- **User Privacy & Isolation**: Employee goals and private assessments are isolated to their authenticated user account.
+
+### 6. 📄 ATS Resume Studio & AI Bullet Rewriter
+- **AI-Powered Resume Auditor**: Deep ATS screening evaluating keywords, impact scores, and passive voice detection.
+- **STAR-Format Bullet Rewriting**: Automatically transforms weak experience statements into high-impact Google XYZ / STAR format bullets with quantified metrics.
+- **ATS Resume Generator**: Real-time ATS resume preview and one-click PDF generation.
+- **Resume Text Import**: Import existing PDF/DOCX resumes and evaluate target role keyword alignment.
+- **Publication-Grade Reports**: Multi-page PDF career dossier generated using ReportLab, along with full JSON data export.
+
+### 7. 🤖 Generative AI Career Coach (Google Gemini Integration)
+- **Live Executive Strategy Advisor**: Interactive career coaching powered by Google Gemini API (`gemini-2.5-flash` / `gemini-2.0-flash`).
+- **Context-Aware Sprints**: Generates customized 30/60/90-day developmental roadmaps, architectural leadership moves, and review cycle preparation based on candidate's real skill matrix and identified benchmark gaps.
+- **Dual-Mode Architecture**: Operates live when `GEMINI_API_KEY` is provided, with an intelligent offline deterministic heuristic engine when offline.
+
+### 8. 🔒 Role-Based Access Control (RBAC)
+- **HR Administrator**: Full management access to employee directory, reviews, training assignments, system metrics, and CSV exports.
+- **Employee**: Private profile management, personal goal tracking, skill updates, and performance history access.
+- **Password Security**: Salted PBKDF2 SHA-256 password hashing.
+
+---
+
+## 🏗️ Architecture and Folder Structure
 
 ```text
-talentsphere_elevate/
-├── app.py
-├── requirements.txt
+infosys_project/
+├── app.py                  # Streamlit presentation layer (Admin & Employee portals)
+├── style.py                # Styling loader module imported in app.py
+├── style.css               # Global custom CSS stylesheet
+├── assets/                 # Brand assets and styling
+│   ├── style.css           # Modern corporate CSS design system tokens
+│   └── *.png               # Brand icons and logos
+├── requirements.txt        # Application dependencies
+├── pytest.ini              # Pytest configuration
+├── README.md               # Documentation & setup guide
+├── .env.example            # Environment template (DATABASE_PATH override)
 ├── services/
-│   ├── core.py
-│   └── reports.py
-├── data/              # created automatically; local database
-└── tests/
-    └── test_core.py
+│   ├── __init__.py         # Services package initialization
+│   ├── core.py             # Database engine, Auth/RBAC, Employee CRUD, Reviews, Goals, Gaps
+│   └── reports.py          # ReportLab PDF report generation
+├── tests/
+│   ├── __init__.py
+│   └── test_core.py        # Automated test suite (11 test suites)
+└── data/                   # SQLite database (talentsphere.db created automatically)
 ```
 
-## Install and run
+---
 
-```bash
+## 🚀 Setup and Run on Windows (Visual Studio Code)
+
+### 1. Prerequisites
+- Python 3.10+ installed and added to `PATH`.
+- Visual Studio Code or preferred terminal.
+
+### 2. Create Virtual Environment and Install Dependencies
+Open PowerShell in the project directory:
+
+```powershell
+# Create virtual environment
 python -m venv .venv
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
+
+# Activate virtual environment in PowerShell
+.\.venv\Scripts\Activate.ps1
+
+# Upgrade pip and install dependencies
 pip install -r requirements.txt
+```
+
+### 3. Run the Application
+```powershell
 streamlit run app.py
 ```
 
-Create an account in the opening screen. Passwords require at least eight characters. The database is private to the local instance; do not share it as an app hosting strategy for multiple organizations.
+The application will launch in your browser at `http://localhost:8501`.
 
-## Configuration
+---
 
-Copy `.env.example` to `.env`. The app runs in deterministic local mode without `GEMINI_API_KEY`. Set `DATABASE_PATH` to override the SQLite file path. No key is required or currently sent to an external provider.
+## 🔑 Default Demo Accounts
 
-## Run tests
+Upon initial startup, the database is seeded with realistic demo records and accounts:
 
-```bash
-pytest
+| Role | Email | Password | Access Level |
+| :--- | :--- | :--- | :--- |
+| **HR Administrator** | `admin@talentsphere.com` | `Admin@12345` | Full system access (Directory, Reviews, Analytics, Training) |
+| **Employee (Alex Morgan)** | `alex@company.com` | `Password123` | Personal profile, goals, skills, review history |
+| **Employee (Ravi Kumar)** | `ravi@company.com` | `Password123` | Jr Python Dev showcase (SQL/Communication upskilling to Sr Dev) |
+
+*You can also create new admin or employee accounts using the "Create Account" tab on the login screen.*
+
+---
+
+## 🧪 Automated Testing
+
+Run the comprehensive pytest suite:
+
+```powershell
+pytest -v
 ```
 
-## Publish a live demo
+All 13 automated test suites verify:
+- Registration, password hashing, and role assignment.
+- Employee CRUD operations, validation, and duplicate prevention.
+- Bulk employee dataset ingestion (CSV/Excel) and duplicate skipping.
+- Performance review lifecycle and score bounds.
+- Skill matrix, role gap analysis, and training assignments.
+- Career goal creation, discrete progress updates, and overdue status calculation.
+- Ravi Kumar showcase development journey (Junior to Senior Python Developer).
+- Multi-user privacy isolation.
+- ReportLab PDF dossier generation.
 
-The project is organized for Streamlit Community Cloud: `app.py`, `requirements.txt`, and `.streamlit/config.toml` are at the repository root. Push this folder to a GitHub repository, then in [Streamlit Community Cloud](https://share.streamlit.io/) choose **Create app**, select that repository and branch, and set the entrypoint to `app.py`. The deployer needs admin access to the GitHub repository.
+---
 
-**Important data limitation:** this starter uses a local SQLite file. On a hosted instance, that file is on the app container and should be treated as temporary; it is not a durable multi-employee production database. Use fictional demo records only until storage is migrated to a managed persistent database and deployment security has been reviewed. Do not add `.env`, the SQLite database, or `.venv` to GitHub. No AI secret is needed for the current offline features.
+## 💾 Database Schema (SQLite)
 
-## Notes and future scope
-
-This is a functional demonstration foundation, not a hardened enterprise identity system. Add migrations, rate limiting, email verification, secure hosted secrets, persistent encrypted storage, audit logging, and a validated LLM provider adapter before production deployment. Role requirements are transparent sample data intended to be adapted to a real organization's competency framework. Resume suggestions should be verified by the employee; the app does not generate fictional work history.
+- `users` (id, name, email, password_hash, salt, role, employee_id, created_at)
+- `employees` (id, employee_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, created_by, created_at, updated_at)
+- `performance_reviews` (id, employee_id, review_period, performance_score, achievements, strengths, improvements, manager_feedback, reviewer_id, created_at)
+- `employee_skills` (id, employee_id, skill_name, category, proficiency_level, years_exp, last_updated)
+- `career_goals` (id, user_id, employee_id, title, target_designation, description, target_date, progress, status, created_at, updated_at)
+- `training_records` (id, employee_id, course_name, provider, target_skill, target_completion_date, status, score, created_at)
+- `profiles`, `skills`, `assessments`, `progress`, `goals` (backward compatibility)
