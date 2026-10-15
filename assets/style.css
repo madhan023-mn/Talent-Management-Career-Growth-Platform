@@ -907,3 +907,267 @@ div[data-testid="stDataFrame"], div[data-testid="stTable"] {
     font-weight: 700;
     font-size: 0.8rem;
 }
+
+/* Tiered Colored Rating Badges */
+.tbl-rating-top {
+    background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
+    border: 1px solid #C7D2FE;
+    color: #4338CA;
+    font-weight: 800;
+}
+
+.tbl-rating-strong {
+    background: #ECFDF5;
+    border: 1px solid #A7F3D0;
+    color: #065F46;
+    font-weight: 700;
+}
+
+.tbl-rating-good {
+    background: #F0F9FF;
+    border: 1px solid #BAE6FD;
+    color: #0369A1;
+    font-weight: 700;
+}
+
+.tbl-rating-dev {
+    background: #FFFBEB;
+    border: 1px solid #FDE68A;
+    color: #92400E;
+    font-weight: 700;
+}
+
+/* Vibrant Department Colored Pills */
+.tbl-dept-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.tbl-dept-eng {
+    background: #EFF6FF;
+    color: #1D4ED8;
+    border: 1px solid #BFDBFE;
+}
+
+.tbl-dept-prod {
+    background: #FAF5FF;
+    color: #7E22CE;
+    border: 1px solid #E9D5FF;
+}
+
+.tbl-dept-design {
+    background: #FDF2F8;
+    color: #BE185D;
+    border: 1px solid #FBCFE8;
+}
+
+.tbl-dept-sales {
+    background: #FFFBEB;
+    color: #B45309;
+    border: 1px solid #FDE68A;
+}
+
+.tbl-dept-mktg {
+    background: #F0FDFA;
+    color: #0F766E;
+    border: 1px solid #99F6E4;
+}
+
+.tbl-dept-hr {
+    background: #FFF1F2;
+    color: #BE123C;
+    border: 1px solid #FECDD3;
+}
+
+.tbl-dept-data {
+    background: #ECFDF5;
+    color: #047857;
+    border: 1px solid #A7F3D0;
+}
+
+.tbl-dept-ops {
+    background: #F1F5F9;
+    color: #334155;
+    border: 1px solid #CBD5E1;
+}
+
+/* Priority Pills */
+.tbl-priority-high {
+    background: #FEF2F2;
+    color: #B91C1C;
+    border: 1px solid #FECACA;
+    font-weight: 700;
+}
+
+.tbl-priority-med {
+    background: #FFFBEB;
+    color: #B45309;
+    border: 1px solid #FDE68A;
+    font-weight: 700;
+}
+
+.tbl-priority-low {
+    background: #ECFDF5;
+    color: #047857;
+    border: 1px solid #A7F3D0;
+    font-weight: 700;
+}
+
+/* Skill Proficiency Pills */
+.tbl-prof-expert {
+    background: linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 100%);
+    color: #6B21A8;
+    border: 1px solid #D8B4FE;
+    font-weight: 800;
+}
+
+.tbl-prof-adv {
+    background: #ECFDF5;
+    color: #065F46;
+    border: 1px solid #6EE7B7;
+    font-weight: 700;
+}
+
+.tbl-prof-int {
+    background: #EFF6FF;
+    color: #1E40AF;
+    border: 1px solid #93C5FD;
+    font-weight: 700;
+}
+
+.tbl-prof-beg {
+    background: #F1F5F9;
+    color: #475569;
+    border: 1px solid #CBD5E1;
+    font-weight: 600;
+}
+
+/* Competency Gap Pills */
+.tbl-gap-parity {
+    background: #ECFDF5;
+    color: #047857;
+    border: 1px solid #A7F3D0;
+    font-weight: 700;
+}
+
+.tbl-gap-warning {
+    background: #FFFBEB;
+    color: #B45309;
+    border: 1px solid #FDE68A;
+    font-weight: 700;
+}
+
+.tbl-gap-critical {
+    background: #FEF2F2;
+    color: #DC2626;
+    border: 1px solid #FCA5A5;
+    font-weight: 800;
+}
+
+/* Zebra row alternating coloration */
+.corporate-table tbody tr:nth-child(even) td {
+    background-color: #FAFCFF;
+}
+
+.corporate-table tbody tr:hover td {
+    background-color: #EFF6FF !important;
+}
+
+/* Modernized Landing Webpage Styles */
+.webpage-hero-modern {
+    background: radial-gradient(120% 120% at 50% 0%, #1E1B4B 0%, #0F172A 50%, #030712 100%);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 20px;
+    padding: 2.75rem 3rem;
+    color: #FFFFFF;
+    box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.webpage-hero-modern::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.hero-gradient-text {
+    background: linear-gradient(135deg, #60A5FA 0%, #A78BFA 50%, #F472B6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-feature-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 7px 16px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #F1F5F9;
+    transition: all 0.2s ease;
+}
+
+.hero-feature-pill:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(96, 165, 250, 0.4);
+    transform: translateY(-2px);
+}
+
+.demo-role-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.05);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.demo-role-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 16px 32px -8px rgba(37, 99, 235, 0.14);
+    border-color: #93C5FD;
+}
+
+.demo-role-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+}
+
+.demo-role-admin::before {
+    background: linear-gradient(90deg, #F59E0B, #D97706);
+}
+
+.demo-role-eng::before {
+    background: linear-gradient(90deg, #2563EB, #3B82F6);
+}
+
+.demo-role-analyst::before {
+    background: linear-gradient(90deg, #10B981, #059669);
+}
+

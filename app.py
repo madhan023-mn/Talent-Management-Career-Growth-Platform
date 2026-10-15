@@ -124,6 +124,368 @@ def get_svg_icon(name: str, size: int = 18, color: str = "currentColor", extra_s
 load_css()
 
 # ------------------------------------------------------------------------------
+# TABLE COLORATION & BADGE UTILITIES
+# ------------------------------------------------------------------------------
+def get_dept_badge_html(department: str) -> str:
+    dept = (department or "").lower()
+    if any(k in dept for k in ["eng", "dev", "tech", "soft"]):
+        cls = "tbl-dept-eng"
+    elif "prod" in dept:
+        cls = "tbl-dept-prod"
+    elif any(k in dept for k in ["design", "ui", "ux"]):
+        cls = "tbl-dept-design"
+    elif "sale" in dept:
+        cls = "tbl-dept-sales"
+    elif "market" in dept:
+        cls = "tbl-dept-mktg"
+    elif any(k in dept for k in ["hr", "people", "talent"]):
+        cls = "tbl-dept-hr"
+    elif any(k in dept for k in ["data", "analyt", "ai", "bi"]):
+        cls = "tbl-dept-data"
+    else:
+        cls = "tbl-dept-ops"
+    return f'<span class="tbl-dept-badge {cls}">{department or "General"}</span>'
+
+def get_status_badge_html(status: str) -> str:
+    s = (status or "").lower()
+    if any(k in s for k in ["act", "comp", "pass"]):
+        return f'<span class="tbl-badge tbl-badge-green"><span class="tbl-badge-dot"></span>{status}</span>'
+    elif any(k in s for k in ["leave", "prog", "pend"]):
+        return f'<span class="tbl-badge tbl-badge-yellow"><span class="tbl-badge-dot"></span>{status}</span>'
+    elif any(k in s for k in ["term", "fail", "over"]):
+        return f'<span class="tbl-badge tbl-badge-red"><span class="tbl-badge-dot"></span>{status}</span>'
+    else:
+        return f'<span class="tbl-badge tbl-badge-blue"><span class="tbl-badge-dot"></span>{status}</span>'
+
+def get_rating_badge_html(score: Any) -> str:
+    try:
+        val = float(score)
+    except (ValueError, TypeError):
+        val = 0.0
+    if val >= 4.5:
+        tier_cls = "tbl-rating-top"
+        label = f"{val:.1f} Top Performer"
+    elif val >= 3.8:
+        tier_cls = "tbl-rating-strong"
+        label = f"{val:.1f} Strong"
+    elif val >= 3.0:
+        tier_cls = "tbl-rating-good"
+        label = f"{val:.1f} Meets Target"
+    elif val > 0.0:
+        tier_cls = "tbl-rating-dev"
+        label = f"{val:.1f} Development"
+    else:
+        tier_cls = "tbl-rating-dev"
+        label = "Unrated"
+    return f'<span class="tbl-rating-pill {tier_cls}">{label}</span>'
+
+def get_priority_badge_html(priority: str) -> str:
+    p = (priority or "").lower()
+    if any(k in p for k in ["high", "crit", "urgent"]):
+        return f'<span class="tbl-badge tbl-priority-high">{priority}</span>'
+    elif "med" in p:
+        return f'<span class="tbl-badge tbl-priority-med">{priority}</span>'
+    else:
+        return f'<span class="tbl-badge tbl-priority-low">{priority}</span>'
+
+def get_prof_badge_html(level: str) -> str:
+    l = (level or "").lower()
+    if "exp" in l or "4" in l:
+        return f'<span class="tbl-badge tbl-prof-expert">{level}</span>'
+    elif "adv" in l or "3" in l:
+        return f'<span class="tbl-badge tbl-prof-adv">{level}</span>'
+    elif "inter" in l or "2" in l:
+        return f'<span class="tbl-badge tbl-prof-int">{level}</span>'
+    else:
+        return f'<span class="tbl-badge tbl-prof-beg">{level}</span>'
+
+def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
+    rows = []
+    for emp in emp_results:
+        score = emp.get("avg_rating") or 0.0
+        pct = min(100, max(0, int((score / 5.0) * 100)))
+        bar_color = "#8B5CF6" if score >= 4.5 else ("#10B981" if score >= 3.8 else ("#3B82F6" if score >= 3.0 else "#F59E0B"))
+        rows.append(f"""
+        <tr>
+            <td><span class="tbl-id-pill">{emp.get('employee_id', '')}</span></td>
+            <td>
+                <div style="font-weight: 700; color: #0F172A;">{emp.get('name', '')}</div>
+                <div style="font-size: 0.76rem; color: #64748B;">{emp.get('email', '')}</div>
+            </td>
+            <td>{get_dept_badge_html(emp.get('department', ''))}</td>
+            <td><span style="font-weight: 600; color: #334155;">{emp.get('designation', '')}</span></td>
+            <td>{get_status_badge_html(emp.get('employment_status', 'Active'))}</td>
+            <td><span style="font-weight: 700; color: #475569;">{emp.get('years_experience', 0)} yrs</span></td>
+            <td>
+                <div class="tbl-progress-container">
+                    <div class="tbl-progress-track">
+                        <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+                    </div>
+                    {get_rating_badge_html(score)}
+                </div>
+            </td>
+        </tr>
+        """)
+    return f"""
+    <div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Emp ID</th>
+                    <th>Full Name</th>
+                    <th>Department</th>
+                    <th>Designation</th>
+                    <th>Status</th>
+                    <th>Experience</th>
+                    <th>Performance Score</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>
+    """
+
+def render_colored_review_table(reviews_list: List[Dict[str, Any]]) -> str:
+    rows = []
+    for r in reviews_list:
+        score = float(r.get("performance_score") or 0.0)
+        pct = min(100, max(0, int((score / 5.0) * 100)))
+        bar_color = "#8B5CF6" if score >= 4.5 else ("#10B981" if score >= 3.8 else ("#3B82F6" if score >= 3.0 else "#F59E0B"))
+        dt = (r.get("created_at") or "")[:10]
+        rows.append(f"""
+        <tr>
+            <td><span class="tbl-id-pill">{r.get('employee_id', '')}</span></td>
+            <td>
+                <div style="font-weight: 700; color: #0F172A;">{r.get('employee_name', '')}</div>
+                <div style="font-size: 0.76rem; color: #64748B;">{r.get('designation', '')}</div>
+            </td>
+            <td>{get_dept_badge_html(r.get('department', ''))}</td>
+            <td><span class="tbl-badge tbl-badge-blue">{r.get('review_period', '')}</span></td>
+            <td>
+                <div class="tbl-progress-container">
+                    <div class="tbl-progress-track">
+                        <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+                    </div>
+                    {get_rating_badge_html(score)}
+                </div>
+            </td>
+            <td>
+                <div style="font-size: 0.8rem; color: #065F46; font-weight: 600;">{r.get('strengths') or 'Consistency'}</div>
+                <div style="font-size: 0.76rem; color: #9A3412;">{r.get('improvements') or 'Leadership'}</div>
+            </td>
+            <td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{dt}</span></td>
+        </tr>
+        """)
+    return f"""
+    <div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Emp ID</th>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Period</th>
+                    <th>Rating & Score</th>
+                    <th>Key Highlights</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>
+    """
+
+def render_colored_skills_table(skills_list: List[Dict[str, Any]]) -> str:
+    rows = []
+    for s in skills_list:
+        rows.append(f"""
+        <tr>
+            <td><span style="font-weight: 700; color: #0F172A;">{s.get('skill_name', '')}</span></td>
+            <td><span class="tbl-badge tbl-badge-blue">{s.get('category', 'Technical')}</span></td>
+            <td>{get_prof_badge_html(s.get('proficiency_level', 'Intermediate'))}</td>
+            <td><span style="font-weight: 700; color: #475569;">{s.get('years_exp', 1.0)} yrs</span></td>
+            <td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{(s.get('last_updated') or '')[:10]}</span></td>
+        </tr>
+        """)
+    return f"""
+    <div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Competency</th>
+                    <th>Category</th>
+                    <th>Proficiency</th>
+                    <th>Experience</th>
+                    <th>Cataloged Date</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>
+    """
+
+def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[int, str]) -> str:
+    rows = []
+    for g in gaps_list:
+        gap_val = g.get("gap", 0)
+        if gap_val == 0:
+            gap_badge = '<span class="tbl-badge tbl-gap-parity">Parity (0)</span>'
+        elif gap_val == 1:
+            gap_badge = '<span class="tbl-badge tbl-gap-warning">-1 Level</span>'
+        else:
+            gap_badge = f'<span class="tbl-badge tbl-gap-critical">-{gap_val} Levels</span>'
+        curr_lvl = levels_str.get(g.get("current_level", 0), str(g.get("current_level", 0)))
+        req_lvl = levels_str.get(g.get("required_level", 0), str(g.get("required_level", 0)))
+        rows.append(f"""
+        <tr>
+            <td><span style="font-weight: 700; color: #0F172A;">{g.get('skill', '')}</span></td>
+            <td>{get_prof_badge_html(curr_lvl)}</td>
+            <td>{get_prof_badge_html(req_lvl)}</td>
+            <td>{gap_badge}</td>
+            <td>{get_priority_badge_html(g.get('priority', 'Medium'))}</td>
+        </tr>
+        """)
+    return f"""
+    <div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Competency</th>
+                    <th>Current Level</th>
+                    <th>Required Benchmark</th>
+                    <th>Skill Shortfall</th>
+                    <th>Priority</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>
+    """
+
+def render_colored_goals_table(goals_list: List[Dict[str, Any]]) -> str:
+    rows = []
+    for g in goals_list:
+        prog = int(g.get("progress") or 0)
+        bar_color = "#10B981" if prog == 100 else ("#3B82F6" if prog >= 50 else "#F59E0B")
+        rows.append(f"""
+        <tr>
+            <td>
+                <div style="font-weight: 700; color: #0F172A;">{g.get('title', '')}</div>
+                <div style="font-size: 0.78rem; color: #64748B;">{str(g.get('description', ''))[:70]}...</div>
+            </td>
+            <td><span class="tbl-badge tbl-badge-purple">{g.get('target_designation', 'Target Role')}</span></td>
+            <td><span style="font-family: monospace; font-size: 0.8rem; color: #475569;">{g.get('target_date', '')}</span></td>
+            <td>
+                <div class="tbl-progress-container">
+                    <div class="tbl-progress-track">
+                        <div class="tbl-progress-bar" style="width: {prog}%; background: {bar_color};"></div>
+                    </div>
+                    <span class="tbl-progress-text">{prog}%</span>
+                </div>
+            </td>
+            <td>{get_status_badge_html(g.get('status', 'In Progress'))}</td>
+        </tr>
+        """)
+    return f"""
+    <div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Goal & Action Steps</th>
+                    <th>Target Role</th>
+                    <th>Target Date</th>
+                    <th>Milestone Progress</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>
+    """
+
+def render_colored_training_table(trainings_list: List[Dict[str, Any]]) -> str:
+    rows = []
+    for t in trainings_list:
+        score = float(t.get("score") or 0.0)
+        pct = min(100, max(0, int(score)))
+        bar_color = "#10B981" if pct >= 80 else ("#3B82F6" if pct >= 60 else "#F59E0B")
+        rows.append(f"""
+        <tr>
+            <td><span class="tbl-id-pill">{t.get('employee_id', '')}</span></td>
+            <td><span style="font-weight: 700; color: #0F172A;">{t.get('course_name', '')}</span></td>
+            <td><span class="tbl-badge tbl-badge-purple">{t.get('target_skill', '')}</span></td>
+            <td><span style="color: #475569; font-size: 0.82rem;">{t.get('provider', '')}</span></td>
+            <td><span style="font-family: monospace; font-size: 0.8rem; color: #64748B;">{t.get('target_completion_date', '')}</span></td>
+            <td>{get_status_badge_html(t.get('status', 'Enrolled'))}</td>
+            <td>
+                <div class="tbl-progress-container">
+                    <div class="tbl-progress-track">
+                        <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+                    </div>
+                    <span class="tbl-progress-text">{pct}%</span>
+                </div>
+            </td>
+        </tr>
+        """)
+    return f"""
+    <div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Emp ID</th>
+                    <th>Course Title</th>
+                    <th>Target Skill</th>
+                    <th>Provider</th>
+                    <th>Target Date</th>
+                    <th>Status</th>
+                    <th>Grade / Completion</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>
+    """
+
+def render_colored_dept_summary_table(dept_summary_list: List[Dict[str, Any]]) -> str:
+    rows = []
+    for ds in dept_summary_list:
+        avg_s = float(ds.get("avg_score") or 0.0)
+        pct = min(100, max(0, int((avg_s / 5.0) * 100)))
+        bar_color = "#8B5CF6" if avg_s >= 4.5 else ("#10B981" if avg_s >= 3.8 else ("#3B82F6" if avg_s >= 3.0 else "#F59E0B"))
+        rows.append(f"""
+        <tr>
+            <td>{get_dept_badge_html(ds.get('department', ''))}</td>
+            <td><span class="tbl-badge tbl-badge-blue">{ds.get('employee_count', 0)} active</span></td>
+            <td>
+                <div class="tbl-progress-container">
+                    <div class="tbl-progress-track">
+                        <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+                    </div>
+                    {get_rating_badge_html(avg_s)}
+                </div>
+            </td>
+            <td><span style="font-weight: 700; color: #475569;">{ds.get('total_reviews', 0)} reviews</span></td>
+        </tr>
+        """)
+    return f"""
+    <div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Active Headcount</th>
+                    <th>Average Performance Rating</th>
+                    <th>Completed Reviews</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>
+    """
+
+
+
+# ------------------------------------------------------------------------------
 # SESSION STATE INITIALIZATION
 # ------------------------------------------------------------------------------
 if "user" not in st.session_state:
@@ -139,31 +501,31 @@ if "quick_fill_role" not in st.session_state:
 # 1. DEDICATED CORPORATE LANDING WEBPAGE
 # ------------------------------------------------------------------------------
 def landing_webpage():
-    # Top Navbar: Brand on left, System status in middle, Sign In & Create Account on TOP RIGHT
-    col_nav_brand, col_nav_status, col_nav_login, col_nav_reg = st.columns([3.8, 2.4, 1.6, 2.2], gap="small")
-    with col_nav_brand:
-        render_html(
-            f"""
-            <div style="display: flex; align-items: center; gap: 10px; padding: 4px 0;">
-                {get_svg_icon("brand_logo", size=34)}
-                <div style="display: flex; align-items: baseline; gap: 8px;">
-                    <span style="font-size: 1.35rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">Talent Growth</span>
-                    <span style="font-size: 0.72rem; color: #2563EB; font-weight: 700; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 9999px; padding: 2px 8px;">ENTERPRISE</span>
+    # Top Glassmorphic Navbar
+    render_html(
+        f"""
+        <div style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid #E2E8F0; border-radius: 16px; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                {get_svg_icon("brand_logo", size=36)}
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.35rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">Talent Growth</span>
+                        <span style="font-size: 0.72rem; color: #2563EB; font-weight: 800; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 9999px; padding: 2px 8px; letter-spacing: 0.04em;">ENTERPRISE</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #64748B; font-weight: 500;">Next-Gen Human Capital Operating System</div>
                 </div>
             </div>
-            """
-        )
-    with col_nav_status:
-        render_html(
-            """
-            <div style="padding-top: 8px; text-align: right;">
-                <span style="display: inline-flex; align-items: center; gap: 6px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; padding: 5px 12px; border-radius: 9999px; font-size: 0.82rem; font-weight: 600;">
-                    <span style="width: 7px; height: 7px; background: #10B981; border-radius: 50%;"></span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="display: inline-flex; align-items: center; gap: 6px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; padding: 5px 12px; border-radius: 9999px; font-size: 0.78rem; font-weight: 700;">
+                    <span style="width: 7px; height: 7px; background: #10B981; border-radius: 50%; box-shadow: 0 0 6px #10B981;"></span>
                     System Online
                 </span>
             </div>
-            """
-        )
+        </div>
+        """
+    )
+
+    col_nav_sp, col_nav_login, col_nav_reg = st.columns([6, 1.8, 2.2], gap="small")
     with col_nav_login:
         if st.button("Sign In", key="nav_btn_login", use_container_width=True, type="secondary"):
             st.session_state.auth_view = "login"
@@ -173,46 +535,44 @@ def landing_webpage():
             st.session_state.auth_view = "register"
             st.rerun()
 
-    st.markdown("<div style='border-bottom: 1px solid #E2E8F0; margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
-
-    # HERO SECTION (High-Impact Enterprise Banner)
+    # HERO SECTION (High-Impact Enterprise Banner with Radial Dark Aesthetic)
     render_html(
         f"""
-        <div class="webpage-hero">
-            <div style="max-width: 860px;">
-                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(37, 99, 235, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); padding: 5px 14px; border-radius: 9999px; color: #93C5FD; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.25rem;">
-                    {get_svg_icon("sparkles", size=14, color="#93C5FD")}
-                    Talent Management Platform
+        <div class="webpage-hero-modern">
+            <div style="max-width: 860px; position: relative; z-index: 2;">
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(129, 140, 248, 0.35); padding: 5px 14px; border-radius: 9999px; color: #C7D2FE; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1.25rem;">
+                    {get_svg_icon("sparkles", size=14, color="#A5B4FC")}
+                    Next-Gen Human Capital Operating System
                 </div>
-                <h1 style="font-size: 2.6rem; font-weight: 800; color: #FFFFFF; line-height: 1.18; letter-spacing: -0.03em; margin: 0 0 1rem 0;">
+                <h1 style="font-size: 2.9rem; font-weight: 900; color: #FFFFFF; line-height: 1.15; letter-spacing: -0.03em; margin: 0 0 1rem 0;">
                     Build Better Teams,<br/>
-                    <span style="color: #60A5FA;">Grow Together</span>
+                    <span class="hero-gradient-text">Grow Together</span>
                 </h1>
-                <p style="color: #94A3B8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 1.75rem; max-width: 720px;">
+                <p style="color: #94A3B8; font-size: 1.08rem; line-height: 1.6; margin-bottom: 1.85rem; max-width: 740px;">
                     Talent management for a brighter future. Elevate workforce performance, discover skill benchmarks, and navigate personalized career pathways with intelligent evaluations and goal roadmaps.
                 </p>
-                <div style="display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 2rem;">
-                    <div style="display: flex; align-items: center; gap: 8px; color: #E2E8F0; font-size: 0.88rem; font-weight: 600; background: rgba(255, 255, 255, 0.06); padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 2rem;">
+                    <div class="hero-feature-pill">
                         {get_svg_icon("employees", size=16, color="#60A5FA")} Workforce Directory & Profiles
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px; color: #E2E8F0; font-size: 0.88rem; font-weight: 600; background: rgba(255, 255, 255, 0.06); padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <div class="hero-feature-pill">
                         {get_svg_icon("performance", size=16, color="#34D399")} Performance Trajectory Reviews
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px; color: #E2E8F0; font-size: 0.88rem; font-weight: 600; background: rgba(255, 255, 255, 0.06); padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <div class="hero-feature-pill">
                         {get_svg_icon("skills", size=16, color="#C084FC")} 10-Role Skill Benchmarks
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px; color: #E2E8F0; font-size: 0.88rem; font-weight: 600; background: rgba(255, 255, 255, 0.06); padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <div class="hero-feature-pill">
                         {get_svg_icon("goals", size=16, color="#FB923C")} SMART Milestone Roadmap
                     </div>
                 </div>
             </div>
-            <div style="border-top: 1px solid #1E293B; padding-top: 1.1rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #64748B;">
+            <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 1.1rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #94A3B8; position: relative; z-index: 2;">
                 <span style="display: flex; align-items: center; gap: 6px;">
-                    {get_svg_icon("shield", size=15, color="#64748B")}
+                    {get_svg_icon("shield", size=15, color="#818CF8")}
                     Encrypted Authentication & Local SQLite Database
                 </span>
                 <span style="display: flex; align-items: center; gap: 6px;">
-                    {get_svg_icon("check", size=15, color="#10B981")}
+                    {get_svg_icon("check", size=15, color="#34D399")}
                     Enterprise Production Ready
                 </span>
             </div>
@@ -221,10 +581,9 @@ def landing_webpage():
     )
 
     # SEPARATED SECTION 1: 1-CLICK QUICK DEMO SIGN-IN
-    # (Completely separated into its own distinct, dedicated section)
     render_html(
         f"""
-        <div style="margin: 2.2rem 0 1rem 0;">
+        <div style="margin: 2.2rem 0 1.25rem 0;">
             <div style="display: inline-flex; align-items: center; gap: 6px; background: #EFF6FF; border: 1px solid #DBEAFE; color: #2563EB; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
                 {get_svg_icon("sparkles", size=13, color="#2563EB")} Instant Live Demo
             </div>
@@ -241,76 +600,94 @@ def landing_webpage():
     col_d1, col_d2, col_d3 = st.columns(3, gap="medium")
 
     with col_d1:
-        with st.container(border=True):
-            render_html(
-                f"""
+        render_html(
+            f"""
+            <div class="demo-role-card demo-role-admin">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
-                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #FEF3C7; color: #92400E; display: flex; align-items: center; justify-content: center;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #FEF3C7; color: #92400E; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15);">
                         {get_svg_icon("shield", size=22, color="#92400E")}
                     </div>
-                    <span style="font-size: 0.72rem; font-weight: 700; color: #92400E; background: #FEF3C7; border: 1px solid #FDE68A; padding: 3px 8px; border-radius: 9999px;">ADMIN</span>
+                    <span style="font-size: 0.72rem; font-weight: 800; color: #92400E; background: #FEF3C7; border: 1px solid #FDE68A; padding: 3px 8px; border-radius: 9999px;">ADMIN</span>
                 </div>
-                <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">HR Administrator</div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">HR Administrator</div>
                 <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">admin@talentsphere.com</div>
                 <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
                     Full administrative governance, workforce directory CRUD, performance trajectory tracking, bulk CSV imports, and ATS studio.
                 </p>
-                """
-            )
-            if st.button("Sign In as HR Admin →", key="landing_btn_admin", use_container_width=True, type="primary"):
-                admin_acc = login("admin@talentsphere.com", "Admin@12345")
-                if admin_acc:
-                    st.session_state.user = admin_acc
-                    st.session_state.current_page = "Dashboard"
-                    st.rerun()
+                <div style="font-size: 0.78rem; color: #047857; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 4px;">
+                    <div>✓ Workforce CRUD & Lifecycle</div>
+                    <div>✓ Trajectory Reviews & Analytics</div>
+                    <div>✓ Bulk CSV & Excel Importer</div>
+                </div>
+            </div>
+            """
+        )
+        if st.button("Sign In as HR Admin →", key="landing_btn_admin", use_container_width=True, type="primary"):
+            admin_acc = login("admin@talentsphere.com", "Admin@12345")
+            if admin_acc:
+                st.session_state.user = admin_acc
+                st.session_state.current_page = "Dashboard"
+                st.rerun()
 
     with col_d2:
-        with st.container(border=True):
-            render_html(
-                f"""
+        render_html(
+            f"""
+            <div class="demo-role-card demo-role-eng">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
-                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center;">
-                        {get_svg_icon("employees", size=22, color="#2563EB")}
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);">
+                        {get_svg_icon("code", size=22, color="#2563EB")}
                     </div>
-                    <span style="font-size: 0.72rem; font-weight: 700; color: #1E40AF; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 3px 8px; border-radius: 9999px;">ENGINEER</span>
+                    <span style="font-size: 0.72rem; font-weight: 800; color: #1E40AF; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 3px 8px; border-radius: 9999px;">ENGINEER</span>
                 </div>
-                <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">Alex Morgan</div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">Alex Morgan</div>
                 <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">alex@company.com</div>
                 <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
                     Employee self-service portal, 10-role skill benchmark matrix, target readiness radar, and SMART milestones roadmap.
                 </p>
-                """
-            )
-            if st.button("Sign In as Alex Morgan →", key="landing_btn_alex", use_container_width=True, type="primary"):
-                emp_acc = login("alex@company.com", "Password123")
-                if emp_acc:
-                    st.session_state.user = emp_acc
-                    st.session_state.current_page = "Dashboard"
-                    st.rerun()
+                <div style="font-size: 0.78rem; color: #1D4ED8; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 4px;">
+                    <div>✓ 10-Role Benchmark Matrix</div>
+                    <div>✓ Competency Gap Simulator</div>
+                    <div>✓ SMART Career Goals Roadmap</div>
+                </div>
+            </div>
+            """
+        )
+        if st.button("Sign In as Alex Morgan →", key="landing_btn_alex", use_container_width=True, type="primary"):
+            emp_acc = login("alex@company.com", "Password123")
+            if emp_acc:
+                st.session_state.user = emp_acc
+                st.session_state.current_page = "Dashboard"
+                st.rerun()
 
     with col_d3:
-        with st.container(border=True):
-            render_html(
-                f"""
+        render_html(
+            f"""
+            <div class="demo-role-card demo-role-analyst">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
-                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #ECFDF5; color: #065F46; display: flex; align-items: center; justify-content: center;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #ECFDF5; color: #065F46; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);">
                         {get_svg_icon("analytics", size=22, color="#065F46")}
                     </div>
-                    <span style="font-size: 0.72rem; font-weight: 700; color: #065F46; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 3px 8px; border-radius: 9999px;">DATA ANALYST</span>
+                    <span style="font-size: 0.72rem; font-weight: 800; color: #065F46; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 3px 8px; border-radius: 9999px;">DATA ANALYST</span>
                 </div>
-                <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">Ravi Kumar</div>
+                <div style="font-size: 1.2rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">Ravi Kumar</div>
                 <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">ravi@company.com</div>
                 <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
                     Competency portfolio tracking, historical review feedback, department skill gap analytics, and promotion milestones.
                 </p>
-                """
-            )
-            if st.button("Sign In as Ravi Kumar →", key="landing_btn_ravi", use_container_width=True, type="primary"):
-                ravi_acc = login("ravi@company.com", "Password123")
-                if ravi_acc:
-                    st.session_state.user = ravi_acc
-                    st.session_state.current_page = "Dashboard"
-                    st.rerun()
+                <div style="font-size: 0.78rem; color: #047857; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 4px;">
+                    <div>✓ Competency Portfolio Tracking</div>
+                    <div>✓ Training & Upskilling Records</div>
+                    <div>✓ AI Career Coach & Strategy</div>
+                </div>
+            </div>
+            """
+        )
+        if st.button("Sign In as Ravi Kumar →", key="landing_btn_ravi", use_container_width=True, type="primary"):
+            ravi_acc = login("ravi@company.com", "Password123")
+            if ravi_acc:
+                st.session_state.user = ravi_acc
+                st.session_state.current_page = "Dashboard"
+                st.rerun()
 
     # SEPARATED SECTION 2: ENTERPRISE PLATFORM CAPABILITIES
     render_html(
@@ -331,9 +708,9 @@ def landing_webpage():
 
     col_m1, col_m2 = st.columns(2, gap="medium")
     with col_m1:
-        with st.container(border=True):
-            render_html(
-                f"""
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.03); margin-bottom: 0.85rem;">
                 <div style="display: flex; align-items: flex-start; gap: 14px;">
                     <div style="width: 44px; height: 44px; border-radius: 10px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         {get_svg_icon("employees", size=22, color="#2563EB")}
@@ -345,12 +722,12 @@ def landing_webpage():
                         </p>
                     </div>
                 </div>
-                """
-            )
-        st.markdown("<div style='margin-bottom: 0.75rem;'></div>", unsafe_allow_html=True)
-        with st.container(border=True):
-            render_html(
-                f"""
+            </div>
+            """
+        )
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
                 <div style="display: flex; align-items: flex-start; gap: 14px;">
                     <div style="width: 44px; height: 44px; border-radius: 10px; background: #F5F3FF; color: #8B5CF6; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         {get_svg_icon("skills", size=22, color="#8B5CF6")}
@@ -362,13 +739,14 @@ def landing_webpage():
                         </p>
                     </div>
                 </div>
-                """
-            )
+            </div>
+            """
+        )
 
     with col_m2:
-        with st.container(border=True):
-            render_html(
-                f"""
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.03); margin-bottom: 0.85rem;">
                 <div style="display: flex; align-items: flex-start; gap: 14px;">
                     <div style="width: 44px; height: 44px; border-radius: 10px; background: #ECFDF5; color: #065F46; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         {get_svg_icon("performance", size=22, color="#10B981")}
@@ -380,12 +758,12 @@ def landing_webpage():
                         </p>
                     </div>
                 </div>
-                """
-            )
-        st.markdown("<div style='margin-bottom: 0.75rem;'></div>", unsafe_allow_html=True)
-        with st.container(border=True):
-            render_html(
-                f"""
+            </div>
+            """
+        )
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
                 <div style="display: flex; align-items: flex-start; gap: 14px;">
                     <div style="width: 44px; height: 44px; border-radius: 10px; background: #FFF7ED; color: #C2410C; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         {get_svg_icon("goals", size=22, color="#EA580C")}
@@ -397,8 +775,9 @@ def landing_webpage():
                         </p>
                     </div>
                 </div>
-                """
-            )
+            </div>
+            """
+        )
 
     # SEPARATED SECTION 3: CREDENTIALS CALL-TO-ACTION (SEPARATE CONTAINER)
     render_html(
@@ -1511,22 +1890,24 @@ elif page in ["Employees", "Employee Management"]:
                             st.write(f"**Phone:** `{emp['phone'] or 'Not provided'}`")
                             st.write(f"**Primary Skills:** {emp['primary_skills'] or 'None recorded'}")
             else:
-                df_display = pd.DataFrame(emp_results)[["employee_id", "name", "email", "phone", "department", "designation", "joining_date", "employment_status", "years_experience", "primary_skills", "avg_rating"]]
-                df_display.columns = ["ID", "Full Name", "Email", "Phone", "Department", "Designation", "Joined", "Status", "Exp (Yrs)", "Primary Skills", "Performance"]
-                st.dataframe(
-                    df_display,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "ID": st.column_config.TextColumn("ID", width="small"),
-                        "Full Name": st.column_config.TextColumn("Employee Name", width="medium"),
-                        "Department": st.column_config.TextColumn("Department", width="medium"),
-                        "Designation": st.column_config.TextColumn("Designation", width="medium"),
-                        "Status": st.column_config.TextColumn("Status", width="small"),
-                        "Exp (Yrs)": st.column_config.NumberColumn("Experience", format="%.1f yrs"),
-                        "Performance": st.column_config.ProgressColumn("Score (1–5)", min_value=1.0, max_value=5.0, format="%.2f"),
-                    }
-                )
+                render_html(render_colored_employee_table(emp_results))
+                with st.expander("Spreadsheet Grid View & Raw Data", expanded=False):
+                    df_display = pd.DataFrame(emp_results)[["employee_id", "name", "email", "phone", "department", "designation", "joining_date", "employment_status", "years_experience", "primary_skills", "avg_rating"]]
+                    df_display.columns = ["ID", "Full Name", "Email", "Phone", "Department", "Designation", "Joined", "Status", "Exp (Yrs)", "Primary Skills", "Performance"]
+                    st.dataframe(
+                        df_display,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "ID": st.column_config.TextColumn("ID", width="small"),
+                            "Full Name": st.column_config.TextColumn("Employee Name", width="medium"),
+                            "Department": st.column_config.TextColumn("Department", width="medium"),
+                            "Designation": st.column_config.TextColumn("Designation", width="medium"),
+                            "Status": st.column_config.TextColumn("Status", width="small"),
+                            "Exp (Yrs)": st.column_config.NumberColumn("Experience", format="%.1f yrs"),
+                            "Performance": st.column_config.ProgressColumn("Score (1–5)", min_value=1.0, max_value=5.0, format="%.2f"),
+                        }
+                    )
 
             csv_data = pd.DataFrame(emp_results).to_csv(index=False).encode("utf-8")
             st.download_button(
@@ -1865,21 +2246,23 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                             """
                         )
                 else:
-                    df_rev = pd.DataFrame(filtered_reviews)[["employee_id", "employee_name", "department", "designation", "review_period", "performance_score", "achievements", "strengths", "improvements", "manager_feedback", "created_at"]]
-                    df_rev.columns = ["Emp ID", "Employee Name", "Department", "Designation", "Period", "Score (1–5)", "Key Achievements", "Demonstrated Strengths", "Growth Areas", "Manager Feedback", "Recorded On"]
-                    st.dataframe(
-                        df_rev,
-                        use_container_width=True,
-                        hide_index=True,
-                        column_config={
-                            "Emp ID": st.column_config.TextColumn("ID", width="small"),
-                            "Employee Name": st.column_config.TextColumn("Employee", width="medium"),
-                            "Department": st.column_config.TextColumn("Department", width="medium"),
-                            "Period": st.column_config.TextColumn("Review Period", width="small"),
-                            "Score (1–5)": st.column_config.ProgressColumn("Performance Score", min_value=1.0, max_value=5.0, format="%.2f"),
-                            "Recorded On": st.column_config.DateColumn("Evaluation Date", format="YYYY-MM-DD")
-                        }
-                    )
+                    render_html(render_colored_review_table(filtered_reviews))
+                    with st.expander("Spreadsheet Grid View & Raw Data", expanded=False):
+                        df_rev = pd.DataFrame(filtered_reviews)[["employee_id", "employee_name", "department", "designation", "review_period", "performance_score", "achievements", "strengths", "improvements", "manager_feedback", "created_at"]]
+                        df_rev.columns = ["Emp ID", "Employee Name", "Department", "Designation", "Period", "Score (1–5)", "Key Achievements", "Demonstrated Strengths", "Growth Areas", "Manager Feedback", "Recorded On"]
+                        st.dataframe(
+                            df_rev,
+                            use_container_width=True,
+                            hide_index=True,
+                            column_config={
+                                "Emp ID": st.column_config.TextColumn("ID", width="small"),
+                                "Employee Name": st.column_config.TextColumn("Employee", width="medium"),
+                                "Department": st.column_config.TextColumn("Department", width="medium"),
+                                "Period": st.column_config.TextColumn("Review Period", width="small"),
+                                "Score (1–5)": st.column_config.ProgressColumn("Performance Score", min_value=1.0, max_value=5.0, format="%.2f"),
+                                "Recorded On": st.column_config.DateColumn("Evaluation Date", format="YYYY-MM-DD")
+                            }
+                        )
 
                 # Performance Trajectory Chart
                 st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
@@ -2051,20 +2434,7 @@ elif page in ["Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
             emp_skills = get_employee_skills(target_code)
             st.markdown(f"##### Verified Skills Catalog ({len(emp_skills)})")
             if emp_skills:
-                df_sk = pd.DataFrame(emp_skills)[["id", "skill_name", "category", "proficiency_level", "years_exp", "last_updated"]]
-                df_sk.columns = ["ID", "Skill Name", "Category", "Proficiency", "Experience (Yrs)", "Last Updated"]
-                st.dataframe(
-                    df_sk.drop(columns=["ID"]),
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "Skill Name": st.column_config.TextColumn("Competency", width="medium"),
-                        "Category": st.column_config.TextColumn("Category", width="small"),
-                        "Proficiency": st.column_config.TextColumn("Proficiency", width="small"),
-                        "Experience (Yrs)": st.column_config.NumberColumn("Experience", format="%.1f yrs"),
-                        "Last Updated": st.column_config.DateColumn("Cataloged Date", format="YYYY-MM-DD")
-                    }
-                )
+                render_html(render_colored_skills_table(emp_skills))
 
                 sk_del_map = {f"{s['skill_name']} ({s['proficiency_level']})": s["id"] for s in emp_skills}
                 sel_del_sk = st.selectbox("Remove Competency", ["Select skill to remove..."] + list(sk_del_map.keys()))
@@ -2169,25 +2539,7 @@ elif page in ["Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
         if gap_result["gaps"]:
             st.markdown("##### Detailed Priority Competency Breakdown")
             levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
-            df_gaps = pd.DataFrame([{
-                "Skill Required": g["skill"],
-                "Current Level": levels_str.get(g["current_level"], str(g["current_level"])),
-                "Benchmark Level": levels_str.get(g["required_level"], str(g["required_level"])),
-                "Skill Gap": g["gap"],
-                "Priority": g["priority"]
-            } for g in gap_result["gaps"]])
-            st.dataframe(
-                df_gaps,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "Skill Required": st.column_config.TextColumn("Competency", width="medium"),
-                    "Current Level": st.column_config.TextColumn("Current Level", width="small"),
-                    "Benchmark Level": st.column_config.TextColumn("Required Benchmark", width="small"),
-                    "Skill Gap": st.column_config.ProgressColumn("Competency Gap", min_value=0, max_value=4, format="-%d"),
-                    "Priority": st.column_config.TextColumn("Priority", width="small"),
-                }
-            )
+            render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
 
         if gap_result.get("recommended_training"):
             st.markdown("##### Recommended Targeted Training Courses")
@@ -2217,22 +2569,7 @@ elif page in ["Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
 
         trainings = get_training_records(None if is_admin else target_code)
         if trainings:
-            df_tr = pd.DataFrame(trainings)[["employee_id", "course_name", "target_skill", "provider", "target_completion_date", "status", "score"]]
-            df_tr.columns = ["Emp ID", "Course Title", "Target Competency", "Provider", "Target Date", "Status", "Score"]
-            st.dataframe(
-                df_tr,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "Emp ID": st.column_config.TextColumn("ID", width="small"),
-                    "Course Title": st.column_config.TextColumn("Course Title", width="medium"),
-                    "Target Competency": st.column_config.TextColumn("Target Skill", width="small"),
-                    "Provider": st.column_config.TextColumn("Provider", width="small"),
-                    "Target Date": st.column_config.DateColumn("Target Date", format="YYYY-MM-DD"),
-                    "Status": st.column_config.TextColumn("Status", width="small"),
-                    "Score": st.column_config.ProgressColumn("Grade", min_value=0, max_value=100, format="%d%%")
-                }
-            )
+            render_html(render_colored_training_table(trainings))
         else:
             st.info("No active training courses recorded.")
 
@@ -2356,21 +2693,7 @@ elif page in ["Career Goals", "Career Development Plans", "My Career Goals"]:
                                 st.rerun()
                     st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
             else:
-                df_g = pd.DataFrame(goals_data)[["title", "target_designation", "description", "target_date", "progress", "status", "updated_at"]]
-                df_g.columns = ["Goal Title", "Target Designation", "Action Steps & Description", "Target Date", "Progress (%)", "Status", "Last Updated"]
-                st.dataframe(
-                    df_g,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "Goal Title": st.column_config.TextColumn("Goal Title", width="medium"),
-                        "Target Designation": st.column_config.TextColumn("Target Role", width="small"),
-                        "Target Date": st.column_config.DateColumn("Target Date", format="YYYY-MM-DD"),
-                        "Progress (%)": st.column_config.ProgressColumn("Milestone Completion", min_value=0, max_value=100, format="%d%%"),
-                        "Status": st.column_config.TextColumn("Status", width="small"),
-                        "Last Updated": st.column_config.TextColumn("Updated", width="small"),
-                    }
-                )
+                render_html(render_colored_goals_table(goals_data))
 
             fig_goals = px.bar(
                 pd.DataFrame(goals_data),
@@ -2551,26 +2874,7 @@ elif page in ["Reports", "Reports & Analytics", "Career Growth Report"]:
             """
         )
         if dept_summary:
-            df_ds = pd.DataFrame(dept_summary)
-            df_ds["avg_score"] = pd.to_numeric(df_ds["avg_score"], errors="coerce").fillna(0.0)
-            df_ds.columns = ["Department", "Headcount", "Average Rating", "Total Reviews Logged"]
-            st.dataframe(
-                df_ds,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "Department": st.column_config.TextColumn("Department", width="medium"),
-                    "Headcount": st.column_config.NumberColumn("Headcount", format="%d active", width="small"),
-                    "Average Rating": st.column_config.ProgressColumn(
-                        "Average Rating",
-                        min_value=0.0,
-                        max_value=5.0,
-                        format="%.2f / 5.0",
-                        width="medium"
-                    ),
-                    "Total Reviews Logged": st.column_config.NumberColumn("Completed Reviews", format="%d", width="small")
-                }
-            )
+            render_html(render_colored_dept_summary_table(dept_summary))
 
         if employees:
             df_status = pd.DataFrame(employees)["employment_status"].value_counts().reset_index()
