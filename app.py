@@ -649,7 +649,7 @@ def landing_webpage():
                         <span style="font-size: 1.35rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">Talent Growth</span>
                         <span style="font-size: 0.72rem; color: #2563EB; font-weight: 800; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 9999px; padding: 2px 8px; letter-spacing: 0.04em;">ENTERPRISE</span>
                     </div>
-                    <div style="font-size: 0.78rem; color: #64748B; font-weight: 500;">Next-Gen Human Capital Operating System</div>
+                    <div style="font-size: 0.78rem; color: #64748B; font-weight: 500;">Talent Management Platform for Employee Performance and Career Growth</div>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;">
@@ -679,7 +679,7 @@ def landing_webpage():
             <div style="max-width: 860px; position: relative; z-index: 2;">
                 <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(129, 140, 248, 0.35); padding: 5px 14px; border-radius: 9999px; color: #C7D2FE; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1.25rem;">
                     {get_svg_icon("sparkles", size=14, color="#A5B4FC")}
-                    Next-Gen Human Capital Operating System
+                    Talent Management Platform for Employee Performance and Career Growth
                 </div>
                 <h1 style="font-size: 2.9rem; font-weight: 900; color: #FFFFFF; line-height: 1.15; letter-spacing: -0.03em; margin: 0 0 1rem 0;">
                     Build Better Teams,<br/>
@@ -760,11 +760,14 @@ def landing_webpage():
             """
         )
         if st.button("Sign In as HR Admin", key="landing_btn_admin", use_container_width=True, type="primary"):
-            admin_acc = login("admin@talentgrowth.com", "Admin@12345")
+            admin_acc = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
             if admin_acc:
                 st.session_state.user = admin_acc
                 st.session_state.current_page = "Dashboard"
+                st.session_state.auth_view = "landing"
                 st.rerun()
+            else:
+                st.error("Authentication failed. Please verify HR Admin credentials.")
 
     with col_d2:
         render_html(
@@ -794,7 +797,10 @@ def landing_webpage():
             if emp_acc:
                 st.session_state.user = emp_acc
                 st.session_state.current_page = "Dashboard"
+                st.session_state.auth_view = "landing"
                 st.rerun()
+            else:
+                st.error("Authentication failed. Please verify employee credentials.")
 
     with col_d3:
         render_html(
@@ -824,7 +830,10 @@ def landing_webpage():
             if ravi_acc:
                 st.session_state.user = ravi_acc
                 st.session_state.current_page = "Dashboard"
+                st.session_state.auth_view = "landing"
                 st.rerun()
+            else:
+                st.error("Authentication failed. Please verify employee credentials.")
 
     # SEPARATED SECTION 2: ENTERPRISE PLATFORM CAPABILITIES
     render_html(
@@ -1016,6 +1025,7 @@ def login_page():
                     if user_data:
                         st.session_state.user = user_data
                         st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
                         st.success(f"Welcome back, {user_data['name']}!")
                         st.rerun()
                     else:
