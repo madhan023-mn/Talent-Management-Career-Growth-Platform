@@ -2766,42 +2766,204 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
     goal_user_id = None if is_admin else uid
     goal_stats = get_goal_stats(user_id=goal_user_id)
 
-    # Pro Metric Cards
-    st.markdown(
-        f"""
-        <div class="pro-metric-grid">
-            <div class="pro-metric-card card-blue">
-                <div class="pro-metric-label">Total Goals</div>
-                <div class="pro-metric-value">{goal_stats['total']}</div>
-                <div class="pro-metric-sub">Defined career milestones</div>
+    if "cg_status_sel" not in st.session_state:
+        st.session_state.cg_status_sel = "All Statuses"
+
+    curr_filter = st.session_state.cg_status_sel
+
+    # INTERACTIVE 5-CARD EXECUTIVE METRIC ROW
+    c_m1, c_m2, c_m3, c_m4, c_m5 = st.columns(5, gap="small")
+
+    with c_m1:
+        is_act = (curr_filter == "All Statuses")
+        act_cls = "active-filter" if is_act else ""
+        badge_html = '<span class="pro-metric-badge" style="background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE;">SELECTED</span>' if is_act else '<span class="pro-metric-badge" style="background:#F1F5F9; color:#475569;">100% POOL</span>'
+        render_html(f"""
+        <div class="pro-metric-card card-blue {act_cls}">
+            <div class="pro-metric-header">
+                <span class="pro-metric-label">Total Goals</span>
+                <div class="pro-metric-icon-wrap">{get_svg_icon("target", size=18, color="#2563EB")}</div>
             </div>
-            <div class="pro-metric-card card-amber">
-                <div class="pro-metric-label">In Progress (25–75%)</div>
-                <div class="pro-metric-value">{goal_stats['in_progress']}</div>
-                <div class="pro-metric-sub">Active execution</div>
-            </div>
-            <div class="pro-metric-card card-emerald">
-                <div class="pro-metric-label">Completed (100%)</div>
-                <div class="pro-metric-value">{goal_stats['completed']}</div>
-                <div class="pro-metric-sub">Finished milestones</div>
-            </div>
-            <div class="pro-metric-card card-rose">
-                <div class="pro-metric-label">Overdue Goals</div>
-                <div class="pro-metric-value">{goal_stats['overdue']}</div>
-                <div class="pro-metric-sub">Past target deadline</div>
-            </div>
-            <div class="pro-metric-card card-purple">
-                <div class="pro-metric-label">Avg Progress</div>
-                <div class="pro-metric-value">{goal_stats['avg_progress']}%</div>
-                <div class="pro-metric-sub">Milestone completion</div>
+            <div class="pro-metric-value">{goal_stats['total']}</div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+                <span class="pro-metric-sub">Defined career milestones</span>
+                {badge_html}
             </div>
         </div>
-        """,
-        unsafe_allow_html=True
-    )
+        """)
+        if st.button("All Goals" if not is_act else "Active ✓", key="btn_card_all", use_container_width=True, type="primary" if is_act else "secondary"):
+            st.session_state.cg_status_sel = "All Statuses"
+            st.rerun()
 
-    if goal_stats["total"] > 0:
-        st.progress(goal_stats["avg_progress"] / 100, text=f"Overall Milestone Completion: {goal_stats['avg_progress']}%")
+    with c_m2:
+        is_act = (curr_filter == "In Progress")
+        act_cls = "active-filter" if is_act else ""
+        badge_html = '<span class="pro-metric-badge" style="background:#FEF3C7; color:#B45309; border:1px solid #FDE68A;">SELECTED</span>' if is_act else '<span class="pro-metric-badge" style="background:#FEF3C7; color:#92400E;">25–75%</span>'
+        render_html(f"""
+        <div class="pro-metric-card card-amber {act_cls}">
+            <div class="pro-metric-header">
+                <span class="pro-metric-label">In Progress (25–75%)</span>
+                <div class="pro-metric-icon-wrap">{get_svg_icon("clock", size=18, color="#D97706")}</div>
+            </div>
+            <div class="pro-metric-value">{goal_stats['in_progress']}</div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+                <span class="pro-metric-sub">Active execution</span>
+                {badge_html}
+            </div>
+        </div>
+        """)
+        if st.button("Filter: In Progress" if not is_act else "Active ✓", key="btn_card_prog", use_container_width=True, type="primary" if is_act else "secondary"):
+            st.session_state.cg_status_sel = "In Progress"
+            st.rerun()
+
+    with c_m3:
+        is_act = (curr_filter == "Completed")
+        act_cls = "active-filter" if is_act else ""
+        badge_html = '<span class="pro-metric-badge" style="background:#ECFDF5; color:#047857; border:1px solid #A7F3D0;">SELECTED</span>' if is_act else '<span class="pro-metric-badge" style="background:#ECFDF5; color:#065F46;">100% DONE</span>'
+        render_html(f"""
+        <div class="pro-metric-card card-emerald {act_cls}">
+            <div class="pro-metric-header">
+                <span class="pro-metric-label">Completed (100%)</span>
+                <div class="pro-metric-icon-wrap">{get_svg_icon("check", size=18, color="#059669")}</div>
+            </div>
+            <div class="pro-metric-value">{goal_stats['completed']}</div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+                <span class="pro-metric-sub">Finished milestones</span>
+                {badge_html}
+            </div>
+        </div>
+        """)
+        if st.button("Filter: Done" if not is_act else "Active ✓", key="btn_card_comp", use_container_width=True, type="primary" if is_act else "secondary"):
+            st.session_state.cg_status_sel = "Completed"
+            st.rerun()
+
+    with c_m4:
+        is_act = (curr_filter == "Overdue")
+        act_cls = "active-filter" if is_act else ""
+        badge_html = '<span class="pro-metric-badge" style="background:#FEF2F2; color:#B91C1C; border:1px solid #FECACA;">SELECTED</span>' if is_act else '<span class="pro-metric-badge" style="background:#FEF2F2; color:#991B1B;">DEADLINE</span>'
+        render_html(f"""
+        <div class="pro-metric-card card-rose {act_cls}">
+            <div class="pro-metric-header">
+                <span class="pro-metric-label">Overdue Goals</span>
+                <div class="pro-metric-icon-wrap">{get_svg_icon("shield", size=18, color="#DC2626")}</div>
+            </div>
+            <div class="pro-metric-value">{goal_stats['overdue']}</div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+                <span class="pro-metric-sub">Past target deadline</span>
+                {badge_html}
+            </div>
+        </div>
+        """)
+        if st.button("Filter: Overdue" if not is_act else "Active ✓", key="btn_card_overdue", use_container_width=True, type="primary" if is_act else "secondary"):
+            st.session_state.cg_status_sel = "Overdue"
+            st.rerun()
+
+    with c_m5:
+        render_html(f"""
+        <div class="pro-metric-card card-purple">
+            <div class="pro-metric-header">
+                <span class="pro-metric-label">Avg Progress</span>
+                <div class="pro-metric-icon-wrap">{get_svg_icon("trending_up", size=18, color="#7C3AED")}</div>
+            </div>
+            <div class="pro-metric-value">{goal_stats['avg_progress']}%</div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
+                <span class="pro-metric-sub">Milestone completion</span>
+                <span class="pro-metric-badge" style="background:#F5F3FF; color:#6D28D9;">VELOCITY</span>
+            </div>
+        </div>
+        """)
+        if st.button("Reset Filter", key="btn_card_reset", use_container_width=True, type="secondary"):
+            st.session_state.cg_status_sel = "All Statuses"
+            st.rerun()
+
+    # EXECUTIVE OVERALL MILESTONE COMPLETION DASHBOARD BANNER
+    avg_pct = goal_stats["avg_progress"]
+    total_g = goal_stats["total"]
+    comp_g = goal_stats["completed"]
+    prog_g = goal_stats["in_progress"]
+    over_g = goal_stats["overdue"]
+    not_start_g = goal_stats["not_started"]
+
+    if avg_pct >= 75:
+        vel_status = "Velocity: Ahead of Target Pace"
+        vel_badge_cls = "tbl-badge-green"
+        vel_dot_color = "#10B981"
+    elif avg_pct >= 40:
+        vel_status = "Velocity: Active Flight Momentum"
+        vel_badge_cls = "tbl-badge-blue"
+        vel_dot_color = "#2563EB"
+    elif avg_pct > 0:
+        vel_status = "Velocity: Early Acceleration"
+        vel_badge_cls = "tbl-badge-yellow"
+        vel_dot_color = "#F59E0B"
+    else:
+        vel_status = "Velocity: Planning & Initiation"
+        vel_badge_cls = "tbl-badge-yellow"
+        vel_dot_color = "#94A3B8"
+
+    render_html(f"""
+    <div class="milestone-exec-banner">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 0.85rem;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center; color: #2563EB; box-shadow: 0 2px 6px rgba(37,99,235,0.12);">
+                    {get_svg_icon("goals", size=22, color="#2563EB")}
+                </div>
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.25rem; font-weight: 800; color: #0F172A; letter-spacing: -0.01em;">Overall Milestone Completion</span>
+                        <span style="font-size: 1.35rem; font-weight: 900; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 2px 10px; border-radius: 8px;">{avg_pct}%</span>
+                    </div>
+                    <div style="font-size: 0.84rem; color: #64748B; margin-top: 2px;">
+                        <strong>{comp_g} of {total_g}</strong> milestones achieved ({avg_pct}% weighted completion across career roadmap)
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="tbl-badge {vel_badge_cls}" style="font-size: 0.8rem; padding: 5px 12px;">
+                    <span class="tbl-badge-dot" style="background: {vel_dot_color};"></span>
+                    {vel_status}
+                </span>
+            </div>
+        </div>
+
+        <div class="milestone-track-container">
+            <div class="milestone-track-bar">
+                <div class="milestone-track-fill" style="width: {avg_pct}%;"></div>
+            </div>
+            <div class="milestone-ticks-row">
+                <span>0% Defined</span>
+                <span>25% Initiated</span>
+                <span>50% Mid-Point</span>
+                <span>75% Advanced</span>
+                <span>100% Achieved</span>
+            </div>
+        </div>
+
+        <div style="border-top: 1px solid #F1F5F9; margin-top: 1rem; padding-top: 0.85rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <span class="milestone-chip">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #3B82F6;"></span>
+                    In Progress: <strong>{prog_g}</strong>
+                </span>
+                <span class="milestone-chip">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #10B981;"></span>
+                    Completed: <strong>{comp_g}</strong>
+                </span>
+                <span class="milestone-chip">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #EF4444;"></span>
+                    Overdue: <strong>{over_g}</strong>
+                </span>
+                <span class="milestone-chip">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #94A3B8;"></span>
+                    Not Started: <strong>{not_start_g}</strong>
+                </span>
+            </div>
+            <div style="font-size: 0.8rem; color: #64748B;">
+                Click any metric card above to dynamically filter milestones below
+            </div>
+        </div>
+    </div>
+    """)
 
     tab_g_view, tab_g_create, tab_g_edit = st.tabs(["Goals Dashboard & Tracking", "Create SMART Career Goal", "Manage Milestones (Edit / Delete)"])
 
@@ -2814,7 +2976,30 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
         with c_ghead2:
             goal_view_mode = st.radio("Goal View Layout", ["Roadmap View", "Table View"], horizontal=True, key="goal_view_mode", label_visibility="collapsed")
 
-        status_filter = st.selectbox("Filter Goals by Status", ["All Statuses", "Not Started", "In Progress", "Completed", "Overdue"], key="cg_status_sel")
+        status_options = ["All Statuses", "In Progress", "Completed", "Overdue", "Not Started"]
+        if st.session_state.cg_status_sel not in status_options:
+            st.session_state.cg_status_sel = "All Statuses"
+
+        c_flt1, c_flt2 = st.columns([3, 1])
+        with c_flt1:
+            status_filter = st.selectbox(
+                "Filter Goals by Status",
+                status_options,
+                index=status_options.index(st.session_state.cg_status_sel),
+                key="cg_status_sel_box"
+            )
+            if status_filter != st.session_state.cg_status_sel:
+                st.session_state.cg_status_sel = status_filter
+                st.rerun()
+
+        with c_flt2:
+            st.write("")
+            st.write("")
+            if status_filter != "All Statuses":
+                if st.button("Clear Filter", key="btn_inline_reset_filter", use_container_width=True):
+                    st.session_state.cg_status_sel = "All Statuses"
+                    st.rerun()
+
         goals_data = get_goals(user_id=goal_user_id, status_filter=status_filter if status_filter != "All Statuses" else None)
 
         if goals_data:
@@ -2900,7 +3085,22 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
                     else:
                         st.error(msg_qp)
         else:
-            st.info("No career goals found matching criteria.")
+            render_html(f"""
+            <div style="background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 2.25rem 1.5rem; text-align: center; margin: 1.25rem 0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="width: 48px; height: 48px; border-radius: 12px; background: #EFF6FF; color: #2563EB; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                    {get_svg_icon("goals", size=24, color="#2563EB")}
+                </div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 4px;">No Goals with Status '{status_filter}'</div>
+                <div style="font-size: 0.88rem; color: #64748B; max-width: 460px; margin: 0 auto 1.25rem auto;">
+                    There are currently no career milestones matching this status filter. You can reset filters to view all active objectives.
+                </div>
+            </div>
+            """)
+            c_e1, c_e2, c_e3 = st.columns([1.5, 1, 1.5])
+            with c_e2:
+                if st.button("Show All Career Goals", key="btn_empty_show_all", use_container_width=True, type="primary"):
+                    st.session_state.cg_status_sel = "All Statuses"
+                    st.rerun()
 
     # --- TAB 2: CREATE GOAL ---
     with tab_g_create:
