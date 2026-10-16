@@ -1,6 +1,6 @@
-# TalentSphere — Talent Management & Career Growth Platform
+# Talent Growth — Talent Management & Career Growth Platform
 
-TalentSphere is a modern, enterprise-ready Python Streamlit application for **Employee Performance Management, Workforce Competency Tracking, Skill Gap Analysis, and Career Goal Development**. Built with a local-first SQLite persistence architecture, it provides role-based access control (RBAC) for both **HR Administrators** and **Employees**.
+Talent Growth is a modern, enterprise-ready Python Streamlit application for **Employee Performance Management, Workforce Competency Tracking, Skill Gap Analysis, and Career Goal Development**. Built with a local-first SQLite persistence architecture, it provides role-based access control (RBAC) for both **HR Administrators** and **Employees**.
 
 ---
 
@@ -13,7 +13,7 @@ TalentSphere is a modern, enterprise-ready Python Streamlit application for **Em
 ### 2. 👥 Employee Management (Day 3 Classroom Task)
 - **Two Ingestion Workflows**:
   - **Method 1: Manual Single Employee Form**: Real-time form with validation, clean form reset, and direct SQLite entry.
-  - **Method 2: Bulk Dataset Upload (CSV / Excel)**: High-throughput batch ingestion supporting `.csv` and `.xlsx` files, downloadable sample template (`talentsphere_sample_employees.csv`), dataframe preview, row-by-row validation, and duplicate skipping.
+  - **Method 2: Bulk Dataset Upload (CSV / Excel)**: High-throughput batch ingestion supporting `.csv` and `.xlsx` files, downloadable sample template (`talent_growth_sample_employees.csv`), dataframe preview, row-by-row validation, and duplicate skipping.
 - **Enterprise Fields**: Employee ID (Unique), Full Name, Corporate Email, Phone, Department, Designation, Joining Date, Employment Status (Active, On Leave, Terminated), Years of Experience, and Primary Skills.
 - **Search & Filtering**: Real-time search across names, IDs, designations, and skills, with department and status filters.
 - **Validation & Duplicate Prevention**: Rejects invalid/negative experience, missing required fields, and duplicate employee IDs/emails.
@@ -76,7 +76,7 @@ infosys_project/
 ├── tests/
 │   ├── __init__.py
 │   └── test_core.py        # Automated test suite (11 test suites)
-└── data/                   # SQLite database (talentsphere.db created automatically)
+└── data/                   # SQLite database (talentgrowth.db created automatically)
 ```
 
 ---
@@ -116,7 +116,7 @@ Upon initial startup, the database is seeded with realistic demo records and acc
 
 | Role | Email | Password | Access Level |
 | :--- | :--- | :--- | :--- |
-| **HR Administrator** | `admin@talentsphere.com` | `Admin@12345` | Full system access (Directory, Reviews, Analytics, Training) |
+| **HR Administrator** | `admin@talentgrowth.com` | `Admin@12345` | Full system access (Directory, Reviews, Analytics, Training) |
 | **Employee (Alex Morgan)** | `alex@company.com` | `Password123` | Personal profile, goals, skills, review history |
 | **Employee (Ravi Kumar)** | `ravi@company.com` | `Password123` | Jr Python Dev showcase (SQL/Communication upskilling to Sr Dev) |
 

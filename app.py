@@ -747,7 +747,7 @@ def landing_webpage():
                     <span style="font-size: 0.72rem; font-weight: 800; color: #92400E; background: #FEF3C7; border: 1px solid #FDE68A; padding: 3px 8px; border-radius: 9999px;">ADMIN</span>
                 </div>
                 <div style="font-size: 1.2rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">HR Administrator</div>
-                <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">admin@talentsphere.com</div>
+                <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">admin@talentgrowth.com</div>
                 <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
                     Full administrative governance, workforce directory CRUD, performance trajectory tracking, bulk CSV imports, and ATS studio.
                 </p>
@@ -760,7 +760,7 @@ def landing_webpage():
             """
         )
         if st.button("Sign In as HR Admin", key="landing_btn_admin", use_container_width=True, type="primary"):
-            admin_acc = login("admin@talentsphere.com", "Admin@12345")
+            admin_acc = login("admin@talentgrowth.com", "Admin@12345")
             if admin_acc:
                 st.session_state.user = admin_acc
                 st.session_state.current_page = "Dashboard"
@@ -1163,13 +1163,9 @@ with st.sidebar:
     st.markdown(
         f"""
         <div style="padding-top: 0.2rem; margin-bottom: 0.5rem;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
-                    <path d="M14 26V11" stroke="#059669" stroke-width="2.8" stroke-linecap="round"/>
-                    <path d="M14 11C14 7 10 4 6 5C5 9 8 13 14 13" fill="#34D399" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M14 16C16 11 20 8 23 9C24 13 21 17 14 18" fill="#10B981" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span style="font-weight: 800; font-size: 1.15rem; color: #0F172A; letter-spacing: -0.01em;">TalentSphere</span>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 2px;">
+                {get_svg_icon("brand_logo", size=24)}
+                <span style="font-weight: 800; font-size: 1.15rem; color: #0F172A; letter-spacing: -0.01em;">Talent Growth</span>
             </div>
             <div style="font-size: 0.78rem; color: #64748B; margin-bottom: 1rem;">
                 Signed in as {user['name']}
@@ -2622,7 +2618,7 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                 t_emp_code = emp_sk_map[t_emp] if all_emps else target_code
                 t_course = st.text_input("Course Title *", placeholder="e.g. Enterprise System Design Architecture")
                 t_skill = st.text_input("Target Skill *", placeholder="e.g. System Design")
-                t_provider = st.text_input("Training Provider", value="TalentSphere Academy")
+                t_provider = st.text_input("Training Provider", value="Talent Growth Academy")
                 t_due = st.date_input("Target Completion Date", value=date.today())
                 submit_train = st.form_submit_button("Assign Course", type="primary")
 
@@ -3396,9 +3392,8 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
             c.setFont("Helvetica-Bold" if is_header else "Helvetica", 13 if para == user["name"] else 9)
             for chunk in [line[i:i+95] for i in range(0, max(1, len(line)), 95)]:
                 c.drawString(48, y, chunk)
-                y -= 14
     c.save()
-    st.download_button("Download ATS resume PDF", buf.getvalue(), file_name="talentsphere_resume.pdf", mime="application/pdf", type="primary")
+    st.download_button("Download ATS resume PDF", buf.getvalue(), file_name="talent_growth_resume.pdf", mime="application/pdf", type="primary")
 
 # ==============================================================================
 # 10. CAREER DIRECTION & AI COACH
@@ -3647,7 +3642,7 @@ elif page in ["Settings", "Settings & System", "Settings & Privacy"]:
         if db_path.is_file():
             with open(db_path, "rb") as f:
                 db_bytes = f.read()
-            st.download_button("Download talentsphere.db File", db_bytes, file_name="talentsphere.db", mime="application/octet-stream", use_container_width=True)
+            st.download_button("Download Database (talentgrowth.db)", db_bytes, file_name="talentgrowth.db", mime="application/octet-stream", use_container_width=True)
 
     render_html(
         f"""

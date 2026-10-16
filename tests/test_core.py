@@ -12,7 +12,7 @@ if str(root_dir) not in sys.path:
 
 # Set temporary database path for tests
 temp_db_dir = tempfile.mkdtemp()
-os.environ["DATABASE_PATH"] = str(Path(temp_db_dir) / "test_talentsphere_full.db")
+os.environ["DATABASE_PATH"] = str(Path(temp_db_dir) / "test_talentgrowth_full.db")
 
 from services.core import (
     init_db, register, login, get_user_by_id, get_profile, save_profile,

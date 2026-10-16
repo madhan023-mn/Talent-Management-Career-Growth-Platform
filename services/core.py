@@ -341,17 +341,21 @@ def init_db() -> None:
         if "target_designation" not in cg_cols:
             cursor.execute("ALTER TABLE career_goals ADD COLUMN target_designation TEXT DEFAULT ''")
 
-        # Seed initial admin user if none exists
-        cursor.execute("SELECT id FROM users WHERE email = 'admin@talentsphere.com'")
-        if not cursor.fetchone():
+        # Seed initial admin user if none exists (supporting admin@talentgrowth.com)
+        cursor.execute("SELECT id FROM users WHERE email IN ('admin@talentgrowth.com', 'admin@talentsphere.com')")
+        admin_row = cursor.fetchone()
+        if not admin_row:
             admin_pwd_hash, admin_salt = hash_password("Admin@12345")
             cursor.execute(
                 "INSERT INTO users (name, email, password_hash, salt, role, employee_id) VALUES (?, ?, ?, ?, ?, ?)",
-                ("HR Administrator", "admin@talentsphere.com", admin_pwd_hash, admin_salt, "admin", "EMP001")
+                ("HR Administrator", "admin@talentgrowth.com", admin_pwd_hash, admin_salt, "admin", "EMP001")
             )
             admin_uid = cursor.lastrowid
             cursor.execute("INSERT OR IGNORE INTO profiles (user_id, job_title, department) VALUES (?, ?, ?)",
                            (admin_uid, "VP of Human Resources", "Human Resources"))
+        else:
+            # Update legacy email to admin@talentgrowth.com
+            cursor.execute("UPDATE users SET email = 'admin@talentgrowth.com' WHERE email = 'admin@talentsphere.com'")
 
         # Seed initial demo employee if none exists
         cursor.execute("SELECT id FROM users WHERE email = 'alex@company.com'")
@@ -590,6 +594,10 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
         cursor = conn.cursor()
         cursor.execute("SELECT id, name, email, password_hash, salt, role, employee_id FROM users WHERE email = ?", (email,))
         row = cursor.fetchone()
+        if not row and email in ["admin@talentgrowth.com", "admin@talentsphere.com"]:
+            alt = "admin@talentsphere.com" if email == "admin@talentgrowth.com" else "admin@talentgrowth.com"
+            cursor.execute("SELECT id, name, email, password_hash, salt, role, employee_id FROM users WHERE email = ?", (alt,))
+            row = cursor.fetchone()
         if not row:
             return None
         if verify_password(password, row["password_hash"], row["salt"]):

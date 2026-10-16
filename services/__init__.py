@@ -1,4 +1,4 @@
-# Services package for TalentSphere
+# Services package for Talent Growth
 from services.ai_coach import (
     call_gemini_api,
     generate_ai_coaching_guidance,
