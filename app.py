@@ -1699,25 +1699,79 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
         """
     )
 
-    # 4 Top Metrics Row matching Screenshot 4
+    # 4 Top Metrics Row - Solid Vibrant KPI Cards matching reference design
+    comp_sub = "+ All sections complete" if completion >= 100 else ("+ Action needed" if completion == 0 else f"+{len(missing)} fields to add")
+    
+    strength_score = analysis.get("score", 0)
+    if strength_score >= 80:
+        strength_sub = "+ Top tier readiness"
+    elif strength_score >= 50:
+        strength_sub = "+ Strong profile"
+    elif strength_score > 0:
+        strength_sub = "+ Developing readiness"
+    else:
+        strength_sub = "+ Early stage profile"
+        
+    target_role_str = profile.get("target_role") or ""
+    if target_role_str:
+        role_label = (target_role_str[:14] + "..") if len(target_role_str) > 16 else target_role_str
+        role_sub = f"vs {role_label}"
+    else:
+        role_sub = "+ Choose target role"
+        
+    skills_cnt = len(skills)
+    skills_sub = f"+{skills_cnt} verified skills" if skills_cnt > 0 else "+ Add competencies"
+
     render_html(
         f"""
-        <div class="ts-metrics-grid">
-            <div class="ts-metric-box">
-                <div class="ts-metric-label">Profile completion</div>
-                <div class="ts-metric-value">{completion}%</div>
+        <div class="kpi-row-grid-vibrant">
+            <div class="kpi-card-vibrant kpi-vibrant-blue">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("user_check", size=26, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Profile Completion</div>
+                    <div class="kpi-vibrant-number">{completion}%</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} {comp_sub}
+                    </div>
+                </div>
             </div>
-            <div class="ts-metric-box">
-                <div class="ts-metric-label">Profile strength</div>
-                <div class="ts-metric-value">{analysis['score']}/100</div>
+            <div class="kpi-card-vibrant kpi-vibrant-green">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("award", size=26, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Profile Strength</div>
+                    <div class="kpi-vibrant-number">{strength_score} / 100</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} {strength_sub}
+                    </div>
+                </div>
             </div>
-            <div class="ts-metric-box">
-                <div class="ts-metric-label">Target role match</div>
-                <div class="ts-metric-value">{analysis['match']}%</div>
+            <div class="kpi-card-vibrant kpi-vibrant-purple">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("target", size=26, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Target Role Match</div>
+                    <div class="kpi-vibrant-number">{analysis['match']}%</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} {role_sub}
+                    </div>
+                </div>
             </div>
-            <div class="ts-metric-box">
-                <div class="ts-metric-label">Skills recorded</div>
-                <div class="ts-metric-value">{len(skills)}</div>
+            <div class="kpi-card-vibrant kpi-vibrant-orange">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("skills", size=26, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Skills Recorded</div>
+                    <div class="kpi-vibrant-number">{skills_cnt}</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} {skills_sub}
+                    </div>
+                </div>
             </div>
         </div>
         <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 1.5rem 0 1.75rem 0;" />
@@ -2537,114 +2591,114 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                     st.info("No skills cataloged for this employee profile yet.")
 
 
-    with tab_sk_gaps:
-        st.markdown("#### Benchmark Role Gap Analysis & Competency Radar")
-        st.caption("Compare current verified competencies against 10 corporate benchmark roles to pinpoint development priorities.")
-        all_roles = list(ROLE_CATALOG.keys())
-        target_role_eval = st.selectbox("Benchmark Target Role", all_roles, key="sel_bench_role")
+        with tab_sk_gaps:
+            st.markdown("#### Benchmark Role Gap Analysis & Competency Radar")
+            st.caption("Compare current verified competencies against 10 corporate benchmark roles to pinpoint development priorities.")
+            all_roles = list(ROLE_CATALOG.keys())
+            target_role_eval = st.selectbox("Benchmark Target Role", all_roles, key="sel_bench_role")
 
-        gap_result = get_employee_skill_gaps(target_code, target_role_eval)
-        
-        c_radar1, c_radar2 = st.columns([1.1, 1])
-        with c_radar1:
-            st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
-            st.progress(gap_result['match_percentage'] / 100)
-
-            # Interactive Spider/Radar Chart
-            if gap_result["gaps"]:
-                top_gaps = gap_result["gaps"][:6]
-                cat_names = [g["skill"] for g in top_gaps]
-                c_vals = [g["current_level"] for g in top_gaps]
-                r_vals = [g["required_level"] for g in top_gaps]
-
-                fig_radar = go.Figure()
-                fig_radar.add_trace(go.Scatterpolar(
-                    r=c_vals + [c_vals[0]],
-                    theta=cat_names + [cat_names[0]],
-                    fill='toself',
-                    fillcolor='rgba(37, 99, 235, 0.15)',
-                    name='Current Level',
-                    line=dict(color='#2563EB', width=2)
-                ))
-                fig_radar.add_trace(go.Scatterpolar(
-                    r=r_vals + [r_vals[0]],
-                    theta=cat_names + [cat_names[0]],
-                    fill='toself',
-                    fillcolor='rgba(16, 185, 129, 0.10)',
-                    name='Target Benchmark',
-                    line=dict(color='#10B981', width=2, dash='dot')
-                ))
-                fig_radar.update_layout(
-                    polar=dict(
-                        radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
-                    ),
-                    showlegend=True,
-                    height=290,
-                    margin=dict(l=25, r=25, t=25, b=25),
-                    paper_bgcolor="#FFFFFF"
-                )
-                st.plotly_chart(fig_radar, use_container_width=True)
-
-        with c_radar2:
-            st.markdown(f"**Benchmark Role Standard:**")
-            st.info(f"{gap_result['criteria']}")
+            gap_result = get_employee_skill_gaps(target_code, target_role_eval)
             
-            # Interactive Skill Growth Simulator
-            st.markdown(f"##### {get_svg_icon('zap', size=16, color='#2563EB')} Interactive Growth Simulator", unsafe_allow_html=True)
-            st.caption("Simulate upgrading a competency to see projected role match improvement:")
+            c_radar1, c_radar2 = st.columns([1.1, 1])
+            with c_radar1:
+                st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
+                st.progress(gap_result['match_percentage'] / 100)
+
+                # Interactive Spider/Radar Chart
+                if gap_result["gaps"]:
+                    top_gaps = gap_result["gaps"][:6]
+                    cat_names = [g["skill"] for g in top_gaps]
+                    c_vals = [g["current_level"] for g in top_gaps]
+                    r_vals = [g["required_level"] for g in top_gaps]
+
+                    fig_radar = go.Figure()
+                    fig_radar.add_trace(go.Scatterpolar(
+                        r=c_vals + [c_vals[0]],
+                        theta=cat_names + [cat_names[0]],
+                        fill='toself',
+                        fillcolor='rgba(37, 99, 235, 0.15)',
+                        name='Current Level',
+                        line=dict(color='#2563EB', width=2)
+                    ))
+                    fig_radar.add_trace(go.Scatterpolar(
+                        r=r_vals + [r_vals[0]],
+                        theta=cat_names + [cat_names[0]],
+                        fill='toself',
+                        fillcolor='rgba(16, 185, 129, 0.10)',
+                        name='Target Benchmark',
+                        line=dict(color='#10B981', width=2, dash='dot')
+                    ))
+                    fig_radar.update_layout(
+                        polar=dict(
+                            radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
+                        ),
+                        showlegend=True,
+                        height=290,
+                        margin=dict(l=25, r=25, t=25, b=25),
+                        paper_bgcolor="#FFFFFF"
+                    )
+                    st.plotly_chart(fig_radar, use_container_width=True)
+
+            with c_radar2:
+                st.markdown(f"**Benchmark Role Standard:**")
+                st.info(f"{gap_result['criteria']}")
+                
+                # Interactive Skill Growth Simulator
+                st.markdown(f"##### {get_svg_icon('zap', size=16, color='#2563EB')} Interactive Growth Simulator", unsafe_allow_html=True)
+                st.caption("Simulate upgrading a competency to see projected role match improvement:")
+                if gap_result["gaps"]:
+                    sim_skill = st.selectbox("Select Competency to Boost", [g["skill"] for g in gap_result["gaps"]], key="sim_sk_sel")
+                    sim_level = st.select_slider("Target Simulated Level", options=[1, 2, 3, 4], value=3, format_func=lambda x: ['None', 'Beginner', 'Intermediate', 'Advanced', 'Expert'][x], key="sim_sk_lvl")
+                    # Calculate simulated match
+                    old_m = gap_result['match_percentage']
+                    boosted_m = min(100, old_m + (sim_level * 5))
+                    st.markdown(
+                        f"""
+                        <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-top: 8px;">
+                            <span style="font-size: 0.84rem; color: #1E40AF; display: inline-flex; align-items: center; gap: 6px;">
+                                Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> {get_svg_icon("arrow_right", size=14, color="#1D4ED8")} <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
+                            </span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
             if gap_result["gaps"]:
-                sim_skill = st.selectbox("Select Competency to Boost", [g["skill"] for g in gap_result["gaps"]], key="sim_sk_sel")
-                sim_level = st.select_slider("Target Simulated Level", options=[1, 2, 3, 4], value=3, format_func=lambda x: ['None', 'Beginner', 'Intermediate', 'Advanced', 'Expert'][x], key="sim_sk_lvl")
-                # Calculate simulated match
-                old_m = gap_result['match_percentage']
-                boosted_m = min(100, old_m + (sim_level * 5))
-                st.markdown(
-                    f"""
-                    <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-top: 8px;">
-                        <span style="font-size: 0.84rem; color: #1E40AF; display: inline-flex; align-items: center; gap: 6px;">
-                            Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> {get_svg_icon("arrow_right", size=14, color="#1D4ED8")} <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
-                        </span>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                st.markdown("##### Detailed Priority Competency Breakdown")
+                levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
+                render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
 
-        if gap_result["gaps"]:
-            st.markdown("##### Detailed Priority Competency Breakdown")
-            levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
-            render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
+            if gap_result.get("recommended_training"):
+                st.markdown("##### Recommended Targeted Training Courses")
+                for t_item in gap_result["recommended_training"]:
+                    st.markdown(f"• **{t_item}** — Focus program to close competency gaps.")
 
-        if gap_result.get("recommended_training"):
-            st.markdown("##### Recommended Targeted Training Courses")
-            for t_item in gap_result["recommended_training"]:
-                st.markdown(f"• **{t_item}** — Focus program to close competency gaps.")
+        with tab_sk_train:
+            st.markdown("#### Training & Course Assignments")
+            if is_admin:
+                with st.form("assign_train_form"):
+                    st.markdown("##### Assign Upskilling Course")
+                    t_emp = st.selectbox("Assignee Employee", list(emp_sk_map.keys()) if all_emps else [target_code])
+                    t_emp_code = emp_sk_map[t_emp] if all_emps else target_code
+                    t_course = st.text_input("Course Title *", placeholder="e.g. Enterprise System Design Architecture")
+                    t_skill = st.text_input("Target Skill *", placeholder="e.g. System Design")
+                    t_provider = st.text_input("Training Provider", value="Talent Growth Academy")
+                    t_due = st.date_input("Target Completion Date", value=date.today())
+                    submit_train = st.form_submit_button("Assign Course", type="primary")
 
-    with tab_sk_train:
-        st.markdown("#### Training & Course Assignments")
-        if is_admin:
-            with st.form("assign_train_form"):
-                st.markdown("##### Assign Upskilling Course")
-                t_emp = st.selectbox("Assignee Employee", list(emp_sk_map.keys()) if all_emps else [target_code])
-                t_emp_code = emp_sk_map[t_emp] if all_emps else target_code
-                t_course = st.text_input("Course Title *", placeholder="e.g. Enterprise System Design Architecture")
-                t_skill = st.text_input("Target Skill *", placeholder="e.g. System Design")
-                t_provider = st.text_input("Training Provider", value="Talent Growth Academy")
-                t_due = st.date_input("Target Completion Date", value=date.today())
-                submit_train = st.form_submit_button("Assign Course", type="primary")
+                if submit_train:
+                    ok_tr, msg_tr = add_training_record(t_emp_code, t_course, t_skill, t_provider, t_due.isoformat(), "Enrolled")
+                    if ok_tr:
+                        st.success(msg_tr)
+                        st.rerun()
+                    else:
+                        st.error(msg_tr)
 
-            if submit_train:
-                ok_tr, msg_tr = add_training_record(t_emp_code, t_course, t_skill, t_provider, t_due.isoformat(), "Enrolled")
-                if ok_tr:
-                    st.success(msg_tr)
-                    st.rerun()
-                else:
-                    st.error(msg_tr)
-
-        trainings = get_training_records(None if is_admin else target_code)
-        if trainings:
-            render_html(render_colored_training_table(trainings))
-        else:
-            st.info("No active training courses recorded.")
+            trainings = get_training_records(None if is_admin else target_code)
+            if trainings:
+                render_html(render_colored_training_table(trainings))
+            else:
+                st.info("No active training courses recorded.")
 
 # ==============================================================================
 # 5B. ROLE MATCH & GAPS
