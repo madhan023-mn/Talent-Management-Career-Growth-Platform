@@ -645,18 +645,9 @@ def landing_webpage():
             <div style="display: flex; align-items: center; gap: 12px;">
                 {get_svg_icon("brand_logo", size=36)}
                 <div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1.35rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">Talent Growth</span>
-                        <span style="font-size: 0.72rem; color: #2563EB; font-weight: 800; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 9999px; padding: 2px 8px; letter-spacing: 0.04em;">ENTERPRISE</span>
-                    </div>
+                    <div style="font-size: 1.35rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">Talent Growth</div>
                     <div style="font-size: 0.78rem; color: #64748B; font-weight: 500;">Talent Management Platform for Employee Performance and Career Growth</div>
                 </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="display: inline-flex; align-items: center; gap: 6px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; padding: 5px 12px; border-radius: 9999px; font-size: 0.78rem; font-weight: 700;">
-                    <span style="width: 7px; height: 7px; background: #10B981; border-radius: 50%; box-shadow: 0 0 6px #10B981;"></span>
-                    System Online
-                </span>
             </div>
         </div>
         """
@@ -981,9 +972,6 @@ def login_page():
             <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 4px;">
                 {get_svg_icon("brand_logo", size=28)}
                 <span style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Talent Growth</span>
-                <span style="display: inline-flex; align-items: center; gap: 5px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; padding: 3px 9px; border-radius: 9999px; font-size: 0.74rem; font-weight: 600;">
-                    <span style="width: 6px; height: 6px; background: #10B981; border-radius: 50%;"></span> Online
-                </span>
             </div>
             """
         )
@@ -1059,9 +1047,6 @@ def register_page():
             <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 4px;">
                 {get_svg_icon("brand_logo", size=28)}
                 <span style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Talent Growth</span>
-                <span style="display: inline-flex; align-items: center; gap: 5px; background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; padding: 3px 9px; border-radius: 9999px; font-size: 0.74rem; font-weight: 600;">
-                    <span style="width: 6px; height: 6px; background: #10B981; border-radius: 50%;"></span> Online
-                </span>
             </div>
             """
         )
