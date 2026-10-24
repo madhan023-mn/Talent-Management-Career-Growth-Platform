@@ -1527,10 +1527,25 @@ div[data-testid="stDataFrame"], div[data-testid="stTable"] {
     color: #334155;
 }
 
-/* Hide default Streamlit decoration header & footer */
-#MainMenu { visibility: hidden !important; }
-footer { visibility: hidden !important; }
-
-
-
-
+/* Hide Streamlit Community Cloud GitHub repo link, branch badge, toolbar and viewer decorations */
+#GithubIcon, 
+[data-testid="stToolbar"], 
+[data-testid="stDecoration"], 
+[data-testid="stStatusWidget"],
+.viewerBadge_container__1QSob, 
+.viewerBadge_link__1S137, 
+[class*="viewerBadge"],
+.stAppDeployButton, 
+[data-testid="stAppDeployButton"],
+header[data-testid="stHeader"],
+#MainMenu, 
+footer {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}

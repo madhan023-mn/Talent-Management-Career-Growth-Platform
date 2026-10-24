@@ -347,34 +347,36 @@ def init_db() -> None:
         if not admin_row:
             admin_pwd_hash, admin_salt = hash_password("Admin@12345")
             cursor.execute(
-                "INSERT INTO users (name, email, password_hash, salt, role, employee_id) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO users (name, email, password_hash, salt, role, employee_id) VALUES (?, ?, ?, ?, ?, ?)",
                 ("HR Administrator", "admin@talentgrowth.com", admin_pwd_hash, admin_salt, "admin", "EMP001")
             )
             admin_uid = cursor.lastrowid
-            cursor.execute("INSERT OR IGNORE INTO profiles (user_id, job_title, department) VALUES (?, ?, ?)",
-                           (admin_uid, "VP of Human Resources", "Human Resources"))
+            if admin_uid:
+                cursor.execute("INSERT OR IGNORE INTO profiles (user_id, job_title, department) VALUES (?, ?, ?)",
+                               (admin_uid, "VP of Human Resources", "Human Resources"))
         else:
             # Update legacy email to admin@talentgrowth.com
-            cursor.execute("UPDATE users SET email = 'admin@talentgrowth.com' WHERE email = 'admin@talentsphere.com'")
+            cursor.execute("UPDATE OR IGNORE users SET email = 'admin@talentgrowth.com' WHERE email = 'admin@talentsphere.com'")
 
         # Seed initial demo employee if none exists
         cursor.execute("SELECT id FROM users WHERE email = 'alex@company.com'")
         if not cursor.fetchone():
             emp_pwd_hash, emp_salt = hash_password("Password123")
             cursor.execute(
-                "INSERT INTO users (name, email, password_hash, salt, role, employee_id) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO users (name, email, password_hash, salt, role, employee_id) VALUES (?, ?, ?, ?, ?, ?)",
                 ("Alex Morgan", "alex@company.com", emp_pwd_hash, emp_salt, "employee", "EMP101")
             )
             alex_uid = cursor.lastrowid
-            cursor.execute(
-                """
-                INSERT OR IGNORE INTO profiles (user_id, job_title, department, years_experience, summary, target_role)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (alex_uid, "Full Stack Engineer", "Engineering", 3.5,
-                 "Full stack engineer passionate about scalable cloud systems, microservices, and React frontends.",
-                 "Senior Software Engineer")
-            )
+            if alex_uid:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO profiles (user_id, job_title, department, years_experience, summary, target_role)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (alex_uid, "Full Stack Engineer", "Engineering", 3.5,
+                     "Full stack engineer passionate about scalable cloud systems, microservices, and React frontends.",
+                     "Senior Software Engineer")
+                )
             cursor.execute(
                 """
                 INSERT OR IGNORE INTO skills (user_id, name, category, proficiency, years)
