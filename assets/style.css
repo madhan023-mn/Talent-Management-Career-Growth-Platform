@@ -1527,5 +1527,10 @@ div[data-testid="stDataFrame"], div[data-testid="stTable"] {
     color: #334155;
 }
 
+/* Hide default Streamlit decoration header & footer */
+#MainMenu { visibility: hidden !important; }
+footer { visibility: hidden !important; }
+
+
 
 
