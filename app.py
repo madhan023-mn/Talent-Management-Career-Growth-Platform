@@ -37,6 +37,15 @@ from services.ai_coach import (
 )
 from style import load_css
 
+# Vercel serverless entrypoint compatibility
+def handler(environ=None, start_response=None):
+    if start_response:
+        start_response('200 OK', [('Content-Type', 'text/html')])
+    return [b"OK"]
+
+app = handler
+application = handler
+
 load_dotenv(BASE_DIR / ".env")
 
 st.set_page_config(
