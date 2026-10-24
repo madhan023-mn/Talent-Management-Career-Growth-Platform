@@ -3,28 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TalentSphere — Talent Management & Career Growth Platform</title>
-  <meta name="description" content="AI-Powered Talent Management and Career Growth Platform for employee development, skill gap analysis, and performance tracking." />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <title>Talent Growth — Talent Management Platform</title>
+  <meta name="description" content="Talent Management Platform for Employee Performance and Career Growth." />
   <style>
-    :root {
-      --primary: #2563EB;
-      --primary-hover: #1D4ED8;
-      --primary-light: #EFF6FF;
-      --slate-50: #F8FAFC;
-      --slate-100: #F1F5F9;
-      --slate-200: #E2E8F0;
-      --slate-300: #CBD5E1;
-      --slate-600: #475569;
-      --slate-700: #334155;
-      --slate-800: #1E293B;
-      --slate-900: #0F172A;
-      --emerald-500: #10B981;
-      --emerald-50: #ECFDF5;
-    }
-
     * {
       box-sizing: border-box;
       margin: 0;
@@ -32,173 +13,40 @@
     }
 
     html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--slate-50);
-      color: var(--slate-900);
-    }
-
-    .wrapper {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
       width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #F8FAFC;
     }
 
-    /* Top Bar */
-    header {
-      height: 60px;
-      background: #FFFFFF;
-      border-bottom: 1px solid var(--slate-200);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 1.25rem;
-      z-index: 50;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    /* Full-viewport wrapper with overflow hidden */
+    .app-viewport {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: #F8FAFC;
     }
 
-    .brand-section {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .logo-badge {
-      width: 36px;
-      height: 36px;
-      border-radius: 9px;
-      background: linear-gradient(135deg, #2563EB, #1D4ED8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 800;
-      font-size: 1.1rem;
-      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
-    }
-
-    .title-group {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .app-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--slate-900);
-      line-height: 1.2;
-    }
-
-    .app-subtitle {
-      font-size: 0.75rem;
-      color: var(--slate-600);
-      font-weight: 500;
-    }
-
-    .header-badges {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-left: 12px;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 9px;
-      border-radius: 20px;
-      font-size: 0.72rem;
-      font-weight: 600;
-    }
-
-    .badge-primary {
-      background: var(--primary-light);
-      color: var(--primary);
-      border: 1px solid #BFDBFE;
-    }
-
-    .badge-success {
-      background: var(--emerald-50);
-      color: var(--emerald-500);
-      border: 1px solid #A7F3D0;
-    }
-
-    .pulse-dot {
-      width: 6px;
-      height: 6px;
-      background: var(--emerald-500);
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(1.3); }
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .action-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 7px 14px;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      text-decoration: none;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      border: 1px solid var(--slate-200);
-      background: #FFFFFF;
-      color: var(--slate-700);
-    }
-
-    .action-btn:hover {
-      background: var(--slate-100);
-      color: var(--slate-900);
-      border-color: var(--slate-300);
-    }
-
-    .action-btn-primary {
-      background: var(--primary);
-      color: #FFFFFF;
-      border-color: var(--primary);
-    }
-
-    .action-btn-primary:hover {
-      background: var(--primary-hover);
-      color: #FFFFFF;
-    }
-
-    /* Main Frame Area */
-    .frame-container {
-      flex: 1;
-      width: 100%;
-      height: calc(100vh - 60px);
-      position: relative;
-      background: var(--slate-50);
-    }
-
+    /* 
+      Iframe occupies full screen width and extends 46px below the viewport.
+      Because .app-viewport has overflow: hidden, the bottom 46px
+      (which hosts the 'Built with Streamlit 🎈 Fullscreen' bar) is pushed off-screen and cropped!
+    */
     iframe {
       width: 100%;
-      height: 100%;
+      height: calc(100vh + 46px);
       border: none;
       display: block;
-      background: transparent;
+      margin: 0;
+      padding: 0;
     }
 
-    /* Loading Overlay */
-    .loader-overlay {
-      position: absolute;
+    /* Sleek loading screen that fades away once iframe is ready */
+    .loading-screen {
+      position: fixed;
       inset: 0;
       background: #FFFFFF;
       display: flex;
@@ -206,21 +54,22 @@
       align-items: center;
       justify-content: center;
       gap: 16px;
-      z-index: 40;
-      transition: opacity 0.4s ease, visibility 0.4s ease;
+      z-index: 99999;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
-    .loader-overlay.hidden {
+    .loading-screen.hidden {
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
     }
 
     .spinner {
-      width: 44px;
-      height: 44px;
-      border: 3.5px solid var(--slate-200);
-      border-top-color: var(--primary);
+      width: 38px;
+      height: 38px;
+      border: 3.5px solid #E2E8F0;
+      border-top-color: #2563EB;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -229,222 +78,50 @@
       to { transform: rotate(360deg); }
     }
 
-    .loader-text {
+    .loading-text {
       font-size: 0.92rem;
       font-weight: 600;
-      color: var(--slate-700);
-    }
-
-    .loader-subtext {
-      font-size: 0.8rem;
-      color: var(--slate-600);
-      max-width: 360px;
-      text-align: center;
-    }
-
-    /* Modal for URL configuration if changed */
-    .url-modal {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.45);
-      backdrop-filter: blur(4px);
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-    }
-
-    .url-modal.active {
-      display: flex;
-    }
-
-    .modal-box {
-      background: #FFFFFF;
-      border-radius: 14px;
-      padding: 24px;
-      width: 440px;
-      max-width: 90vw;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .modal-title {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--slate-900);
-    }
-
-    .modal-input {
-      width: 100%;
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--slate-300);
-      font-size: 0.88rem;
-      font-family: inherit;
-      outline: none;
-    }
-
-    .modal-input:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-    }
-
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
-
-    @media (max-width: 768px) {
-      .header-badges { display: none; }
-      .app-subtitle { display: none; }
+      color: #334155;
     }
   </style>
 </head>
 <body>
-  <div class="wrapper" id="appWrapper">
-    <!-- Header -->
-    <header>
-      <div class="brand-section">
-        <div class="logo-badge">TG</div>
-        <div class="title-group">
-          <h1 class="app-title">Talent Growth</h1>
-          <p class="app-subtitle">Talent Management & Career Growth Platform</p>
-        </div>
-        <div class="header-badges">
-          <span class="badge badge-primary">Infosys Project</span>
-          <span class="badge badge-success"><span class="pulse-dot"></span> Live</span>
-        </div>
-      </div>
-
-      <div class="header-actions">
-        <button class="action-btn" id="configBtn" title="Change target Streamlit app URL">⚙️ Source URL</button>
-        <button class="action-btn" id="fullscreenBtn" title="Toggle Fullscreen">⛶ Fullscreen</button>
-        <a class="action-btn action-btn-primary" id="openDirectBtn" href="#" target="_blank" rel="noopener">
-          Open Direct App ↗
-        </a>
-      </div>
-    </header>
-
-    <!-- App Frame Container -->
-    <div class="frame-container">
-      <div class="loader-overlay" id="loaderOverlay">
-        <div class="spinner"></div>
-        <p class="loader-text">Loading Talent Growth Platform...</p>
-        <p class="loader-subtext">Initializing analytics dashboard, employee skills graph, and AI coach service.</p>
-      </div>
-
-      <iframe
-        id="appIframe"
-        src=""
-        allow="accelerometer; autoplay; camera; encrypted-media; geolocation; gyroscope; microphone; clipboard-read; clipboard-write"
-        allowfullscreen
-      ></iframe>
-    </div>
+  <!-- Loading Splash -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spinner"></div>
+    <p class="loading-text">Loading Talent Growth Platform...</p>
   </div>
 
-  <!-- Source URL Configuration Modal -->
-  <div class="url-modal" id="urlModal">
-    <div class="modal-box">
-      <h2 class="modal-title">Configure Streamlit App URL</h2>
-      <p style="font-size: 0.82rem; color: var(--slate-600);">
-        If your Streamlit Community Cloud URL is different, enter it below:
-      </p>
-      <input type="url" id="customUrlInput" class="modal-input" placeholder="https://<your-app>.streamlit.app" />
-      <div class="modal-actions">
-        <button class="action-btn" id="cancelModalBtn">Cancel</button>
-        <button class="action-btn action-btn-primary" id="saveModalBtn">Save & Reload</button>
-      </div>
-    </div>
+  <!-- Pure Edge-to-Edge Container -->
+  <div class="app-viewport">
+    <iframe
+      id="mainFrame"
+      src="https://talent-growth.streamlit.app/?embed=true"
+      allow="accelerometer; autoplay; camera; encrypted-media; geolocation; gyroscope; microphone; clipboard-read; clipboard-write"
+      allowfullscreen
+    ></iframe>
   </div>
 
   <script>
-    // Default Streamlit URL for the project
-    const DEFAULT_APP_URL = "https://talent-growth.streamlit.app";
+    const frame = document.getElementById("mainFrame");
+    const loader = document.getElementById("loadingScreen");
 
-    function getTargetUrl() {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("app")) {
-        return params.get("app");
-      }
-      return localStorage.getItem("streamlit_target_url") || DEFAULT_APP_URL;
+    // Allow dynamic override via ?app= query param if needed
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("app")) {
+      const customUrl = params.get("app").replace(/\/$/, "");
+      const embedUrl = customUrl.includes("?") ? `${customUrl}&embed=true` : `${customUrl}/?embed=true`;
+      frame.src = embedUrl;
     }
 
-    function setTargetUrl(url) {
-      localStorage.setItem("streamlit_target_url", url);
-    }
-
-    const iframe = document.getElementById("appIframe");
-    const loader = document.getElementById("loaderOverlay");
-    const openDirectBtn = document.getElementById("openDirectBtn");
-    const configBtn = document.getElementById("configBtn");
-    const fullscreenBtn = document.getElementById("fullscreenBtn");
-    const urlModal = document.getElementById("urlModal");
-    const customUrlInput = document.getElementById("customUrlInput");
-    const cancelModalBtn = document.getElementById("cancelModalBtn");
-    const saveModalBtn = document.getElementById("saveModalBtn");
-
-    function loadApp() {
-      const rawUrl = getTargetUrl().trim();
-      const cleanUrl = rawUrl.replace(/\/$/, "");
-      
-      // Append ?embed=true so Streamlit runs in clean embed mode without duplicate headers
-      const embedUrl = cleanUrl.includes("?") 
-        ? `${cleanUrl}&embed=true`
-        : `${cleanUrl}/?embed=true`;
-
-      openDirectBtn.href = cleanUrl;
-      iframe.src = embedUrl;
-
-      // Hide loader after iframe loads or maximum 6s
-      iframe.onload = () => {
-        loader.classList.add("hidden");
-      };
-      setTimeout(() => {
-        loader.classList.add("hidden");
-      }, 6000);
-    }
-
-    // Modal controls
-    configBtn.addEventListener("click", () => {
-      customUrlInput.value = getTargetUrl();
-      urlModal.classList.add("active");
-    });
-
-    cancelModalBtn.addEventListener("click", () => {
-      urlModal.classList.remove("active");
-    });
-
-    saveModalBtn.addEventListener("click", () => {
-      if (customUrlInput.value.trim()) {
-        setTargetUrl(customUrlInput.value.trim());
-        urlModal.classList.remove("active");
-        loader.classList.remove("hidden");
-        loadApp();
-      }
-    });
-
-    // Fullscreen toggle
-    fullscreenBtn.addEventListener("click", () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => alert(err.message));
-        fullscreenBtn.textContent = "✕ Exit Fullscreen";
-      } else {
-        document.exitFullscreen();
-        fullscreenBtn.textContent = "⛶ Fullscreen";
-      }
-    });
-
-    document.addEventListener("fullscreenchange", () => {
-      if (!document.fullscreenElement) {
-        fullscreenBtn.textContent = "⛶ Fullscreen";
-      }
-    });
-
-    // Initialize
-    loadApp();
+    // Dismiss loader once iframe loads
+    frame.onload = () => {
+      loader.classList.add("hidden");
+    };
+    // Fallback: dismiss loader after 4 seconds
+    setTimeout(() => {
+      loader.classList.add("hidden");
+    }, 4000);
   </script>
 </body>
 </html>
