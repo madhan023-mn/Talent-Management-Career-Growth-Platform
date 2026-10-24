@@ -17,10 +17,17 @@ GEMINI_MODELS = [
 ]
 
 def get_gemini_api_key(explicit_key: Optional[str] = None) -> Optional[str]:
-    """Retrieves Gemini API key from parameter, environment, or .env file."""
+    """Retrieves Gemini API key from parameter, environment, st.secrets, or .env file."""
     if explicit_key and explicit_key.strip():
         return explicit_key.strip()
     key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not key:
+        try:
+            import streamlit as st
+            if "GEMINI_API_KEY" in st.secrets:
+                key = str(st.secrets["GEMINI_API_KEY"]).strip()
+        except Exception:
+            pass
     return key if key else None
 
 def call_gemini_api(
