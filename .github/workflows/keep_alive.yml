@@ -2,7 +2,7 @@ name: Keep Streamlit App Awake
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # Runs automatically every 6 hours
+    - cron: '0 */3 * * *' # Runs automatically every 3 hours
   workflow_dispatch: # Allows manual trigger from GitHub Actions tab
 
 jobs:
@@ -14,3 +14,4 @@ jobs:
         with:
           app-urls: |
             https://talent-growth.streamlit.app
+            https://talent-growth-snowy.vercel.app
