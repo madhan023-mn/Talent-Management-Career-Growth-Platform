@@ -36,7 +36,8 @@ code, kbd, samp, pre {
     border: 1px solid #E2E8F0;
     border-radius: 8px;
     padding: 8px 14px;
-    width: 420px;
+    width: 100%;
+    max-width: 420px;
     color: #64748B;
     font-size: 0.88rem;
 }
@@ -1552,3 +1553,195 @@ footer {
     opacity: 0 !important;
     pointer-events: none !important;
 }
+
+/* ==============================================================================
+   RESPONSIVE DESIGN SYSTEM (MOBILE, TABLET, LAPTOP & PC)
+   ============================================================================== */
+
+/* Base Fluid Container & Typography for Large Screens */
+@media screen and (max-width: 1200px) {
+    .main .block-container {
+        max-width: 100% !important;
+        padding-left: 1.25rem !important;
+        padding-right: 1.25rem !important;
+    }
+}
+
+/* Tablets (landscape and portrait: 601px to 1024px) */
+@media screen and (max-width: 1024px) {
+    .pro-metric-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 0.85rem !important;
+    }
+    .kpi-row-grid, .kpi-row-grid-vibrant, .ts-metrics-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.95rem !important;
+    }
+    .webpage-hero-modern {
+        padding: 2rem 1.75rem !important;
+    }
+    .hero-welcome-banner {
+        padding: 1.2rem 1.4rem !important;
+    }
+    .hero-welcome-title {
+        font-size: 1.35rem !important;
+    }
+}
+
+/* Mobile & Small Tablets (max-width: 768px) */
+@media screen and (max-width: 768px) {
+    /* Responsive Canvas Padding */
+    .main .block-container {
+        padding-top: 0.6rem !important;
+        padding-bottom: 2rem !important;
+        padding-left: 0.85rem !important;
+        padding-right: 0.85rem !important;
+    }
+
+    /* Top Search & Actions Bar */
+    .top-header-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        padding: 0.85rem 1rem !important;
+    }
+    .top-search-box {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    .top-header-right {
+        justify-content: space-between !important;
+        width: 100% !important;
+    }
+
+    /* Hero Banners */
+    .hero-welcome-banner {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 1.15rem 1.2rem !important;
+        border-radius: 12px !important;
+    }
+    .hero-welcome-title {
+        font-size: 1.2rem !important;
+        line-height: 1.3 !important;
+    }
+    .hero-welcome-sub {
+        font-size: 0.82rem !important;
+    }
+
+    .webpage-hero-modern {
+        padding: 1.5rem 1.15rem !important;
+        border-radius: 14px !important;
+    }
+    .webpage-hero-modern h1 {
+        font-size: 1.75rem !important;
+        line-height: 1.25 !important;
+    }
+
+    /* Grid Layouts to 1 or 2 Columns */
+    .kpi-row-grid,
+    .kpi-row-grid-vibrant,
+    .ts-metrics-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
+    .pro-metric-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem !important;
+    }
+    .kpi-box, .kpi-card-vibrant, .pro-metric-card {
+        padding: 1rem 1.15rem !important;
+    }
+
+    /* Streamlit Columns Auto-Wrap on Mobile */
+    [data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+        margin-bottom: 0.5rem !important;
+    }
+    [data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+    }
+
+    /* Horizontal Tab Bar with Touch Momentum Scrolling */
+    [data-baseweb="tab-list"] {
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        white-space: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        padding-bottom: 4px !important;
+    }
+    [data-baseweb="tab-list"]::-webkit-scrollbar {
+        display: none !important;
+    }
+    [data-baseweb="tab"] {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* Mobile Typography Adjustments */
+    .ts-page-header {
+        font-size: 1.45rem !important;
+    }
+    .ts-page-sub {
+        font-size: 0.85rem !important;
+        margin-bottom: 1rem !important;
+    }
+    .ts-metric-value {
+        font-size: 1.85rem !important;
+    }
+
+    /* Buttons: Full width & touch friendly */
+    .stButton > button {
+        width: 100% !important;
+        min-height: 44px !important;
+        padding: 0.55rem 1rem !important;
+    }
+
+    /* Inputs: Prevent iOS auto-zoom with >= 16px */
+    input, select, textarea,
+    [data-baseweb="input"] input,
+    [data-baseweb="select"] {
+        font-size: 16px !important;
+        min-height: 42px !important;
+    }
+
+    /* Responsive Data Tables */
+    [data-testid="stDataFrame"], [data-testid="stTable"], .corporate-table {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        display: block !important;
+    }
+
+    /* Plotly Responsive Charts */
+    [data-testid="stPlotlyChart"], .js-plotly-plot {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+    }
+}
+
+/* Small Smart Phones (max-width: 440px) */
+@media screen and (max-width: 440px) {
+    .main .block-container {
+        padding-left: 0.65rem !important;
+        padding-right: 0.65rem !important;
+    }
+    .pro-metric-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .hero-feature-pill {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+    .ts-metric-value {
+        font-size: 1.6rem !important;
+    }
+}
+

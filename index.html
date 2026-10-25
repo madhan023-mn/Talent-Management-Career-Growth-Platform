@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
   <title>Talent Growth — Talent Management Platform</title>
   <meta name="description" content="Talent Management Platform for Employee Performance and Career Growth." />
   <style>
@@ -10,13 +10,16 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
 
     html, body {
       width: 100vw;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
       background: #F8FAFC;
+      -webkit-text-size-adjust: 100%;
     }
 
     /* Full-viewport wrapper with overflow hidden */
@@ -26,8 +29,10 @@
       left: 0;
       width: 100vw;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
       background: #F8FAFC;
+      -webkit-overflow-scrolling: touch;
     }
 
     /* 
@@ -38,6 +43,7 @@
     iframe {
       width: 100%;
       height: calc(100vh + 46px);
+      height: calc(100dvh + 46px);
       border: none;
       display: block;
       margin: 0;
