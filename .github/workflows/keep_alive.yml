@@ -1,0 +1,16 @@
+name: Keep Streamlit App Awake
+
+on:
+  schedule:
+    - cron: '0 */6 * * *' # Runs automatically every 6 hours
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake and Keep Alive Streamlit App
+        uses: gpenessot/streamlit-keep-alive@v1
+        with:
+          app-urls: |
+            https://talent-growth.streamlit.app
