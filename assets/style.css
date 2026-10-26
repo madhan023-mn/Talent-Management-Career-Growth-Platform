@@ -402,25 +402,30 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     padding: 0 !important;
 }
 
-/* Sidebar Collapse Button inside Sidebar */
+/* Sidebar Collapse Button (<< icon keyboard_double_arrow_left) */
+section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] {
+    display: flex !important;
+    justify-content: flex-end !important;
+    margin-bottom: 0.25rem !important;
+}
+
 section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
-    border-radius: 8px !important;
-    background: #141E38 !important;
-    border: 1px solid #1E2D4E !important;
-    color: #94A3B8 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: rgba(24, 49, 58, 0.6) !important;
+    cursor: pointer !important;
+    padding: 4px !important;
+    border-radius: 6px !important;
     transition: all 0.2s ease !important;
 }
+
 section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button:hover {
-    background: #2563EB !important;
-    color: #FFFFFF !important;
-    border-color: #3B82F6 !important;
+    color: #0E2A38 !important;
+    background: rgba(24, 49, 58, 0.08) !important;
 }
 
 section[data-testid="stSidebar"] hr {
@@ -1632,38 +1637,34 @@ div[data-testid="collapsedControl"] {
 }
 
 div[data-testid="collapsedControl"] button {
+/* Sidebar Collapse & Expand Controls (Native Material Icons << and >>) */
+span[data-testid="stIconMaterial"] {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+div[data-testid="collapsedControl"] button {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 40px !important;
-    height: 40px !important;
-    min-width: 40px !important;
-    min-height: 40px !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
     background: #FFFFFF !important;
-    border: 1.5px solid #CBD5E1 !important;
-    border-radius: 9px !important;
-    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.12) !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08) !important;
     cursor: pointer !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.2s ease !important;
+    color: rgba(24, 49, 58, 0.7) !important;
 }
 
 div[data-testid="collapsedControl"] button:hover {
-    background: #EFF6FF !important;
-    border-color: #2563EB !important;
-    transform: scale(1.05) !important;
-}
-
-div[data-testid="collapsedControl"] button svg {
-    display: none !important;
-}
-
-div[data-testid="collapsedControl"] button::before {
-    content: "☰" !important;
-    font-size: 1.4rem !important;
-    font-weight: 900 !important;
-    color: #0F172A !important;
-    line-height: 1 !important;
-    display: block !important;
+    background: #F1F5F9 !important;
+    color: #0E2A38 !important;
+    border-color: #94A3B8 !important;
 }
 
 /* ==============================================================================

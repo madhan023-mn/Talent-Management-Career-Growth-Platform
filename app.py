@@ -1348,33 +1348,25 @@ def analysis_bundle():
 # ------------------------------------------------------------------------------
 # UNIVERSAL TOP BAR WITH TOP-LEFT BACK BUTTON (FOR ALL AUTHENTICATED PAGES)
 # ------------------------------------------------------------------------------
-col_top_back, col_top_trail = st.columns([2.5, 7.5], gap="small")
-with col_top_back:
-    if page != "Dashboard":
+if page != "Dashboard":
+    col_top_back, col_top_trail = st.columns([2.5, 7.5], gap="small")
+    with col_top_back:
         if st.button("Back to Dashboard", key=f"btn_universal_back_dash_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
             navigate_to("Dashboard")
-    else:
-        if st.button("Back to Home", key="btn_universal_back_home_dash", type="secondary", use_container_width=True):
-            st.session_state.user = None
-            st.session_state.current_page = "Dashboard"
-            st.session_state.page_to_navigate = "Dashboard"
-            st.session_state.auth_view = "landing"
-            st.rerun()
-with col_top_trail:
-    render_html(
-        f"""
-        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
-            <span style="display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 3px 10px; border-radius: 9999px;">
-                {get_svg_icon("user", size=13, color="#475569")}
-                <strong>{user['name']}</strong> &bull; {user['role'].upper()}
-            </span>
-            <span style="color: #CBD5E1;">|</span>
-            <span style="color: #2563EB; font-weight: 700; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 3px 10px; border-radius: 9999px;">{page}</span>
-        </div>
-        """
-    )
-
-st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
+    with col_top_trail:
+        render_html(
+            f"""
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
+                <span style="display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 3px 10px; border-radius: 9999px;">
+                    {get_svg_icon("user", size=13, color="#475569")}
+                    <strong>{user['name']}</strong> &bull; {user['role'].upper()}
+                </span>
+                <span style="color: #CBD5E1;">|</span>
+                <span style="color: #2563EB; font-weight: 700; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 3px 10px; border-radius: 9999px;">{page}</span>
+            </div>
+            """
+        )
+    st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # 1. ADMIN: EXECUTIVE DASHBOARD
@@ -1823,54 +1815,22 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
 
     render_html(
         f"""
-        <div class="kpi-row-grid-vibrant">
-            <div class="kpi-card-vibrant kpi-vibrant-blue">
-                <div class="kpi-vibrant-icon">
-                    {get_svg_icon("user_check", size=26, color="#FFFFFF")}
-                </div>
-                <div>
-                    <div class="kpi-vibrant-title">Profile Completion</div>
-                    <div class="kpi-vibrant-number">{completion}%</div>
-                    <div class="kpi-vibrant-sub">
-                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} {comp_sub}
-                    </div>
-                </div>
+        <div class="ts-metrics-grid">
+            <div class="ts-metric-box">
+                <div class="ts-metric-label">Profile completion</div>
+                <div class="ts-metric-value">{completion}%</div>
             </div>
-            <div class="kpi-card-vibrant kpi-vibrant-green">
-                <div class="kpi-vibrant-icon">
-                    {get_svg_icon("award", size=26, color="#FFFFFF")}
-                </div>
-                <div>
-                    <div class="kpi-vibrant-title">Profile Strength</div>
-                    <div class="kpi-vibrant-number">{strength_score} / 100</div>
-                    <div class="kpi-vibrant-sub">
-                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} {strength_sub}
-                    </div>
-                </div>
+            <div class="ts-metric-box">
+                <div class="ts-metric-label">Profile strength</div>
+                <div class="ts-metric-value">{strength_score}/100</div>
             </div>
-            <div class="kpi-card-vibrant kpi-vibrant-purple">
-                <div class="kpi-vibrant-icon">
-                    {get_svg_icon("target", size=26, color="#FFFFFF")}
-                </div>
-                <div>
-                    <div class="kpi-vibrant-title">Target Role Match</div>
-                    <div class="kpi-vibrant-number">{analysis['match']}%</div>
-                    <div class="kpi-vibrant-sub">
-                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} {role_sub}
-                    </div>
-                </div>
+            <div class="ts-metric-box">
+                <div class="ts-metric-label">Target role match</div>
+                <div class="ts-metric-value">{analysis['match']}%</div>
             </div>
-            <div class="kpi-card-vibrant kpi-vibrant-orange">
-                <div class="kpi-vibrant-icon">
-                    {get_svg_icon("skills", size=26, color="#FFFFFF")}
-                </div>
-                <div>
-                    <div class="kpi-vibrant-title">Skills Recorded</div>
-                    <div class="kpi-vibrant-number">{skills_cnt}</div>
-                    <div class="kpi-vibrant-sub">
-                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} {skills_sub}
-                    </div>
-                </div>
+            <div class="ts-metric-box">
+                <div class="ts-metric-label">Skills recorded</div>
+                <div class="ts-metric-value">{skills_cnt}</div>
             </div>
         </div>
         <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 1.5rem 0 1.75rem 0;" />
