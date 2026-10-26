@@ -388,14 +388,31 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
 }
 
 /* Hide native round radio bullet circle completely */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child:not(:last-child),
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label input[type="radio"] {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label input[type="radio"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-of-type,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label input + div,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-baseweb="radio"] > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-baseweb="radio"] > div:first-of-type,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[class*="st-"] {
     display: none !important;
     visibility: hidden !important;
     width: 0 !important;
     height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
+    opacity: 0 !important;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stMarkdownContainer"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stMarkdownContainer"] p,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:last-child {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 100% !important;
+    font-size: 0.92rem !important;
+    color: inherit !important;
+    margin: 0 !important;
 }
 
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
@@ -1623,8 +1640,8 @@ header[data-testid="stHeader"] {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    height: 0 !important;
-    min-height: 0 !important;
+    height: 50px !important;
+    overflow: visible !important;
     padding: 0 !important;
     margin: 0 !important;
     pointer-events: none !important;
