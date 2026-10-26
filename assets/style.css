@@ -358,55 +358,12 @@ button[data-testid="stSidebarCollapseButton"] {
     visibility: hidden !important;
 }
 
-/* Sidebar Navigation Radio Buttons (With Circular Radio Indicators) */
+/* Base Radio Container Styling */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
     display: flex !important;
     flex-direction: column !important;
-    gap: 5px !important;
+    gap: 4px !important;
     width: 100% !important;
-}
-
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    width: 100% !important;
-    padding: 6px 6px !important;
-    border-radius: 6px !important;
-    color: #627D98 !important;
-    font-size: 0.94rem !important;
-    font-weight: 500 !important;
-    cursor: pointer !important;
-    transition: all 0.15s ease !important;
-    margin-bottom: 2px !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-/* Inactive Link Hover */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
-    background-color: #E2EBF2 !important;
-    color: #102A43 !important;
-}
-
-/* Active Radio Button */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-    background: transparent !important;
-    color: #102A43 !important;
-    font-weight: 700 !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label span {
-    color: inherit !important;
-    font-size: inherit !important;
-    font-weight: inherit !important;
-    margin: 0 !important;
-    padding: 0 !important;
 }
 
 /* Sidebar Collapse Button (<< icon keyboard_double_arrow_left) */

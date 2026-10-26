@@ -1223,8 +1223,8 @@ width_px = 280 if is_expanded else 72
 pad_x = 0.9 if is_expanded else 0.35
 label_pad = "8px 12px" if is_expanded else "10px 0"
 label_justify = "flex-start" if is_expanded else "center"
-circle_margin_right = "12px" if is_expanded else "0px"
-text_display = "inline-block" if is_expanded else "none"
+circle_margin_right = "10px" if is_expanded else "0px"
+text_display = "block" if is_expanded else "none"
 
 if is_admin:
     # HR Administrator: Dark Navy Theme
@@ -1236,12 +1236,12 @@ if is_admin:
     item_hover_bg = "#16223F"
     item_hover_color = "#FFFFFF"
     circle_hover_border = "#94A3B8"
-    active_bg = "rgba(37, 99, 235, 0.28)"
-    active_text = "#60A5FA"
-    active_border = "1px solid rgba(96, 165, 250, 0.4)"
-    active_circle_border = "#60A5FA"
-    active_circle_bg = "#2563EB"
-    active_circle_shadow = "inset 0 0 0 2px #0A1128"
+    active_bg = "#2563EB"
+    active_text = "#FFFFFF"
+    active_border = "none"
+    active_circle_border = "#FFFFFF"
+    active_circle_bg = "#FFFFFF"
+    active_circle_shadow = "inset 0 0 0 2.5px #2563EB"
     ham_bg = "#16223F"
     ham_border = "#334155"
     ham_color = "#FFFFFF"
@@ -1285,33 +1285,53 @@ else:
 
 sidebar_dynamic_css = f"""
 <style>
-/* Sidebar Base Dimensions & Smooth Transition */
+/* Lock Sidebar to Left Viewport and Guarantee Visibility */
 html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
 html body section[data-testid="stSidebar"],
 section[data-testid="stSidebar"] {{
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    margin-left: 0 !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 1000 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     min-width: {width_px}px !important;
     width: {width_px}px !important;
     max-width: {width_px}px !important;
     background-color: {bg_color} !important;
     border-right: 1px solid {border_color} !important;
     color: {text_color} !important;
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    position: relative !important;
-    overflow-x: hidden !important;
-    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-                min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-                max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
     padding-left: {pad_x}rem !important;
     padding-right: {pad_x}rem !important;
 }}
 
-/* Smooth Transition for Main Content */
+/* Position Main Content Immediately to Right of Sidebar (No Overlap) */
 [data-testid="stAppViewContainer"] > section:nth-child(2),
 [data-testid="stMain"] {{
+    margin-left: {width_px}px !important;
+    width: calc(100% - {width_px}px) !important;
+    max-width: calc(100% - {width_px}px) !important;
     transition: margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-                padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}}
+
+@media screen and (max-width: 768px) {{
+    [data-testid="stAppViewContainer"] > section:nth-child(2),
+    [data-testid="stMain"] {{
+        margin-left: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }}
 }}
 
 /* Completely Hide Streamlit Native Collapse Controls */
@@ -1325,20 +1345,9 @@ button[data-testid="stSidebarCollapseButton"] {{
 }}
 
 /* Three-Line Hamburger Button Styling (Visible in Both States) */
-div[data-testid="stSidebar"] div[data-testid="stButton"] button,
+div[data-testid="stSidebar"] div.sidebar-ham-wrapper button,
 button[key="sidebar_hamburger_btn"],
-button[key="sidebar_hamburger_btn_collapsed"],
-button[key="top_bar_hamburger"] {{
-    font-size: 1.25rem !important;
-    font-weight: 700 !important;
-    line-height: 1 !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    box-shadow: none !important;
-}}
-
-/* Target the hamburger icon button specifically */
-div[data-testid="stSidebar"] div.sidebar-ham-wrapper button {{
+button[key="sidebar_hamburger_btn_collapsed"] {{
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -1350,10 +1359,17 @@ div[data-testid="stSidebar"] div.sidebar-ham-wrapper button {{
     border: 1px solid {ham_border} !important;
     color: {ham_color} !important;
     border-radius: 8px !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
     padding: 0 !important;
-    margin: 0 auto !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
 }}
-div[data-testid="stSidebar"] div.sidebar-ham-wrapper button:hover {{
+div[data-testid="stSidebar"] div.sidebar-ham-wrapper button:hover,
+button[key="sidebar_hamburger_btn"]:hover,
+button[key="sidebar_hamburger_btn_collapsed"]:hover {{
     background: {ham_hover_bg} !important;
     color: {ham_hover_color} !important;
     border-color: {ham_hover_border} !important;
@@ -1372,17 +1388,15 @@ div.topbar-ham-wrapper button {{
     border: 1px solid {ham_border} !important;
     color: {ham_color} !important;
     border-radius: 8px !important;
+    font-size: 1.15rem !important;
+    cursor: pointer !important;
     padding: 0 !important;
+    transition: all 0.2s ease !important;
 }}
 div.topbar-ham-wrapper button:hover {{
     background: {ham_hover_bg} !important;
     color: {ham_hover_color} !important;
     border-color: {ham_hover_border} !important;
-}}
-
-/* Hide BaseWeb default radio circle */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {{
-    display: none !important;
 }}
 
 /* Radio Group Container */
@@ -1393,7 +1407,7 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     width: 100% !important;
 }}
 
-/* Radio Button Label */
+/* Radio Button Label (Each navigation item displayed as a separate, clickable horizontal row) */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {{
     display: flex !important;
     align-items: center !important;
@@ -1406,60 +1420,86 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     margin-bottom: 2px !important;
     transition: all 0.18s ease-in-out !important;
     background: transparent !important;
-    color: {item_inactive_color} !important;
     border: none !important;
     box-shadow: none !important;
 }}
 
-/* Circular Radio Indicator (::before) immediately to left of text */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::before {{
-    content: "" !important;
-    display: inline-block !important;
-    width: 14px !important;
-    height: 14px !important;
-    min-width: 14px !important;
-    min-height: 14px !important;
-    border-radius: 50% !important;
+/* Radio Circle Container (First Child) */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {{
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
     margin-right: {circle_margin_right} !important;
-    border: 2px solid {circle_inactive_border} !important;
-    background: transparent !important;
-    box-sizing: border-box !important;
-    transition: all 0.18s ease-in-out !important;
     flex-shrink: 0 !important;
 }}
 
-/* Inactive Hover Effect */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {{
-    background: {item_hover_bg} !important;
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {{
+    border-radius: 50% !important;
+    transition: all 0.18s ease-in-out !important;
+}}
+
+/* Inactive Radio Circle: Outlined Circle */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) > div:first-child div {{
+    border: 2px solid {circle_inactive_border} !important;
+    background: transparent !important;
+    width: 14px !important;
+    height: 14px !important;
+}}
+
+/* Inactive Row Hover */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover {{
+    background-color: {item_hover_bg} !important;
+}}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover p {{
     color: {item_hover_color} !important;
 }}
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover::before {{
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover > div:first-child div {{
     border-color: {circle_hover_border} !important;
 }}
 
-/* Active Page Highlight (Blue Background, Blue Text, Blue-Filled Circle) */
+/* Active Row Highlight: Blue Background Pill */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {{
     background-color: {active_bg} !important;
-    color: {active_text} !important;
-    font-weight: 700 !important;
-    border: {active_border} !important;
-}}
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"]::before,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked)::before {{
-    border: 2px solid {active_circle_border} !important;
-    background: {active_circle_bg} !important;
-    box-shadow: {active_circle_shadow} !important;
+    border-radius: 8px !important;
 }}
 
-/* Navigation Label Typography */
+/* Active Radio Circle: Blue-Filled Circle */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] > div:first-child div,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) > div:first-child div {{
+    border: 2px solid {active_circle_border} !important;
+    background-color: {active_circle_bg} !important;
+    box-shadow: {active_circle_shadow} !important;
+    width: 14px !important;
+    height: 14px !important;
+}}
+
+/* Active Text */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] p,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {{
+    color: {active_text} !important;
+    font-weight: 700 !important;
+}}
+
+/* Inactive Text */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) p {{
+    color: {item_inactive_color} !important;
+    font-weight: 500 !important;
+}}
+
+/* Text Container Display (Block when expanded, None when collapsed) */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div:last-child {{
+    display: {text_display} !important;
+}}
+
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {{
-    color: inherit !important;
-    font-size: 0.93rem !important;
-    font-weight: inherit !important;
+    font-size: 0.94rem !important;
     margin: 0 !important;
     padding: 0 !important;
-    display: {text_display} !important;
     white-space: nowrap !important;
 }}
 
@@ -1498,7 +1538,7 @@ with st.sidebar:
                     f"""
                     <div style="display: flex; align-items: center; gap: 8px; padding-top: 4px;">
                         {get_svg_icon("brand_logo", size=24)}
-                        <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
+                        <span style="font-weight: 800; font-size: 1.18rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -1512,7 +1552,7 @@ with st.sidebar:
                             <path d="M14 11C14 7 10 4 6 5C5 9 8 13 14 13" fill="#34D399" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="M14 16C16 11 20 8 23 9C24 13 21 17 14 18" fill="#10B981" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
-                        <span style="font-weight: 800; font-size: 1.15rem; color: #0E2A38; letter-spacing: -0.01em;">TalentSphere</span>
+                        <span style="font-weight: 800; font-size: 1.18rem; color: #0E2A38; letter-spacing: -0.01em;">TalentSphere</span>
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -1520,10 +1560,11 @@ with st.sidebar:
         st.markdown('</div>', unsafe_allow_html=True)
 
         user_subtitle_color = "#94A3B8" if is_admin else "#5A7383"
+        role_title = "HR Administrator" if is_admin else "Employee"
         st.markdown(
             f"""
-            <div style="font-size: 0.82rem; color: {user_subtitle_color}; margin-top: -4px; margin-bottom: 1.1rem; padding-left: 2px;">
-                Signed in as <strong>{user['name']}</strong>
+            <div style="font-size: 0.83rem; color: {user_subtitle_color}; margin-top: -2px; margin-bottom: 1.25rem; padding-left: 2px;">
+                Signed in as <strong>{user['name']}</strong> &bull; {role_title}
             </div>
             """,
             unsafe_allow_html=True
@@ -1533,7 +1574,7 @@ with st.sidebar:
         st.session_state.current_page = selected_page
         page = selected_page
 
-        st.markdown("<div style='margin-top: 1.6rem;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
 
         if st.button("Sign out", use_container_width=True, type="secondary", key="btn_sign_out_expanded"):
             st.session_state.user = None
@@ -1576,7 +1617,7 @@ with st.sidebar:
         st.session_state.current_page = selected_page
         page = selected_page
 
-        st.markdown("<div style='margin-top: 1.6rem;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
 
         if st.button("⎋", help="Sign out", use_container_width=True, type="secondary", key="btn_sign_out_collapsed"):
             st.session_state.user = None
