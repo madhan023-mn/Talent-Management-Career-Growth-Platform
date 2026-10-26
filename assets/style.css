@@ -332,39 +332,115 @@ code, kbd, samp, pre {
 .trend-up { color: #10B981; }
 .trend-neutral { color: #64748B; }
 
-/* Modern Corporate Dark Navy Sidebar */
+/* Modern Corporate Sticky Dark Navy Sidebar */
 section[data-testid="stSidebar"] {
     background-color: #0C1327 !important;
     border-right: 1px solid #1E293B !important;
     color: #F8FAFC !important;
+    position: sticky !important;
+    top: 0 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow-y: auto !important;
+    z-index: 1000 !important;
 }
 section[data-testid="stSidebar"] .stMarkdown p,
 section[data-testid="stSidebar"] .stMarkdown span,
 section[data-testid="stSidebar"] .stMarkdown strong {
     color: #E2E8F0 !important;
 }
+
+/* Remove Radio Bullet Circles from Sidebar Navigation */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label input[type="radio"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label svg,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label span[class*="StyledRadio"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[class*="StyledRadio"] {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+/* Modern Sidebar Navigation Links (Clean Pills, Zero Radio Bullets) */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    width: 100% !important;
+}
+
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 10px 14px !important;
+    border-radius: 9px !important;
     color: #94A3B8 !important;
+    font-size: 0.92rem !important;
     font-weight: 600 !important;
-    font-size: 0.9rem !important;
-    padding: 9px 12px !important;
-    border-radius: 8px !important;
-    transition: all 0.15s ease !important;
+    cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     margin-bottom: 2px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
 }
+
+/* Inactive Link Hover */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
-    background-color: #1E2D4A !important;
+    background-color: #16223F !important;
     color: #FFFFFF !important;
+    border-color: #1E2E52 !important;
+    transform: translateX(3px) !important;
 }
+
+/* Active Link (Corporate Primary Blue Gradient Pill) */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-    background-color: #2563EB !important;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
     color: #FFFFFF !important;
-    border-radius: 8px !important;
+    font-weight: 700 !important;
+    border-color: #3B82F6 !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+    transform: translateX(3px) !important;
 }
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label span {
+
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label span,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div {
     color: inherit !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
 }
+
+/* Sidebar Collapse Button inside Sidebar */
+section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    border-radius: 8px !important;
+    background: #141E38 !important;
+    border: 1px solid #1E2D4E !important;
+    color: #94A3B8 !important;
+    transition: all 0.2s ease !important;
+}
+section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button:hover {
+    background: #2563EB !important;
+    color: #FFFFFF !important;
+    border-color: #3B82F6 !important;
+}
+
 section[data-testid="stSidebar"] hr {
     border-color: #1E2E4E !important;
 }
@@ -1541,7 +1617,6 @@ div[class*="viewerBadge"],
 .stAppDeployButton, 
 [data-testid="stAppDeployButton"],
 [data-testid="stBottom"],
-header[data-testid="stHeader"],
 #MainMenu, 
 footer {
     display: none !important;
@@ -1552,6 +1627,61 @@ footer {
     margin: 0 !important;
     opacity: 0 !important;
     pointer-events: none !important;
+}
+
+/* Unclip Header to host the 3-Line Hamburger Menu Toggle */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+    height: 48px !important;
+    overflow: visible !important;
+    z-index: 99999 !important;
+}
+
+/* 3-Line Hamburger Menu Toggle (☰) to Slide Open Sidebar */
+div[data-testid="collapsedControl"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: fixed !important;
+    top: 12px !important;
+    left: 12px !important;
+    z-index: 100000 !important;
+}
+
+div[data-testid="collapsedControl"] button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    background: #FFFFFF !important;
+    border: 1.5px solid #CBD5E1 !important;
+    border-radius: 9px !important;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.12) !important;
+    cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+div[data-testid="collapsedControl"] button:hover {
+    background: #EFF6FF !important;
+    border-color: #2563EB !important;
+    transform: scale(1.05) !important;
+}
+
+div[data-testid="collapsedControl"] button svg {
+    display: none !important;
+}
+
+div[data-testid="collapsedControl"] button::before {
+    content: "☰" !important;
+    font-size: 1.4rem !important;
+    font-weight: 900 !important;
+    color: #0F172A !important;
+    line-height: 1 !important;
+    display: block !important;
 }
 
 /* ==============================================================================
@@ -1590,9 +1720,9 @@ footer {
 
 /* Mobile & Small Tablets (max-width: 768px) */
 @media screen and (max-width: 768px) {
-    /* Responsive Canvas Padding */
+    /* Responsive Canvas Padding with headroom for 3-line hamburger menu */
     .main .block-container {
-        padding-top: 0.6rem !important;
+        padding-top: 3.8rem !important;
         padding-bottom: 2rem !important;
         padding-left: 0.85rem !important;
         padding-right: 0.85rem !important;

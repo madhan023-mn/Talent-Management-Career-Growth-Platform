@@ -1122,6 +1122,15 @@ def register_page():
 # ROUTING FOR UNAUTHENTICATED USERS
 # ------------------------------------------------------------------------------
 if not st.session_state.user:
+    st.markdown(
+        """
+        <style>
+        section[data-testid="stSidebar"] { display: none !important; }
+        div[data-testid="collapsedControl"] { display: none !important; }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
     current_auth_view = st.session_state.get("auth_view", "landing")
     if current_auth_view == "login":
         login_page()
@@ -1169,9 +1178,9 @@ with st.sidebar:
         <div style="padding-top: 0.2rem; margin-bottom: 0.5rem;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 2px;">
                 {get_svg_icon("brand_logo", size=24)}
-                <span style="font-weight: 800; font-size: 1.15rem; color: #0F172A; letter-spacing: -0.01em;">Talent Growth</span>
+                <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
             </div>
-            <div style="font-size: 0.78rem; color: #64748B; margin-bottom: 1rem;">
+            <div style="font-size: 0.78rem; color: #94A3B8; margin-bottom: 1rem;">
                 Signed in as {user['name']}
             </div>
         </div>
