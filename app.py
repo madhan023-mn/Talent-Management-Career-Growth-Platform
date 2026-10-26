@@ -1533,25 +1533,6 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     text-overflow: ellipsis !important;
 }}
 
-/* Sidebar Back to Home Button */
-section[data-testid="stSidebar"] button[key="btn_sidebar_back_to_home"],
-section[data-testid="stSidebar"] button[key="btn_sidebar_home_collapsed"] {{
-    background: {home_btn_bg} !important;
-    border: 1px solid {home_btn_border} !important;
-    color: {home_btn_color} !important;
-    border-radius: 8px !important;
-    padding: 8px 16px !important;
-    font-weight: 600 !important;
-    font-size: 0.90rem !important;
-    width: 100% !important;
-    transition: all 0.18s ease !important;
-}}
-section[data-testid="stSidebar"] button[key="btn_sidebar_back_to_home"]:hover,
-section[data-testid="stSidebar"] button[key="btn_sidebar_home_collapsed"]:hover {{
-    background: {home_btn_hover_bg} !important;
-    color: {home_btn_hover_color} !important;
-    border-color: {home_btn_hover_border} !important;
-}}
 
 /* Sidebar Sign Out Button */
 section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"],
@@ -1624,20 +1605,14 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
             st.session_state.current_page = selected_nav
 
             # 4. Spacing to bottom
-            st.markdown("<div style='margin-top: 2.0rem;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
 
-            # 5. Bottom Action Buttons: Back to Home & Sign out
-            if st.button("Back to Home", use_container_width=True, type="secondary", key="btn_sidebar_back_to_home"):
-                st.session_state.current_page = "Dashboard"
-                st.session_state.nav_radio = "Dashboard"
-                st.rerun()
-
-            st.markdown("<div style='margin-top: 0.35rem;'></div>", unsafe_allow_html=True)
+            # 5. Bottom Action: Single Sign out button
             if st.button("Sign out", use_container_width=True, type="secondary", key="btn_sidebar_sign_out"):
                 st.session_state.user = None
                 st.session_state.auth_view = "landing"
                 st.session_state.current_page = "Dashboard"
-                st.session_state.nav_radio = "Dashboard"
+                st.session_state.page_to_navigate = "Dashboard"
                 st.rerun()
 
             return selected_nav
@@ -1668,19 +1643,13 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
             )
             st.session_state.current_page = selected_nav
 
-            # Bottom buttons (compact)
-            st.markdown("<div style='margin-top: 2.0rem;'></div>", unsafe_allow_html=True)
-            if st.button("⌂", help="Back to Home", use_container_width=True, type="secondary", key="btn_sidebar_home_collapsed"):
-                st.session_state.current_page = "Dashboard"
-                st.session_state.nav_radio = "Dashboard"
-                st.rerun()
-
-            st.markdown("<div style='margin-top: 0.35rem;'></div>", unsafe_allow_html=True)
+            # Bottom Action: Single compact Sign out button
+            st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
             if st.button("⎋", help="Sign out", use_container_width=True, type="secondary", key="btn_sidebar_signout_collapsed"):
                 st.session_state.user = None
                 st.session_state.auth_view = "landing"
                 st.session_state.current_page = "Dashboard"
-                st.session_state.nav_radio = "Dashboard"
+                st.session_state.page_to_navigate = "Dashboard"
                 st.rerun()
 
             return selected_nav
@@ -1698,9 +1667,7 @@ def analysis_bundle():
 col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
 with col_top_home:
     if st.button("Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
-        st.session_state.current_page = "Dashboard"
-        st.session_state.nav_radio = "Dashboard"
-        st.rerun()
+        navigate_to("Dashboard")
 
 with col_top_trail:
     badge_color = "#2563EB" if is_admin else "#0284C7"
