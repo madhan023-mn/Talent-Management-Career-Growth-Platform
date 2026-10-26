@@ -332,46 +332,30 @@ code, kbd, samp, pre {
 .trend-up { color: #10B981; }
 .trend-neutral { color: #64748B; }
 
-/* Modern Corporate Sticky Sidebar (High Specificity to guarantee visibility) */
+/* Modern Corporate Sticky Sidebar (Base Layout & Smooth Transition) */
 html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
 html body section[data-testid="stSidebar"],
 html body [data-testid="stSidebar"],
 section[data-testid="stSidebar"] {
-    background-color: #EFF4F8 !important;
-    border-right: 1px solid #D9E4EC !important;
-    color: #102A43 !important;
     height: 100vh !important;
     max-height: 100vh !important;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     z-index: 1000 !important;
-    transition: transform 0.25s ease, margin-left 0.25s ease, width 0.25s ease !important;
-}
-
-/* Expanded Sidebar */
-section[data-testid="stSidebar"]:not([aria-expanded="false"]),
-section[data-testid="stSidebar"][aria-expanded="true"] {
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
-    min-width: 270px !important;
-    width: 280px !important;
-    max-width: 320px !important;
-    margin-left: 0 !important;
+    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* Collapsed Sidebar (Smooth Slide-Out to Left) */
-section[data-testid="stSidebar"][aria-expanded="false"] {
-    min-width: 0 !important;
-    width: 0 !important;
-    max-width: 0 !important;
-    overflow: hidden !important;
+/* Hide native Streamlit sidebar collapse controls */
+div[data-testid="collapsedControl"],
+div[data-testid="stSidebarCollapsedControl"],
+button[data-testid="stSidebarCollapseButton"] {
+    display: none !important;
     visibility: hidden !important;
-}
-
-section[data-testid="stSidebar"] .stMarkdown p,
-section[data-testid="stSidebar"] .stMarkdown span,
-section[data-testid="stSidebar"] .stMarkdown strong {
-    color: #5A7383 !important;
 }
 
 /* Sidebar Navigation Radio Buttons (With Circular Radio Indicators) */
@@ -1649,46 +1633,12 @@ header[data-testid="stHeader"] {
 
 /* 3-Line Hamburger Menu / Collapse Arrow Toggle to Slide Open Sidebar */
 div[data-testid="collapsedControl"],
-div[data-testid="stSidebarCollapsedControl"] {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    position: fixed !important;
-    top: 12px !important;
-    left: 12px !important;
-    z-index: 100000 !important;
-}
-
-/* Sidebar Collapse & Expand Controls (Native Material Icons << and >>) */
-span[data-testid="stIconMaterial"] {
-    display: inline-flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-div[data-testid="collapsedControl"] button,
-div[data-testid="stSidebarCollapsedControl"] button {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 38px !important;
-    height: 38px !important;
-    min-width: 38px !important;
-    min-height: 38px !important;
-    background: #FFFFFF !important;
-    border: 1px solid #CBD5E1 !important;
-    border-radius: 8px !important;
-    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08) !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    color: rgba(24, 49, 58, 0.7) !important;
-}
-
-div[data-testid="collapsedControl"] button:hover {
-    background: #F1F5F9 !important;
-    color: #0E2A38 !important;
-    border-color: #94A3B8 !important;
+div[data-testid="stSidebarCollapsedControl"],
+button[data-testid="stSidebarCollapseButton"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 /* ==============================================================================

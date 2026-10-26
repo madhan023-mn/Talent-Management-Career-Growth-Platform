@@ -1160,131 +1160,35 @@ def navigate_to(target_page: str):
     st.rerun()
 
 # ------------------------------------------------------------------------------
-# SIDEBAR NAVIGATION
+# SIDEBAR STATE MANAGEMENT & ROLE-BASED ACCESS CONTROL
 # ------------------------------------------------------------------------------
-with st.sidebar:
-    # TalentSphere Unified Theme (Matching reference mockup exactly for both Employee and HR)
-    st.markdown(
-        """
-        <style>
-        html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
-        html body section[data-testid="stSidebar"],
-        section[data-testid="stSidebar"] {
-            background-color: #EFF4F8 !important;
-            border-right: 1px solid #D9E4EC !important;
-            transition: transform 0.25s ease, margin-left 0.25s ease, width 0.25s ease !important;
-        }
-        section[data-testid="stSidebar"]:not([aria-expanded="false"]),
-        section[data-testid="stSidebar"][aria-expanded="true"] {
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            min-width: 270px !important;
-            width: 280px !important;
-            max-width: 320px !important;
-            margin-left: 0 !important;
-        }
-        section[data-testid="stSidebar"][aria-expanded="false"] {
-            min-width: 0 !important;
-            width: 0 !important;
-            max-width: 0 !important;
-            overflow: hidden !important;
-            visibility: hidden !important;
-        }
-        div[data-testid="collapsedControl"],
-        div[data-testid="stSidebarCollapsedControl"] {
-            display: flex !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            position: fixed !important;
-            top: 14px !important;
-            left: 14px !important;
-            z-index: 999999 !important;
-        }
-        div[data-testid="collapsedControl"] button,
-        div[data-testid="stSidebarCollapsedControl"] button {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            width: 36px !important;
-            height: 36px !important;
-            background: #FFFFFF !important;
-            border: 1px solid #CBD5E1 !important;
-            border-radius: 8px !important;
-            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12) !important;
-            color: #0E2A38 !important;
-        }
-        section[data-testid="stSidebar"] .stMarkdown p,
-        section[data-testid="stSidebar"] .stMarkdown span {
-            color: #5A7383 !important;
-        }
-        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
-            gap: 5px !important;
-        }
-        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
-            color: #627D98 !important;
-            background: transparent !important;
-            border: none !important;
-            padding: 6px 6px !important;
-            font-weight: 500 !important;
-            font-size: 0.94rem !important;
-            box-shadow: none !important;
-            margin-bottom: 2px !important;
-            border-radius: 6px !important;
-        }
-        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
-            background: #E2EBF2 !important;
-            color: #102A43 !important;
-        }
-        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
-        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-            background: transparent !important;
-            color: #102A43 !important;
-            font-weight: 700 !important;
-            border: none !important;
-            box-shadow: none !important;
-        }
-        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {
-            color: inherit !important;
-            font-size: 0.94rem !important;
-        }
-        section[data-testid="stSidebar"] button[kind="secondary"] {
-            background: transparent !important;
-            border: 1px solid #D2E0EB !important;
-            color: #627D98 !important;
-            border-radius: 8px !important;
-            padding: 8px 16px !important;
-            font-weight: 500 !important;
-        }
-        section[data-testid="stSidebar"] button[kind="secondary"]:hover {
-            background: #E2EBF2 !important;
-            color: #102A43 !important;
-            border-color: #BAC7D5 !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-    st.markdown(
-        f"""
-        <div style="padding-top: 0.2rem; margin-bottom: 0.5rem;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
-                    <path d="M14 26V11" stroke="#059669" stroke-width="2.8" stroke-linecap="round"/>
-                    <path d="M14 11C14 7 10 4 6 5C5 9 8 13 14 13" fill="#34D399" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M14 16C16 11 20 8 23 9C24 13 21 17 14 18" fill="#10B981" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span style="font-weight: 800; font-size: 1.22rem; color: #0E2A38; letter-spacing: -0.01em;">TalentSphere</span>
-            </div>
-            <div style="font-size: 0.84rem; color: #5A7383; margin-top: 4px; margin-bottom: 1.2rem;">
-                Signed in as {user['name']}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+if "sidebar_expanded" not in st.session_state:
+    st.session_state.sidebar_expanded = True
 
-    core_pages = [
+def toggle_sidebar():
+    st.session_state.sidebar_expanded = not st.session_state.get("sidebar_expanded", True)
+
+# Enforce backend role permissions (Employees cannot access HR Administrator sections)
+if not is_admin and st.session_state.get("current_page") in ["Employees", "Performance", "Reports", "Career Goals"]:
+    st.session_state.current_page = "Dashboard"
+    st.session_state.nav_radio = "Dashboard"
+
+is_expanded = st.session_state.get("sidebar_expanded", True)
+
+# Role-specific navigation pages list
+if is_admin:
+    active_pages = [
+        "Dashboard",
+        "Employees",
+        "Performance",
+        "Skills & Assessment",
+        "Career Goals",
+        "Reports",
+        "Resume Studio",
+        "Settings"
+    ]
+else:
+    active_pages = [
         "Dashboard",
         "My Profile",
         "Resume Studio",
@@ -1297,43 +1201,389 @@ with st.sidebar:
         "Settings"
     ]
 
-    if is_admin:
-        admin_pages = core_pages + [
-            "Employees",
-            "Performance"
-        ]
-        active_pages = admin_pages
+if "page_to_navigate" in st.session_state:
+    target_nav = st.session_state.pop("page_to_navigate")
+    if target_nav in active_pages:
+        st.session_state.current_page = target_nav
+        st.session_state.nav_radio = target_nav
+
+if "current_page" not in st.session_state or st.session_state.current_page not in active_pages:
+    st.session_state.current_page = "Dashboard"
+
+if "nav_radio" not in st.session_state or st.session_state.nav_radio not in active_pages:
+    st.session_state.nav_radio = st.session_state.current_page
+
+def on_nav_change():
+    st.session_state.current_page = st.session_state.nav_radio
+
+# ------------------------------------------------------------------------------
+# DYNAMIC SIDEBAR CSS (THEMES, EXPANSION, CIRCULAR INDICATORS)
+# ------------------------------------------------------------------------------
+width_px = 280 if is_expanded else 72
+pad_x = 0.9 if is_expanded else 0.35
+label_pad = "8px 12px" if is_expanded else "10px 0"
+label_justify = "flex-start" if is_expanded else "center"
+circle_margin_right = "12px" if is_expanded else "0px"
+text_display = "inline-block" if is_expanded else "none"
+
+if is_admin:
+    # HR Administrator: Dark Navy Theme
+    bg_color = "#0A1128"
+    border_color = "#1E293B"
+    text_color = "#FFFFFF"
+    item_inactive_color = "#94A3B8"
+    circle_inactive_border = "#64748B"
+    item_hover_bg = "#16223F"
+    item_hover_color = "#FFFFFF"
+    circle_hover_border = "#94A3B8"
+    active_bg = "rgba(37, 99, 235, 0.28)"
+    active_text = "#60A5FA"
+    active_border = "1px solid rgba(96, 165, 250, 0.4)"
+    active_circle_border = "#60A5FA"
+    active_circle_bg = "#2563EB"
+    active_circle_shadow = "inset 0 0 0 2px #0A1128"
+    ham_bg = "#16223F"
+    ham_border = "#334155"
+    ham_color = "#FFFFFF"
+    ham_hover_bg = "#1E293B"
+    ham_hover_color = "#60A5FA"
+    ham_hover_border = "#60A5FA"
+    signout_bg = "transparent"
+    signout_border = "#334155"
+    signout_color = "#94A3B8"
+    signout_hover_bg = "#16223F"
+    signout_hover_color = "#FFFFFF"
+    signout_hover_border = "#475569"
+else:
+    # Employee: Light Ice-Blue Theme
+    bg_color = "#EFF4F8"
+    border_color = "#D9E4EC"
+    text_color = "#102A43"
+    item_inactive_color = "#627D98"
+    circle_inactive_border = "#94A3B8"
+    item_hover_bg = "#E2EBF2"
+    item_hover_color = "#102A43"
+    circle_hover_border = "#64748B"
+    active_bg = "#E0F2FE"
+    active_text = "#0284C7"
+    active_border = "none"
+    active_circle_border = "#0284C7"
+    active_circle_bg = "#0284C7"
+    active_circle_shadow = "inset 0 0 0 2.5px #E0F2FE"
+    ham_bg = "#FFFFFF"
+    ham_border = "#CBD5E1"
+    ham_color = "#0E2A38"
+    ham_hover_bg = "#F1F5F9"
+    ham_hover_color = "#0284C7"
+    ham_hover_border = "#0284C7"
+    signout_bg = "transparent"
+    signout_border = "#D2E0EB"
+    signout_color = "#627D98"
+    signout_hover_bg = "#E2EBF2"
+    signout_hover_color = "#102A43"
+    signout_hover_border = "#BAC7D5"
+
+sidebar_dynamic_css = f"""
+<style>
+/* Sidebar Base Dimensions & Smooth Transition */
+html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
+html body section[data-testid="stSidebar"],
+section[data-testid="stSidebar"] {{
+    min-width: {width_px}px !important;
+    width: {width_px}px !important;
+    max-width: {width_px}px !important;
+    background-color: {bg_color} !important;
+    border-right: 1px solid {border_color} !important;
+    color: {text_color} !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    overflow-x: hidden !important;
+    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    padding-left: {pad_x}rem !important;
+    padding-right: {pad_x}rem !important;
+}}
+
+/* Smooth Transition for Main Content */
+[data-testid="stAppViewContainer"] > section:nth-child(2),
+[data-testid="stMain"] {{
+    transition: margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}}
+
+/* Completely Hide Streamlit Native Collapse Controls */
+div[data-testid="collapsedControl"],
+div[data-testid="stSidebarCollapsedControl"],
+button[data-testid="stSidebarCollapseButton"] {{
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}}
+
+/* Three-Line Hamburger Button Styling (Visible in Both States) */
+div[data-testid="stSidebar"] div[data-testid="stButton"] button,
+button[key="sidebar_hamburger_btn"],
+button[key="sidebar_hamburger_btn_collapsed"],
+button[key="top_bar_hamburger"] {{
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+}}
+
+/* Target the hamburger icon button specifically */
+div[data-testid="stSidebar"] div.sidebar-ham-wrapper button {{
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    background: {ham_bg} !important;
+    border: 1px solid {ham_border} !important;
+    color: {ham_color} !important;
+    border-radius: 8px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+}}
+div[data-testid="stSidebar"] div.sidebar-ham-wrapper button:hover {{
+    background: {ham_hover_bg} !important;
+    color: {ham_hover_color} !important;
+    border-color: {ham_hover_border} !important;
+}}
+
+/* Universal Top Bar Hamburger */
+div.topbar-ham-wrapper button {{
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    background: {ham_bg} !important;
+    border: 1px solid {ham_border} !important;
+    color: {ham_color} !important;
+    border-radius: 8px !important;
+    padding: 0 !important;
+}}
+div.topbar-ham-wrapper button:hover {{
+    background: {ham_hover_bg} !important;
+    color: {ham_hover_color} !important;
+    border-color: {ham_hover_border} !important;
+}}
+
+/* Hide BaseWeb default radio circle */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {{
+    display: none !important;
+}}
+
+/* Radio Group Container */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {{
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    width: 100% !important;
+}}
+
+/* Radio Button Label */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {{
+    display: flex !important;
+    align-items: center !important;
+    position: relative !important;
+    width: 100% !important;
+    padding: {label_pad} !important;
+    justify-content: {label_justify} !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    margin-bottom: 2px !important;
+    transition: all 0.18s ease-in-out !important;
+    background: transparent !important;
+    color: {item_inactive_color} !important;
+    border: none !important;
+    box-shadow: none !important;
+}}
+
+/* Circular Radio Indicator (::before) immediately to left of text */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::before {{
+    content: "" !important;
+    display: inline-block !important;
+    width: 14px !important;
+    height: 14px !important;
+    min-width: 14px !important;
+    min-height: 14px !important;
+    border-radius: 50% !important;
+    margin-right: {circle_margin_right} !important;
+    border: 2px solid {circle_inactive_border} !important;
+    background: transparent !important;
+    box-sizing: border-box !important;
+    transition: all 0.18s ease-in-out !important;
+    flex-shrink: 0 !important;
+}}
+
+/* Inactive Hover Effect */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {{
+    background: {item_hover_bg} !important;
+    color: {item_hover_color} !important;
+}}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover::before {{
+    border-color: {circle_hover_border} !important;
+}}
+
+/* Active Page Highlight (Blue Background, Blue Text, Blue-Filled Circle) */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {{
+    background-color: {active_bg} !important;
+    color: {active_text} !important;
+    font-weight: 700 !important;
+    border: {active_border} !important;
+}}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"]::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked)::before {{
+    border: 2px solid {active_circle_border} !important;
+    background: {active_circle_bg} !important;
+    box-shadow: {active_circle_shadow} !important;
+}}
+
+/* Navigation Label Typography */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {{
+    color: inherit !important;
+    font-size: 0.93rem !important;
+    font-weight: inherit !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: {text_display} !important;
+    white-space: nowrap !important;
+}}
+
+/* Outlined Sign Out Button */
+section[data-testid="stSidebar"] button[kind="secondary"] {{
+    background: {signout_bg} !important;
+    border: 1px solid {signout_border} !important;
+    color: {signout_color} !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    font-weight: 600 !important;
+    transition: all 0.18s ease !important;
+}}
+section[data-testid="stSidebar"] button[kind="secondary"]:hover {{
+    background: {signout_hover_bg} !important;
+    color: {signout_hover_color} !important;
+    border-color: {signout_hover_border} !important;
+}}
+</style>
+"""
+st.markdown(sidebar_dynamic_css, unsafe_allow_html=True)
+
+# ------------------------------------------------------------------------------
+# RENDER SIDEBAR COMPONENT
+# ------------------------------------------------------------------------------
+with st.sidebar:
+    if is_expanded:
+        # EXPANDED SIDEBAR: ☰ + logo + username + radio buttons + navigation labels + Sign out
+        st.markdown('<div class="sidebar-ham-wrapper" style="margin-bottom: 0.6rem;">', unsafe_allow_html=True)
+        col_ham_btn, col_ham_brand = st.columns([1.3, 4.7], gap="small")
+        with col_ham_btn:
+            st.button("☰", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Collapse sidebar (☰)")
+        with col_ham_brand:
+            if is_admin:
+                st.markdown(
+                    f"""
+                    <div style="display: flex; align-items: center; gap: 8px; padding-top: 4px;">
+                        {get_svg_icon("brand_logo", size=24)}
+                        <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f"""
+                    <div style="display: flex; align-items: center; gap: 8px; padding-top: 4px;">
+                        <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
+                            <path d="M14 26V11" stroke="#059669" stroke-width="2.8" stroke-linecap="round"/>
+                            <path d="M14 11C14 7 10 4 6 5C5 9 8 13 14 13" fill="#34D399" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M14 16C16 11 20 8 23 9C24 13 21 17 14 18" fill="#10B981" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span style="font-weight: 800; font-size: 1.15rem; color: #0E2A38; letter-spacing: -0.01em;">TalentSphere</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        user_subtitle_color = "#94A3B8" if is_admin else "#5A7383"
+        st.markdown(
+            f"""
+            <div style="font-size: 0.82rem; color: {user_subtitle_color}; margin-top: -4px; margin-bottom: 1.1rem; padding-left: 2px;">
+                Signed in as <strong>{user['name']}</strong>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        selected_page = st.radio("Navigation", active_pages, key="nav_radio", on_change=on_nav_change, label_visibility="collapsed")
+        st.session_state.current_page = selected_page
+        page = selected_page
+
+        st.markdown("<div style='margin-top: 1.6rem;'></div>", unsafe_allow_html=True)
+
+        if st.button("Sign out", use_container_width=True, type="secondary", key="btn_sign_out_expanded"):
+            st.session_state.user = None
+            st.session_state.current_page = "Dashboard"
+            st.session_state.page_to_navigate = "Dashboard"
+            st.session_state.auth_view = "landing"
+            st.rerun()
+
     else:
-        emp_pages = core_pages
-        active_pages = emp_pages
+        # COLLAPSED SIDEBAR: ☰ + compact sidebar with navigation icons or radio indicators + Sign out
+        st.markdown('<div class="sidebar-ham-wrapper" style="display: flex; justify-content: center; margin-bottom: 0.8rem;">', unsafe_allow_html=True)
+        st.button("☰", key="sidebar_hamburger_btn_collapsed", on_click=toggle_sidebar, help="Expand sidebar (☰)")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    if "page_to_navigate" in st.session_state:
-        target_nav = st.session_state.pop("page_to_navigate")
-        if target_nav in active_pages:
-            st.session_state.current_page = target_nav
-            st.session_state.nav_radio = target_nav
+        # Centered Compact Brand Icon
+        if is_admin:
+            st.markdown(
+                f"""
+                <div style="display: flex; justify-content: center; margin-bottom: 1.1rem;" title="Talent Growth">
+                    {get_svg_icon("brand_logo", size=26)}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                """
+                <div style="display: flex; justify-content: center; margin-bottom: 1.1rem;" title="TalentSphere">
+                    <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+                        <path d="M14 26V11" stroke="#059669" stroke-width="2.8" stroke-linecap="round"/>
+                        <path d="M14 11C14 7 10 4 6 5C5 9 8 13 14 13" fill="#34D399" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M14 16C16 11 20 8 23 9C24 13 21 17 14 18" fill="#10B981" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-    if "current_page" not in st.session_state or st.session_state.current_page not in active_pages:
-        st.session_state.current_page = "Dashboard"
+        selected_page = st.radio("Navigation", active_pages, key="nav_radio", on_change=on_nav_change, label_visibility="collapsed")
+        st.session_state.current_page = selected_page
+        page = selected_page
 
-    if "nav_radio" not in st.session_state or st.session_state.nav_radio not in active_pages:
-        st.session_state.nav_radio = st.session_state.current_page
+        st.markdown("<div style='margin-top: 1.6rem;'></div>", unsafe_allow_html=True)
 
-    def on_nav_change():
-        st.session_state.current_page = st.session_state.nav_radio
-
-    selected_page = st.radio("Navigation", active_pages, key="nav_radio", on_change=on_nav_change, label_visibility="collapsed")
-    st.session_state.current_page = selected_page
-    page = selected_page
-
-    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
-
-    if st.button("Sign out", use_container_width=True, type="secondary"):
-        st.session_state.user = None
-        st.session_state.current_page = "Dashboard"
-        st.session_state.page_to_navigate = "Dashboard"
-        st.session_state.auth_view = "landing"
-        st.rerun()
+        if st.button("⎋", help="Sign out", use_container_width=True, type="secondary", key="btn_sign_out_collapsed"):
+            st.session_state.user = None
+            st.session_state.current_page = "Dashboard"
+            st.session_state.page_to_navigate = "Dashboard"
+            st.session_state.auth_view = "landing"
+            st.rerun()
 
 
 def analysis_bundle():
@@ -1342,13 +1592,19 @@ def analysis_bundle():
     return result
 
 # ------------------------------------------------------------------------------
-# UNIVERSAL TOP BAR WITH TOP-LEFT BACK BUTTON (FOR ALL AUTHENTICATED PAGES)
+# UNIVERSAL TOP BAR WITH TOP-LEFT HAMBURGER & BREADCRUMB (FOR ALL AUTHENTICATED PAGES)
 # ------------------------------------------------------------------------------
-if page != "Dashboard":
-    col_top_back, col_top_trail = st.columns([2.5, 7.5], gap="small")
+if is_admin:
+    col_top_ham, col_top_back, col_top_trail = st.columns([0.6, 2.4, 7.0], gap="small")
+    with col_top_ham:
+        st.markdown('<div class="topbar-ham-wrapper">', unsafe_allow_html=True)
+        st.button("☰", key=f"top_bar_hamburger_admin_{page.replace(' ', '_').lower()}", on_click=toggle_sidebar, help="Toggle sidebar (☰)")
+        st.markdown('</div>', unsafe_allow_html=True)
     with col_top_back:
-        if st.button("Back to Dashboard", key=f"btn_universal_back_dash_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
-            navigate_to("Dashboard")
+        if st.button("Back to Home", key=f"btn_admin_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+            st.session_state.user = None
+            st.session_state.auth_view = "landing"
+            st.rerun()
     with col_top_trail:
         render_html(
             f"""
@@ -1359,6 +1615,35 @@ if page != "Dashboard":
                 </span>
                 <span style="color: #CBD5E1;">|</span>
                 <span style="color: #2563EB; font-weight: 700; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 3px 10px; border-radius: 9999px;">{page}</span>
+            </div>
+            """
+        )
+    st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
+else:
+    col_top_ham, col_top_back, col_top_trail = st.columns([0.6, 2.4, 7.0], gap="small")
+    with col_top_ham:
+        st.markdown('<div class="topbar-ham-wrapper">', unsafe_allow_html=True)
+        st.button("☰", key=f"top_bar_hamburger_emp_{page.replace(' ', '_').lower()}", on_click=toggle_sidebar, help="Toggle sidebar (☰)")
+        st.markdown('</div>', unsafe_allow_html=True)
+    with col_top_back:
+        if page != "Dashboard":
+            if st.button("Back to Dashboard", key=f"btn_universal_back_dash_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+                navigate_to("Dashboard")
+        else:
+            if st.button("Sign out", key=f"btn_emp_top_signout_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+                st.session_state.user = None
+                st.session_state.auth_view = "landing"
+                st.rerun()
+    with col_top_trail:
+        render_html(
+            f"""
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
+                <span style="display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 3px 10px; border-radius: 9999px;">
+                    {get_svg_icon("user", size=13, color="#475569")}
+                    <strong>{user['name']}</strong> &bull; {user['role'].upper()}
+                </span>
+                <span style="color: #CBD5E1;">|</span>
+                <span style="color: #0284C7; font-weight: 700; background: #E0F2FE; border: 1px solid #BAE6FD; padding: 3px 10px; border-radius: 9999px;">{page}</span>
             </div>
             """
         )
@@ -1811,32 +2096,55 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
 
     render_html(
         f"""
-        <div class="ts-metrics-grid">
-            <div class="ts-metric-box">
-                <div class="ts-metric-label">Profile completion</div>
-                <div class="ts-metric-value">{completion}%</div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 2rem;">
+            <!-- Profile Completion -->
+            <div style="background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="width: 48px; height: 48px; border-radius: 10px; background: #DBEAFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    {get_svg_icon("user", size=24, color="#2563EB")}
+                </div>
+                <div>
+                    <div style="font-size: 0.88rem; font-weight: 600; color: #1E293B; margin-bottom: 2px;">Profile completion</div>
+                    <div style="font-size: 1.95rem; font-weight: 800; color: #0F172A; line-height: 1.15;">{completion}%</div>
+                </div>
             </div>
-            <div class="ts-metric-box">
-                <div class="ts-metric-label">Profile strength</div>
-                <div class="ts-metric-value">{strength_score}/100</div>
+            <!-- Profile Strength -->
+            <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="width: 48px; height: 48px; border-radius: 10px; background: #D1FAE5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    {get_svg_icon("trending_up", size=24, color="#059669")}
+                </div>
+                <div>
+                    <div style="font-size: 0.88rem; font-weight: 600; color: #1E293B; margin-bottom: 2px;">Profile strength</div>
+                    <div style="font-size: 1.95rem; font-weight: 800; color: #0F172A; line-height: 1.15;">{strength_score}/100</div>
+                </div>
             </div>
-            <div class="ts-metric-box">
-                <div class="ts-metric-label">Target role match</div>
-                <div class="ts-metric-value">{analysis['match']}%</div>
+            <!-- Target Role Match -->
+            <div style="background: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="width: 48px; height: 48px; border-radius: 10px; background: #EDE9FE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    {get_svg_icon("target", size=24, color="#7C3AED")}
+                </div>
+                <div>
+                    <div style="font-size: 0.88rem; font-weight: 600; color: #1E293B; margin-bottom: 2px;">Target role match</div>
+                    <div style="font-size: 1.95rem; font-weight: 800; color: #0F172A; line-height: 1.15;">{analysis['match']}%</div>
+                </div>
             </div>
-            <div class="ts-metric-box">
-                <div class="ts-metric-label">Skills recorded</div>
-                <div class="ts-metric-value">{skills_cnt}</div>
+            <!-- Skills Recorded -->
+            <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="width: 48px; height: 48px; border-radius: 10px; background: #FFEDD5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    {get_svg_icon("star", size=24, color="#EA580C")}
+                </div>
+                <div>
+                    <div style="font-size: 0.88rem; font-weight: 600; color: #1E293B; margin-bottom: 2px;">Skills recorded</div>
+                    <div style="font-size: 1.95rem; font-weight: 800; color: #0F172A; line-height: 1.15;">{skills_cnt}</div>
+                </div>
             </div>
         </div>
-        <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 1.5rem 0 1.75rem 0;" />
         """
     )
 
     col_dash_left, col_dash_right = st.columns([1.15, 1], gap="large")
 
     with col_dash_left:
-        st.markdown("<h3 style='font-size: 1.35rem; font-weight: 800; color: #0F172A; margin-bottom: 1rem;'>Your next useful actions</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='font-size: 1.35rem; font-weight: 800; color: #0F172A; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;'>Your next useful actions <span style='font-size: 1.1rem; color: #94A3B8;'>🔗</span></h3>", unsafe_allow_html=True)
 
         # Action Card 1: Profile Completeness
         if completion < 100:
@@ -1847,20 +2155,22 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
 
         render_html(
             f"""
-            <div class="ts-action-card">
-                <div class="ts-action-title">High · Complete your professional profile</div>
-                <div class="ts-action-body">{action_1_body}</div>
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="width: 44px; height: 44px; border-radius: 10px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    {get_svg_icon("reports", size=22, color="#2563EB")}
+                </div>
+                <div>
+                    <div style="font-weight: 800; font-size: 0.98rem; color: #0F172A; margin-bottom: 4px;">High &middot; Complete your professional profile</div>
+                    <div style="font-size: 0.86rem; color: #64748B; line-height: 1.5;">{action_1_body}</div>
+                </div>
             </div>
-            """
-        )
-
-        # Action Card 2: Role-aligned resume
-        render_html(
-            """
-            <div class="ts-action-card">
-                <div class="ts-action-title">Medium · Create a role-aligned resume</div>
-                <div class="ts-action-body">
-                    Use your profile details to draft an ATS-friendly resume and add measurable outcomes drawn from your actual work.
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="width: 44px; height: 44px; border-radius: 10px; background: #ECFDF5; border: 1px solid #A7F3D0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    {get_svg_icon("reports", size=22, color="#059669")}
+                </div>
+                <div>
+                    <div style="font-weight: 800; font-size: 0.98rem; color: #0F172A; margin-bottom: 4px;">Medium &middot; Create a role-aligned resume</div>
+                    <div style="font-size: 0.86rem; color: #64748B; line-height: 1.5;">Use your profile details to draft an ATS-friendly resume and add measurable outcomes drawn from your actual work.</div>
                 </div>
             </div>
             """
@@ -1885,9 +2195,12 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
 
         render_html(
             f"""
-            <div style="font-size: 0.95rem; color: #0F172A; line-height: 1.8; margin-bottom: 0.5rem;">
+            <div style="font-size: 0.95rem; color: #0F172A; line-height: 1.8; margin-bottom: 0.85rem;">
                 <div><strong>Current role:</strong> {current_role_disp}</div>
                 <div><strong>Target:</strong> {target_role_disp}</div>
+            </div>
+            <div style="background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 8px; padding: 12px 16px; color: #1E40AF; font-size: 0.88rem; margin-bottom: 1rem;">
+                {len(skills)} competencies recorded. Target role readiness is evaluated at {analysis['match']}%.
             </div>
             """
         )
@@ -1904,21 +2217,22 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
             if st.button("Add Skills in Portfolio", key="dash_add_skills_btn"):
                 navigate_to("Skills & Assessment")
         else:
-            render_html(
-                f"""
-                <div class="ts-callout-blue">
-                    <strong>{len(skills)} competencies recorded.</strong> Target role readiness is evaluated at <strong>{analysis['match']}%</strong>.
-                </div>
-                """
-            )
             df_skills = pd.DataFrame(skills)
             fig_s = px.bar(
                 df_skills, x="name", y="years", color="category",
                 title="Skills & Experience Duration",
-                labels={"name": "Skill", "years": "Years Exp", "category": "Category"},
-                color_discrete_sequence=['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899']
+                labels={"name": "", "years": "Years Exp", "category": "Category"},
+                color_discrete_map={"Technical": "#2563EB", "Soft Skills": "#10B981", "Domain": "#F59E0B"}
             )
-            fig_s.update_layout(margin=dict(l=10, r=10, t=35, b=10), height=240)
+            fig_s.update_layout(
+                margin=dict(l=10, r=10, t=35, b=10),
+                height=260,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                yaxis=dict(gridcolor="#F1F5F9", title="Years Exp"),
+                xaxis=dict(gridcolor="#F1F5F9", title=""),
+                legend=dict(orientation="v", yanchor="top", y=1, xanchor="right", x=1.18, font=dict(size=11, color="#334155"))
+            )
             st.plotly_chart(fig_s, use_container_width=True)
 
 

@@ -360,32 +360,41 @@ def init_db() -> None:
 
         # Seed initial demo employee if none exists
         cursor.execute("SELECT id FROM users WHERE email = 'alex@company.com'")
-        if not cursor.fetchone():
+        alex_row = cursor.fetchone()
+        if not alex_row:
             emp_pwd_hash, emp_salt = hash_password("Password123")
             cursor.execute(
                 "INSERT OR IGNORE INTO users (name, email, password_hash, salt, role, employee_id) VALUES (?, ?, ?, ?, ?, ?)",
                 ("Alex Morgan", "alex@company.com", emp_pwd_hash, emp_salt, "employee", "EMP101")
             )
             alex_uid = cursor.lastrowid
-            if alex_uid:
+        else:
+            alex_uid = alex_row["id"]
+
+        if alex_uid:
+            cursor.execute("SELECT user_id, job_title FROM profiles WHERE user_id = ?", (alex_uid,))
+            p_row = cursor.fetchone()
+            if not p_row or not p_row["job_title"]:
                 cursor.execute(
                     """
-                    INSERT OR IGNORE INTO profiles (user_id, job_title, department, years_experience, summary, target_role)
+                    INSERT OR REPLACE INTO profiles (user_id, job_title, department, years_experience, summary, target_role)
                     VALUES (?, ?, ?, ?, ?, ?)
                     """,
                     (alex_uid, "Full Stack Engineer", "Engineering", 3.5,
                      "Full stack engineer passionate about scalable cloud systems, microservices, and React frontends.",
                      "Senior Software Engineer")
                 )
-            cursor.execute(
-                """
-                INSERT OR IGNORE INTO skills (user_id, name, category, proficiency, years)
-                VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
-                """,
-                (alex_uid, "Python", "Technical", "Advanced", 3.5,
-                 alex_uid, "React", "Technical", "Intermediate", 2.0,
-                 alex_uid, "SQL", "Technical", "Intermediate", 3.0)
-            )
+            cursor.execute("SELECT COUNT(*) as cnt FROM skills WHERE user_id = ?", (alex_uid,))
+            if cursor.fetchone()["cnt"] == 0:
+                cursor.execute(
+                    """
+                    INSERT INTO skills (user_id, name, category, proficiency, years)
+                    VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
+                    """,
+                    (alex_uid, "Python", "Technical", "Advanced", 3.5,
+                     alex_uid, "React", "Technical", "Intermediate", 2.0,
+                     alex_uid, "SQL", "Technical", "Intermediate", 3.0)
+                )
 
         # Seed Ravi Kumar demo employee (Classroom/Viva showcase) if none exists
         cursor.execute("SELECT id FROM users WHERE email = 'ravi@company.com'")
