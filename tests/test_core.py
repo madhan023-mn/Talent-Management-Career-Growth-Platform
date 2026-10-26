@@ -336,8 +336,7 @@ def test_bulk_employee_import():
 
 # ----------------- AI Career Coach & Resume Reviewer Tests -----------------
 
-def test_ai_coach_offline_guidance(monkeypatch):
-    monkeypatch.setenv("GEMINI_API_KEY", "")
+def test_ai_coach_offline_guidance():
     from services.ai_coach import generate_ai_coaching_guidance
     profile = {
         "job_title": "Software Engineer",
@@ -367,8 +366,7 @@ def test_ai_coach_offline_guidance(monkeypatch):
     assert "System Architecture" in res["content"]
     assert "90-Day" in res["content"]
 
-def test_ai_resume_audit_offline(monkeypatch):
-    monkeypatch.setenv("GEMINI_API_KEY", "")
+def test_ai_resume_audit_offline():
     from services.ai_coach import analyze_resume_with_ai
     profile = {
         "job_title": "Backend Developer",

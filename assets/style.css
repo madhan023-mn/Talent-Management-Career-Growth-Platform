@@ -332,225 +332,41 @@ code, kbd, samp, pre {
 .trend-up { color: #10B981; }
 .trend-neutral { color: #64748B; }
 
-/* Modern Corporate Dark Navy Sidebar (Sticky) */
+/* Modern Corporate Dark Navy Sidebar */
 section[data-testid="stSidebar"] {
     background-color: #0C1327 !important;
     border-right: 1px solid #1E293B !important;
     color: #F8FAFC !important;
-    position: sticky !important;
-    top: 0 !important;
-    height: 100vh !important;
-    height: 100dvh !important;
-    max-height: 100vh !important;
-    overflow-y: auto !important;
-    z-index: 9999 !important;
-    scrollbar-width: thin;
-    scrollbar-color: #1E2D4A transparent;
-}
-section[data-testid="stSidebar"] > div:first-child {
-    height: 100% !important;
-    max-height: 100vh !important;
-    overflow-y: auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-    padding-top: 1.25rem !important;
-    padding-bottom: 2rem !important;
 }
 section[data-testid="stSidebar"] .stMarkdown p,
 section[data-testid="stSidebar"] .stMarkdown span,
 section[data-testid="stSidebar"] .stMarkdown strong {
     color: #E2E8F0 !important;
 }
-
-/* Modern Sticky Left Navigation Radio Buttons */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] {
-    position: sticky !important;
-    top: 1rem !important;
-}
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 3px !important;
-}
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
-    display: flex !important;
-    align-items: center !important;
     color: #94A3B8 !important;
     font-weight: 600 !important;
-    font-size: 0.92rem !important;
-    padding: 10px 14px !important;
-    border-radius: 9px !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    margin-bottom: 3px !important;
-    cursor: pointer !important;
-    border: 1px solid transparent !important;
-    width: 100% !important;
+    font-size: 0.9rem !important;
+    padding: 9px 12px !important;
+    border-radius: 8px !important;
+    transition: all 0.15s ease !important;
+    margin-bottom: 2px !important;
 }
-
-/* Hide native round radio bullet circle completely */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label input[type="radio"],
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-of-type,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label input + div,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-baseweb="radio"] > div:first-child,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-baseweb="radio"] > div:first-of-type,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[class*="st-"] {
-    display: none !important;
-    visibility: hidden !important;
-    width: 0 !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    opacity: 0 !important;
-}
-
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stMarkdownContainer"],
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stMarkdownContainer"] p,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:last-child {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    width: 100% !important;
-    font-size: 0.92rem !important;
-    color: inherit !important;
-    margin: 0 !important;
-}
-
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
-    background-color: #16223F !important;
+    background-color: #1E2D4A !important;
     color: #FFFFFF !important;
-    border-color: #1E2E52 !important;
-    transform: translateX(3px) !important;
 }
-
-/* Active / Checked State (Dashboard, Career Goals, Profile, etc.) */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    background-color: #2563EB !important;
     color: #FFFFFF !important;
-    border-color: #3B82F6 !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
-    font-weight: 700 !important;
-    transform: translateX(4px) !important;
+    border-radius: 8px !important;
 }
-
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"]::before,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked)::before {
-    content: "" !important;
-    display: inline-block !important;
-    width: 4px !important;
-    height: 16px !important;
-    background: #93C5FD !important;
-    border-radius: 2px !important;
-    margin-right: 8px !important;
-}
-
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label span {
     color: inherit !important;
 }
 section[data-testid="stSidebar"] hr {
     border-color: #1E2E4E !important;
-}
-
-/* Modern Sidebar Navigation Links (Zero Radio Bullets) */
-.sidebar-nav-list {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 5px !important;
-    margin-top: 0.5rem !important;
-    width: 100% !important;
-}
-
-section[data-testid="stSidebar"] .sidebar-nav-list button {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    text-align: left !important;
-    width: 100% !important;
-    padding: 10px 14px !important;
-    font-size: 0.92rem !important;
-    font-weight: 600 !important;
-    border-radius: 9px !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    letter-spacing: -0.01em !important;
-    border: 1px solid transparent !important;
-    box-shadow: none !important;
-}
-
-/* Inactive Navigation Link */
-section[data-testid="stSidebar"] .sidebar-nav-list button[kind="secondary"] {
-    background-color: transparent !important;
-    color: #94A3B8 !important;
-    border: 1px solid transparent !important;
-}
-
-section[data-testid="stSidebar"] .sidebar-nav-list button[kind="secondary"]:hover {
-    background-color: #16223F !important;
-    color: #FFFFFF !important;
-    border-color: #1E2E52 !important;
-    transform: translateX(4px) !important;
-}
-
-/* Active Navigation Link */
-section[data-testid="stSidebar"] .sidebar-nav-list button[kind="primary"] {
-    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-    color: #FFFFFF !important;
-    border-color: #3B82F6 !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
-    transform: translateX(4px) !important;
-}
-
-/* Sidebar slide close button (✕) in sidebar header */
-button[key="btn_close_sidebar_drawer"] {
-    height: 32px !important;
-    width: 32px !important;
-    min-height: 32px !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: #141E38 !important;
-    border: 1px solid #1E2D4E !important;
-    color: #94A3B8 !important;
-    border-radius: 8px !important;
-    font-size: 0.9rem !important;
-    font-weight: 700 !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-}
-
-button[key="btn_close_sidebar_drawer"]:hover {
-    background: #2563EB !important;
-    color: #FFFFFF !important;
-    border-color: #3B82F6 !important;
-}
-
-/* Three-line hamburger toggle button (☰) in top bar */
-button[key="btn_open_sidebar_hamburger"] {
-    height: 38px !important;
-    width: 42px !important;
-    min-height: 38px !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: #FFFFFF !important;
-    border: 1.5px solid #CBD5E1 !important;
-    color: #0F172A !important;
-    border-radius: 9px !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
-    font-size: 1.35rem !important;
-    font-weight: 900 !important;
-    line-height: 1 !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-}
-
-button[key="btn_open_sidebar_hamburger"]:hover {
-    background: #EFF6FF !important;
-    border-color: #2563EB !important;
-    color: #2563EB !important;
-    transform: scale(1.05) !important;
 }
 
 .sidebar-brand-box {
@@ -1725,6 +1541,7 @@ div[class*="viewerBadge"],
 .stAppDeployButton, 
 [data-testid="stAppDeployButton"],
 [data-testid="stBottom"],
+header[data-testid="stHeader"],
 #MainMenu, 
 footer {
     display: none !important;
@@ -1735,94 +1552,6 @@ footer {
     margin: 0 !important;
     opacity: 0 !important;
     pointer-events: none !important;
-}
-
-/* Header container: transparent so page content is clean, but hamburger control is clickable */
-header[data-testid="stHeader"] {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    height: 50px !important;
-    overflow: visible !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    pointer-events: none !important;
-    z-index: 999990 !important;
-}
-
-/* Three-Line Hamburger Button (☰) for Mobile and Collapsed Sidebar */
-[data-testid="collapsedControl"],
-header[data-testid="stHeader"] [data-testid="collapsedControl"] {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    position: fixed !important;
-    top: 14px !important;
-    left: 14px !important;
-    z-index: 9999999 !important;
-    cursor: pointer !important;
-}
-
-[data-testid="collapsedControl"] button {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 44px !important;
-    height: 44px !important;
-    background: #0C1327 !important;
-    border: 1.5px solid #2563EB !important;
-    border-radius: 10px !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
-    cursor: pointer !important;
-    padding: 0 !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-[data-testid="collapsedControl"] button:hover {
-    background: #1E2D4A !important;
-    border-color: #60A5FA !important;
-    transform: scale(1.06) !important;
-    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4) !important;
-}
-
-/* Render three crisp lines (hamburger ☰) */
-[data-testid="collapsedControl"] button svg,
-[data-testid="collapsedControl"] svg {
-    display: none !important;
-}
-
-[data-testid="collapsedControl"] button::before {
-    content: "" !important;
-    display: block !important;
-    width: 20px !important;
-    height: 2.5px !important;
-    background: #FFFFFF !important;
-    box-shadow: 0 6px 0 #FFFFFF, 0 -6px 0 #FFFFFF !important;
-    border-radius: 2px !important;
-}
-
-/* Sidebar Close Button (when sidebar is open) */
-[data-testid="stSidebarCollapseButton"],
-section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button,
-section[data-testid="stSidebar"] button[kind="header"] {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    background: #141E38 !important;
-    border: 1px solid #1E2D4E !important;
-    color: #F8FAFC !important;
-    border-radius: 8px !important;
-    padding: 6px !important;
-    transition: all 0.2s ease !important;
-}
-
-[data-testid="stSidebarCollapseButton"]:hover,
-section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button:hover {
-    background: #2563EB !important;
-    border-color: #3B82F6 !important;
-    color: #FFFFFF !important;
 }
 
 /* ==============================================================================
@@ -1861,9 +1590,9 @@ section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button:
 
 /* Mobile & Small Tablets (max-width: 768px) */
 @media screen and (max-width: 768px) {
-    /* Responsive Canvas Padding with headroom for floating 3-line hamburger button */
+    /* Responsive Canvas Padding */
     .main .block-container {
-        padding-top: 4.4rem !important;
+        padding-top: 0.6rem !important;
         padding-bottom: 2rem !important;
         padding-left: 0.85rem !important;
         padding-right: 0.85rem !important;

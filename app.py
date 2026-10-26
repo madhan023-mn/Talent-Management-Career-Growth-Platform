@@ -48,14 +48,11 @@ application = handler
 
 load_dotenv(BASE_DIR / ".env")
 
-if "sidebar_state" not in st.session_state:
-    st.session_state.sidebar_state = "expanded"
-
 st.set_page_config(
     page_title="Talent Growth — Talent Management Platform",
     page_icon="assets/talent_growth_icon_thumb.png",
     layout="wide",
-    initial_sidebar_state=st.session_state.sidebar_state
+    initial_sidebar_state="expanded"
 )
 
 # Initialize database schema and ensure migrations
@@ -1166,27 +1163,21 @@ def navigate_to(target_page: str):
 # SIDEBAR NAVIGATION
 # ------------------------------------------------------------------------------
 with st.sidebar:
-    # Sidebar Brand Header with Slide Close Button
-    col_sb_brand, col_sb_close = st.columns([8, 2])
-    with col_sb_brand:
-        st.markdown(
-            f"""
-            <div style="padding-top: 0.2rem; margin-bottom: 0.35rem;">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 2px;">
-                    {get_svg_icon("brand_logo", size=24)}
-                    <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
-                </div>
-                <div style="font-size: 0.78rem; color: #94A3B8;">
-                    Signed in as {user['name']}
-                </div>
+    # Sidebar Brand Header matching reference screenshots
+    st.markdown(
+        f"""
+        <div style="padding-top: 0.2rem; margin-bottom: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 2px;">
+                {get_svg_icon("brand_logo", size=24)}
+                <span style="font-weight: 800; font-size: 1.15rem; color: #0F172A; letter-spacing: -0.01em;">Talent Growth</span>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
-    with col_sb_close:
-        if st.button("✕", key="btn_close_sidebar_drawer", help="Close Sidebar Navigation"):
-            st.session_state.sidebar_state = "collapsed"
-            st.rerun()
+            <div style="font-size: 0.78rem; color: #64748B; margin-bottom: 1rem;">
+                Signed in as {user['name']}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     if is_admin:
         admin_pages = [
@@ -1224,23 +1215,15 @@ with st.sidebar:
     if "current_page" not in st.session_state or st.session_state.current_page not in active_pages:
         st.session_state.current_page = "Dashboard"
 
-    # Clean Modern Page Navigation Links (Zero Radio Bullets)
-    st.markdown('<div class="sidebar-nav-list">', unsafe_allow_html=True)
-    for p in active_pages:
-        is_active = (p == st.session_state.current_page)
-        btn_type = "primary" if is_active else "secondary"
-        if st.button(
-            f"{p}",
-            key=f"nav_link_{p.replace(' ', '_').replace('&', 'and').lower()}",
-            type=btn_type,
-            use_container_width=True
-        ):
-            st.session_state.current_page = p
-            st.session_state.nav_radio = p
-            st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    if "nav_radio" not in st.session_state or st.session_state.nav_radio not in active_pages:
+        st.session_state.nav_radio = st.session_state.current_page
 
-    page = st.session_state.current_page
+    def on_nav_change():
+        st.session_state.current_page = st.session_state.nav_radio
+
+    selected_page = st.radio("Navigation", active_pages, key="nav_radio", on_change=on_nav_change, label_visibility="collapsed")
+    st.session_state.current_page = selected_page
+    page = selected_page
 
     st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
 
@@ -1258,14 +1241,9 @@ def analysis_bundle():
     return result
 
 # ------------------------------------------------------------------------------
-# UNIVERSAL TOP BAR WITH 3-LINE HAMBURGER TOGGLE AND BACK BUTTON
+# UNIVERSAL TOP BAR WITH TOP-LEFT BACK BUTTON (FOR ALL AUTHENTICATED PAGES)
 # ------------------------------------------------------------------------------
-col_hamburger, col_top_back, col_top_trail = st.columns([0.8, 2.5, 6.7], gap="small")
-with col_hamburger:
-    if st.button("☰", key="btn_open_sidebar_hamburger", help="Toggle Sidebar Navigation (Open/Close)"):
-        current_state = st.session_state.get("sidebar_state", "expanded")
-        st.session_state.sidebar_state = "collapsed" if current_state == "expanded" else "expanded"
-        st.rerun()
+col_top_back, col_top_trail = st.columns([2.5, 7.5], gap="small")
 with col_top_back:
     if page != "Dashboard":
         if st.button("Back to Dashboard", key=f"btn_universal_back_dash_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
