@@ -1377,9 +1377,8 @@ button[data-testid="stSidebarCollapseButton"] {{
     pointer-events: none !important;
 }}
 
-/* Three-Line Hamburger Button Styling */
-div.sidebar-ham-btn button,
-div.topbar-ham-btn button {{
+/* Three-Line Hamburger Button Styling (Sidebar) */
+div.sidebar-ham-btn button {{
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -1399,8 +1398,7 @@ div.topbar-ham-btn button {{
     box-shadow: none !important;
     transition: all 0.18s ease !important;
 }}
-div.sidebar-ham-btn button:hover,
-div.topbar-ham-btn button:hover {{
+div.sidebar-ham-btn button:hover {{
     background: {ham_hover_bg} !important;
     color: {ham_hover_color} !important;
     border-color: {ham_hover_border} !important;
@@ -1695,14 +1693,9 @@ def analysis_bundle():
     return result
 
 # ------------------------------------------------------------------------------
-# UNIVERSAL TOP BAR WITH HAMBURGER, BACK TO HOME & BREADCRUMBS
+# UNIVERSAL TOP BAR WITH BACK TO HOME & BREADCRUMBS
 # ------------------------------------------------------------------------------
-col_top_ham, col_top_home, col_top_trail = st.columns([0.6, 2.4, 7.0], gap="small")
-with col_top_ham:
-    st.markdown('<div class="topbar-ham-btn">', unsafe_allow_html=True)
-    st.button("☰", key=f"top_hamburger_{page.replace(' ', '_').lower()}", on_click=toggle_sidebar, help="Toggle Sidebar (☰)")
-    st.markdown('</div>', unsafe_allow_html=True)
-
+col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
 with col_top_home:
     if st.button("Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
         st.session_state.current_page = "Dashboard"
