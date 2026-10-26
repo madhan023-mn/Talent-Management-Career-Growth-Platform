@@ -1188,14 +1188,31 @@ with st.sidebar:
             min-width: 0 !important;
             width: 0 !important;
             max-width: 0 !important;
-            margin-left: -320px !important;
             overflow: hidden !important;
             visibility: hidden !important;
         }
-        div[data-testid="collapsedControl"] {
+        div[data-testid="collapsedControl"],
+        div[data-testid="stSidebarCollapsedControl"] {
             display: flex !important;
             visibility: visible !important;
             opacity: 1 !important;
+            position: fixed !important;
+            top: 14px !important;
+            left: 14px !important;
+            z-index: 999999 !important;
+        }
+        div[data-testid="collapsedControl"] button,
+        div[data-testid="stSidebarCollapsedControl"] button {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 36px !important;
+            height: 36px !important;
+            background: #FFFFFF !important;
+            border: 1px solid #CBD5E1 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12) !important;
+            color: #0E2A38 !important;
         }
         section[data-testid="stSidebar"] .stMarkdown p,
         section[data-testid="stSidebar"] .stMarkdown span {

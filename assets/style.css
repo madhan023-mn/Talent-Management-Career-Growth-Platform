@@ -364,7 +364,6 @@ section[data-testid="stSidebar"][aria-expanded="false"] {
     min-width: 0 !important;
     width: 0 !important;
     max-width: 0 !important;
-    margin-left: -320px !important;
     overflow: hidden !important;
     visibility: hidden !important;
 }
@@ -1648,8 +1647,9 @@ header[data-testid="stHeader"] {
     z-index: 99999 !important;
 }
 
-/* 3-Line Hamburger Menu Toggle (☰) to Slide Open Sidebar */
-div[data-testid="collapsedControl"] {
+/* 3-Line Hamburger Menu / Collapse Arrow Toggle to Slide Open Sidebar */
+div[data-testid="collapsedControl"],
+div[data-testid="stSidebarCollapsedControl"] {
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -1667,7 +1667,8 @@ span[data-testid="stIconMaterial"] {
     opacity: 1 !important;
 }
 
-div[data-testid="collapsedControl"] button {
+div[data-testid="collapsedControl"] button,
+div[data-testid="stSidebarCollapsedControl"] button {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
