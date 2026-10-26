@@ -13,7 +13,9 @@ code, kbd, samp, pre {
 .main .block-container {
     padding-top: 1.2rem;
     padding-bottom: 3.5rem;
-    max-width: 1420px;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 /* Top Search & Actions Bar */

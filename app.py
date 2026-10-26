@@ -1168,12 +1168,12 @@ if "sidebar_expanded" not in st.session_state:
 def toggle_sidebar():
     st.session_state.sidebar_expanded = not st.session_state.get("sidebar_expanded", True)
 
+is_expanded = st.session_state.get("sidebar_expanded", True)
+
 # Enforce backend role permissions (Employees cannot access HR Administrator sections)
 if not is_admin and st.session_state.get("current_page") in ["Employees", "Performance", "Reports", "Career Goals"]:
     st.session_state.current_page = "Dashboard"
     st.session_state.nav_radio = "Dashboard"
-
-is_expanded = st.session_state.get("sidebar_expanded", True)
 
 # Role-specific navigation pages list
 if is_admin:
@@ -1217,14 +1217,14 @@ def on_nav_change():
     st.session_state.current_page = st.session_state.nav_radio
 
 # ------------------------------------------------------------------------------
-# DYNAMIC SIDEBAR CSS (THEMES, EXPANSION, CIRCULAR INDICATORS)
+# DYNAMIC SIDEBAR CSS (THEMES, EXPANSION, HORIZONTAL RADIO ALIGNMENT)
 # ------------------------------------------------------------------------------
-width_px = 280 if is_expanded else 72
+width_px = 285 if is_expanded else 68
 pad_x = 0.9 if is_expanded else 0.35
-label_pad = "8px 12px" if is_expanded else "10px 0"
+label_pad = "0 12px" if is_expanded else "0"
 label_justify = "flex-start" if is_expanded else "center"
 circle_margin_right = "10px" if is_expanded else "0px"
-text_display = "block" if is_expanded else "none"
+text_display = "inline-flex" if is_expanded else "none"
 
 if is_admin:
     # HR Administrator: Dark Navy Theme
@@ -1238,7 +1238,6 @@ if is_admin:
     circle_hover_border = "#94A3B8"
     active_bg = "#2563EB"
     active_text = "#FFFFFF"
-    active_border = "none"
     active_circle_border = "#FFFFFF"
     active_circle_bg = "#FFFFFF"
     active_circle_shadow = "inset 0 0 0 2.5px #2563EB"
@@ -1248,12 +1247,17 @@ if is_admin:
     ham_hover_bg = "#1E293B"
     ham_hover_color = "#60A5FA"
     ham_hover_border = "#60A5FA"
-    signout_bg = "transparent"
+    home_btn_bg = "transparent"
+    home_btn_border = "#334155"
+    home_btn_color = "#94A3B8"
+    home_btn_hover_bg = "#16223F"
+    home_btn_hover_color = "#FFFFFF"
+    home_btn_hover_border = "#475569"
     signout_border = "#334155"
     signout_color = "#94A3B8"
     signout_hover_bg = "#16223F"
-    signout_hover_color = "#FFFFFF"
-    signout_hover_border = "#475569"
+    signout_hover_color = "#F87171"
+    signout_hover_border = "#EF4444"
 else:
     # Employee: Light Ice-Blue Theme
     bg_color = "#EFF4F8"
@@ -1266,7 +1270,6 @@ else:
     circle_hover_border = "#64748B"
     active_bg = "#E0F2FE"
     active_text = "#0284C7"
-    active_border = "none"
     active_circle_border = "#0284C7"
     active_circle_bg = "#0284C7"
     active_circle_shadow = "inset 0 0 0 2.5px #E0F2FE"
@@ -1276,12 +1279,17 @@ else:
     ham_hover_bg = "#F1F5F9"
     ham_hover_color = "#0284C7"
     ham_hover_border = "#0284C7"
-    signout_bg = "transparent"
+    home_btn_bg = "transparent"
+    home_btn_border = "#D2E0EB"
+    home_btn_color = "#627D98"
+    home_btn_hover_bg = "#E2EBF2"
+    home_btn_hover_color = "#102A43"
+    home_btn_hover_border = "#BAC7D5"
     signout_border = "#D2E0EB"
     signout_color = "#627D98"
-    signout_hover_bg = "#E2EBF2"
-    signout_hover_color = "#102A43"
-    signout_hover_border = "#BAC7D5"
+    signout_hover_bg = "#FEE2E2"
+    signout_hover_color = "#DC2626"
+    signout_hover_border = "#EF4444"
 
 sidebar_dynamic_css = f"""
 <style>
@@ -1309,20 +1317,45 @@ section[data-testid="stSidebar"] {{
     background-color: {bg_color} !important;
     border-right: 1px solid {border_color} !important;
     color: {text_color} !important;
-    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
     padding-left: {pad_x}rem !important;
     padding-right: {pad_x}rem !important;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }}
 
-/* Position Main Content Immediately to Right of Sidebar (No Overlap) */
+/* Position Main Content Immediately to Right of Sidebar (No Overlap, No Horizontal Cutoff) */
 [data-testid="stAppViewContainer"] > section:nth-child(2),
 [data-testid="stMain"] {{
     margin-left: {width_px}px !important;
     width: calc(100% - {width_px}px) !important;
     max-width: calc(100% - {width_px}px) !important;
-    transition: margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-                width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-                max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}}
+
+/* Ensure Block Container Fits Viewport Perfectly Without Overflow */
+.main .block-container,
+[data-testid="stMain"] [data-testid="block-container"],
+[data-testid="stMain"] [data-testid="stMainBlockContainer"] {{
+    padding-top: 1.2rem !important;
+    padding-bottom: 3.5rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}}
+
+/* Prevent Any Global Horizontal Scroll on Canvas */
+html, body, .stApp, [data-testid="stAppViewContainer"] {{
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
 }}
 
 @media screen and (max-width: 768px) {{
@@ -1344,10 +1377,9 @@ button[data-testid="stSidebarCollapseButton"] {{
     pointer-events: none !important;
 }}
 
-/* Three-Line Hamburger Button Styling (Visible in Both States) */
-div[data-testid="stSidebar"] div.sidebar-ham-wrapper button,
-button[key="sidebar_hamburger_btn"],
-button[key="sidebar_hamburger_btn_collapsed"] {{
+/* Three-Line Hamburger Button Styling */
+div.sidebar-ham-btn button,
+div.topbar-ham-btn button {{
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -1364,36 +1396,11 @@ button[key="sidebar_hamburger_btn_collapsed"] {{
     line-height: 1 !important;
     cursor: pointer !important;
     padding: 0 !important;
-    transition: all 0.2s ease !important;
     box-shadow: none !important;
+    transition: all 0.18s ease !important;
 }}
-div[data-testid="stSidebar"] div.sidebar-ham-wrapper button:hover,
-button[key="sidebar_hamburger_btn"]:hover,
-button[key="sidebar_hamburger_btn_collapsed"]:hover {{
-    background: {ham_hover_bg} !important;
-    color: {ham_hover_color} !important;
-    border-color: {ham_hover_border} !important;
-}}
-
-/* Universal Top Bar Hamburger */
-div.topbar-ham-wrapper button {{
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
-    background: {ham_bg} !important;
-    border: 1px solid {ham_border} !important;
-    color: {ham_color} !important;
-    border-radius: 8px !important;
-    font-size: 1.15rem !important;
-    cursor: pointer !important;
-    padding: 0 !important;
-    transition: all 0.2s ease !important;
-}}
-div.topbar-ham-wrapper button:hover {{
+div.sidebar-ham-btn button:hover,
+div.topbar-ham-btn button:hover {{
     background: {ham_hover_bg} !important;
     color: {ham_hover_color} !important;
     border-color: {ham_hover_border} !important;
@@ -1407,47 +1414,60 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     width: 100% !important;
 }}
 
-/* Radio Button Label (Each navigation item displayed as a separate, clickable horizontal row) */
+/* Radio Button Label: Strictly single row, horizontal flexbox, vertically centered */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {{
     display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
     align-items: center !important;
-    position: relative !important;
-    width: 100% !important;
-    padding: {label_pad} !important;
     justify-content: {label_justify} !important;
+    width: 100% !important;
+    min-height: 40px !important;
+    height: 40px !important;
+    padding: {label_pad} !important;
     border-radius: 8px !important;
     cursor: pointer !important;
-    margin-bottom: 2px !important;
-    transition: all 0.18s ease-in-out !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
+    transition: background-color 0.15s ease, color 0.15s ease !important;
 }}
 
-/* Radio Circle Container (First Child) */
+/* Radio Circle Outer Container (First Child) */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {{
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
+    height: 18px !important;
+    margin: 0 {circle_margin_right} 0 0 !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+}}
+
+/* The actual circle inside first-child */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {{
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    min-width: 18px !important;
-    min-height: 18px !important;
-    width: 18px !important;
-    height: 18px !important;
-    margin-right: {circle_margin_right} !important;
-    flex-shrink: 0 !important;
-}}
-
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {{
+    width: 14px !important;
+    height: 14px !important;
+    min-width: 14px !important;
+    min-height: 14px !important;
     border-radius: 50% !important;
-    transition: all 0.18s ease-in-out !important;
+    box-sizing: border-box !important;
+    transition: all 0.15s ease-in-out !important;
 }}
 
 /* Inactive Radio Circle: Outlined Circle */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) > div:first-child div {{
     border: 2px solid {circle_inactive_border} !important;
     background: transparent !important;
-    width: 14px !important;
-    height: 14px !important;
 }}
 
 /* Inactive Row Hover */
@@ -1461,6 +1481,12 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     border-color: {circle_hover_border} !important;
 }}
 
+/* Inactive Text */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) p {{
+    color: {item_inactive_color} !important;
+    font-weight: 500 !important;
+}}
+
 /* Active Row Highlight: Blue Background Pill */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {{
@@ -1468,14 +1494,12 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     border-radius: 8px !important;
 }}
 
-/* Active Radio Circle: Blue-Filled Circle */
+/* Active Radio Circle: Filled Circle */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] > div:first-child div,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) > div:first-child div {{
     border: 2px solid {active_circle_border} !important;
     background-color: {active_circle_bg} !important;
     box-shadow: {active_circle_shadow} !important;
-    width: 14px !important;
-    height: 14px !important;
 }}
 
 /* Active Text */
@@ -1485,35 +1509,67 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     font-weight: 700 !important;
 }}
 
-/* Inactive Text */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) p {{
-    color: {item_inactive_color} !important;
-    font-weight: 500 !important;
-}}
-
-/* Text Container Display (Block when expanded, None when collapsed) */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div:last-child {{
+/* Text Container (Second Child / Last Child) */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:last-child {{
     display: {text_display} !important;
-}}
-
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {{
-    font-size: 0.94rem !important;
+    align-items: center !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     white-space: nowrap !important;
+    overflow: hidden !important;
 }}
 
-/* Outlined Sign Out Button */
-section[data-testid="stSidebar"] button[kind="secondary"] {{
-    background: {signout_bg} !important;
+/* Markdown Container & Paragraph */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {{
+    display: inline-block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 0.93rem !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}}
+
+/* Sidebar Back to Home Button */
+section[data-testid="stSidebar"] button[key="btn_sidebar_back_to_home"],
+section[data-testid="stSidebar"] button[key="btn_sidebar_home_collapsed"] {{
+    background: {home_btn_bg} !important;
+    border: 1px solid {home_btn_border} !important;
+    color: {home_btn_color} !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    font-weight: 600 !important;
+    font-size: 0.90rem !important;
+    width: 100% !important;
+    transition: all 0.18s ease !important;
+}}
+section[data-testid="stSidebar"] button[key="btn_sidebar_back_to_home"]:hover,
+section[data-testid="stSidebar"] button[key="btn_sidebar_home_collapsed"]:hover {{
+    background: {home_btn_hover_bg} !important;
+    color: {home_btn_hover_color} !important;
+    border-color: {home_btn_hover_border} !important;
+}}
+
+/* Sidebar Sign Out Button */
+section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"],
+section[data-testid="stSidebar"] button[key="btn_sidebar_signout_collapsed"] {{
+    background: transparent !important;
     border: 1px solid {signout_border} !important;
     color: {signout_color} !important;
     border-radius: 8px !important;
     padding: 8px 16px !important;
     font-weight: 600 !important;
+    font-size: 0.90rem !important;
+    width: 100% !important;
     transition: all 0.18s ease !important;
 }}
-section[data-testid="stSidebar"] button[kind="secondary"]:hover {{
+section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"]:hover,
+section[data-testid="stSidebar"] button[key="btn_sidebar_signout_collapsed"]:hover {{
     background: {signout_hover_bg} !important;
     color: {signout_hover_color} !important;
     border-color: {signout_hover_border} !important;
@@ -1523,74 +1579,78 @@ section[data-testid="stSidebar"] button[kind="secondary"]:hover {{
 st.markdown(sidebar_dynamic_css, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# RENDER SIDEBAR COMPONENT
+# REUSABLE SIDEBAR COMPONENT (HR ADMINISTRATOR & EMPLOYEE)
 # ------------------------------------------------------------------------------
-with st.sidebar:
-    if is_expanded:
-        # EXPANDED SIDEBAR: ☰ + logo + username + radio buttons + navigation labels + Sign out
-        st.markdown('<div class="sidebar-ham-wrapper" style="margin-bottom: 0.6rem;">', unsafe_allow_html=True)
-        col_ham_btn, col_ham_brand = st.columns([1.3, 4.7], gap="small")
-        with col_ham_btn:
-            st.button("☰", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Collapse sidebar (☰)")
-        with col_ham_brand:
-            if is_admin:
+def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
+    """Renders the shared sidebar component with Talent Growth branding, radio items, and Back to Home button."""
+    with st.sidebar:
+        if is_expanded:
+            # 1. Branding: Hamburger Button (☰) + [Talent Growth Logo] Talent Growth
+            col_ham, col_brand = st.columns([1.3, 4.7], gap="small")
+            with col_ham:
+                st.markdown('<div class="sidebar-ham-btn">', unsafe_allow_html=True)
+                st.button("☰", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Collapse sidebar (☰)")
+                st.markdown('</div>', unsafe_allow_html=True)
+            with col_brand:
+                brand_title_color = "#FFFFFF" if is_admin else "#0E2A38"
                 st.markdown(
                     f"""
                     <div style="display: flex; align-items: center; gap: 8px; padding-top: 4px;">
-                        {get_svg_icon("brand_logo", size=24)}
-                        <span style="font-weight: 800; font-size: 1.18rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
+                        {get_svg_icon("brand_logo", size=26)}
+                        <span style="font-weight: 800; font-size: 1.20rem; color: {brand_title_color}; letter-spacing: -0.01em; line-height: 1;">Talent Growth</span>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
-            else:
-                st.markdown(
-                    f"""
-                    <div style="display: flex; align-items: center; gap: 8px; padding-top: 4px;">
-                        <svg width="22" height="22" viewBox="0 0 28 28" fill="none">
-                            <path d="M14 26V11" stroke="#059669" stroke-width="2.8" stroke-linecap="round"/>
-                            <path d="M14 11C14 7 10 4 6 5C5 9 8 13 14 13" fill="#34D399" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M14 16C16 11 20 8 23 9C24 13 21 17 14 18" fill="#10B981" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span style="font-weight: 800; font-size: 1.18rem; color: #0E2A38; letter-spacing: -0.01em;">TalentSphere</span>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-        st.markdown('</div>', unsafe_allow_html=True)
 
-        user_subtitle_color = "#94A3B8" if is_admin else "#5A7383"
-        role_title = "HR Administrator" if is_admin else "Employee"
-        st.markdown(
-            f"""
-            <div style="font-size: 0.83rem; color: {user_subtitle_color}; margin-top: -2px; margin-bottom: 1.25rem; padding-left: 2px;">
-                Signed in as <strong>{user['name']}</strong> &bull; {role_title}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+            # 2. Signed-in User Info & Role Subtitle
+            user_subtitle_color = "#94A3B8" if is_admin else "#5A7383"
+            role_title = "HR Administrator" if is_admin else "Employee"
+            st.markdown(
+                f"""
+                <div style="font-size: 0.83rem; color: {user_subtitle_color}; margin-top: 2px; margin-bottom: 1.25rem; padding-left: 2px;">
+                    Signed in as <strong>{user['name']}</strong> &bull; {role_title}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-        selected_page = st.radio("Navigation", active_pages, key="nav_radio", on_change=on_nav_change, label_visibility="collapsed")
-        st.session_state.current_page = selected_page
-        page = selected_page
+            # 3. Radio Navigation Rows
+            selected_nav = st.radio(
+                "Navigation",
+                active_pages,
+                key="nav_radio",
+                on_change=on_nav_change,
+                label_visibility="collapsed"
+            )
+            st.session_state.current_page = selected_nav
 
-        st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
+            # 4. Spacing to bottom
+            st.markdown("<div style='margin-top: 2.0rem;'></div>", unsafe_allow_html=True)
 
-        if st.button("Sign out", use_container_width=True, type="secondary", key="btn_sign_out_expanded"):
-            st.session_state.user = None
-            st.session_state.current_page = "Dashboard"
-            st.session_state.page_to_navigate = "Dashboard"
-            st.session_state.auth_view = "landing"
-            st.rerun()
+            # 5. Bottom Action Buttons: Back to Home & Sign out
+            if st.button("Back to Home", use_container_width=True, type="secondary", key="btn_sidebar_back_to_home"):
+                st.session_state.current_page = "Dashboard"
+                st.session_state.nav_radio = "Dashboard"
+                st.rerun()
 
-    else:
-        # COLLAPSED SIDEBAR: ☰ + compact sidebar with navigation icons or radio indicators + Sign out
-        st.markdown('<div class="sidebar-ham-wrapper" style="display: flex; justify-content: center; margin-bottom: 0.8rem;">', unsafe_allow_html=True)
-        st.button("☰", key="sidebar_hamburger_btn_collapsed", on_click=toggle_sidebar, help="Expand sidebar (☰)")
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 0.35rem;'></div>", unsafe_allow_html=True)
+            if st.button("Sign out", use_container_width=True, type="secondary", key="btn_sidebar_sign_out"):
+                st.session_state.user = None
+                st.session_state.auth_view = "landing"
+                st.session_state.current_page = "Dashboard"
+                st.session_state.nav_radio = "Dashboard"
+                st.rerun()
 
-        # Centered Compact Brand Icon
-        if is_admin:
+            return selected_nav
+
+        else:
+            # COLLAPSED NAVIGATION RAIL (~68px)
+            st.markdown('<div class="sidebar-ham-btn" style="display: flex; justify-content: center; margin-bottom: 0.75rem;">', unsafe_allow_html=True)
+            st.button("☰", key="sidebar_hamburger_btn_collapsed", on_click=toggle_sidebar, help="Expand sidebar (☰)")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            # Centered Compact Brand Logo
             st.markdown(
                 f"""
                 <div style="display: flex; justify-content: center; margin-bottom: 1.1rem;" title="Talent Growth">
@@ -1599,33 +1659,35 @@ with st.sidebar:
                 """,
                 unsafe_allow_html=True
             )
-        else:
-            st.markdown(
-                """
-                <div style="display: flex; justify-content: center; margin-bottom: 1.1rem;" title="TalentSphere">
-                    <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
-                        <path d="M14 26V11" stroke="#059669" stroke-width="2.8" stroke-linecap="round"/>
-                        <path d="M14 11C14 7 10 4 6 5C5 9 8 13 14 13" fill="#34D399" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M14 16C16 11 20 8 23 9C24 13 21 17 14 18" fill="#10B981" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </div>
-                """,
-                unsafe_allow_html=True
+
+            # Radio indicators (centered circles)
+            selected_nav = st.radio(
+                "Navigation",
+                active_pages,
+                key="nav_radio",
+                on_change=on_nav_change,
+                label_visibility="collapsed"
             )
+            st.session_state.current_page = selected_nav
 
-        selected_page = st.radio("Navigation", active_pages, key="nav_radio", on_change=on_nav_change, label_visibility="collapsed")
-        st.session_state.current_page = selected_page
-        page = selected_page
+            # Bottom buttons (compact)
+            st.markdown("<div style='margin-top: 2.0rem;'></div>", unsafe_allow_html=True)
+            if st.button("⌂", help="Back to Home", use_container_width=True, type="secondary", key="btn_sidebar_home_collapsed"):
+                st.session_state.current_page = "Dashboard"
+                st.session_state.nav_radio = "Dashboard"
+                st.rerun()
 
-        st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 0.35rem;'></div>", unsafe_allow_html=True)
+            if st.button("⎋", help="Sign out", use_container_width=True, type="secondary", key="btn_sidebar_signout_collapsed"):
+                st.session_state.user = None
+                st.session_state.auth_view = "landing"
+                st.session_state.current_page = "Dashboard"
+                st.session_state.nav_radio = "Dashboard"
+                st.rerun()
 
-        if st.button("⎋", help="Sign out", use_container_width=True, type="secondary", key="btn_sign_out_collapsed"):
-            st.session_state.user = None
-            st.session_state.current_page = "Dashboard"
-            st.session_state.page_to_navigate = "Dashboard"
-            st.session_state.auth_view = "landing"
-            st.rerun()
+            return selected_nav
 
+page = render_app_sidebar(is_admin, user, active_pages)
 
 def analysis_bundle():
     result = profile_analysis(profile, skills)
@@ -1633,62 +1695,37 @@ def analysis_bundle():
     return result
 
 # ------------------------------------------------------------------------------
-# UNIVERSAL TOP BAR WITH TOP-LEFT HAMBURGER & BREADCRUMB (FOR ALL AUTHENTICATED PAGES)
+# UNIVERSAL TOP BAR WITH HAMBURGER, BACK TO HOME & BREADCRUMBS
 # ------------------------------------------------------------------------------
-if is_admin:
-    col_top_ham, col_top_back, col_top_trail = st.columns([0.6, 2.4, 7.0], gap="small")
-    with col_top_ham:
-        st.markdown('<div class="topbar-ham-wrapper">', unsafe_allow_html=True)
-        st.button("☰", key=f"top_bar_hamburger_admin_{page.replace(' ', '_').lower()}", on_click=toggle_sidebar, help="Toggle sidebar (☰)")
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col_top_back:
-        if st.button("Back to Home", key=f"btn_admin_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
-            st.session_state.user = None
-            st.session_state.auth_view = "landing"
-            st.rerun()
-    with col_top_trail:
-        render_html(
-            f"""
-            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
-                <span style="display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 3px 10px; border-radius: 9999px;">
-                    {get_svg_icon("user", size=13, color="#475569")}
-                    <strong>{user['name']}</strong> &bull; {user['role'].upper()}
-                </span>
-                <span style="color: #CBD5E1;">|</span>
-                <span style="color: #2563EB; font-weight: 700; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 3px 10px; border-radius: 9999px;">{page}</span>
-            </div>
-            """
-        )
-    st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
-else:
-    col_top_ham, col_top_back, col_top_trail = st.columns([0.6, 2.4, 7.0], gap="small")
-    with col_top_ham:
-        st.markdown('<div class="topbar-ham-wrapper">', unsafe_allow_html=True)
-        st.button("☰", key=f"top_bar_hamburger_emp_{page.replace(' ', '_').lower()}", on_click=toggle_sidebar, help="Toggle sidebar (☰)")
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col_top_back:
-        if page != "Dashboard":
-            if st.button("Back to Dashboard", key=f"btn_universal_back_dash_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
-                navigate_to("Dashboard")
-        else:
-            if st.button("Sign out", key=f"btn_emp_top_signout_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
-                st.session_state.user = None
-                st.session_state.auth_view = "landing"
-                st.rerun()
-    with col_top_trail:
-        render_html(
-            f"""
-            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
-                <span style="display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 3px 10px; border-radius: 9999px;">
-                    {get_svg_icon("user", size=13, color="#475569")}
-                    <strong>{user['name']}</strong> &bull; {user['role'].upper()}
-                </span>
-                <span style="color: #CBD5E1;">|</span>
-                <span style="color: #0284C7; font-weight: 700; background: #E0F2FE; border: 1px solid #BAE6FD; padding: 3px 10px; border-radius: 9999px;">{page}</span>
-            </div>
-            """
-        )
-    st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
+col_top_ham, col_top_home, col_top_trail = st.columns([0.6, 2.4, 7.0], gap="small")
+with col_top_ham:
+    st.markdown('<div class="topbar-ham-btn">', unsafe_allow_html=True)
+    st.button("☰", key=f"top_hamburger_{page.replace(' ', '_').lower()}", on_click=toggle_sidebar, help="Toggle Sidebar (☰)")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+with col_top_home:
+    if st.button("Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+        st.session_state.current_page = "Dashboard"
+        st.session_state.nav_radio = "Dashboard"
+        st.rerun()
+
+with col_top_trail:
+    badge_color = "#2563EB" if is_admin else "#0284C7"
+    badge_bg = "#EFF6FF" if is_admin else "#E0F2FE"
+    badge_border = "#DBEAFE" if is_admin else "#BAE6FD"
+    render_html(
+        f"""
+        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
+            <span style="display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 3px 10px; border-radius: 9999px;">
+                {get_svg_icon("user", size=13, color="#475569")}
+                <strong>{user['name']}</strong> &bull; {user['role'].upper()}
+            </span>
+            <span style="color: #CBD5E1;">|</span>
+            <span style="color: {badge_color}; font-weight: 700; background: {badge_bg}; border: 1px solid {badge_border}; padding: 3px 10px; border-radius: 9999px;">{page}</span>
+        </div>
+        """
+    )
+st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # 1. ADMIN: EXECUTIVE DASHBOARD
