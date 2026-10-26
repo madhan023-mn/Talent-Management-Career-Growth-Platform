@@ -114,7 +114,7 @@
   <div class="app-viewport">
     <iframe
       id="mainFrame"
-      src="https://talent-growth.streamlit.app/?embed=true"
+      src="https://talent-growth.streamlit.app"
       allow="accelerometer; autoplay; camera; encrypted-media; geolocation; gyroscope; microphone; clipboard-read; clipboard-write"
       allowfullscreen
     ></iframe>
@@ -128,8 +128,7 @@
     const params = new URLSearchParams(window.location.search);
     if (params.get("app")) {
       const customUrl = params.get("app").replace(/\/$/, "");
-      const embedUrl = customUrl.includes("?") ? `${customUrl}&embed=true` : `${customUrl}/?embed=true`;
-      frame.src = embedUrl;
+      frame.src = customUrl;
     }
 
     // Dismiss loader once iframe loads
