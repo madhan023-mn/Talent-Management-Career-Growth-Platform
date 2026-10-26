@@ -1163,152 +1163,131 @@ def navigate_to(target_page: str):
 # SIDEBAR NAVIGATION
 # ------------------------------------------------------------------------------
 with st.sidebar:
-    if not is_admin:
-        # TalentSphere Employee Theme (Matching reference mockup exactly)
-        st.markdown(
-            """
-            <style>
-            section[data-testid="stSidebar"] {
-                display: flex !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                background-color: #EFF4F8 !important;
-                border-right: 1px solid #D9E4EC !important;
-            }
-            div[data-testid="collapsedControl"] {
-                display: flex !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-            }
-            section[data-testid="stSidebar"] .stMarkdown p,
-            section[data-testid="stSidebar"] .stMarkdown span {
-                color: #5A7383 !important;
-            }
-            section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
-                gap: 6px !important;
-            }
-            section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
-                color: #627D98 !important;
-                background: transparent !important;
-                border: none !important;
-                padding: 6px 4px !important;
-                font-weight: 500 !important;
-                font-size: 0.95rem !important;
-                box-shadow: none !important;
-                margin-bottom: 2px !important;
-            }
-            section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
-                background: transparent !important;
-                color: #102A43 !important;
-            }
-            section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
-            section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-                background: transparent !important;
-                color: #334E68 !important;
-                font-weight: 600 !important;
-                border: none !important;
-                box-shadow: none !important;
-            }
-            section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {
-                color: inherit !important;
-                font-size: 0.95rem !important;
-            }
-            section[data-testid="stSidebar"] button[kind="secondary"] {
-                background: transparent !important;
-                border: 1px solid #D2E0EB !important;
-                color: #627D98 !important;
-                border-radius: 8px !important;
-                padding: 8px 16px !important;
-                font-weight: 500 !important;
-            }
-            section[data-testid="stSidebar"] button[kind="secondary"]:hover {
-                background: #E2EBF2 !important;
-                color: #102A43 !important;
-                border-color: #BAC7D5 !important;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            f"""
-            <div style="padding-top: 0.2rem; margin-bottom: 0.5rem;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                    <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
-                        <path d="M14 26V11" stroke="#059669" stroke-width="2.8" stroke-linecap="round"/>
-                        <path d="M14 11C14 7 10 4 6 5C5 9 8 13 14 13" fill="#34D399" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M14 16C16 11 20 8 23 9C24 13 21 17 14 18" fill="#10B981" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span style="font-weight: 800; font-size: 1.22rem; color: #0E2A38; letter-spacing: -0.01em;">TalentSphere</span>
-                </div>
-                <div style="font-size: 0.84rem; color: #5A7383; margin-top: 4px; margin-bottom: 1.2rem;">
-                    Signed in as {user['name']}
-                </div>
+    # TalentSphere Unified Theme (Matching reference mockup exactly for both Employee and HR)
+    st.markdown(
+        """
+        <style>
+        html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
+        html body section[data-testid="stSidebar"],
+        section[data-testid="stSidebar"] {
+            background-color: #EFF4F8 !important;
+            border-right: 1px solid #D9E4EC !important;
+            transition: transform 0.25s ease, margin-left 0.25s ease, width 0.25s ease !important;
+        }
+        section[data-testid="stSidebar"]:not([aria-expanded="false"]),
+        section[data-testid="stSidebar"][aria-expanded="true"] {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            min-width: 270px !important;
+            width: 280px !important;
+            max-width: 320px !important;
+            margin-left: 0 !important;
+        }
+        section[data-testid="stSidebar"][aria-expanded="false"] {
+            min-width: 0 !important;
+            width: 0 !important;
+            max-width: 0 !important;
+            margin-left: -320px !important;
+            overflow: hidden !important;
+            visibility: hidden !important;
+        }
+        div[data-testid="collapsedControl"] {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        section[data-testid="stSidebar"] .stMarkdown p,
+        section[data-testid="stSidebar"] .stMarkdown span {
+            color: #5A7383 !important;
+        }
+        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
+            gap: 5px !important;
+        }
+        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
+            color: #627D98 !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 6px 6px !important;
+            font-weight: 500 !important;
+            font-size: 0.94rem !important;
+            box-shadow: none !important;
+            margin-bottom: 2px !important;
+            border-radius: 6px !important;
+        }
+        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
+            background: #E2EBF2 !important;
+            color: #102A43 !important;
+        }
+        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
+        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+            background: transparent !important;
+            color: #102A43 !important;
+            font-weight: 700 !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {
+            color: inherit !important;
+            font-size: 0.94rem !important;
+        }
+        section[data-testid="stSidebar"] button[kind="secondary"] {
+            background: transparent !important;
+            border: 1px solid #D2E0EB !important;
+            color: #627D98 !important;
+            border-radius: 8px !important;
+            padding: 8px 16px !important;
+            font-weight: 500 !important;
+        }
+        section[data-testid="stSidebar"] button[kind="secondary"]:hover {
+            background: #E2EBF2 !important;
+            color: #102A43 !important;
+            border-color: #BAC7D5 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        f"""
+        <div style="padding-top: 0.2rem; margin-bottom: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+                    <path d="M14 26V11" stroke="#059669" stroke-width="2.8" stroke-linecap="round"/>
+                    <path d="M14 11C14 7 10 4 6 5C5 9 8 13 14 13" fill="#34D399" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M14 16C16 11 20 8 23 9C24 13 21 17 14 18" fill="#10B981" fill-opacity="0.3" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span style="font-weight: 800; font-size: 1.22rem; color: #0E2A38; letter-spacing: -0.01em;">TalentSphere</span>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
-    else:
-        # Talent Growth Admin Brand Header matching reference mockup
-        st.markdown(
-            """
-            <style>
-            section[data-testid="stSidebar"] {
-                display: flex !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-                background-color: #0C1327 !important;
-                border-right: 1px solid #1E293B !important;
-            }
-            div[data-testid="collapsedControl"] {
-                display: flex !important;
-                visibility: visible !important;
-                opacity: 1 !important;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            f"""
-            <div style="padding-top: 0.2rem; margin-bottom: 0.5rem;">
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 2px;">
-                    {get_svg_icon("brand_logo", size=24)}
-                    <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
-                </div>
-                <div style="font-size: 0.78rem; color: #94A3B8; margin-bottom: 1rem;">
-                    Signed in as {user['name']}
-                </div>
+            <div style="font-size: 0.84rem; color: #5A7383; margin-top: 4px; margin-bottom: 1.2rem;">
+                Signed in as {user['name']}
             </div>
-            """,
-            unsafe_allow_html=True
-        )
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    core_pages = [
+        "Dashboard",
+        "My Profile",
+        "Resume Studio",
+        "Skills & Assessment",
+        "Career Direction",
+        "Role Match & Gaps",
+        "Career Coach",
+        "Growth Progress",
+        "Career Report",
+        "Settings"
+    ]
 
     if is_admin:
-        admin_pages = [
-            "Dashboard",
+        admin_pages = core_pages + [
             "Employees",
-            "Performance",
-            "Skills & Assessment",
-            "Career Goals",
-            "Reports",
-            "Resume Studio",
-            "Settings"
+            "Performance"
         ]
         active_pages = admin_pages
     else:
-        emp_pages = [
-            "Dashboard",
-            "My Profile",
-            "Resume Studio",
-            "Skills & Assessment",
-            "Career Direction",
-            "Role Match & Gaps",
-            "Career Coach",
-            "Growth Progress",
-            "Career Report",
-            "Settings"
-        ]
+        emp_pages = core_pages
         active_pages = emp_pages
 
     if "page_to_navigate" in st.session_state:

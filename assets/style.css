@@ -332,33 +332,54 @@ code, kbd, samp, pre {
 .trend-up { color: #10B981; }
 .trend-neutral { color: #64748B; }
 
-/* Modern Corporate Sticky Dark Navy Sidebar */
+/* Modern Corporate Sticky Sidebar (High Specificity to guarantee visibility) */
+html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
+html body section[data-testid="stSidebar"],
+html body [data-testid="stSidebar"],
 section[data-testid="stSidebar"] {
+    background-color: #EFF4F8 !important;
+    border-right: 1px solid #D9E4EC !important;
+    color: #102A43 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow-y: auto !important;
+    z-index: 1000 !important;
+    transition: transform 0.25s ease, margin-left 0.25s ease, width 0.25s ease !important;
+}
+
+/* Expanded Sidebar */
+section[data-testid="stSidebar"]:not([aria-expanded="false"]),
+section[data-testid="stSidebar"][aria-expanded="true"] {
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
     min-width: 270px !important;
     width: 280px !important;
     max-width: 320px !important;
-    background-color: #0C1327 !important;
-    border-right: 1px solid #1E293B !important;
-    color: #F8FAFC !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-    overflow-y: auto !important;
-    z-index: 1000 !important;
+    margin-left: 0 !important;
 }
+
+/* Collapsed Sidebar (Smooth Slide-Out to Left) */
+section[data-testid="stSidebar"][aria-expanded="false"] {
+    min-width: 0 !important;
+    width: 0 !important;
+    max-width: 0 !important;
+    margin-left: -320px !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+}
+
 section[data-testid="stSidebar"] .stMarkdown p,
 section[data-testid="stSidebar"] .stMarkdown span,
 section[data-testid="stSidebar"] .stMarkdown strong {
-    color: #E2E8F0 !important;
+    color: #5A7383 !important;
 }
 
 /* Sidebar Navigation Radio Buttons (With Circular Radio Indicators) */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
     display: flex !important;
     flex-direction: column !important;
-    gap: 3px !important;
+    gap: 5px !important;
     width: 100% !important;
 }
 
@@ -367,30 +388,33 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     align-items: center !important;
     gap: 8px !important;
     width: 100% !important;
-    padding: 8px 12px !important;
-    border-radius: 8px !important;
-    color: #94A3B8 !important;
-    font-size: 0.92rem !important;
+    padding: 6px 6px !important;
+    border-radius: 6px !important;
+    color: #627D98 !important;
+    font-size: 0.94rem !important;
     font-weight: 500 !important;
     cursor: pointer !important;
     transition: all 0.15s ease !important;
     margin-bottom: 2px !important;
     background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 /* Inactive Link Hover */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
-    background-color: #16223F !important;
-    color: #FFFFFF !important;
+    background-color: #E2EBF2 !important;
+    color: #102A43 !important;
 }
 
 /* Active Radio Button */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-    background-color: #2563EB !important;
-    color: #FFFFFF !important;
-    font-weight: 600 !important;
-    border-radius: 8px !important;
+    background: transparent !important;
+    color: #102A43 !important;
+    font-weight: 700 !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p,
@@ -1636,7 +1660,6 @@ div[data-testid="collapsedControl"] {
     z-index: 100000 !important;
 }
 
-div[data-testid="collapsedControl"] button {
 /* Sidebar Collapse & Expand Controls (Native Material Icons << and >>) */
 span[data-testid="stIconMaterial"] {
     display: inline-flex !important;
