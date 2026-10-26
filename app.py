@@ -1122,15 +1122,6 @@ def register_page():
 # ROUTING FOR UNAUTHENTICATED USERS
 # ------------------------------------------------------------------------------
 if not st.session_state.user:
-    st.markdown(
-        """
-        <style>
-        section[data-testid="stSidebar"] { display: none !important; }
-        div[data-testid="collapsedControl"] { display: none !important; }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
     current_auth_view = st.session_state.get("auth_view", "landing")
     if current_auth_view == "login":
         login_page()
@@ -1178,8 +1169,16 @@ with st.sidebar:
             """
             <style>
             section[data-testid="stSidebar"] {
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
                 background-color: #EFF4F8 !important;
                 border-right: 1px solid #D9E4EC !important;
+            }
+            div[data-testid="collapsedControl"] {
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
             }
             section[data-testid="stSidebar"] .stMarkdown p,
             section[data-testid="stSidebar"] .stMarkdown span {
@@ -1251,6 +1250,25 @@ with st.sidebar:
         )
     else:
         # Talent Growth Admin Brand Header matching reference mockup
+        st.markdown(
+            """
+            <style>
+            section[data-testid="stSidebar"] {
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                background-color: #0C1327 !important;
+                border-right: 1px solid #1E293B !important;
+            }
+            div[data-testid="collapsedControl"] {
+                display: flex !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
         st.markdown(
             f"""
             <div style="padding-top: 0.2rem; margin-bottom: 0.5rem;">

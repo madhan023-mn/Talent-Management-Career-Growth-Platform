@@ -334,11 +334,15 @@ code, kbd, samp, pre {
 
 /* Modern Corporate Sticky Dark Navy Sidebar */
 section[data-testid="stSidebar"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-width: 270px !important;
+    width: 280px !important;
+    max-width: 320px !important;
     background-color: #0C1327 !important;
     border-right: 1px solid #1E293B !important;
     color: #F8FAFC !important;
-    position: sticky !important;
-    top: 0 !important;
     height: 100vh !important;
     max-height: 100vh !important;
     overflow-y: auto !important;
