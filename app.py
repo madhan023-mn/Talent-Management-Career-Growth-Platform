@@ -29,7 +29,9 @@ from services.core import (
     add_goal, get_goals, get_goal_by_id, update_goal, update_goal_progress, delete_goal, get_goal_stats,
     add_training_record, get_training_records,
     get_org_dashboard_stats, get_employee_dashboard_data,
-    get_db_path, check_db_health
+    get_db_path, check_db_health,
+    get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
+    validate_url, validate_date_range
 )
 from services.reports import create_report
 from services.ai_coach import (
@@ -4233,237 +4235,810 @@ elif page == "My Profile":
 
 elif page == "ATS Resume Studio" or page == "Resume Studio":
     st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.35rem;'>Resume Studio</h1>", unsafe_allow_html=True)
-    st.markdown("<div style='font-size: 0.95rem; color: #64748B; margin-bottom: 1.5rem;'>Create an ATS-friendly PDF from information you have entered. Check the draft before sending it to an employer.</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size: 0.95rem; color: #64748B; margin-bottom: 1.25rem;'>Create, edit, and optimize your ATS-ready resume with real-time screening, STAR bullet rewrites, and PDF export.</div>", unsafe_allow_html=True)
 
-    upload = st.file_uploader("Import an existing resume (PDF or DOCX)", type=["pdf", "docx"], help="200MB per file • PDF, DOCX")
-    if upload:
-        try:
-            if upload.name.lower().endswith(".pdf"):
-                text = "\n".join(p.extract_text() or "" for p in PdfReader(upload).pages)
-            else:
-                text = "\n".join(p.text for p in Document(upload).paragraphs)
-            save_profile(uid, {"resume_text": text})
-            st.success("Resume text uploaded and saved for alignment review.")
-        except Exception as exc:
-            st.error(f"Could not read file: {exc}")
+    # --------------------------------------------------------------------------
+    # HR ADMINISTRATOR vs EMPLOYEE MODE
+    # --------------------------------------------------------------------------
+    active_target_uid = uid
+    active_target_user = user
+    active_target_profile = profile
 
-    col_r1, col_r2 = st.columns(2, gap="large")
-    with col_r1:
-        st.markdown("<h3 style='font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-bottom: 0.85rem;'>Resume content</h3>", unsafe_allow_html=True)
-        sum_disp = profile.get('summary') or 'Add a summary in My Profile.'
-        st.write(sum_disp)
-        skills_disp = f"Skills: {', '.join(s['name'] for s in skills)}" if skills else "Skills: None added"
-        st.write(skills_disp)
-        exp_disp = profile.get('experience') or 'Add experience details in My Profile.'
-        st.write(exp_disp)
-
-    with col_r2:
-        st.markdown("<h3 style='font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-bottom: 0.85rem;'>Resume alignment</h3>", unsafe_allow_html=True)
-        resume_text_raw = profile.get("resume_text", "")
-        role_skills = ROLE_CATALOG.get(profile.get("target_role", ""), {}).get("skills", {})
-        if resume_text_raw and role_skills:
-            matched_kws = [s for s in role_skills if s.lower() in resume_text_raw.lower()]
-            pct_score = round(100 * len(matched_kws) / max(1, len(role_skills)))
-            render_html(
-                f"""
-                <div class="ts-callout-blue">
-                    <strong>Target Role Match: {pct_score}%</strong> ({len(matched_kws)} of {len(role_skills)} benchmark keywords detected).
-                </div>
-                """
-            )
-        else:
-            render_html(
-                """
-                <div class="ts-callout-blue">
-                    Import a resume to compare its text with your target role.
-                </div>
-                """
-            )
-
-    st.markdown("<div style='margin-top: 1.75rem;'></div>", unsafe_allow_html=True)
-    st.markdown("<h3 style='font-size: 1.35rem; font-weight: 800; color: #0F172A; margin-bottom: 0.85rem;'>ATS resume preview</h3>", unsafe_allow_html=True)
-
-    links_list = list(filter(None, [profile.get("linkedin"), profile.get("github"), profile.get("portfolio")]))
-    links_str = " | ".join(links_list) if links_list else ".."
-
-    render_html(
-        f"""
-        <div class="ts-resume-paper">
-            <div class="ts-resume-header-name">{user['name']}</div>
-            <a href="mailto:{user['email']}" class="ts-resume-contact-link">{user['email']}</a>
-
-            <div class="ts-resume-section-heading">Professional Summary</div>
-            <div class="ts-resume-section-text">{profile.get('summary') or 'Add a professional summary.'}</div>
-
-            <div class="ts-resume-section-heading">Skills</div>
-            <div class="ts-resume-section-text">{', '.join(s['name'] for s in skills) if skills else 'Add skills.'}</div>
-
-            <div class="ts-resume-section-heading">Experience</div>
-            <div class="ts-resume-section-text">{profile.get('experience') or 'Add experience.'}</div>
-
-            <div class="ts-resume-section-heading">Education</div>
-            <div class="ts-resume-section-text">{profile.get('education') or 'Add education.'}</div>
-
-            <div class="ts-resume-section-heading">Certifications</div>
-            <div class="ts-resume-section-text">{profile.get('certifications') or 'Add certifications.'}</div>
-
-            <div class="ts-resume-section-heading">Projects</div>
-            <div class="ts-resume-section-text">{profile.get('projects') or 'Add projects.'}</div>
-
-            <div class="ts-resume-section-heading">Links</div>
-            <div class="ts-resume-section-text">{links_str}</div>
-        </div>
-        """
-    )
-
-    render_html(
-        f"""
-        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.1rem 1.4rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
-            <div>
-                <div style="font-size: 1.2rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px;">
-                    {get_svg_icon("sparkles", size=20, color="#2563EB")} AI Resume Auditor & Bullet Rewriter (Gemini)
-                </div>
-                <div style="color: #64748B; font-size: 0.88rem; margin-top: 3px;">
-                    Deep ATS screening, passive voice detection, and Google XYZ / STAR format bullet rewriting.
-                </div>
-            </div>
-            <div>
-                <span class="badge-status badge-active">AI OPTIMIZER</span>
-            </div>
-        </div>
-        """
-    )
-    
-    col_audit_btn, col_audit_opt = st.columns([2, 3])
-    with col_audit_btn:
-        audit_clicked = st.button("Run Deep AI Resume & Bullet Audit", type="primary", use_container_width=True)
-    with col_audit_opt:
-        audit_source = st.radio("Audit Content Source", ["Parsed Resume Text", "Profile Work Experience"], horizontal=True)
-
-    if audit_clicked:
-        resume_source_text = profile.get("resume_text", "") if audit_source == "Parsed Resume Text" else profile.get("experience", "")
-        if not resume_source_text.strip():
-            resume_source_text = f"Summary: {profile.get('summary', '')}\nExperience: {profile.get('experience', '')}\nSkills: {', '.join(s['name'] for s in skills)}"
-
-        if not resume_source_text.strip():
-            st.warning("Please upload a resume or enter your experience details in My Profile to run the audit.")
-        else:
-            target_role = profile.get("target_role", "Senior Software Engineer")
-            target_skills_list = list(ROLE_CATALOG.get(target_role, {}).get("skills", {}).keys())
-            
-            with st.spinner("Running deep AI ATS audit and STAR bullet optimization..."):
-                audit_res = analyze_resume_with_ai(
-                    resume_text=resume_source_text,
-                    target_role=target_role,
-                    target_skills=target_skills_list,
-                    profile=profile,
-                    api_key=st.session_state.get("gemini_user_key")
-                )
-                st.session_state.last_resume_audit = audit_res
-
-    if "last_resume_audit" in st.session_state:
-        res = st.session_state.last_resume_audit
-        ats_score = res.get("ats_score", 70)
-        score_color = "#10B981" if ats_score >= 80 else ("#F59E0B" if ats_score >= 60 else "#EF4444")
-        
+    if is_admin:
+        org_employees = get_employees(org_id=org_id)
         render_html(
             f"""
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; margin: 1.25rem 0 1rem 0;">
-                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
-                    <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">ATS Match Score</div>
-                    <div style="font-size: 1.6rem; font-weight: 800; color: {score_color};">{ats_score} / 100</div>
+            <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 12px 16px; margin-bottom: 1.2rem; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <strong style="color: #1E40AF; font-size: 0.95rem;">HR Administration Mode &bull; Candidate Resume Review</strong>
+                    <div style="color: #3B82F6; font-size: 0.83rem;">Select an employee in {org_name} to inspect their resume, review ATS alignment, or download their dossier.</div>
                 </div>
-                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
-                    <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Keywords Matched</div>
-                    <div style="font-size: 1.6rem; font-weight: 800; color: #2563EB;">{len(res.get("detected_keywords", []))} Detected</div>
+                <span class="badge-status badge-active" style="background: #DBEAFE; color: #1E40AF; border-color: #93C5FD;">HR ACCESS</span>
+            </div>
+            """
+        )
+        if not org_employees:
+            st.info("No employee accounts registered under your organization yet.")
+            st.stop()
+
+        emp_options = {f"{e['name']} ({e['employee_id']} - {e.get('designation', 'Staff')})": e for e in org_employees}
+        selected_emp_label = st.selectbox("Select Employee Candidate", list(emp_options.keys()), key="hr_resume_emp_selector")
+        selected_emp = emp_options[selected_emp_label]
+        
+        # Resolve target user id
+        target_uid_resolved = selected_emp.get("user_id")
+        if not target_uid_resolved:
+            # Query user ID by employee_id or email
+            u_cand = get_user_by_id(selected_emp.get("id"))
+            target_uid_resolved = u_cand.get("id") if u_cand else uid
+
+        active_target_uid = target_uid_resolved
+        active_target_user = {
+            "id": active_target_uid,
+            "name": selected_emp["name"],
+            "email": selected_emp.get("email", ""),
+            "employee_id": selected_emp["employee_id"],
+            "org_id": org_id,
+            "org_name": org_name
+        }
+        active_target_profile = get_profile(active_target_uid)
+
+    # --------------------------------------------------------------------------
+    # RESUME DATA STATE MANAGEMENT
+    # --------------------------------------------------------------------------
+    res_session_key = f"resume_data_{active_target_uid}"
+    if res_session_key not in st.session_state:
+        db_resume = get_resume(active_target_uid, org_id=org_id)
+        st.session_state[res_session_key] = db_resume if db_resume else {}
+
+    res_data = st.session_state[res_session_key]
+
+    # Metrics Summary Row
+    summary_txt = res_data.get("summary", "")
+    skills_list = res_data.get("skills", [])
+    exp_list = res_data.get("experience", [])
+    edu_list = res_data.get("education", [])
+    certs_list = res_data.get("certifications", [])
+    projs_list = res_data.get("projects", [])
+    links_list = res_data.get("links", [])
+
+    render_html(
+        f"""
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; margin-bottom: 1.4rem;">
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 10px 14px; border-radius: 10px;">
+                <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Professional Summary</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: {'#10B981' if summary_txt else '#F59E0B'};">{'Ready' if summary_txt else 'Pending'}</div>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 10px 14px; border-radius: 10px;">
+                <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Core Skills</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #2563EB;">{len(skills_list)} Skills</div>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 10px 14px; border-radius: 10px;">
+                <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Work Experience</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A;">{len(exp_list)} Roles</div>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 10px 14px; border-radius: 10px;">
+                <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Projects &amp; Certs</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #7C3AED;">{len(projs_list) + len(certs_list)} Items</div>
+            </div>
+        </div>
+        """
+    )
+
+    # --------------------------------------------------------------------------
+    # TAB SELECTION: Editor, Live Preview & Export, AI ATS Screener
+    # --------------------------------------------------------------------------
+    if is_admin:
+        tab_preview, tab_screener = st.tabs(["ATS Resume Preview & PDF", "AI ATS Screener & Candidate Audit"])
+        tab_editor = None
+    else:
+        tab_editor, tab_preview, tab_screener = st.tabs(["Interactive Resume Editor", "ATS Resume Preview & PDF", "AI ATS Screener & Bullet Optimizer"])
+
+    # ==========================================================================
+    # TAB 1: INTERACTIVE RESUME EDITOR (EMPLOYEE ONLY)
+    # ==========================================================================
+    if tab_editor is not None:
+        with tab_editor:
+            st.markdown("<h3 style='font-size: 1.25rem; font-weight: 800; color: #0F172A; margin: 0.5rem 0 1rem 0;'>Edit Your Resume Sections</h3>", unsafe_allow_html=True)
+            
+            # --- SECTION A: PROFESSIONAL SUMMARY ---
+            with st.expander("Section A &bull; Professional Summary", expanded=True):
+                st.caption("Write a 2-4 sentence executive summary highlighting your domain focus, key technologies, and career trajectory.")
+                current_sum = res_data.get("summary", "")
+                new_summary = st.text_area(
+                    "Professional Summary",
+                    value=current_sum,
+                    height=100,
+                    key=f"rs_summary_area_{active_target_uid}",
+                    placeholder="Full stack engineer passionate about scalable cloud systems, microservices, and React frontends."
+                )
+                res_data["summary"] = new_summary
+
+                col_sum_act1, col_sum_act2, _ = st.columns([2, 2, 4])
+                with col_sum_act1:
+                    if st.button("Use Recommended Template", key="btn_rs_sum_template"):
+                        res_data["summary"] = "Full stack engineer passionate about scalable cloud systems, microservices, and React frontends."
+                        st.session_state[res_session_key] = res_data
+                        st.rerun()
+                with col_sum_act2:
+                    if st.button("Clear Summary", key="btn_rs_sum_clear"):
+                        res_data["summary"] = ""
+                        st.session_state[res_session_key] = res_data
+                        st.rerun()
+
+            # --- SECTION B: SKILLS & COMPETENCIES ---
+            with st.expander(f"Section B &bull; Core Competencies & Skills ({len(skills_list)} added)", expanded=True):
+                st.caption("Add technical proficiencies and domain skills. You can also import verified skills from your Skills & Assessment module.")
+                
+                # Render existing skills as tags
+                if skills_list:
+                    st.write("**Current Skills:**")
+                    cols_skills = st.columns(min(4, max(1, len(skills_list))))
+                    for idx, s in enumerate(skills_list):
+                        col_idx = idx % len(cols_skills)
+                        with cols_skills[col_idx]:
+                            s_name = s.get("name", "")
+                            s_prof = s.get("proficiency", "Intermediate")
+                            c_tag, c_del = st.columns([3, 1])
+                            with c_tag:
+                                st.markdown(
+                                    f"""
+                                    <div style="background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 6px; padding: 4px 8px; font-size: 0.82rem; font-weight: 700; color: #1E293B;">
+                                        {s_name} <span style="font-size: 0.72rem; color: #2563EB; font-weight: 600;">({s_prof})</span>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                            with c_del:
+                                if st.button("✕", key=f"btn_rs_del_skill_{idx}_{active_target_uid}", help=f"Remove {s_name}"):
+                                    res_data["skills"].pop(idx)
+                                    st.session_state[res_session_key] = res_data
+                                    st.rerun()
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                col_add_sname, col_add_sprof, col_add_sbtn = st.columns([3, 2, 2])
+                with col_add_sname:
+                    new_skill_name = st.text_input("Skill Name", key="rs_new_skill_input", placeholder="e.g. Python, SQL, React")
+                with col_add_sprof:
+                    new_skill_prof = st.selectbox("Proficiency", list(LEVELS.keys()), index=1, key="rs_new_skill_prof")
+                with col_add_sbtn:
+                    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                    if st.button("+ Add Skill", key="btn_rs_add_skill", type="secondary", use_container_width=True):
+                        if new_skill_name.strip():
+                            existing_names = [s["name"].lower() for s in res_data.get("skills", [])]
+                            if new_skill_name.strip().lower() in existing_names:
+                                st.warning(f"Skill '{new_skill_name.strip()}' is already in your resume.")
+                            else:
+                                if "skills" not in res_data:
+                                    res_data["skills"] = []
+                                res_data["skills"].append({"name": new_skill_name.strip(), "proficiency": new_skill_prof})
+                                st.session_state[res_session_key] = res_data
+                                st.success(f"Added '{new_skill_name.strip()}'")
+                                st.rerun()
+                        else:
+                            st.warning("Please enter a skill name.")
+
+                # Integration with Skills & Assessment
+                st.markdown("<div style='margin-top: 0.75rem; border-top: 1px dashed #E2E8F0; padding-top: 0.75rem;'></div>", unsafe_allow_html=True)
+                col_imp_btn, col_imp_info = st.columns([2.5, 5.5])
+                with col_imp_btn:
+                    if st.button("+ Import from Skills & Assessment", key="btn_rs_import_skills", type="secondary", use_container_width=True):
+                        updated_skills = import_skills_to_resume(active_target_uid, res_data.get("skills", []), org_id=org_id)
+                        added_count = len(updated_skills) - len(res_data.get("skills", []))
+                        res_data["skills"] = updated_skills
+                        st.session_state[res_session_key] = res_data
+                        st.success(f"Successfully synchronized {added_count} new skills from your Skills & Assessment profile!")
+                        st.rerun()
+                with col_imp_info:
+                    st.caption("Imports your verified employee competencies without overwriting existing manually created resume entries.")
+
+            # --- SECTION C: WORK EXPERIENCE ---
+            with st.expander(f"Section C &bull; Work Experience ({len(exp_list)} entries)", expanded=True):
+                st.caption("Chronological employment history with measurable outcomes, responsibilities, and leadership impact.")
+
+                if exp_list:
+                    for idx, e in enumerate(exp_list):
+                        with st.container(border=True):
+                            col_exp_head, col_exp_ctrl = st.columns([5, 2])
+                            with col_exp_head:
+                                date_badge = f"{e.get('start_date', '')} – {e.get('end_date', 'Present')}"
+                                st.markdown(
+                                    f"""
+                                    <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">{e.get('job_title', 'Role')} &mdash; <span style="color: #2563EB;">{e.get('company', 'Company')}</span></div>
+                                    <div style="font-size: 0.83rem; color: #64748B;">{e.get('location', '')} &bull; {e.get('employment_type', 'Full-time')} &bull; <strong>{date_badge}</strong></div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                            with col_exp_ctrl:
+                                c_up, c_down, c_del = st.columns(3)
+                                with c_up:
+                                    if idx > 0 and st.button("↑", key=f"btn_exp_up_{idx}", help="Move Up"):
+                                        exp_list[idx - 1], exp_list[idx] = exp_list[idx], exp_list[idx - 1]
+                                        res_data["experience"] = exp_list
+                                        st.session_state[res_session_key] = res_data
+                                        st.rerun()
+                                with c_down:
+                                    if idx < len(exp_list) - 1 and st.button("↓", key=f"btn_exp_down_{idx}", help="Move Down"):
+                                        exp_list[idx + 1], exp_list[idx] = exp_list[idx], exp_list[idx + 1]
+                                        res_data["experience"] = exp_list
+                                        st.session_state[res_session_key] = res_data
+                                        st.rerun()
+                                with c_del:
+                                    if st.button("✕", key=f"btn_exp_del_{idx}", help="Delete Entry"):
+                                        exp_list.pop(idx)
+                                        res_data["experience"] = exp_list
+                                        st.session_state[res_session_key] = res_data
+                                        st.rerun()
+
+                            desc_val = e.get("description", "")
+                            if desc_val:
+                                st.markdown(f"<div style='font-size: 0.88rem; color: #334155; margin-top: 6px; line-height: 1.5;'>{desc_val}</div>", unsafe_allow_html=True)
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                with st.expander("+ Add Work Experience Entry", expanded=False):
+                    with st.form("form_add_experience"):
+                        col_e1, col_e2 = st.columns(2)
+                        with col_e1:
+                            new_e_title = st.text_input("Job Title*", placeholder="Senior Software Engineer")
+                            new_e_comp = st.text_input("Company Name*", placeholder="Tech Innovations Inc.")
+                            new_e_type = st.selectbox("Employment Type", ["Full-time", "Part-time", "Contract", "Internship", "Freelance"])
+                        with col_e2:
+                            new_e_loc = st.text_input("Location", placeholder="Bangalore, India or Remote")
+                            new_e_start = st.text_input("Start Date* (YYYY-MM or YYYY)", placeholder="2023-01")
+                            new_e_curr = st.checkbox("Currently working in this role", value=True)
+                            new_e_end = st.text_input("End Date (YYYY-MM or YYYY)", placeholder="2024-06", disabled=new_e_curr)
+
+                        new_e_desc = st.text_area("Job Description & Measurable Achievements", placeholder="Architected scalable microservices, reduced latency by 35%, and led a team of 4 engineers.", height=90)
+                        btn_submit_exp = st.form_submit_button("+ Add Experience Record", type="primary")
+
+                        if btn_submit_exp:
+                            if not new_e_title.strip() or not new_e_comp.strip() or not new_e_start.strip():
+                                st.error("Job title, company name, and start date are required.")
+                            else:
+                                end_val = "Present" if new_e_curr else new_e_end.strip()
+                                ok_dt, err_dt = validate_date_range(new_e_start.strip(), end_val, new_e_curr)
+                                if not ok_dt:
+                                    st.error(err_dt)
+                                else:
+                                    if "experience" not in res_data:
+                                        res_data["experience"] = []
+                                    res_data["experience"].append({
+                                        "id": f"exp_{len(res_data['experience']) + 1}",
+                                        "job_title": new_e_title.strip(),
+                                        "company": new_e_comp.strip(),
+                                        "employment_type": new_e_type,
+                                        "location": new_e_loc.strip(),
+                                        "start_date": new_e_start.strip(),
+                                        "end_date": end_val,
+                                        "is_current": new_e_curr,
+                                        "description": new_e_desc.strip()
+                                    })
+                                    st.session_state[res_session_key] = res_data
+                                    st.success(f"Added '{new_e_title.strip()}' at '{new_e_comp.strip()}'")
+                                    st.rerun()
+
+            # --- SECTION D: EDUCATION ---
+            with st.expander(f"Section D &bull; Education ({len(edu_list)} entries)", expanded=True):
+                st.caption("Academic degrees, university education, fields of study, and honors.")
+                
+                if edu_list:
+                    for idx, ed in enumerate(edu_list):
+                        with st.container(border=True):
+                            col_edu_head, col_edu_ctrl = st.columns([5, 1])
+                            with col_edu_head:
+                                date_str = f"{ed.get('start_date', '')} – {ed.get('end_date', '')}"
+                                st.markdown(
+                                    f"""
+                                    <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">{ed.get('degree', 'Degree')} &mdash; <span style="color: #2563EB;">{ed.get('institution', 'Institution')}</span></div>
+                                    <div style="font-size: 0.83rem; color: #64748B;">{ed.get('field_of_study', '')} &bull; <strong>{date_str}</strong></div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                if ed.get("details"):
+                                    st.markdown(f"<div style='font-size: 0.86rem; color: #334155; margin-top: 4px;'>{ed['details']}</div>", unsafe_allow_html=True)
+                            with col_edu_ctrl:
+                                if st.button("✕", key=f"btn_edu_del_{idx}", help="Delete Entry"):
+                                    edu_list.pop(idx)
+                                    res_data["education"] = edu_list
+                                    st.session_state[res_session_key] = res_data
+                                    st.rerun()
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                with st.expander("+ Add Education Entry", expanded=False):
+                    with st.form("form_add_education"):
+                        col_ed1, col_ed2 = st.columns(2)
+                        with col_ed1:
+                            new_ed_degree = st.text_input("Degree / Qualification*", placeholder="B.Tech in Computer Science")
+                            new_ed_inst = st.text_input("Institution / University*", placeholder="National Institute of Technology")
+                            new_ed_field = st.text_input("Field of Study", placeholder="Computer Science & Engineering")
+                        with col_ed2:
+                            new_ed_start = st.text_input("Start Year / Date", placeholder="2019")
+                            new_ed_end = st.text_input("End Year / Graduation Date", placeholder="2023")
+                            new_ed_details = st.text_area("Relevant Details (GPA, Honors)", placeholder="Graduated with First Class Honors, GPA 8.9/10", height=68)
+
+                        btn_submit_edu = st.form_submit_button("+ Add Education Record", type="primary")
+                        if btn_submit_edu:
+                            if not new_ed_degree.strip() or not new_ed_inst.strip():
+                                st.error("Degree and Institution are required.")
+                            else:
+                                ok_edt, err_edt = validate_date_range(new_ed_start.strip(), new_ed_end.strip())
+                                if not ok_edt:
+                                    st.error(err_edt)
+                                else:
+                                    if "education" not in res_data:
+                                        res_data["education"] = []
+                                    res_data["education"].append({
+                                        "id": f"edu_{len(res_data['education']) + 1}",
+                                        "degree": new_ed_degree.strip(),
+                                        "institution": new_ed_inst.strip(),
+                                        "field_of_study": new_ed_field.strip(),
+                                        "start_date": new_ed_start.strip(),
+                                        "end_date": new_ed_end.strip(),
+                                        "details": new_ed_details.strip()
+                                    })
+                                    st.session_state[res_session_key] = res_data
+                                    st.success(f"Added '{new_ed_degree.strip()}'")
+                                    st.rerun()
+
+            # --- SECTION E: CERTIFICATIONS ---
+            with st.expander(f"Section E &bull; Certifications & Credentials ({len(certs_list)} entries)", expanded=True):
+                st.caption("Professional licenses, vendor credentials, and technical accreditations.")
+
+                if certs_list:
+                    for idx, c in enumerate(certs_list):
+                        with st.container(border=True):
+                            col_c_head, col_c_ctrl = st.columns([5, 1])
+                            with col_c_head:
+                                st.markdown(
+                                    f"""
+                                    <div style="font-weight: 800; font-size: 1.0rem; color: #0F172A;">{c.get('name', 'Certification')} &mdash; <span style="color: #2563EB;">{c.get('issuing_org', '')}</span></div>
+                                    <div style="font-size: 0.83rem; color: #64748B;">Issued: {c.get('issue_date', 'N/A')} &bull; ID: {c.get('credential_id', 'N/A')}</div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                if c.get("credential_url"):
+                                    st.markdown(f"<a href='{c['credential_url']}' target='_blank' style='font-size: 0.82rem; color: #2563EB;'>Verify Credential</a>", unsafe_allow_html=True)
+                            with col_c_ctrl:
+                                if st.button("✕", key=f"btn_cert_del_{idx}", help="Delete Certification"):
+                                    certs_list.pop(idx)
+                                    res_data["certifications"] = certs_list
+                                    st.session_state[res_session_key] = res_data
+                                    st.rerun()
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                with st.expander("+ Add Certification Record", expanded=False):
+                    with st.form("form_add_certification"):
+                        col_c1, col_c2 = st.columns(2)
+                        with col_c1:
+                            new_c_name = st.text_input("Certification Name*", placeholder="AWS Certified Solutions Architect")
+                            new_c_org = st.text_input("Issuing Organization*", placeholder="Amazon Web Services")
+                            new_c_id = st.text_input("Credential ID", placeholder="AWS-892174")
+                        with col_c2:
+                            new_c_issue = st.text_input("Issue Date (YYYY-MM)", placeholder="2024-03")
+                            new_c_noexp = st.checkbox("No Expiration", value=True)
+                            new_c_exp = st.text_input("Expiry Date (YYYY-MM)", placeholder="2027-03", disabled=new_c_noexp)
+                            new_c_url = st.text_input("Credential Verification URL", placeholder="https://aws.amazon.com/verify")
+
+                        btn_submit_cert = st.form_submit_button("+ Add Certification", type="primary")
+                        if btn_submit_cert:
+                            if not new_c_name.strip() or not new_c_org.strip():
+                                st.error("Certification name and issuing organization are required.")
+                            elif new_c_url.strip() and not validate_url(new_c_url.strip()):
+                                st.error(f"Invalid verification URL format: '{new_c_url.strip()}'.")
+                            else:
+                                if "certifications" not in res_data:
+                                    res_data["certifications"] = []
+                                res_data["certifications"].append({
+                                    "id": f"cert_{len(res_data['certifications']) + 1}",
+                                    "name": new_c_name.strip(),
+                                    "issuing_org": new_c_org.strip(),
+                                    "issue_date": new_c_issue.strip(),
+                                    "expiry_date": "" if new_c_noexp else new_c_exp.strip(),
+                                    "no_expiry": new_c_noexp,
+                                    "credential_id": new_c_id.strip(),
+                                    "credential_url": new_c_url.strip()
+                                })
+                                st.session_state[res_session_key] = res_data
+                                st.success(f"Added certification '{new_c_name.strip()}'")
+                                st.rerun()
+
+            # --- SECTION F: PROJECTS ---
+            with st.expander(f"Section F &bull; Projects & Key Achievements ({len(projs_list)} entries)", expanded=True):
+                st.caption("Showcase major engineering deliverables, open-source work, and system designs.")
+
+                if projs_list:
+                    for idx, p in enumerate(projs_list):
+                        with st.container(border=True):
+                            col_p_head, col_p_ctrl = st.columns([5, 1])
+                            with col_p_head:
+                                role_lbl = f" ({p.get('role', '')})" if p.get('role') else ""
+                                st.markdown(
+                                    f"""
+                                    <div style="font-weight: 800; font-size: 1.02rem; color: #0F172A;">{p.get('title', 'Project')}{role_lbl}</div>
+                                    <div style="font-size: 0.83rem; color: #2563EB; font-weight: 600;">Tech: {p.get('technologies', 'N/A')}</div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                if p.get("description"):
+                                    st.markdown(f"<div style='font-size: 0.87rem; color: #334155; margin-top: 4px; line-height: 1.45;'>{p['description']}</div>", unsafe_allow_html=True)
+                                
+                                p_urls = []
+                                if p.get("project_url"):
+                                    p_urls.append(f"<a href='{p['project_url']}' target='_blank' style='color: #2563EB;'>Live Demo</a>")
+                                if p.get("github_url"):
+                                    p_urls.append(f"<a href='{p['github_url']}' target='_blank' style='color: #2563EB;'>Source Code</a>")
+                                if p_urls:
+                                    st.markdown(f"<div style='font-size: 0.82rem; margin-top: 4px;'>{' &bull; '.join(p_urls)}</div>", unsafe_allow_html=True)
+                            with col_p_ctrl:
+                                if st.button("✕", key=f"btn_proj_del_{idx}", help="Delete Project"):
+                                    projs_list.pop(idx)
+                                    res_data["projects"] = projs_list
+                                    st.session_state[res_session_key] = res_data
+                                    st.rerun()
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                with st.expander("+ Add Project Entry", expanded=False):
+                    with st.form("form_add_project"):
+                        col_pr1, col_pr2 = st.columns(2)
+                        with col_pr1:
+                            new_p_title = st.text_input("Project Title*", placeholder="Cloud-Native Talent Platform")
+                            new_p_role = st.text_input("Your Role", placeholder="Lead Architect / Developer")
+                            new_p_tech = st.text_input("Technologies Used*", placeholder="Python, React, SQLite, Docker")
+                        with col_pr2:
+                            new_p_purl = st.text_input("Project / Demo URL", placeholder="https://example.com/demo")
+                            new_p_ghurl = st.text_input("GitHub URL", placeholder="https://github.com/example/project")
+
+                        new_p_desc = st.text_area("Project Description", placeholder="Engineered multi-tenant isolation, automated welcome email delivery, and ATS resume scoring.", height=85)
+                        btn_submit_proj = st.form_submit_button("+ Add Project", type="primary")
+
+                        if btn_submit_proj:
+                            if not new_p_title.strip() or not new_p_tech.strip():
+                                st.error("Project title and technologies used are required.")
+                            elif new_p_purl.strip() and not validate_url(new_p_purl.strip()):
+                                st.error(f"Invalid Project URL format: '{new_p_purl.strip()}'.")
+                            elif new_p_ghurl.strip() and not validate_url(new_p_ghurl.strip()):
+                                st.error(f"Invalid GitHub URL format: '{new_p_ghurl.strip()}'.")
+                            else:
+                                if "projects" not in res_data:
+                                    res_data["projects"] = []
+                                res_data["projects"].append({
+                                    "id": f"proj_{len(res_data['projects']) + 1}",
+                                    "title": new_p_title.strip(),
+                                    "role": new_p_role.strip(),
+                                    "technologies": new_p_tech.strip(),
+                                    "project_url": new_p_purl.strip(),
+                                    "github_url": new_p_ghurl.strip(),
+                                    "description": new_p_desc.strip()
+                                })
+                                st.session_state[res_session_key] = res_data
+                                st.success(f"Added project '{new_p_title.strip()}'")
+                                st.rerun()
+
+            # --- SECTION G: PROFESSIONAL LINKS ---
+            with st.expander(f"Section G &bull; Professional Links ({len(links_list)} links)", expanded=True):
+                st.caption("Public portfolio, LinkedIn profile, GitHub repositories, or technical blog.")
+
+                if links_list:
+                    for idx, l in enumerate(links_list):
+                        col_l_lbl, col_l_url, col_l_del = st.columns([2, 5, 1])
+                        with col_l_lbl:
+                            st.markdown(f"**{l.get('label', 'Link')}**")
+                        with col_l_url:
+                            l_target = l.get('url', '')
+                            href = l_target if l_target.startswith('http') else f"https://{l_target}"
+                            st.markdown(f"<a href='{href}' target='_blank' style='color: #2563EB;'>{l_target}</a>", unsafe_allow_html=True)
+                        with col_l_del:
+                            if st.button("✕", key=f"btn_link_del_{idx}", help="Remove Link"):
+                                links_list.pop(idx)
+                                res_data["links"] = links_list
+                                st.session_state[res_session_key] = res_data
+                                st.rerun()
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                with st.expander("+ Add Professional Link", expanded=False):
+                    with st.form("form_add_link"):
+                        col_lk1, col_lk2 = st.columns([2.5, 4.5])
+                        with col_lk1:
+                            new_l_label = st.selectbox("Platform / Label", ["LinkedIn", "GitHub", "Portfolio", "Personal Website", "Blog", "Other"])
+                        with col_lk2:
+                            new_l_url = st.text_input("URL Address*", placeholder="https://linkedin.com/in/username")
+
+                        btn_submit_link = st.form_submit_button("+ Add Link", type="primary")
+                        if btn_submit_link:
+                            if not new_l_url.strip():
+                                st.error("Please enter a web URL.")
+                            elif not validate_url(new_l_url.strip()):
+                                st.error(f"Invalid URL format: '{new_l_url.strip()}'. Must be a valid HTTP/HTTPS address or domain.")
+                            else:
+                                if "links" not in res_data:
+                                    res_data["links"] = []
+                                res_data["links"].append({
+                                    "id": f"link_{len(res_data['links']) + 1}",
+                                    "label": new_l_label,
+                                    "url": new_l_url.strip()
+                                })
+                                st.session_state[res_session_key] = res_data
+                                st.success(f"Added link '{new_l_label}'")
+                                st.rerun()
+
+            # --- GLOBAL SAVE ACTION BAR ---
+            st.markdown("<div style='border-top: 2px solid #E2E8F0; margin: 2rem 0 1.25rem 0;'></div>", unsafe_allow_html=True)
+            col_save_btn, col_cancel_btn, col_save_status = st.columns([3, 2, 4])
+            with col_save_btn:
+                if st.button("💾 Save All Resume Changes", key="btn_rs_save_all", type="primary", use_container_width=True):
+                    ok_save, msg_save = save_resume(active_target_uid, res_data, org_id=org_id)
+                    if ok_save:
+                        st.session_state[res_session_key] = get_resume(active_target_uid, org_id=org_id) or {}
+                        # Refresh global profile and skills
+                        st.session_state.profile = get_profile(active_target_uid)
+                        st.session_state.skills = list_skills(active_target_uid)
+                        st.success("All resume changes successfully persisted to database!")
+                        st.rerun()
+                    else:
+                        st.error(f"Save failed: {msg_save}")
+            with col_cancel_btn:
+                if st.button("Cancel & Revert", key="btn_rs_cancel_changes", type="secondary", use_container_width=True):
+                    st.session_state[res_session_key] = get_resume(active_target_uid, org_id=org_id) or {}
+                    st.info("Reverted unsaved changes to previously saved database state.")
+                    st.rerun()
+            with col_save_status:
+                last_updated = res_data.get("updated_at", "Just now")
+                st.caption(f"Status: Database connected &bull; Last synchronized: {last_updated}")
+
+    # ==========================================================================
+    # TAB 2: ATS RESUME PREVIEW & PDF EXPORT
+    # ==========================================================================
+    with tab_preview:
+        col_prev_head, col_prev_pdf = st.columns([5, 3])
+        with col_prev_head:
+            st.markdown("<h3 style='font-size: 1.25rem; font-weight: 800; color: #0F172A; margin: 0.5rem 0 0.2rem 0;'>ATS Resume Live Preview</h3>", unsafe_allow_html=True)
+            st.caption("Structured, applicant-tracking-system compliant layout generated from your saved resume database records.")
+        with col_prev_pdf:
+            pdf_bytes = generate_resume_pdf(
+                res_data,
+                {
+                    "name": active_target_user["name"],
+                    "email": active_target_user.get("email", ""),
+                    "phone": active_target_profile.get("phone", ""),
+                    "location": active_target_profile.get("location", "")
+                }
+            )
+            st.download_button(
+                "📥 Download ATS Resume PDF",
+                pdf_bytes,
+                file_name=f"talent_growth_resume_{active_target_user.get('employee_id', active_target_uid)}.pdf",
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True,
+                key=f"btn_dl_resume_pdf_{active_target_uid}"
+            )
+
+        # Contact Links string
+        preview_links_list = [f'<a href="{l["url"] if l["url"].startswith("http") else "https://" + l["url"]}" class="ts-resume-contact-link" target="_blank">{l["label"]}</a>' for l in links_list]
+        contact_line_parts = []
+        if active_target_user.get("email"):
+            contact_line_parts.append(f'<a href="mailto:{active_target_user["email"]}" class="ts-resume-contact-link">{active_target_user["email"]}</a>')
+        if active_target_profile.get("phone"):
+            contact_line_parts.append(f"<span>{active_target_profile['phone']}</span>")
+        if active_target_profile.get("location"):
+            contact_line_parts.append(f"<span>{active_target_profile['location']}</span>")
+        contact_line_parts.extend(preview_links_list)
+
+        # ATS Paper Render
+        render_html(
+            f"""
+            <div class="ts-resume-paper">
+                <div class="ts-resume-header-name">{active_target_user['name']}</div>
+                <div style="font-size: 0.92rem; color: #475569; margin-bottom: 1.25rem;">
+                    {' &nbsp;&bull;&nbsp; '.join(contact_line_parts)}
                 </div>
-                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
-                    <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Keywords Missing</div>
-                    <div style="font-size: 1.6rem; font-weight: 800; color: #EF4444;">{len(res.get("missing_keywords", []))} High Priority</div>
+
+                {f'''
+                <div class="ts-resume-section-heading">Professional Summary</div>
+                <div class="ts-resume-section-text">{summary_txt}</div>
+                ''' if summary_txt else ''}
+
+                {f'''
+                <div class="ts-resume-section-heading">Core Competencies &amp; Skills</div>
+                <div class="ts-resume-section-text">{', '.join(f"<strong>{s['name']}</strong> ({s.get('proficiency', 'Proficient')})" for s in skills_list)}</div>
+                ''' if skills_list else ''}
+
+                {f'''
+                <div class="ts-resume-section-heading">Professional Experience</div>
+                ''' if exp_list else ''}
+                {''.join([f'''
+                <div style="margin-bottom: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; color: #0F172A; font-size: 0.98rem;">
+                        <span>{e.get('job_title', 'Role')} &mdash; <span style="color: #2563EB;">{e.get('company', 'Company')}</span></span>
+                        <span style="font-size: 0.84rem; color: #64748B;">{e.get('start_date', '')} &ndash; {e.get('end_date', 'Present')}</span>
+                    </div>
+                    {f'<div style="font-size: 0.82rem; color: #64748B; margin-bottom: 2px;">{e.get("location")}</div>' if e.get("location") else ''}
+                    <div class="ts-resume-section-text" style="margin-top: 2px;">{e.get('description', '')}</div>
                 </div>
-                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
-                    <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Action Verbs</div>
-                    <div style="font-size: 1.6rem; font-weight: 800; color: #10B981;">{len(res.get("strong_action_verbs_found", []))} Strong</div>
+                ''' for e in exp_list])}
+
+                {f'''
+                <div class="ts-resume-section-heading">Education</div>
+                ''' if edu_list else ''}
+                {''.join([f'''
+                <div style="margin-bottom: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; color: #0F172A; font-size: 0.96rem;">
+                        <span>{ed.get('degree', 'Degree')} &mdash; {ed.get('institution', 'Institution')}</span>
+                        <span style="font-size: 0.84rem; color: #64748B;">{ed.get('start_date', '')} &ndash; {ed.get('end_date', '')}</span>
+                    </div>
+                    {f'<div class="ts-resume-section-text">{ed.get("details")}</div>' if ed.get("details") else ''}
+                </div>
+                ''' for ed in edu_list])}
+
+                {f'''
+                <div class="ts-resume-section-heading">Certifications &amp; Credentials</div>
+                ''' if certs_list else ''}
+                {''.join([f'''
+                <div style="font-size: 0.9rem; color: #334155; margin-bottom: 4px;">
+                    &bull; <strong>{c.get('name', '')}</strong> &mdash; {c.get('issuing_org', '')} ({c.get('issue_date', '')})
+                    {f' [ID: {c.get("credential_id")}]' if c.get("credential_id") else ''}
+                </div>
+                ''' for c in certs_list])}
+
+                {f'''
+                <div class="ts-resume-section-heading">Projects &amp; Achievements</div>
+                ''' if projs_list else ''}
+                {''.join([f'''
+                <div style="margin-bottom: 0.85rem;">
+                    <div style="font-weight: 700; color: #0F172A; font-size: 0.96rem;">{p.get('title', 'Project')} {f"({p.get('role')})" if p.get('role') else ""}</div>
+                    {f'<div style="font-size: 0.82rem; color: #2563EB; font-weight: 600;">Technologies: {p.get("technologies")}</div>' if p.get("technologies") else ''}
+                    <div class="ts-resume-section-text" style="margin-top: 2px;">{p.get('description', '')}</div>
+                </div>
+                ''' for p in projs_list])}
+            </div>
+            """
+        )
+
+        # Upload existing resume text import for alignment evaluation
+        st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+        with st.expander("Import Existing PDF or DOCX Resume (Text Extractor)", expanded=False):
+            upload = st.file_uploader("Import a PDF or DOCX resume file", type=["pdf", "docx"], key=f"rs_uploader_{active_target_uid}")
+            if upload:
+                try:
+                    if upload.name.lower().endswith(".pdf"):
+                        extracted_txt = "\n".join(p.extract_text() or "" for p in PdfReader(upload).pages)
+                    else:
+                        extracted_txt = "\n".join(p.text for p in Document(upload).paragraphs)
+                    save_profile(active_target_uid, {"resume_text": extracted_txt})
+                    st.success("Resume text extracted and saved for ATS alignment audits.")
+                except Exception as exc:
+                    st.error(f"Could not read file: {exc}")
+
+    # ==========================================================================
+    # TAB 3: AI ATS SCREENER & BULLET OPTIMIZER
+    # ==========================================================================
+    with tab_screener:
+        render_html(
+            f"""
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.1rem 1.4rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-size: 1.2rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px;">
+                        {get_svg_icon("sparkles", size=20, color="#2563EB")} AI Resume Auditor & Bullet Rewriter (Gemini & Heuristic)
+                    </div>
+                    <div style="color: #64748B; font-size: 0.88rem; margin-top: 3px;">
+                        Deep ATS screening, passive voice detection, and Google XYZ / STAR format bullet rewriting.
+                    </div>
+                </div>
+                <div>
+                    <span class="badge-status badge-active">AI OPTIMIZER</span>
                 </div>
             </div>
             """
         )
 
-        with st.container(border=True):
-            st.markdown(f"**Executive Recruiter Summary:**\n\n{res.get('alignment_summary', '')}")
+        col_audit_btn, col_audit_opt = st.columns([2.5, 3.5])
+        with col_audit_btn:
+            audit_clicked = st.button("Run Deep AI Resume & Bullet Audit", type="primary", use_container_width=True, key=f"btn_run_ai_audit_{active_target_uid}")
+        with col_audit_opt:
+            audit_source = st.radio("Audit Content Source", ["Structured Resume Editor Content", "Uploaded Resume File Text"], horizontal=True, key=f"rs_audit_source_radio_{active_target_uid}")
 
-        bullets = res.get("bullet_optimizations", [])
-        if bullets:
+        if audit_clicked:
+            if audit_source == "Structured Resume Editor Content":
+                resume_source_text = format_resume_as_text(res_data, active_target_user)
+            else:
+                resume_source_text = active_target_profile.get("resume_text", "")
+                if not resume_source_text.strip():
+                    resume_source_text = format_resume_as_text(res_data, active_target_user)
+
+            if not resume_source_text.strip():
+                st.warning("Please populate your resume in the editor or upload an existing resume file to run the audit.")
+            else:
+                target_role = active_target_profile.get("target_role", "Senior Software Engineer")
+                target_skills_list = list(ROLE_CATALOG.get(target_role, {}).get("skills", {}).keys())
+
+                with st.spinner("Running deep AI ATS audit and STAR bullet optimization..."):
+                    audit_res = analyze_resume_with_ai(
+                        resume_text=resume_source_text,
+                        target_role=target_role,
+                        target_skills=target_skills_list,
+                        profile=active_target_profile,
+                        api_key=st.session_state.get("gemini_user_key")
+                    )
+                    st.session_state[f"last_resume_audit_{active_target_uid}"] = audit_res
+
+        audit_key = f"last_resume_audit_{active_target_uid}"
+        if audit_key in st.session_state:
+            res = st.session_state[audit_key]
+            ats_score = res.get("ats_score", 75)
+            score_color = "#10B981" if ats_score >= 80 else ("#F59E0B" if ats_score >= 60 else "#EF4444")
+
             render_html(
                 f"""
-                <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
-                    {get_svg_icon("target", size=18, color="#2563EB")} AI Rewritten Bullet Points (STAR Format)
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; margin: 1.25rem 0 1rem 0;">
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">ATS Match Score</div>
+                        <div style="font-size: 1.6rem; font-weight: 800; color: {score_color};">{ats_score} / 100</div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Keywords Matched</div>
+                        <div style="font-size: 1.6rem; font-weight: 800; color: #2563EB;">{len(res.get("detected_keywords", []))} Detected</div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Keywords Missing</div>
+                        <div style="font-size: 1.6rem; font-weight: 800; color: #EF4444;">{len(res.get("missing_keywords", []))} High Priority</div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Action Verbs</div>
+                        <div style="font-size: 1.6rem; font-weight: 800; color: #10B981;">{len(res.get("strong_action_verbs_found", []))} Strong</div>
+                    </div>
                 </div>
                 """
             )
-            for idx, b in enumerate(bullets, 1):
-                with st.container(border=True):
-                    col_orig, col_opt = st.columns(2)
-                    with col_orig:
-                        st.markdown(f"**Original Bullet #{idx}:**")
-                        st.markdown(f"> *{b.get('original_bullet', '')}*")
-                    with col_opt:
-                        st.markdown(f"**High-Impact STAR Rewrite:**")
-                        st.markdown(f"> **{b.get('rewritten_bullet', '')}**")
-                    if b.get("improvement_reason"):
-                        st.caption(f"Reasoning: {b.get('improvement_reason')}")
 
-        weak_phrases = res.get("weak_phrases_to_replace", [])
-        if weak_phrases:
-            with st.expander("Weak & Passive Phrases to Upgrade", expanded=True):
-                for wp in weak_phrases:
-                    c_old, c_new = st.columns(2)
-                    c_old.markdown(f'<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #FEE2E2; color: #991B1B; font-weight: 700; font-size: 0.74rem; margin-right: 6px;">WEAK</span> *"{wp.get("original", "")}"*', unsafe_allow_html=True)
-                    c_new.markdown(f'<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #DCFCE7; color: #166534; font-weight: 700; font-size: 0.74rem; margin-right: 6px;">RECOMMENDED</span> **"{wp.get("suggested", "")}"**', unsafe_allow_html=True)
+            with st.container(border=True):
+                st.markdown(f"**Executive Recruiter Summary:**\n\n{res.get('alignment_summary', '')}")
 
-        recs = res.get("top_recommendations", [])
-        if recs:
-            render_html(
-                f"""
-                <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
-                    {get_svg_icon("clipboard", size=18, color="#2563EB")} High-Leverage Resume Optimizations
-                </div>
-                """
-            )
-            for r in recs:
-                st.markdown(f"- {r}")
+            bullets = res.get("bullet_optimizations", [])
+            if bullets:
+                render_html(
+                    f"""
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
+                        {get_svg_icon("target", size=18, color="#2563EB")} AI Rewritten Bullet Points (STAR Format)
+                    </div>
+                    """
+                )
+                for b_idx, b in enumerate(bullets, 1):
+                    with st.container(border=True):
+                        col_orig, col_opt = st.columns(2)
+                        with col_orig:
+                            st.markdown(f"**Original Bullet #{b_idx}:**")
+                            st.markdown(f"> *{b.get('original_bullet', '')}*")
+                        with col_opt:
+                            st.markdown(f"**High-Impact STAR Rewrite:**")
+                            st.markdown(f"> **{b.get('rewritten_bullet', '')}**")
+                        if b.get("improvement_reason"):
+                            st.caption(f"Reasoning: {b.get('improvement_reason')}")
 
-        if res.get("source") == "gemini":
-            st.success(f"AI Resume Audit generated live via Google Gemini (`{res.get('model')}`).")
-        else:
-            st.info("Audit generated via deterministic heuristic engine. Add Gemini API Key for dynamic neural audits.")
-    st.markdown("#### ATS Resume Generation & Export")
-    from reportlab.pdfgen import canvas
-    buf = BytesIO()
-    c = canvas.Canvas(buf, pagesize=(612, 792))
-    y = 740
-    lines = [
-        user["name"],
-        f"{profile.get('location','')} | {profile.get('phone','')} | {user['email']}", "",
-        "PROFESSIONAL SUMMARY", profile.get("summary") or "", "",
-        "SKILLS", ", ".join(s["name"] + " (" + s["proficiency"] + ")" for s in skills), "",
-        "EXPERIENCE", profile.get("experience") or "", "",
-        "EDUCATION", profile.get("education") or "", "",
-        "CERTIFICATIONS", profile.get("certifications") or "", "",
-        "PROJECTS", profile.get("projects") or "", "",
-        "LINKS", " | ".join(filter(None, [profile.get("linkedin"), profile.get("github"), profile.get("portfolio")]))
-    ]
-    for para in lines:
-        for line in para.splitlines() or [""]:
-            if y < 55:
-                c.showPage()
-                y = 740
-            is_header = para in ["PROFESSIONAL SUMMARY", "SKILLS", "EXPERIENCE", "EDUCATION", "CERTIFICATIONS", "PROJECTS", "LINKS", user["name"]]
-            c.setFont("Helvetica-Bold" if is_header else "Helvetica", 13 if para == user["name"] else 9)
-            for chunk in [line[i:i+95] for i in range(0, max(1, len(line)), 95)]:
-                c.drawString(48, y, chunk)
-    c.save()
-    st.download_button("Download ATS resume PDF", buf.getvalue(), file_name="talent_growth_resume.pdf", mime="application/pdf", type="primary")
+            weak_phrases = res.get("weak_phrases_to_replace", [])
+            if weak_phrases:
+                with st.expander("Weak & Passive Phrases to Upgrade", expanded=True):
+                    for wp in weak_phrases:
+                        c_old, c_new = st.columns(2)
+                        c_old.markdown(f'<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #FEE2E2; color: #991B1B; font-weight: 700; font-size: 0.74rem; margin-right: 6px;">WEAK</span> *"{wp.get("original", "")}"*', unsafe_allow_html=True)
+                        c_new.markdown(f'<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #DCFCE7; color: #166534; font-weight: 700; font-size: 0.74rem; margin-right: 6px;">RECOMMENDED</span> **"{wp.get("suggested", "")}"**', unsafe_allow_html=True)
+
+            recs = res.get("top_recommendations", [])
+            if recs:
+                render_html(
+                    f"""
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
+                        {get_svg_icon("clipboard", size=18, color="#2563EB")} High-Leverage Resume Optimizations
+                    </div>
+                    """
+                )
+                for r in recs:
+                    st.markdown(f"- {r}")
+
+            if res.get("source") == "gemini":
+                st.success(f"AI Resume Audit generated live via Google Gemini (`{res.get('model')}`).")
+            else:
+                st.info("Audit generated via deterministic heuristic engine. Add Gemini API Key for dynamic neural audits.")
+
 
 # ==============================================================================
 # 10. CAREER DIRECTION & AI COACH

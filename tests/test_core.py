@@ -27,7 +27,9 @@ from services.core import (
     bulk_import_employees_df, get_sample_employee_csv,
     create_organization, get_organization, list_organizations,
     get_org_dashboard_stats, get_employee_dashboard_data,
-    hash_password, verify_password
+    hash_password, verify_password,
+    get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
+    validate_url, validate_date_range
 )
 from services.reports import create_report
 from services.email_service import build_welcome_email_content, send_welcome_email
@@ -691,3 +693,340 @@ def test_10_unauthenticated_and_unauthorized_protections():
 
     ok_del, _ = delete_goal(goal_id=1, user_id=999)
     assert ok_del is False
+
+
+# ==============================================================================
+# RESUME STUDIO EDITING, PERSISTENCE, VALIDATIONS & PDF EXPORT TESTS
+# ==============================================================================
+
+def test_11_resume_studio_initialization_and_load():
+    """Scenario 11: Opening Resume Studio loads or initializes structured resume records."""
+    res = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert res is not None
+    assert "summary" in res
+    assert "skills" in res
+    assert "experience" in res
+    assert "education" in res
+    assert "certifications" in res
+    assert "projects" in res
+    assert "links" in res
+    assert isinstance(res["skills"], list)
+    assert isinstance(res["experience"], list)
+
+def test_12_resume_studio_edit_summary_and_persistence():
+    """Scenario 12: Editing the professional summary persists to both resumes and profiles tables."""
+    res = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert res is not None
+
+    custom_summary = "Staff Cloud Architect with 10+ years specializing in distributed systems, Kubernetes, and reactive frontend microservices."
+    res["summary"] = custom_summary
+
+    ok_save, msg_save = save_resume(user_id=1, resume_data=res, org_id="ORG-TALENT-01")
+    assert ok_save is True
+
+    # Reload from database to verify persistence
+    reloaded = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert reloaded is not None
+    assert reloaded["summary"] == custom_summary
+
+    # Verify legacy profile synchronization
+    prof = get_profile(user_id=1)
+    assert prof["summary"] == custom_summary
+
+def test_13_resume_studio_skills_crud_and_deduplication():
+    """Scenario 13: Adding, editing, deleting, and deduplicating resume skills."""
+    res = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert res is not None
+
+    res["skills"] = [
+        {"name": "Python", "proficiency": "Expert"},
+        {"name": "SQL", "proficiency": "Advanced"},
+        {"name": "React", "proficiency": "Intermediate"},
+        {"name": "python", "proficiency": "Beginner"},  # duplicate lowercase
+        {"name": "Docker", "proficiency": "Advanced"}
+    ]
+
+    ok_save, _ = save_resume(user_id=1, resume_data=res, org_id="ORG-TALENT-01")
+    assert ok_save is True
+
+    reloaded = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    skill_names = [s["name"] for s in reloaded["skills"]]
+    assert len(skill_names) == 4  # Deduplicated Python
+    assert "Python" in skill_names
+    assert "SQL" in skill_names
+    assert "React" in skill_names
+    assert "Docker" in skill_names
+
+    # Delete React
+    reloaded["skills"] = [s for s in reloaded["skills"] if s["name"] != "React"]
+    ok_save2, _ = save_resume(user_id=1, resume_data=reloaded, org_id="ORG-TALENT-01")
+    assert ok_save2 is True
+
+    reloaded2 = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert "React" not in [s["name"] for s in reloaded2["skills"]]
+
+def test_14_resume_studio_import_from_skills_and_assessment():
+    """Scenario 14: Importing verified skills from Skills & Assessment module merges without overwriting."""
+    # Add an employee skill for EMP101 (Alex Morgan)
+    add_employee_skill(
+        employee_id="EMP101",
+        skill_name="Apache Kafka",
+        proficiency_level="Advanced",
+        years_exp=2.5,
+        org_id="ORG-TALENT-01"
+    )
+
+    current_resume_skills = [
+        {"name": "Python", "proficiency": "Advanced"},
+        {"name": "SQL", "proficiency": "Advanced"}
+    ]
+
+    # Alex user ID is 2
+    alex_user = login("alex@company.com", "Password123")
+    assert alex_user is not None
+    alex_uid = alex_user["id"]
+
+    merged = import_skills_to_resume(user_id=alex_uid, current_skills=current_resume_skills, org_id="ORG-TALENT-01")
+    merged_names = [s["name"] for s in merged]
+    assert "Python" in merged_names
+    assert "SQL" in merged_names
+    assert "Apache Kafka" in merged_names
+
+def test_15_resume_studio_experience_crud_and_current_employment():
+    """Scenario 15: Adding multiple experience entries, reordering, and current employment flag."""
+    res = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert res is not None
+
+    res["experience"] = [
+        {
+            "id": "exp_1",
+            "job_title": "Lead Software Engineer",
+            "company": "CloudScale Systems",
+            "employment_type": "Full-time",
+            "location": "Bengaluru, India",
+            "start_date": "2023-01",
+            "end_date": "Present",
+            "is_current": True,
+            "description": "Architected event-driven microservices processing 5M+ daily requests."
+        },
+        {
+            "id": "exp_2",
+            "job_title": "Senior Backend Developer",
+            "company": "DataHub Technologies",
+            "employment_type": "Full-time",
+            "location": "Mumbai, India",
+            "start_date": "2020-06",
+            "end_date": "2022-12",
+            "is_current": False,
+            "description": "Optimized PostgreSQL query latency by 45% using materialized views and indexing."
+        }
+    ]
+
+    ok_save, _ = save_resume(user_id=1, resume_data=res, org_id="ORG-TALENT-01")
+    assert ok_save is True
+
+    reloaded = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert len(reloaded["experience"]) == 2
+    assert reloaded["experience"][0]["job_title"] == "Lead Software Engineer"
+    assert reloaded["experience"][0]["end_date"] == "Present"
+    assert reloaded["experience"][0]["is_current"] is True
+
+    # Reorder entries
+    reloaded["experience"][0], reloaded["experience"][1] = reloaded["experience"][1], reloaded["experience"][0]
+    ok_save_reorder, _ = save_resume(user_id=1, resume_data=reloaded, org_id="ORG-TALENT-01")
+    assert ok_save_reorder is True
+
+    reloaded_order = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert reloaded_order["experience"][0]["job_title"] == "Senior Backend Developer"
+
+def test_16_resume_studio_education_and_certifications_crud():
+    """Scenario 16: Adding education and certification credentials with validation."""
+    res = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert res is not None
+
+    res["education"] = [
+        {
+            "id": "edu_1",
+            "degree": "M.S. in Computer Science",
+            "institution": "Stanford University Online",
+            "field_of_study": "Distributed Systems",
+            "start_date": "2021",
+            "end_date": "2023",
+            "details": "Specialization in Cloud Infrastructure, GPA: 3.9/4.0"
+        }
+    ]
+
+    res["certifications"] = [
+        {
+            "id": "cert_1",
+            "name": "AWS Certified Solutions Architect - Professional",
+            "issuing_org": "Amazon Web Services",
+            "issue_date": "2023-08",
+            "expiry_date": "2026-08",
+            "no_expiry": False,
+            "credential_id": "AWS-892174",
+            "credential_url": "https://aws.amazon.com/verify"
+        }
+    ]
+
+    ok_save, _ = save_resume(user_id=1, resume_data=res, org_id="ORG-TALENT-01")
+    assert ok_save is True
+
+    reloaded = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert len(reloaded["education"]) == 1
+    assert reloaded["education"][0]["degree"] == "M.S. in Computer Science"
+    assert len(reloaded["certifications"]) == 1
+    assert reloaded["certifications"][0]["credential_id"] == "AWS-892174"
+
+def test_17_resume_studio_projects_and_links_crud():
+    """Scenario 17: Adding projects and professional links with URL verification."""
+    res = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert res is not None
+
+    res["projects"] = [
+        {
+            "id": "proj_1",
+            "title": "Real-Time Talent Intelligence Platform",
+            "role": "Lead Architect",
+            "technologies": "Python, Streamlit, PostgreSQL, ReportLab",
+            "description": "Enterprise talent assessment engine with ATS scoring and multi-tenant access control.",
+            "project_url": "https://talentgrowth.example.com",
+            "github_url": "https://github.com/example/talentgrowth"
+        }
+    ]
+
+    res["links"] = [
+        {"id": "link_1", "label": "LinkedIn", "url": "https://linkedin.com/in/lead-engineer"},
+        {"id": "link_2", "label": "GitHub", "url": "https://github.com/lead-engineer"},
+        {"id": "link_3", "label": "Portfolio", "url": "https://leadengineer.dev"}
+    ]
+
+    ok_save, _ = save_resume(user_id=1, resume_data=res, org_id="ORG-TALENT-01")
+    assert ok_save is True
+
+    reloaded = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert len(reloaded["projects"]) == 1
+    assert len(reloaded["links"]) == 3
+    assert any("linkedin.com" in l["url"] for l in reloaded["links"])
+
+def test_18_resume_studio_validations_invalid_dates_and_urls():
+    """Scenario 18: Rejecting invalid date ranges (start > end) and malformed URLs."""
+    res = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert res is not None
+
+    # Invalid date range: start 2024 is after end 2022
+    bad_res_dates = dict(res)
+    bad_res_dates["experience"] = [
+        {
+            "id": "exp_bad",
+            "job_title": "Software Engineer",
+            "company": "Invalid Dates Corp",
+            "start_date": "2024-05",
+            "end_date": "2022-01",
+            "is_current": False,
+            "description": "Test"
+        }
+    ]
+    ok_bad_date, err_date = save_resume(user_id=1, resume_data=bad_res_dates, org_id="ORG-TALENT-01")
+    assert ok_bad_date is False
+    assert "start date" in err_date.lower() or "after" in err_date.lower()
+
+    # Invalid URL format in links
+    bad_res_url = dict(res)
+    bad_res_url["experience"] = []
+    bad_res_url["links"] = [
+        {"id": "link_bad", "label": "Website", "url": "not a valid web url @@!!"}
+    ]
+    ok_bad_url, err_url = save_resume(user_id=1, resume_data=bad_res_url, org_id="ORG-TALENT-01")
+    assert ok_bad_url is False
+    assert "invalid" in err_url.lower()
+
+def test_19_resume_studio_cross_employee_and_tenant_isolation():
+    """Scenario 19: Strict multi-tenant isolation prevents cross-organization resume viewing and modification."""
+    # Seed TechCorp user if not present
+    tech_user = login("jane@techcorp.com", "Password123")
+    if not tech_user:
+        ok_reg, _ = register(
+            name="Jane Doe",
+            email="jane.doe@techcorp.com",
+            password="Password123",
+            role="employee",
+            org_id="ORG-TECHCORP-02",
+            department="Engineering",
+            job_title="DevOps Engineer"
+        )
+        assert ok_reg is True
+        tech_user = login("jane.doe@techcorp.com", "Password123")
+    assert tech_user is not None
+    tech_uid = tech_user["id"]
+
+    # HR in Org TALENT attempting to access Org TECHCORP employee resume is blocked
+    blocked_resume = get_resume(user_id=tech_uid, org_id="ORG-TALENT-01")
+    assert blocked_resume is None
+
+    # Attempting to save resume for TechCorp user under Org TALENT is blocked
+    ok_cross_save, err_cross = save_resume(user_id=tech_uid, resume_data={"summary": "Hacked"}, org_id="ORG-TALENT-01")
+    assert ok_cross_save is False
+    assert "unauthorized" in err_cross.lower()
+
+    # Authorized access within same organization succeeds
+    allowed_resume = get_resume(user_id=tech_uid, org_id="ORG-TECHCORP-02")
+    assert allowed_resume is not None
+
+def test_20_resume_studio_pdf_generation_valid_output():
+    """Scenario 20: Generating high-quality, printable ReportLab PDF without overlaps."""
+    res = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert res is not None
+
+    user_info = {
+        "name": "HR Administrator",
+        "email": "admin@talentgrowth.com",
+        "phone": "+1 (555) 019-2834",
+        "location": "San Francisco, CA"
+    }
+
+    pdf_bytes = generate_resume_pdf(resume_data=res, user_info=user_info)
+    assert isinstance(pdf_bytes, bytes)
+    assert len(pdf_bytes) > 1000
+    assert pdf_bytes.startswith(b"%PDF-1.")
+
+    # Test with empty optional sections (graceful rendering)
+    empty_res = {
+        "summary": "Brief summary",
+        "skills": [],
+        "experience": [],
+        "education": [],
+        "certifications": [],
+        "projects": [],
+        "links": []
+    }
+    empty_pdf = generate_resume_pdf(resume_data=empty_res, user_info={"name": "Minimal User", "email": "min@test.com"})
+    assert isinstance(empty_pdf, bytes)
+    assert empty_pdf.startswith(b"%PDF-1.")
+
+def test_21_resume_studio_text_formatting_and_ai_audit_integration(monkeypatch):
+    """Scenario 21: Formatted text export integrates seamlessly with AI ATS Screening."""
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    from services.ai_coach import analyze_resume_with_ai
+
+    res = get_resume(user_id=1, org_id="ORG-TALENT-01")
+    assert res is not None
+
+    user_info = {"name": "Alex Morgan", "email": "alex@company.com", "phone": "555-0199", "location": "Bangalore"}
+    formatted_text = format_resume_as_text(res, user_info)
+    assert "Alex Morgan" in formatted_text
+    assert "PROFESSIONAL SUMMARY" in formatted_text
+    assert "CORE COMPETENCIES & SKILLS" in formatted_text
+
+    audit = analyze_resume_with_ai(
+        resume_text=formatted_text,
+        target_role="Senior Software Engineer",
+        target_skills=["Python", "SQL", "Docker", "System Design"],
+        profile={"job_title": "Software Engineer", "years_experience": 4.0},
+        api_key=None
+    )
+    assert audit is not None
+    assert isinstance(audit["ats_score"], int)
+    assert audit["ats_score"] > 0
+    assert len(audit["bullet_optimizations"]) > 0
+

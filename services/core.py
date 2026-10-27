@@ -1,8 +1,11 @@
 from __future__ import annotations
 import os
+import re
+import json
 import sqlite3
 import hashlib
 import secrets
+from io import BytesIO
 from pathlib import Path
 from datetime import datetime, date
 from typing import Any, Dict, List, Optional, Tuple
@@ -340,6 +343,22 @@ def init_db() -> None:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS resumes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL UNIQUE,
+                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
+                summary TEXT DEFAULT '',
+                skills_json TEXT DEFAULT '[]',
+                experience_json TEXT DEFAULT '[]',
+                education_json TEXT DEFAULT '[]',
+                certifications_json TEXT DEFAULT '[]',
+                projects_json TEXT DEFAULT '[]',
+                links_json TEXT DEFAULT '[]',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
         """)
 
         # Auto-migrate existing database tables if columns are missing
@@ -430,6 +449,12 @@ def init_db() -> None:
         tr_cols = {row["name"] for row in cursor.fetchall()}
         if "org_id" not in tr_cols:
             cursor.execute("ALTER TABLE training_records ADD COLUMN org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+
+        # Migrate resumes table
+        cursor.execute("PRAGMA table_info(resumes)")
+        res_cols = {row["name"] for row in cursor.fetchall()}
+        if "org_id" not in res_cols and res_cols:
+            cursor.execute("ALTER TABLE resumes ADD COLUMN org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
 
         # Backfill existing legacy records
         cursor.execute("UPDATE users SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
@@ -1968,22 +1993,29 @@ def get_training_records(employee_id: Optional[str] = None, org_id: Optional[str
 
 # ----------------- Legacy Profile, Skills & Analysis Support -----------------
 
-def get_profile(uid: int) -> Dict[str, Any]:
+def get_profile(uid: Optional[int] = None, user_id: Optional[int] = None) -> Dict[str, Any]:
+    target_id = uid if uid is not None else user_id
+    if target_id is None:
+        target_id = 1
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (uid,))
+        cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (target_id,))
         row = cursor.fetchone()
         if row:
             return dict(row)
         with conn:
-            conn.execute("INSERT OR IGNORE INTO profiles (user_id) VALUES (?)", (uid,))
-        cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (uid,))
+            conn.execute("INSERT OR IGNORE INTO profiles (user_id) VALUES (?)", (target_id,))
+        cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (target_id,))
         return dict(cursor.fetchone())
     finally:
         conn.close()
 
-def save_profile(uid: int, data: Dict[str, Any]) -> bool:
+def save_profile(uid: Optional[int] = None, data: Optional[Dict[str, Any]] = None, user_id: Optional[int] = None) -> bool:
+    target_id = uid if uid is not None else user_id
+    if target_id is None:
+        target_id = 1
+    data = data or {}
     allowed_cols = {
         "phone", "location", "job_title", "company", "department", "industry",
         "employment_type", "years_experience", "linkedin", "github", "portfolio",
@@ -1996,7 +2028,7 @@ def save_profile(uid: int, data: Dict[str, Any]) -> bool:
         return True
 
     set_clause = ", ".join(f"{col} = ?" for col in updates.keys())
-    values = list(updates.values()) + [uid]
+    values = list(updates.values()) + [target_id]
 
     conn = get_connection()
     try:
@@ -2554,4 +2586,900 @@ def get_employee_dashboard_data(user_id: int, employee_id: Optional[str] = None,
         "target_role": target_role,
         "skill_gaps": skill_gaps
     }
+
+# ==============================================================================
+# RESUME STUDIO BACKEND OPERATIONS & MULTI-TENANT ISOLATION
+# ==============================================================================
+
+def validate_url(url: str) -> bool:
+    """Validates URL format (http/https or valid web address). Empty/whitespace is considered valid/optional."""
+    url = (url or "").strip()
+    if not url:
+        return True
+    pattern = re.compile(
+        r"^(https?:\/\/)?([a-zA-Z0-9\-_]+\.)+[a-zA-Z]{2,}(:\d+)?(\/[^\s]*)?$",
+        re.IGNORECASE
+    )
+    return bool(pattern.match(url))
+
+def validate_date_range(start_date: str, end_date: str, is_current: bool = False) -> Tuple[bool, str]:
+    """Validates that start date is not after end date. Supports YYYY-MM-DD, YYYY-MM, or YYYY."""
+    if is_current:
+        return True, ""
+    s = (start_date or "").strip()
+    e = (end_date or "").strip()
+    if not s or not e:
+        return True, ""
+    if e.lower() in ["present", "current", "ongoing", "now"]:
+        return True, ""
+
+    d1, d2 = None, None
+    for fmt in ("%Y-%m-%d", "%Y-%m", "%Y"):
+        try:
+            d1 = datetime.strptime(s, fmt)
+            break
+        except ValueError:
+            pass
+
+    for fmt in ("%Y-%m-%d", "%Y-%m", "%Y"):
+        try:
+            d2 = datetime.strptime(e, fmt)
+            break
+        except ValueError:
+            pass
+
+    if d1 and d2:
+        if d1 > d2:
+            return False, f"Start date ({s}) cannot be after end date ({e})."
+    elif s.isdigit() and e.isdigit():
+        if int(s) > int(e):
+            return False, f"Start year ({s}) cannot be after end year ({e})."
+
+    return True, ""
+
+def get_resume(user_id: int, org_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """
+    Retrieves the structured resume for an employee with strict multi-tenant authorization.
+    If no resume record exists yet, initializes it from the employee's existing profile and skills.
+    """
+    user = get_user_by_id(user_id)
+    if not user:
+        return None
+
+    # Strict organization isolation check
+    if org_id and user.get("org_id") != org_id:
+        return None
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM resumes WHERE user_id = ?", (user_id,))
+        row = cursor.fetchone()
+
+        if row:
+            try:
+                skills = json.loads(row["skills_json"] or "[]")
+            except Exception:
+                skills = []
+            try:
+                exp = json.loads(row["experience_json"] or "[]")
+            except Exception:
+                exp = []
+            try:
+                edu = json.loads(row["education_json"] or "[]")
+            except Exception:
+                edu = []
+            try:
+                certs = json.loads(row["certifications_json"] or "[]")
+            except Exception:
+                certs = []
+            try:
+                projs = json.loads(row["projects_json"] or "[]")
+            except Exception:
+                projs = []
+            try:
+                links = json.loads(row["links_json"] or "[]")
+            except Exception:
+                links = []
+
+            return {
+                "id": row["id"],
+                "user_id": user_id,
+                "org_id": row["org_id"],
+                "summary": row["summary"] or "",
+                "skills": skills,
+                "experience": exp,
+                "education": edu,
+                "certifications": certs,
+                "projects": projs,
+                "links": links,
+                "updated_at": row["updated_at"]
+            }
+
+        # Initialize from existing profile and legacy skills without losing data
+        profile = get_profile(user_id)
+        legacy_skills = list_skills(user_id)
+        emp_skills = get_employee_skills(user.get("employee_id"), org_id=user.get("org_id"))
+
+        # Build initial skills list
+        initial_skills = []
+        seen_skills = set()
+        for s in emp_skills:
+            sname = s["skill_name"].strip()
+            if sname.lower() not in seen_skills:
+                seen_skills.add(sname.lower())
+                initial_skills.append({"name": sname, "proficiency": s.get("proficiency_level", "Intermediate")})
+        for s in legacy_skills:
+            sname = s["name"].strip()
+            if sname.lower() not in seen_skills:
+                seen_skills.add(sname.lower())
+                initial_skills.append({"name": sname, "proficiency": s.get("proficiency", "Intermediate")})
+
+        if not initial_skills:
+            initial_skills = [
+                {"name": "Python", "proficiency": "Advanced"},
+                {"name": "SQL", "proficiency": "Advanced"},
+                {"name": "React", "proficiency": "Intermediate"}
+            ]
+
+        # Initial Summary
+        initial_summary = (profile.get("summary") or "").strip()
+        if not initial_summary:
+            initial_summary = "Full stack engineer passionate about scalable cloud systems, microservices, and React frontends."
+
+        # Initial Experience
+        initial_exp = []
+        raw_exp = (profile.get("experience") or "").strip()
+        if raw_exp:
+            initial_exp.append({
+                "id": "exp_1",
+                "job_title": profile.get("job_title") or "Senior Software Engineer",
+                "company": profile.get("company") or "Talent Growth",
+                "employment_type": profile.get("employment_type") or "Full-time",
+                "location": profile.get("location") or "Bangalore, India",
+                "start_date": "2023-01",
+                "end_date": "Present",
+                "is_current": True,
+                "description": raw_exp
+            })
+        else:
+            initial_exp.append({
+                "id": "exp_1",
+                "job_title": profile.get("job_title") or "Senior Software Engineer",
+                "company": profile.get("company") or "Tech Innovations Inc.",
+                "employment_type": "Full-time",
+                "location": profile.get("location") or "Bengaluru, India",
+                "start_date": "2023-01",
+                "end_date": "Present",
+                "is_current": True,
+                "description": "Architected high-throughput microservices using Python and FastAPI. Optimized SQL queries to reduce latency by 35%."
+            })
+
+        # Initial Education
+        initial_edu = []
+        raw_edu = (profile.get("education") or "").strip()
+        if raw_edu:
+            initial_edu.append({
+                "id": "edu_1",
+                "degree": "Bachelor of Technology",
+                "institution": raw_edu.split("-")[0].strip() if "-" in raw_edu else "National Institute of Technology",
+                "field_of_study": "Computer Science & Engineering",
+                "start_date": "2018",
+                "end_date": "2022",
+                "details": raw_edu
+            })
+        else:
+            initial_edu.append({
+                "id": "edu_1",
+                "degree": "B.Tech in Computer Science & Engineering",
+                "institution": "National Institute of Technology",
+                "field_of_study": "Computer Science",
+                "start_date": "2018",
+                "end_date": "2022",
+                "details": "First Class with Distinction (GPA 8.8/10.0)"
+            })
+
+        # Initial Certifications
+        initial_certs = []
+        raw_certs = (profile.get("certifications") or "").strip()
+        if raw_certs:
+            for idx, c_item in enumerate(raw_certs.split("\n"), 1):
+                if c_item.strip():
+                    initial_certs.append({
+                        "id": f"cert_{idx}",
+                        "name": c_item.strip(),
+                        "issuing_org": "Professional Authority",
+                        "issue_date": "2023-06",
+                        "expiry_date": "",
+                        "no_expiry": True,
+                        "credential_id": "",
+                        "credential_url": ""
+                    })
+
+        # Initial Projects
+        initial_projs = []
+        raw_projs = (profile.get("projects") or "").strip()
+        if raw_projs:
+            initial_projs.append({
+                "id": "proj_1",
+                "title": "Enterprise Cloud Migration",
+                "role": "Lead Engineer",
+                "technologies": "Python, Docker, AWS, PostgreSQL",
+                "description": raw_projs,
+                "project_url": "",
+                "github_url": ""
+            })
+
+        # Initial Links
+        initial_links = []
+        if profile.get("linkedin"):
+            initial_links.append({"id": "link_1", "label": "LinkedIn", "url": profile.get("linkedin")})
+        if profile.get("github"):
+            initial_links.append({"id": "link_2", "label": "GitHub", "url": profile.get("github")})
+        if profile.get("portfolio"):
+            initial_links.append({"id": "link_3", "label": "Portfolio", "url": profile.get("portfolio")})
+
+        user_org = user.get("org_id", "ORG-TALENT-01")
+
+        with conn:
+            cursor.execute(
+                """
+                INSERT INTO resumes (user_id, org_id, summary, skills_json, experience_json, education_json, certifications_json, projects_json, links_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    user_id, user_org, initial_summary,
+                    json.dumps(initial_skills), json.dumps(initial_exp),
+                    json.dumps(initial_edu), json.dumps(initial_certs),
+                    json.dumps(initial_projs), json.dumps(initial_links)
+                )
+            )
+            res_id = cursor.lastrowid
+
+        return {
+            "id": res_id,
+            "user_id": user_id,
+            "org_id": user_org,
+            "summary": initial_summary,
+            "skills": initial_skills,
+            "experience": initial_exp,
+            "education": initial_edu,
+            "certifications": initial_certs,
+            "projects": initial_projs,
+            "links": initial_links,
+            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+    finally:
+        conn.close()
+
+def save_resume(user_id: int, resume_data: Dict[str, Any], org_id: Optional[str] = None) -> Tuple[bool, str]:
+    """
+    Saves and validates structured resume data into the database.
+    Enforces multi-tenant organization authorization and backend data validation.
+    Also synchronizes the updated resume content to the profiles table for seamless platform-wide compatibility.
+    """
+    user = get_user_by_id(user_id)
+    if not user:
+        return False, "User not found."
+
+    if org_id and user.get("org_id") != org_id:
+        return False, "Unauthorized: Cannot modify resume belonging to another organization."
+
+    summary = (resume_data.get("summary") or "").strip()
+    raw_skills = resume_data.get("skills", [])
+    raw_exp = resume_data.get("experience", [])
+    raw_edu = resume_data.get("education", [])
+    raw_certs = resume_data.get("certifications", [])
+    raw_projs = resume_data.get("projects", [])
+    raw_links = resume_data.get("links", [])
+
+    # Validate Skills: clean, deduplicate by lowercase name
+    cleaned_skills = []
+    seen_skills = set()
+    for s in raw_skills:
+        name = s.get("name", "").strip() if isinstance(s, dict) else str(s).strip()
+        if not name:
+            continue
+        if name.lower() not in seen_skills:
+            seen_skills.add(name.lower())
+            prof = s.get("proficiency", "Intermediate") if isinstance(s, dict) else "Intermediate"
+            if prof not in LEVELS:
+                prof = "Intermediate"
+            cleaned_skills.append({"name": name, "proficiency": prof})
+
+    # Validate Experience: date ranges
+    cleaned_exp = []
+    for idx, e in enumerate(raw_exp):
+        title = (e.get("job_title") or "").strip()
+        comp = (e.get("company") or "").strip()
+        start = (e.get("start_date") or "").strip()
+        end = (e.get("end_date") or "").strip()
+        is_curr = bool(e.get("is_current", False))
+
+        if is_curr:
+            end = "Present"
+
+        # Validate date range
+        ok, err = validate_date_range(start, end, is_curr)
+        if not ok:
+            return False, f"Experience '{title or f'#{idx+1}'}': {err}"
+
+        cleaned_exp.append({
+            "id": e.get("id") or f"exp_{idx+1}",
+            "job_title": title,
+            "company": comp,
+            "employment_type": e.get("employment_type", "Full-time"),
+            "location": (e.get("location") or "").strip(),
+            "start_date": start,
+            "end_date": end,
+            "is_current": is_curr,
+            "description": (e.get("description") or "").strip()
+        })
+
+    # Validate Education: date ranges
+    cleaned_edu = []
+    for idx, ed in enumerate(raw_edu):
+        degree = (ed.get("degree") or "").strip()
+        inst = (ed.get("institution") or "").strip()
+        start = (ed.get("start_date") or "").strip()
+        end = (ed.get("end_date") or "").strip()
+
+        ok, err = validate_date_range(start, end)
+        if not ok:
+            return False, f"Education '{degree or f'#{idx+1}'}': {err}"
+
+        cleaned_edu.append({
+            "id": ed.get("id") or f"edu_{idx+1}",
+            "degree": degree,
+            "institution": inst,
+            "field_of_study": (ed.get("field_of_study") or "").strip(),
+            "start_date": start,
+            "end_date": end,
+            "details": (ed.get("details") or "").strip()
+        })
+
+    # Validate Certifications: credential URL
+    cleaned_certs = []
+    for idx, c in enumerate(raw_certs):
+        cname = (c.get("name") or "").strip()
+        curl = (c.get("credential_url") or "").strip()
+        if curl and not validate_url(curl):
+            return False, f"Certification '{cname or f'#{idx+1}'}': Invalid credential URL '{curl}'."
+
+        cleaned_certs.append({
+            "id": c.get("id") or f"cert_{idx+1}",
+            "name": cname,
+            "issuing_org": (c.get("issuing_org") or "").strip(),
+            "issue_date": (c.get("issue_date") or "").strip(),
+            "expiry_date": (c.get("expiry_date") or "").strip(),
+            "no_expiry": bool(c.get("no_expiry", False)),
+            "credential_id": (c.get("credential_id") or "").strip(),
+            "credential_url": curl
+        })
+
+    # Validate Projects: project & GitHub URLs
+    cleaned_projs = []
+    for idx, p in enumerate(raw_projs):
+        pname = (p.get("title") or "").strip()
+        purl = (p.get("project_url") or "").strip()
+        ghurl = (p.get("github_url") or "").strip()
+
+        if purl and not validate_url(purl):
+            return False, f"Project '{pname or f'#{idx+1}'}': Invalid project URL '{purl}'."
+        if ghurl and not validate_url(ghurl):
+            return False, f"Project '{pname or f'#{idx+1}'}': Invalid GitHub URL '{ghurl}'."
+
+        cleaned_projs.append({
+            "id": p.get("id") or f"proj_{idx+1}",
+            "title": pname,
+            "role": (p.get("role") or "").strip(),
+            "technologies": (p.get("technologies") or "").strip(),
+            "description": (p.get("description") or "").strip(),
+            "project_url": purl,
+            "github_url": ghurl
+        })
+
+    # Validate Links: URL format
+    cleaned_links = []
+    for idx, l in enumerate(raw_links):
+        label = (l.get("label") or "Link").strip()
+        lurl = (l.get("url") or "").strip()
+        if not lurl:
+            continue
+        if not validate_url(lurl):
+            return False, f"Link '{label}': Invalid web URL '{lurl}'. Must be a valid HTTP/HTTPS address or domain."
+
+        cleaned_links.append({
+            "id": l.get("id") or f"link_{idx+1}",
+            "label": label,
+            "url": lurl
+        })
+
+    user_org = user.get("org_id", "ORG-TALENT-01")
+
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM resumes WHERE user_id = ?", (user_id,))
+            existing = cursor.fetchone()
+
+            if existing:
+                cursor.execute(
+                    """
+                    UPDATE resumes SET
+                        org_id = ?,
+                        summary = ?,
+                        skills_json = ?,
+                        experience_json = ?,
+                        education_json = ?,
+                        certifications_json = ?,
+                        projects_json = ?,
+                        links_json = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ?
+                    """,
+                    (
+                        user_org, summary,
+                        json.dumps(cleaned_skills), json.dumps(cleaned_exp),
+                        json.dumps(cleaned_edu), json.dumps(cleaned_certs),
+                        json.dumps(cleaned_projs), json.dumps(cleaned_links),
+                        user_id
+                    )
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO resumes (user_id, org_id, summary, skills_json, experience_json, education_json, certifications_json, projects_json, links_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        user_id, user_org, summary,
+                        json.dumps(cleaned_skills), json.dumps(cleaned_exp),
+                        json.dumps(cleaned_edu), json.dumps(cleaned_certs),
+                        json.dumps(cleaned_projs), json.dumps(cleaned_links)
+                    )
+                )
+
+            # Synchronize to profiles table for platform-wide legacy compatibility
+            exp_text = "\n\n".join(
+                f"{e['job_title']} at {e['company']} ({e['start_date']} – {e['end_date']})\n{e['description']}"
+                for e in cleaned_exp if e['job_title'] or e['company']
+            )
+            edu_text = "\n".join(
+                f"{ed['degree']} – {ed['institution']} ({ed['start_date']} – {ed['end_date']})"
+                for ed in cleaned_edu if ed['degree'] or ed['institution']
+            )
+            cert_text = "\n".join(
+                f"{c['name']} – {c['issuing_org']}"
+                for c in cleaned_certs if c['name']
+            )
+            proj_text = "\n\n".join(
+                f"{p['title']} ({p['role']})\nTech: {p['technologies']}\n{p['description']}"
+                for p in cleaned_projs if p['title']
+            )
+
+            li_url = next((l["url"] for l in cleaned_links if "linkedin" in l["label"].lower()), "")
+            gh_url = next((l["url"] for l in cleaned_links if "github" in l["label"].lower()), "")
+            port_url = next((l["url"] for l in cleaned_links if "portfolio" in l["label"].lower() or "website" in l["label"].lower()), "")
+
+            cursor.execute(
+                """
+                UPDATE profiles SET
+                    summary = ?,
+                    experience = ?,
+                    education = ?,
+                    certifications = ?,
+                    projects = ?,
+                    linkedin = CASE WHEN ? != '' THEN ? ELSE linkedin END,
+                    github = CASE WHEN ? != '' THEN ? ELSE github END,
+                    portfolio = CASE WHEN ? != '' THEN ? ELSE portfolio END,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+                """,
+                (summary, exp_text, edu_text, cert_text, proj_text, li_url, li_url, gh_url, gh_url, port_url, port_url, user_id)
+            )
+
+        return True, "Resume saved successfully."
+    except Exception as exc:
+        return False, f"Database error while saving resume: {exc}"
+    finally:
+        conn.close()
+
+def import_skills_to_resume(user_id: int, current_skills: List[Dict[str, Any]], org_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Imports verified skills from the employee's Skills & Assessment module into their Resume skills list.
+    Safely merges without overwriting existing entries or creating duplicates.
+    """
+    user = get_user_by_id(user_id)
+    if not user:
+        return current_skills
+
+    resolved_org = org_id or user.get("org_id", "ORG-TALENT-01")
+    emp_skills = get_employee_skills(user.get("employee_id"), org_id=resolved_org)
+    legacy_skills = list_skills(user_id)
+
+    merged = list(current_skills)
+    existing_names = {s.get("name", "").strip().lower() for s in merged if isinstance(s, dict)}
+
+    for es in emp_skills:
+        name = es.get("skill_name", "").strip()
+        if name and name.lower() not in existing_names:
+            existing_names.add(name.lower())
+            merged.append({
+                "name": name,
+                "proficiency": es.get("proficiency_level", "Intermediate")
+            })
+
+    for ls in legacy_skills:
+        name = ls.get("name", "").strip()
+        if name and name.lower() not in existing_names:
+            existing_names.add(name.lower())
+            merged.append({
+                "name": name,
+                "proficiency": ls.get("proficiency", "Intermediate")
+            })
+
+    return merged
+
+def format_resume_as_text(resume_data: Dict[str, Any], user_info: Optional[Dict[str, Any]] = None) -> str:
+    """Formats structured resume data into clean text for AI audits, exports, or plain viewing."""
+    user_info = user_info or {}
+    lines = []
+    lines.append(user_info.get("name", "Candidate"))
+    contact_parts = [
+        user_info.get("email", ""),
+        user_info.get("phone", ""),
+        user_info.get("location", "")
+    ]
+    lines.append(" | ".join(filter(None, contact_parts)))
+    lines.append("=" * 60)
+
+    if resume_data.get("summary"):
+        lines.append("\nPROFESSIONAL SUMMARY")
+        lines.append("-" * 30)
+        lines.append(resume_data["summary"])
+
+    skills = resume_data.get("skills", [])
+    if skills:
+        lines.append("\nCORE COMPETENCIES & SKILLS")
+        lines.append("-" * 30)
+        lines.append(", ".join(f"{s['name']} ({s.get('proficiency', 'Proficient')})" for s in skills))
+
+    exp = resume_data.get("experience", [])
+    if exp:
+        lines.append("\nPROFESSIONAL EXPERIENCE")
+        lines.append("-" * 30)
+        for e in exp:
+            lines.append(f"{e.get('job_title', 'Role')} - {e.get('company', 'Company')} ({e.get('start_date', '')} - {e.get('end_date', 'Present')})")
+            if e.get("location"):
+                lines.append(f"Location: {e['location']}")
+            if e.get("description"):
+                lines.append(e["description"])
+            lines.append("")
+
+    edu = resume_data.get("education", [])
+    if edu:
+        lines.append("\nEDUCATION")
+        lines.append("-" * 30)
+        for ed in edu:
+            lines.append(f"{ed.get('degree', '')} - {ed.get('institution', '')} ({ed.get('start_date', '')} - {ed.get('end_date', '')})")
+            if ed.get("details"):
+                lines.append(ed["details"])
+
+    certs = resume_data.get("certifications", [])
+    if certs:
+        lines.append("\nCERTIFICATIONS")
+        lines.append("-" * 30)
+        for c in certs:
+            lines.append(f"- {c.get('name', '')} ({c.get('issuing_org', '')})")
+
+    projs = resume_data.get("projects", [])
+    if projs:
+        lines.append("\nPROJECTS & ACHIEVEMENTS")
+        lines.append("-" * 30)
+        for p in projs:
+            lines.append(f"{p.get('title', '')} ({p.get('role', '')}) - Tech: {p.get('technologies', '')}")
+            if p.get("description"):
+                lines.append(p["description"])
+            lines.append("")
+
+    links = resume_data.get("links", [])
+    if links:
+        lines.append("\nPROFESSIONAL LINKS")
+        lines.append("-" * 30)
+        for l in links:
+            lines.append(f"{l.get('label', 'Link')}: {l.get('url', '')}")
+
+    return "\n".join(lines)
+
+def generate_resume_pdf(resume_data: Dict[str, Any], user_info: Dict[str, Any]) -> bytes:
+    """
+    Generates a professional, ATS-optimized PDF resume using ReportLab.
+    Ensures zero overlapping text, elegant typography, auto text-wrapping, and clickable links.
+    """
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, HRFlowable
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        leftMargin=40,
+        rightMargin=40,
+        topMargin=36,
+        bottomMargin=36
+    )
+
+    styles = getSampleStyleSheet()
+
+    # Custom styles
+    name_style = ParagraphStyle(
+        'ResumeName',
+        fontName='Helvetica-Bold',
+        fontSize=20,
+        leading=24,
+        textColor=colors.HexColor('#0F172A'),
+        alignment=0,
+        spaceAfter=4
+    )
+    contact_style = ParagraphStyle(
+        'ResumeContact',
+        fontName='Helvetica',
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor('#475569'),
+        alignment=0,
+        spaceAfter=10
+    )
+    section_heading = ParagraphStyle(
+        'ResumeSectionHead',
+        fontName='Helvetica-Bold',
+        fontSize=11,
+        leading=15,
+        textColor=colors.HexColor('#1E3A8A'),
+        textTransform='uppercase',
+        spaceBefore=10,
+        spaceAfter=4
+    )
+    item_title = ParagraphStyle(
+        'ResumeItemTitle',
+        fontName='Helvetica-Bold',
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor('#0F172A')
+    )
+    item_meta = ParagraphStyle(
+        'ResumeItemMeta',
+        fontName='Helvetica-Oblique',
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor('#64748B'),
+        alignment=2
+    )
+    body_style = ParagraphStyle(
+        'ResumeBody',
+        fontName='Helvetica',
+        fontSize=9,
+        leading=13.5,
+        textColor=colors.HexColor('#334155'),
+        spaceAfter=6
+    )
+    skill_tag_style = ParagraphStyle(
+        'ResumeSkillTag',
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=12,
+        textColor=colors.HexColor('#1E293B')
+    )
+
+    story = []
+
+    # 1. Header (Candidate Name)
+    name = user_info.get("name", "Candidate Name")
+    story.append(Paragraph(name, name_style))
+
+    # Contact line
+    contact_items = []
+    if user_info.get("email"):
+        contact_items.append(f'<a href="mailto:{user_info["email"]}" color="#2563EB">{user_info["email"]}</a>')
+    if user_info.get("phone"):
+        contact_items.append(str(user_info["phone"]))
+    if user_info.get("location"):
+        contact_items.append(str(user_info["location"]))
+
+    links = resume_data.get("links", [])
+    for l in links:
+        lbl = l.get("label", "Web")
+        url = l.get("url", "")
+        if url:
+            href = url if url.startswith("http") else f"https://{url}"
+            contact_items.append(f'<a href="{href}" color="#2563EB">{lbl}</a>')
+
+    story.append(Paragraph(" &nbsp;&bull;&nbsp; ".join(contact_items) if contact_items else "", contact_style))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#2563EB"), spaceBefore=2, spaceAfter=8))
+
+    # 2. Professional Summary
+    summary = (resume_data.get("summary") or "").strip()
+    if summary:
+        story.append(Paragraph("Professional Summary", section_heading))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#CBD5E1"), spaceBefore=1, spaceAfter=5))
+        story.append(Paragraph(summary.replace("\n", "<br/>"), body_style))
+        story.append(Spacer(1, 4))
+
+    # 3. Core Competencies & Skills
+    skills = resume_data.get("skills", [])
+    if skills:
+        story.append(Paragraph("Core Competencies & Skills", section_heading))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#CBD5E1"), spaceBefore=1, spaceAfter=5))
+        
+        # Format skills in a clean multi-column table
+        skills_formatted = [f"<b>{s['name']}</b> ({s.get('proficiency', 'Proficient')})" for s in skills]
+        # Arrange in 3 columns
+        cols = 3
+        table_data = []
+        for i in range(0, len(skills_formatted), cols):
+            row_skills = skills_formatted[i:i+cols]
+            while len(row_skills) < cols:
+                row_skills.append("")
+            table_data.append([Paragraph(f"&bull; {cell}", skill_tag_style) if cell else "" for cell in row_skills])
+
+        if table_data:
+            stbl = Table(table_data, colWidths=[175, 175, 175])
+            stbl.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                ('TOPPADDING', (0, 0), (-1, -1), 1),
+                ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            story.append(stbl)
+        story.append(Spacer(1, 4))
+
+    # 4. Work Experience
+    exp = resume_data.get("experience", [])
+    if exp:
+        story.append(Paragraph("Professional Experience", section_heading))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#CBD5E1"), spaceBefore=1, spaceAfter=5))
+        for e in exp:
+            title = e.get("job_title", "Role")
+            company = e.get("company", "Company")
+            loc = e.get("location", "")
+            start = e.get("start_date", "")
+            end = e.get("end_date", "Present")
+            date_str = f"{start} – {end}" if (start or end) else ""
+            if loc:
+                date_str = f"{loc} | {date_str}"
+
+            header_tbl = Table([
+                [
+                    Paragraph(f"<b>{title}</b> &mdash; {company}", item_title),
+                    Paragraph(date_str, item_meta)
+                ]
+            ], colWidths=[360, 170])
+            header_tbl.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ]))
+
+            desc = e.get("description", "").strip()
+            desc_p = Paragraph(desc.replace("\n", "<br/>"), body_style) if desc else Spacer(1, 2)
+
+            story.append(KeepTogether([header_tbl, desc_p]))
+            story.append(Spacer(1, 3))
+
+    # 5. Education
+    edu = resume_data.get("education", [])
+    if edu:
+        story.append(Paragraph("Education", section_heading))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#CBD5E1"), spaceBefore=1, spaceAfter=5))
+        for ed in edu:
+            degree = ed.get("degree", "Degree")
+            inst = ed.get("institution", "Institution")
+            start = ed.get("start_date", "")
+            end = ed.get("end_date", "")
+            date_str = f"{start} – {end}" if (start or end) else ""
+
+            header_tbl = Table([
+                [
+                    Paragraph(f"<b>{degree}</b> &mdash; {inst}", item_title),
+                    Paragraph(date_str, item_meta)
+                ]
+            ], colWidths=[380, 150])
+            header_tbl.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ]))
+
+            details = ed.get("details", "").strip()
+            details_p = Paragraph(details.replace("\n", "<br/>"), body_style) if details else Spacer(1, 2)
+
+            story.append(KeepTogether([header_tbl, details_p]))
+            story.append(Spacer(1, 2))
+
+    # 6. Certifications
+    certs = resume_data.get("certifications", [])
+    if certs:
+        story.append(Paragraph("Certifications & Credentials", section_heading))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#CBD5E1"), spaceBefore=1, spaceAfter=5))
+        for c in certs:
+            cname = c.get("name", "Certification")
+            org = c.get("issuing_org", "")
+            id_str = c.get("credential_id", "")
+            url = c.get("credential_url", "")
+            date_str = c.get("issue_date", "")
+
+            label_html = f"&bull; <b>{cname}</b>"
+            if org:
+                label_html += f" &mdash; {org}"
+            if date_str:
+                label_html += f" ({date_str})"
+            if id_str:
+                label_html += f" &bull; ID: {id_str}"
+            if url:
+                href = url if url.startswith("http") else f"https://{url}"
+                label_html += f' &bull; <a href="{href}" color="#2563EB">Verify</a>'
+
+            story.append(Paragraph(label_html, body_style))
+        story.append(Spacer(1, 3))
+
+    # 7. Projects
+    projs = resume_data.get("projects", [])
+    if projs:
+        story.append(Paragraph("Projects & Achievements", section_heading))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#CBD5E1"), spaceBefore=1, spaceAfter=5))
+        for p in projs:
+            title = p.get("title", "Project")
+            role = p.get("role", "")
+            tech = p.get("technologies", "")
+            desc = p.get("description", "").strip()
+            purl = p.get("project_url", "").strip()
+            ghurl = p.get("github_url", "").strip()
+
+            meta_links = []
+            if purl:
+                href = purl if purl.startswith("http") else f"https://{purl}"
+                meta_links.append(f'<a href="{href}" color="#2563EB">Live Demo</a>')
+            if ghurl:
+                href = ghurl if ghurl.startswith("http") else f"https://{ghurl}"
+                meta_links.append(f'<a href="{href}" color="#2563EB">Source Code</a>')
+
+            p_title_str = f"<b>{title}</b>"
+            if role:
+                p_title_str += f" ({role})"
+
+            header_tbl = Table([
+                [
+                    Paragraph(p_title_str, item_title),
+                    Paragraph(" &bull; ".join(meta_links) if meta_links else "", item_meta)
+                ]
+            ], colWidths=[380, 150])
+            header_tbl.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ]))
+
+            content_elements = [header_tbl]
+            if tech:
+                content_elements.append(Paragraph(f"<i>Technologies:</i> {tech}", body_style))
+            if desc:
+                content_elements.append(Paragraph(desc.replace("\n", "<br/>"), body_style))
+
+            story.append(KeepTogether(content_elements))
+            story.append(Spacer(1, 3))
+
+    doc.build(story)
+    return buffer.getvalue()
+
 
