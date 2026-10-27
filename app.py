@@ -17,6 +17,7 @@ from docx import Document
 from services.core import (
     BASE_DIR, ROLE_CATALOG, LEVELS, STANDARD_DEPARTMENTS, EMPLOYMENT_STATUSES,
     init_db, register, login, get_user_by_id,
+    create_organization, get_organization, list_organizations,
     get_profile, save_profile, list_skills, add_skill, delete_skill,
     add_assessment, get_assessments, save_progress, get_progress,
     profile_completion, gap_analysis, recommendations, profile_analysis,
@@ -27,6 +28,7 @@ from services.core import (
     add_employee_skill, get_employee_skills, delete_employee_skill, get_employee_skill_gaps,
     add_goal, get_goals, get_goal_by_id, update_goal, update_goal_progress, delete_goal, get_goal_stats,
     add_training_record, get_training_records,
+    get_org_dashboard_stats, get_employee_dashboard_data,
     get_db_path, check_db_health
 )
 from services.reports import create_report
@@ -248,7 +250,7 @@ def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
                 {get_svg_icon("employees", size=26, color="#2563EB")}
             </div>
             <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Workforce Records Found</div>
-            <div style="font-size: 0.84rem; color: #64748B;">Add a new employee or import a workforce dataset to get started.</div>
+            <div style="font-size: 0.84rem; color: #64748B;">No employees match the current filters or registered in this organization.</div>
         </div>"""
     rows = []
     for emp in emp_results:
@@ -256,6 +258,14 @@ def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
         pct = min(100, max(0, int((score / 5.0) * 100)))
         bar_color = "#8B5CF6" if score >= 4.5 else ("#10B981" if score >= 3.8 else ("#3B82F6" if score >= 3.0 else "#F59E0B"))
         initial = (emp.get("name") or "E")[:1].upper()
+        skills_summary = emp.get("primary_skills") or "—"
+        if len(skills_summary) > 28:
+            skills_summary = skills_summary[:26] + ".."
+        date_joined = emp.get("joining_date") or emp.get("created_at", "")[:10] or "—"
+        org_label = emp.get("org_name") or emp.get("org_id") or "Talent Growth"
+        acc_status = emp.get("account_status") or "Active"
+        acc_status_badge = get_status_badge_html(acc_status)
+
         rows.append(
             f"""<tr>
                 <td><span class="tbl-id-pill">{emp.get('employee_id', '')}</span></td>
@@ -266,14 +276,15 @@ def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
                         </div>
                         <div>
                             <div style="font-weight: 700; color: #0F172A;">{emp.get('name', '')}</div>
-                            <div style="font-size: 0.76rem; color: #64748B;">{emp.get('email', '')}</div>
+                            <div style="font-size: 0.76rem; color: #64748B;">{emp.get('email', '') or '—'}</div>
                         </div>
                     </div>
                 </td>
+                <td><span style="font-size: 0.80rem; font-weight: 600; color: #475569;">{org_label}</span></td>
                 <td>{get_dept_badge_html(emp.get('department', ''))}</td>
                 <td><span style="font-weight: 600; color: #334155;">{emp.get('designation', '')}</span></td>
-                <td>{get_status_badge_html(emp.get('employment_status', 'Active'))}</td>
-                <td><span style="font-weight: 700; color: #475569;">{emp.get('years_experience', 0)} yrs</span></td>
+                <td><span style="font-size: 0.82rem; color: #64748B;">{date_joined}</span></td>
+                <td><span style="font-size: 0.82rem; color: #2563EB; font-weight: 500;" title="{emp.get('primary_skills', '')}">{skills_summary}</span></td>
                 <td>
                     <div class="tbl-progress-container">
                         <div class="tbl-progress-track">
@@ -282,6 +293,7 @@ def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
                         {get_rating_badge_html(score)}
                     </div>
                 </td>
+                <td>{acc_status_badge}</td>
             </tr>"""
         )
     return f"""<div class="corporate-table-wrapper">
@@ -289,12 +301,14 @@ def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
             <thead>
                 <tr>
                     <th>Emp ID</th>
-                    <th>Full Name</th>
+                    <th>Full Name & Email</th>
+                    <th>Organization</th>
                     <th>Department</th>
-                    <th>Designation</th>
-                    <th>Status</th>
-                    <th>Experience</th>
-                    <th>Performance Score</th>
+                    <th>Job Title</th>
+                    <th>Date Joined</th>
+                    <th>Skills Summary</th>
+                    <th>Performance</th>
+                    <th>Account Status</th>
                 </tr>
             </thead>
             <tbody>{''.join(rows)}</tbody>
@@ -1077,6 +1091,9 @@ def register_page():
                 """
             )
 
+            existing_orgs = list_organizations()
+            org_options = [f"{o['name']} ({o['org_id']})" for o in existing_orgs] + ["+ Register New Organization"]
+
             with st.form("dedicated_register_form"):
                 name = st.text_input("Full Legal Name *", placeholder="e.g. Jordan Miller")
                 new_email = st.text_input("Corporate Email Address *", placeholder="jordan.miller@company.com")
@@ -1088,24 +1105,79 @@ def register_page():
                     ["employee", "admin"],
                     format_func=lambda x: "Employee (Self-Service)" if x == "employee" else "HR Administrator"
                 )
-                emp_code = c_r2.text_input("Employee ID (Optional)", placeholder="e.g. EMP208").strip().upper()
+                emp_code = c_r2.text_input("Employee ID (Optional - auto-assigned if empty)", placeholder="e.g. EMP208").strip().upper()
+
+                st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 6px;'>Organization Membership *</div>", unsafe_allow_html=True)
+                sel_org_choice = st.selectbox(
+                    "Select Organization *",
+                    org_options,
+                    index=0,
+                    label_visibility="collapsed"
+                )
+
+                new_org_name_val = ""
+                new_org_id_val = ""
+                if sel_org_choice == "+ Register New Organization":
+                    c_no1, c_no2 = st.columns(2)
+                    new_org_name_val = c_no1.text_input("Organization Name *", placeholder="e.g. Apex Global Solutions")
+                    new_org_id_val = c_no2.text_input("Organization ID Code *", placeholder="e.g. ORG-APEX-01").strip().upper()
+
+                c_dep1, c_dep2 = st.columns(2)
+                depts_list = [
+                    "Engineering", "Product Management", "Data & Analytics",
+                    "Human Resources", "Finance & Operations", "Marketing & Growth",
+                    "Design", "Sales & Customer Success"
+                ]
+                dept_val = c_dep1.selectbox("Department *", depts_list)
+                title_val = c_dep2.text_input("Job Title / Designation *", placeholder="e.g. Software Engineer / HRBP")
+
+                c_sk1, c_sk2 = st.columns([2, 1])
+                skills_val = c_sk1.text_input("Primary Skills (Comma-separated)", value="Python, SQL, Communication", placeholder="e.g. Python, SQL, React, Data Analysis")
+                exp_val = c_sk2.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.0, step=0.5)
 
                 terms = st.checkbox("I agree to the Enterprise Talent Governance Terms", value=True)
-                submit_reg = st.form_submit_button("Create Account & Join", type="primary", use_container_width=True)
+                submit_reg = st.form_submit_button("Create Account & Join Organization", type="primary", use_container_width=True)
 
             if submit_reg:
                 if not name.strip():
-                    st.error("Full Name is required.")
-                elif not new_email.strip():
-                    st.error("Email address is required.")
+                    st.error("Full Legal Name is required.")
+                elif not new_email.strip() or "@" not in new_email:
+                    st.error("A valid corporate email address is required.")
                 elif len(new_password) < 8:
-                    st.error("Password must be at least 8 characters.")
+                    st.error("Password must be at least 8 characters long.")
+                elif sel_org_choice == "+ Register New Organization" and (not new_org_name_val.strip() or not new_org_id_val.strip()):
+                    st.error("Please provide both Organization Name and Organization ID Code.")
                 elif not terms:
-                    st.error("Please agree to the terms to proceed.")
+                    st.error("Please agree to the enterprise governance terms to proceed.")
                 else:
-                    ok, msg = register(name.strip(), new_email.strip(), new_password, role, emp_code if emp_code else None)
+                    if sel_org_choice == "+ Register New Organization":
+                        chosen_org_id = new_org_id_val.strip().upper()
+                        chosen_org_name = new_org_name_val.strip()
+                    else:
+                        for o in existing_orgs:
+                            if f"{o['name']} ({o['org_id']})" == sel_org_choice:
+                                chosen_org_id = o["org_id"]
+                                chosen_org_name = o["name"]
+                                break
+                        else:
+                            chosen_org_id = "ORG-TALENT-01"
+                            chosen_org_name = "Talent Growth Technologies"
+
+                    ok, msg = register(
+                        name=name.strip(),
+                        email=new_email.strip(),
+                        password=new_password,
+                        role=role,
+                        employee_id=emp_code if emp_code else None,
+                        org_id=chosen_org_id,
+                        org_name=chosen_org_name,
+                        department=dept_val,
+                        job_title=title_val.strip() or ("Software Engineer" if role == "employee" else "HR Administrator"),
+                        primary_skills=skills_val.strip() or "Python, SQL, Communication",
+                        years_experience=exp_val
+                    )
                     if ok:
-                        st.success(f"{msg} You can now sign in.")
+                        st.success(f"{msg} A welcome email has been sent to {new_email.strip()}.")
                         st.session_state.auth_view = "login"
                         st.rerun()
                     else:
@@ -1137,7 +1209,9 @@ if not st.session_state.user:
 user = st.session_state.user
 uid = user["id"]
 is_admin = user.get("role") == "admin"
-emp_id = user.get("employee_id") or "EMP101"
+emp_id = user.get("employee_id") or f"EMP{uid:03d}"
+org_id = user.get("org_id") or "ORG-TALENT-01"
+org_name = user.get("org_name") or "Talent Growth Technologies"
 profile = get_profile(uid)
 skills = list_skills(uid)
 
@@ -1587,8 +1661,12 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
             role_title = "HR Administrator" if is_admin else "Employee"
             st.markdown(
                 f"""
-                <div style="font-size: 0.83rem; color: {user_subtitle_color}; margin-top: 2px; margin-bottom: 1.25rem; padding-left: 2px;">
+                <div style="font-size: 0.83rem; color: {user_subtitle_color}; margin-top: 2px; margin-bottom: 4px; padding-left: 2px;">
                     Signed in as <strong>{user['name']}</strong> &bull; {role_title}
+                </div>
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(37, 99, 235, 0.12); border: 1px solid rgba(37, 99, 235, 0.28); border-radius: 6px; padding: 3px 8px; margin-bottom: 1.15rem; font-size: 0.76rem; color: {user_subtitle_color};">
+                    <span style="font-weight: 700; color: #60A5FA;">{user.get('org_name', 'Talent Growth')}</span>
+                    <span style="opacity: 0.75; font-family: monospace;">({user.get('org_id', 'ORG-TALENT-01')})</span>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -1741,19 +1819,20 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
         """
     )
 
-    employees = get_employees()
-    reviews = get_performance_reviews()
-    dept_summary = get_department_performance_summary()
-    all_goals = get_goals()
+    org_stats = get_org_dashboard_stats(org_id)
+    employees = get_employees(org_id=org_id)
+    reviews = get_performance_reviews(org_id=org_id)
+    dept_summary = get_department_performance_summary(org_id=org_id)
+    all_goals = get_goals(org_id=org_id)
 
-    avg_perf = round(sum(r["performance_score"] for r in reviews) / len(reviews), 1) if reviews else 4.2
-    total_emp_count = len(employees) if employees else 48
-    dept_count = len(dept_summary) if dept_summary else 6
-    goals_in_progress = len([g for g in all_goals if g.get("status") in ["In Progress", "in progress"]]) if all_goals else 22
-    if goals_in_progress == 0:
-        goals_in_progress = 22
+    total_emp_count = org_stats["total_employees"]
+    dept_count = org_stats["total_departments"]
+    avg_perf = org_stats["avg_performance"]
+    goal_completion_pct = org_stats["goal_completion_rate"]
+    assessment_completion_pct = org_stats["assessment_completion_rate"]
+    total_assessments = org_stats["total_assessments"]
 
-    # Row of 4 Solid Vibrant KPI Cards matching Image 1
+    # Row of 4 Solid Vibrant KPI Cards matching Organization Scope
     render_html(
         f"""
         <div class="kpi-row-grid-vibrant">
@@ -1762,10 +1841,10 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     {get_svg_icon("employees", size=26, color="#FFFFFF")}
                 </div>
                 <div>
-                    <div class="kpi-vibrant-title">Total Employees</div>
+                    <div class="kpi-vibrant-title">Organization Workforce</div>
                     <div class="kpi-vibrant-number">{total_emp_count}</div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} +2 this month
+                        {get_svg_icon("building", size=13, color="#FFFFFF")} {org_id}
                     </div>
                 </div>
             </div>
@@ -1777,7 +1856,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     <div class="kpi-vibrant-title">Departments</div>
                     <div class="kpi-vibrant-number">{dept_count}</div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} +1 this month
+                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} Active divisions
                     </div>
                 </div>
             </div>
@@ -1787,9 +1866,9 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Avg Performance</div>
-                    <div class="kpi-vibrant-number">{avg_perf} / 5</div>
+                    <div class="kpi-vibrant-number">{avg_perf} / 5.0</div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} +0.1 this month
+                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} Evaluated staff
                     </div>
                 </div>
             </div>
@@ -1798,10 +1877,10 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     {get_svg_icon("goals", size=26, color="#FFFFFF")}
                 </div>
                 <div>
-                    <div class="kpi-vibrant-title">Goals In Progress</div>
-                    <div class="kpi-vibrant-number">{goals_in_progress}</div>
+                    <div class="kpi-vibrant-title">Skills & Goals Rate</div>
+                    <div class="kpi-vibrant-number">{assessment_completion_pct}%</div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} 75% completion
+                        {get_svg_icon("check", size=13, color="#FFFFFF")} {goal_completion_pct}% goals achieved
                     </div>
                 </div>
             </div>
@@ -1826,7 +1905,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
 
     st.markdown("<div style='margin-bottom: 1.15rem;'></div>", unsafe_allow_html=True)
 
-    # Middle Section: 2 Central Charts matching Image 1
+    # Middle Section: 2 Central Charts Filtered by Organization
     col_chart1, col_chart2 = st.columns([1.15, 1], gap="medium")
     with col_chart1:
         with st.container(border=True):
@@ -1836,7 +1915,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     f"""
                     <div style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
                         {get_svg_icon("analytics", size=18, color="#2563EB")}
-                        <div style="font-weight: 800; font-size: 1.12rem; color: #0F172A;">Employee Performance Trend</div>
+                        <div style="font-weight: 800; font-size: 1.12rem; color: #0F172A;">Performance Rating Distribution</div>
                     </div>
                     """
                 )
@@ -1845,91 +1924,75 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     f"""
                     <div style="text-align: right; padding-top: 2px;">
                         <span style="font-size: 0.82rem; font-weight: 600; color: #475569; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 4px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
-                            {get_svg_icon("calendar", size=13, color="#64748B")} Last 6 Months
+                            {get_svg_icon("building", size=13, color="#64748B")} {org_id}
                         </span>
                     </div>
                     """
                 )
 
-            # Trend line matching Image 1
-            df_trend = pd.DataFrame({
-                "Month": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-                "Rating": [2.6, 3.5, 3.7, 4.0, 4.1, 4.5]
-            })
-            fig_line = go.Figure()
-            fig_line.add_trace(go.Scatter(
-                x=df_trend["Month"],
-                y=df_trend["Rating"],
-                mode="lines+markers",
-                line=dict(color="#2563EB", width=3, shape="spline"),
-                marker=dict(size=9, color="#2563EB", line=dict(color="#FFFFFF", width=2.5)),
-                fill="tozeroy",
-                fillcolor="rgba(37, 99, 235, 0.08)",
-                hovertemplate="<b>%{x}</b><br>Avg Performance: <b>%{y:.1f} / 5.0</b><extra></extra>"
+            perf_dist = org_stats["performance_distribution"]
+            tiers = list(perf_dist.keys())
+            counts = list(perf_dist.values())
+            colors = ["#10B981", "#2563EB", "#F59E0B", "#EF4444"]
+
+            fig_bar = go.Figure(go.Bar(
+                x=tiers,
+                y=counts,
+                marker=dict(color=colors, line=dict(color="#CBD5E1", width=1)),
+                text=counts,
+                textposition='auto',
+                hovertemplate="<b>%{x}</b><br>Reviews Count: <b>%{y}</b><extra></extra>"
             ))
-            fig_line.update_layout(
+            fig_bar.update_layout(
                 margin=dict(l=15, r=15, t=15, b=15),
                 height=280,
                 plot_bgcolor="rgba(0,0,0,0)",
                 paper_bgcolor="rgba(0,0,0,0)",
-                xaxis=dict(gridcolor="#F1F5F9", showgrid=True, tickfont=dict(color="#64748B", size=12)),
-                yaxis=dict(gridcolor="#F1F5F9", showgrid=True, range=[0, 5.2], dtick=1, tickfont=dict(color="#64748B", size=12))
+                xaxis=dict(gridcolor="#F1F5F9", showgrid=False, tickfont=dict(color="#475569", size=11)),
+                yaxis=dict(gridcolor="#F1F5F9", showgrid=True, dtick=1, tickfont=dict(color="#64748B", size=12))
             )
-            st.plotly_chart(fig_line, use_container_width=True)
+            st.plotly_chart(fig_bar, use_container_width=True)
 
     with col_chart2:
         with st.container(border=True):
             st.markdown(
-                """
-                <div style="margin-bottom: 0.5rem;">
-                    <div style="font-weight: 800; font-size: 1.12rem; color: #0F172A;">Department Overview</div>
+                f"""
+                <div style="margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="font-weight: 800; font-size: 1.12rem; color: #0F172A;">Department Distribution</div>
+                    <span style="font-size: 0.78rem; font-weight: 600; color: #64748B;">{org_id}</span>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
-            df_dept = pd.DataFrame([
-                {"Department": "IT", "Percentage": 35, "Headcount": 17},
-                {"Department": "HR", "Percentage": 25, "Headcount": 12},
-                {"Department": "Finance", "Percentage": 20, "Headcount": 10},
-                {"Department": "Marketing", "Percentage": 20, "Headcount": 9}
-            ])
-            fig_donut = px.pie(
-                df_dept, values="Percentage", names="Department", hole=0.64,
-                color="Department",
-                color_discrete_map={
-                    "IT": "#2563EB",
-                    "HR": "#F59E0B",
-                    "Finance": "#F97316",
-                    "Marketing": "#8B5CF6"
-                }
-            )
-            fig_donut.update_traces(
-                textinfo='none',
-                hoverinfo='label+percent',
-                hovertemplate="<b>%{label}</b><br>Share: <b>%{percent}</b><extra></extra>"
-            )
-            fig_donut.update_layout(
-                margin=dict(l=10, r=10, t=10, b=10),
-                height=280,
-                showlegend=True,
-                legend=dict(
-                    orientation="v",
-                    yanchor="middle",
-                    y=0.5,
-                    xanchor="left",
-                    x=1.02,
-                    font=dict(size=12, color="#334155")
-                ),
-                annotations=[dict(
-                    text=f"<b>{total_emp_count}</b><br><span style='font-size:12px;color:#64748B;'>Employees</span>",
-                    x=0.5, y=0.5,
-                    font_size=18,
-                    showarrow=False
-                )]
-            )
-            st.plotly_chart(fig_donut, use_container_width=True)
+            dept_dist = org_stats["department_distribution"]
+            if dept_dist:
+                df_dept = pd.DataFrame(dept_dist)
+                fig_donut = px.pie(
+                    df_dept, values="count", names="department", hole=0.64,
+                    color_discrete_sequence=['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4']
+                )
+                fig_donut.update_traces(
+                    textinfo='none',
+                    hoverinfo='label+percent',
+                    hovertemplate="<b>%{label}</b><br>Personnel: <b>%{value}</b> (%{percent})<extra></extra>"
+                )
+                fig_donut.update_layout(
+                    margin=dict(l=10, r=10, t=10, b=10),
+                    height=280,
+                    showlegend=True,
+                    legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02, font=dict(size=11, color="#334155")),
+                    annotations=[dict(
+                        text=f"<b>{total_emp_count}</b><br><span style='font-size:12px;color:#64748B;'>Employees</span>",
+                        x=0.5, y=0.5,
+                        font_size=17,
+                        showarrow=False
+                    )]
+                )
+                st.plotly_chart(fig_donut, use_container_width=True)
+            else:
+                st.info(f"No department records registered yet for {org_name}.")
 
-    # Bottom Section: 3 Cards matching Image 1
+    # Bottom Section: 3 Organization-Isolated Cards
     col_w1, col_w2, col_w3 = st.columns(3, gap="medium")
     with col_w1:
         with st.container(border=True):
@@ -1938,53 +2001,37 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                 st.markdown(
                     f"""
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                        {get_svg_icon("clock", size=18, color="#2563EB")}
-                        <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Pending Reviews</span>
+                        {get_svg_icon("user_plus", size=18, color="#2563EB")}
+                        <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Recent Joiners</span>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
             with c_pr2:
-                if st.button("View All", key="va_rev_dash", type="secondary", use_container_width=True):
-                    navigate_to("Performance")
+                if st.button("View All", key="va_emp_dash", type="secondary", use_container_width=True):
+                    navigate_to("Employees")
 
-            st.markdown(
-                """
-                <div style="margin-top: 4px;">
-                    <div class="pending-review-row">
+            recent_emps = org_stats["recent_joiners"]
+            if recent_emps:
+                rows_html = ""
+                for re in recent_emps[:4]:
+                    parts = re["name"].strip().split()
+                    ini = (parts[0][0] + (parts[-1][0] if len(parts) > 1 else "")).upper()
+                    rows_html += f"""
+                    <div class="pending-review-row" style="padding: 7px 0; border-bottom: 1px solid #F1F5F9;">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <div class="pending-avatar">RK</div>
+                            <div class="pending-avatar" style="width: 32px; height: 32px; font-size: 0.78rem;">{ini}</div>
                             <div>
-                                <div style="font-weight: 700; font-size: 0.88rem; color: #0F172A;">Ravi Kumar</div>
-                                <div style="font-size: 0.76rem; color: #64748B;">IT</div>
+                                <div style="font-weight: 700; font-size: 0.86rem; color: #0F172A;">{re['name']}</div>
+                                <div style="font-size: 0.75rem; color: #64748B;">{re['department']} &bull; {re['designation']}</div>
                             </div>
                         </div>
-                        <span class="badge-due-date">Review Due: Jun 20</span>
+                        <span class="badge-status badge-active" style="font-size: 0.70rem; padding: 2px 7px;">{re['employee_id']}</span>
                     </div>
-                    <div class="pending-review-row">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div class="pending-avatar" style="background: #FDF2F8; color: #DB2777;">SP</div>
-                            <div>
-                                <div style="font-weight: 700; font-size: 0.88rem; color: #0F172A;">Sneha Patel</div>
-                                <div style="font-size: 0.76rem; color: #64748B;">HR</div>
-                            </div>
-                        </div>
-                        <span class="badge-due-date">Review Due: Jun 22</span>
-                    </div>
-                    <div class="pending-review-row">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div class="pending-avatar" style="background: #F5F3FF; color: #7C3AED;">AM</div>
-                            <div>
-                                <div style="font-weight: 700; font-size: 0.88rem; color: #0F172A;">Arjun Mehta</div>
-                                <div style="font-size: 0.76rem; color: #64748B;">Finance</div>
-                            </div>
-                        </div>
-                        <span class="badge-due-date">Review Due: Jun 25</span>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+                    """
+                render_html(f"<div style='margin-top: 4px;'>{rows_html}</div>")
+            else:
+                st.info(f"No recent joiners cataloged for {org_name}.")
 
     with col_w2:
         with st.container(border=True):
@@ -1994,43 +2041,32 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     f"""
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
                         {get_svg_icon("sparkles", size=18, color="#2563EB")}
-                        <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Skill Gaps</span>
+                        <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Org Skill Gaps</span>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
             with c_sk2:
                 if st.button("View All", key="va_skills_dash", type="secondary", use_container_width=True):
-                    navigate_to("Skills")
+                    navigate_to("Skills & Assessment")
 
-            st.markdown(
-                """
-                <div style="margin-top: 14px;">
-                    <div class="progress-widget-row">
-                        <span class="progress-widget-name">SQL</span>
+            skills_dist = org_stats["skill_distribution"]
+            if skills_dist:
+                sk_rows_html = ""
+                for s in skills_dist[:4]:
+                    pct = int(min(100, (s["avg_level"] / 4.0) * 100))
+                    sk_rows_html += f"""
+                    <div class="progress-widget-row" style="margin-bottom: 9px;">
+                        <span class="progress-widget-name" style="font-size: 0.82rem; min-width: 95px;">{s['skill_name']} ({s['count']})</span>
                         <div class="progress-bar-track">
-                            <div class="progress-bar-fill-blue" style="width: 68%;"></div>
+                            <div class="progress-bar-fill-blue" style="width: {pct}%;"></div>
                         </div>
-                        <span class="progress-widget-pct">68%</span>
+                        <span class="progress-widget-pct" style="font-size: 0.80rem;">Lvl {s['avg_level']}</span>
                     </div>
-                    <div class="progress-widget-row">
-                        <span class="progress-widget-name">Communication</span>
-                        <div class="progress-bar-track">
-                            <div class="progress-bar-fill-blue" style="width: 72%;"></div>
-                        </div>
-                        <span class="progress-widget-pct">72%</span>
-                    </div>
-                    <div class="progress-widget-row">
-                        <span class="progress-widget-name">Project Management</span>
-                        <div class="progress-bar-track">
-                            <div class="progress-bar-fill-blue" style="width: 74%;"></div>
-                        </div>
-                        <span class="progress-widget-pct">74%</span>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+                    """
+                render_html(f"<div style='margin-top: 12px;'>{sk_rows_html}</div>")
+            else:
+                st.info("No employee skills recorded in this organization yet.")
 
     with col_w3:
         with st.container(border=True):
@@ -2040,7 +2076,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     f"""
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
                         {get_svg_icon("goals", size=18, color="#2563EB")}
-                        <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Career Goal Progress</span>
+                        <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Goals Milestone</span>
                     </div>
                     """,
                     unsafe_allow_html=True
@@ -2049,34 +2085,23 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                 if st.button("View All", key="va_goals_dash", type="secondary", use_container_width=True):
                     navigate_to("Career Goals")
 
-            st.markdown(
-                """
-                <div style="margin-top: 14px;">
-                    <div class="progress-widget-row">
-                        <span class="progress-widget-name">Senior Developer</span>
+            if all_goals:
+                goal_rows_html = ""
+                for g in all_goals[:4]:
+                    p = g["progress"]
+                    bar_class = "progress-bar-fill-green" if p >= 75 else ("progress-bar-fill-blue" if p >= 50 else "progress-bar-fill-purple")
+                    goal_rows_html += f"""
+                    <div class="progress-widget-row" style="margin-bottom: 9px;">
+                        <span class="progress-widget-name" style="font-size: 0.82rem; min-width: 95px;" title="{g['title']}">{g['title'][:16]}..</span>
                         <div class="progress-bar-track">
-                            <div class="progress-bar-fill-green" style="width: 80%;"></div>
+                            <div class="{bar_class}" style="width: {p}%;"></div>
                         </div>
-                        <span class="progress-widget-pct">80%</span>
+                        <span class="progress-widget-pct" style="font-size: 0.80rem;">{p}%</span>
                     </div>
-                    <div class="progress-widget-row">
-                        <span class="progress-widget-name">Team Lead</span>
-                        <div class="progress-bar-track">
-                            <div class="progress-bar-fill-blue" style="width: 60%;"></div>
-                        </div>
-                        <span class="progress-widget-pct">60%</span>
-                    </div>
-                    <div class="progress-widget-row">
-                        <span class="progress-widget-name">Data Scientist</span>
-                        <div class="progress-bar-track">
-                            <div class="progress-bar-fill-purple" style="width: 40%;"></div>
-                        </div>
-                        <span class="progress-widget-pct">40%</span>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+                    """
+                render_html(f"<div style='margin-top: 12px;'>{goal_rows_html}</div>")
+            else:
+                st.info(f"No active career goals recorded in {org_id}.")
 
 # ==============================================================================
 # 2. EMPLOYEE: MY CAREER DASHBOARD
@@ -2273,9 +2298,121 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
             )
             st.plotly_chart(fig_s, use_container_width=True)
 
+    # Personalized Employee Deep Dive: Skills, Assessments, Gaps, Goals, and Performance
+    emp_dash_data = get_employee_dashboard_data(uid, emp_id, org_id)
+    st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
+    tab_ed_roadmap, tab_ed_skills, tab_ed_goals, tab_ed_perf = st.tabs([
+        "Career Guidance & Recommendations",
+        "Individual Skills & Assessments",
+        "Career Goals & Milestones",
+        "Performance History"
+    ])
 
-# ==============================================================================
-# 3. EMPLOYEE MANAGEMENT & WORKFORCE DIRECTORY
+    with tab_ed_roadmap:
+        c_rm1, c_rm2 = st.columns([1.1, 1], gap="large")
+        with c_rm1:
+            st.markdown(f"#### Target Role Readiness: **{emp_dash_data['profile'].get('target_role') or 'Choose target role'}**")
+            gaps_info = emp_dash_data.get("skill_gaps", {})
+            st.metric("Readiness Alignment", f"{gaps_info.get('match_percentage', 0)}%")
+            st.progress(gaps_info.get('match_percentage', 0) / 100)
+
+            if gaps_info.get("gaps"):
+                st.markdown("##### Priority Competency Recommendations")
+                for g in gaps_info["gaps"][:4]:
+                    st.write(f"• **{g['skill']}**: Required Level {g['required_level']} (Current: {g['current_level']}) &middot; <span style='color: {'#EF4444' if g['priority']=='High' else '#F59E0B'}; font-weight: 700;'>{g['priority']} Priority</span>", unsafe_allow_html=True)
+            if gaps_info.get("recommended_training"):
+                st.markdown("##### Suggested Learning Courses")
+                for tr_item in gaps_info["recommended_training"][:3]:
+                    st.write(f"• **{tr_item}**")
+
+        with c_rm2:
+            st.markdown("#### Career Development Tools")
+            st.markdown(
+                f"""
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+                    <div style="font-weight: 800; font-size: 0.98rem; color: #0F172A; margin-bottom: 4px;">{get_svg_icon("reports", size=18, color="#2563EB")} Resume Studio</div>
+                    <div style="font-size: 0.85rem; color: #64748B; margin-bottom: 8px;">Export your verified skills, experience, and achievements into an ATS-optimized professional resume.</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            col_b1, col_b2 = st.columns(2)
+            with col_b1:
+                if st.button("Open Resume Studio", key="emp_dash_goto_resume", use_container_width=True, type="primary"):
+                    navigate_to("Resume Studio")
+            with col_b2:
+                if st.button("Role Match & Gaps", key="emp_dash_goto_gaps", use_container_width=True):
+                    navigate_to("Role Match & Gaps")
+
+    with tab_ed_skills:
+        c_esk1, c_esk2 = st.columns([1, 1], gap="large")
+        with c_esk1:
+            st.markdown("#### Verified Individual Skills")
+            indiv_skills = emp_dash_data.get("skills", [])
+            if indiv_skills:
+                for s_i in indiv_skills:
+                    lvl_lbl = s_i.get("proficiency_level", "Intermediate")
+                    lvl_num = {"Beginner": 25, "Intermediate": 50, "Advanced": 75, "Expert": 100}.get(lvl_lbl, 50)
+                    st.write(f"**{s_i['skill_name']}** ({lvl_lbl}) &middot; <span style='font-size:0.8rem; color:#64748B;'>{s_i['category']}</span>", unsafe_allow_html=True)
+                    st.progress(lvl_num / 100)
+            else:
+                st.info("No individual skills cataloged yet.")
+            if st.button("Manage Skills & Competencies", key="emp_dash_manage_sk_btn"):
+                navigate_to("Skills & Assessment")
+
+        with c_esk2:
+            st.markdown("#### Recent Assessment Evaluations")
+            indiv_ass = emp_dash_data.get("assessments", [])
+            if indiv_ass:
+                df_ia = pd.DataFrame(indiv_ass[:6])[["skill_name", "score", "notes", "created_at"]]
+                df_ia.columns = ["Capability", "Score (%)", "Notes", "Date"]
+                st.dataframe(
+                    df_ia,
+                    width="stretch",
+                    hide_index=True,
+                    column_config={"Score (%)": st.column_config.ProgressColumn("Score", min_value=0, max_value=100, format="%d%%")}
+                )
+            else:
+                st.info("No assessment evaluations logged yet. Record your self-assessment in the Skills module.")
+
+    with tab_ed_goals:
+        st.markdown("#### Individual Career Goals & Milestones")
+        my_goals = emp_dash_data.get("goals", [])
+        if my_goals:
+            for g in my_goals:
+                p = g.get("progress", 0)
+                status = g.get("status", "In Progress")
+                status_color = "#10B981" if status == "Completed" else ("#EF4444" if status == "Overdue" else "#3B82F6")
+                render_html(
+                    f"""
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 16px; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <strong style="color: #0F172A; font-size: 0.98rem;">{g['title']}</strong>
+                            <span style="font-size: 0.78rem; font-weight: 700; color: {status_color}; background: #F1F5F9; padding: 2px 8px; border-radius: 6px;">{status.upper()}</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #64748B; margin: 4px 0 8px 0;">Due: {g['target_date']} &middot; {g.get('target_designation', 'Growth Milestone')}</div>
+                    </div>
+                    """
+                )
+                st.progress(p / 100)
+        else:
+            st.info("No career milestones defined yet.")
+        if st.button("Define New Career Goal", key="emp_dash_new_goal_btn"):
+            navigate_to("Career Goals")
+
+    with tab_ed_perf:
+        st.markdown("#### Performance Evaluations & Growth Records")
+        my_reviews = emp_dash_data.get("reviews", [])
+        if my_reviews:
+            for r in my_reviews:
+                with st.container(border=True):
+                    st.write(f"**{r['review_period']}** &middot; Rating: **{r['performance_score']} / 5.0**")
+                    if r.get("achievements"):
+                        st.caption(f"Achievements: {r['achievements']}")
+                    if r.get("manager_feedback"):
+                        st.info(f"Manager Feedback: {r['manager_feedback']}")
+        else:
+            st.info("No performance reviews recorded for your profile yet.")
 # ==============================================================================
 elif page in ["Employees", "Employee Management"]:
     render_html(
@@ -2314,13 +2451,14 @@ elif page in ["Employees", "Employee Management"]:
 
         f1, f2, f3 = st.columns([2, 1, 1])
         s_query = f1.text_input("Live Search (Name, ID, Role, Skill)", placeholder="Search by name, designation, skill, or ID...", key="emp_live_search")
-        s_dept = f2.selectbox("Filter by Department", ["All Departments"] + get_all_departments(), key="emp_dept_filter")
+        s_dept = f2.selectbox("Filter by Department", ["All Departments"] + get_all_departments(org_id=org_id), key="emp_dept_filter")
         s_status = f3.selectbox("Filter by Status", ["All Statuses"] + EMPLOYMENT_STATUSES, key="emp_status_filter")
 
         emp_results = get_employees(
             search_query=s_query if s_query.strip() else None,
             department_filter=s_dept if s_dept != "All Departments" else None,
-            status_filter=s_status if s_status != "All Statuses" else None
+            status_filter=s_status if s_status != "All Statuses" else None,
+            org_id=org_id
         )
 
         # Metrics bar with deltas
@@ -2484,7 +2622,8 @@ elif page in ["Employees", "Employee Management"]:
                         phone=phone_input,
                         joining_date=join_input.isoformat(),
                         employment_status=status_input,
-                        created_by=uid
+                        created_by=uid,
+                        org_id=org_id
                     )
                     if success:
                         st.success(msg)
@@ -2561,7 +2700,7 @@ elif page in ["Employees", "Employee Management"]:
 
                     if btn_import:
                         with st.spinner("Processing records and enforcing SQLite constraints..."):
-                            import_res = bulk_import_employees_df(df_upload, created_by=uid)
+                            import_res = bulk_import_employees_df(df_upload, created_by=uid, org_id=org_id)
 
                         m1, m2, m3 = st.columns(3)
                         m1.metric("Total In File", import_res["total"])
@@ -2569,7 +2708,7 @@ elif page in ["Employees", "Employee Management"]:
                         m3.metric("Skipped / Duplicate", import_res["skipped_count"])
 
                         if import_res["success_count"] > 0:
-                            st.success(f"Successfully imported {import_res['success_count']} employees into SQLite!")
+                            st.success(f"Successfully imported {import_res['success_count']} employees into {org_name}!")
 
                         if import_res["errors"]:
                             with st.expander(f"Review Ingestion Notices & Skipped Records ({len(import_res['errors'])})", expanded=True):
@@ -2587,14 +2726,14 @@ elif page in ["Employees", "Employee Management"]:
     # --- TAB 4: EDIT & DELETE ---
     with tab_edit:
         st.markdown("#### Modify or Remove Employee Records")
-        all_emps = get_employees()
+        all_emps = get_employees(org_id=org_id)
         if not all_emps:
-            st.info("No employee records currently available in database.")
+            st.info(f"No employee records currently available in {org_name}.")
         else:
             emp_map = {f"{e['employee_id']} — {e['name']} ({e['designation']})": e['employee_id'] for e in all_emps}
             selected_emp_k = st.selectbox("Select Employee Record", list(emp_map.keys()))
             selected_emp_code = emp_map[selected_emp_k]
-            emp_curr = get_employee_by_id(selected_emp_code)
+            emp_curr = get_employee_by_id(selected_emp_code, org_id=org_id)
 
             if emp_curr:
                 col_ed, col_rm = st.columns([1.6, 1])
@@ -2605,7 +2744,7 @@ elif page in ["Employees", "Employee Management"]:
                         up_email = st.text_input("Corporate Email", value=emp_curr["email"] or "")
                         up_phone = st.text_input("Phone Number", value=emp_curr["phone"] or "")
 
-                        d_list = get_all_departments()
+                        d_list = get_all_departments(org_id=org_id)
                         d_idx = d_list.index(emp_curr["department"]) if emp_curr["department"] in d_list else 0
                         up_dept = st.selectbox("Department", d_list, index=d_idx)
                         up_desig = st.text_input("Designation / Title", value=emp_curr["designation"])
@@ -2628,7 +2767,8 @@ elif page in ["Employees", "Employee Management"]:
                             email=up_email if up_email.strip() else None,
                             phone=up_phone,
                             joining_date=emp_curr["joining_date"],
-                            employment_status=up_status
+                            employment_status=up_status,
+                            org_id=org_id
                         )
                         if ok_upd:
                             st.success(msg_upd)
@@ -2650,7 +2790,7 @@ elif page in ["Employees", "Employee Management"]:
                         st.caption("Cascade removes associated reviews, skills, and training logs.")
                         confirm_deletion = st.checkbox("I confirm deletion of this record.")
                         if st.button("Permanently Delete", type="secondary", disabled=not confirm_deletion):
-                            ok_del, msg_del = delete_employee(emp_curr["employee_id"])
+                            ok_del, msg_del = delete_employee(emp_curr["employee_id"], org_id=org_id)
                             if ok_del:
                                 st.success(msg_del)
                                 st.rerun()
@@ -2683,7 +2823,7 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
         tab_rev_list, tab_rev_add, tab_rev_trends = st.tabs(["Evaluation Records", "Record New Evaluation", "Distribution Analytics"])
 
         with tab_rev_list:
-            all_reviews = get_performance_reviews()
+            all_reviews = get_performance_reviews(org_id=org_id)
             if all_reviews:
                 c_head1, c_head2 = st.columns([2.2, 1.3])
                 with c_head1:
@@ -2790,7 +2930,7 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
 
         with tab_rev_add:
             st.markdown("#### Record Performance Evaluation")
-            emps = get_employees()
+            emps = get_employees(org_id=org_id)
             if not emps:
                 st.warning("Please add employees first in Employee Management.")
             else:
@@ -2818,7 +2958,8 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                             strengths=strengths_txt,
                             improvements=improve_txt,
                             manager_feedback=feedback_txt,
-                            reviewer_id=uid
+                            reviewer_id=uid,
+                            org_id=org_id
                         )
                         if ok_r:
                             st.success(msg_r)
@@ -2828,7 +2969,7 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
 
         with tab_rev_trends:
             st.markdown("#### Workforce Performance Rating Distribution")
-            all_revs = get_performance_reviews()
+            all_revs = get_performance_reviews(org_id=org_id)
             if all_revs:
                 df_r = pd.DataFrame(all_revs)
                 fig_hist = px.histogram(
@@ -2842,7 +2983,7 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
             else:
                 st.info("No evaluation data available to chart.")
     else:
-        my_revs = get_performance_reviews(employee_id=emp_id)
+        my_revs = get_performance_reviews(employee_id=emp_id, org_id=org_id)
         st.markdown(f"#### Evaluation History for Employee ({emp_id})")
         if my_revs:
             avg_my = round(sum(r["performance_score"] for r in my_revs) / len(my_revs), 2)
@@ -2874,66 +3015,237 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
 # ==============================================================================
 elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
     if not is_admin:
-        # Layout matching Screenshot 2: "Skills and assessments"
-        st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 1.5rem;'>Skills and assessments</h1>", unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                <div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
+                        {get_svg_icon("skills", size=24, color="#10B981")} My Skills & Assessment Center
+                    </div>
+                    <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
+                        Manage your verified competencies, track assessment history, and analyze role benchmark readiness.
+                    </div>
+                </div>
+                <div>
+                    <span class="badge-status badge-active">{emp_id} &middot; {org_name}</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        with st.form("add_inline_skill_form"):
-            c_s1, c_s2, c_s3, c_s4 = st.columns([3, 2, 2, 1.5])
-            with c_s1:
-                new_sk_name = st.text_input("Skill", placeholder="")
-            with c_s2:
-                new_sk_cat = st.selectbox("Category", ["Technical", "Soft Skill", "Leadership", "Tools", "Domain", "Business"])
-            with c_s3:
-                new_sk_prof = st.selectbox("Proficiency", list(LEVELS.keys()))
-            with c_s4:
-                new_sk_yrs = st.number_input("Years", min_value=0.0, max_value=50.0, value=0.00, step=0.5, format="%.2f")
+        tab_emp_skills, tab_emp_assessments, tab_emp_gaps = st.tabs([
+            "My Competencies & Skills",
+            "Skill Assessments & History",
+            "My Skill-Gap Analysis"
+        ])
 
-            btn_add_sk = st.form_submit_button("Add skill", type="primary")
+        with tab_emp_skills:
+            st.markdown("#### Add or Update Verified Competency")
+            with st.form("add_inline_skill_form"):
+                c_s1, c_s2, c_s3, c_s4 = st.columns([3, 2, 2, 1.5])
+                with c_s1:
+                    new_sk_name = st.text_input("Skill Name *", placeholder="e.g. Python, SQL, Communication, Leadership, Data Analysis")
+                with c_s2:
+                    new_sk_cat = st.selectbox("Category", ["Technical", "Soft Skill", "Leadership", "Tools", "Domain", "Business"])
+                with c_s3:
+                    new_sk_prof = st.selectbox("Proficiency Level", list(LEVELS.keys()))
+                with c_s4:
+                    new_sk_yrs = st.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.0, step=0.5, format="%.1f")
 
-        if btn_add_sk:
-            if new_sk_name.strip():
-                add_employee_skill(emp_id if emp_id else f"EMP-{uid}", new_sk_name.strip(), new_sk_prof, new_sk_cat, new_sk_yrs)
-                add_skill(uid, new_sk_name.strip(), new_sk_cat, new_sk_prof, new_sk_yrs)
-                st.success(f"Added competency '{new_sk_name.strip()}' successfully!")
-                st.rerun()
+                btn_add_sk = st.form_submit_button("Save Competency", type="primary")
+
+            if btn_add_sk:
+                if new_sk_name.strip():
+                    ok_sk, msg_sk = add_employee_skill(
+                        emp_id if emp_id else f"EMP-{uid}",
+                        new_sk_name.strip(),
+                        new_sk_prof,
+                        new_sk_cat,
+                        new_sk_yrs,
+                        org_id=org_id,
+                        user_id=uid
+                    )
+                    add_skill(uid, new_sk_name.strip(), new_sk_cat, new_sk_prof, new_sk_yrs)
+                    if ok_sk:
+                        st.success(f"Added competency '{new_sk_name.strip()}' successfully!")
+                        st.rerun()
+                    else:
+                        st.error(msg_sk)
+                else:
+                    st.error("Please enter a skill name.")
+
+            user_emp_skills = get_employee_skills(emp_id if emp_id else f"EMP-{uid}", org_id=org_id)
+            if user_emp_skills:
+                st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+                st.markdown(f"#### Verified Skills Profile ({len(user_emp_skills)} Competencies)")
+                render_html(render_colored_skills_table(user_emp_skills))
+
+                # Visual Proficiency Progress Bars for Individual Skills
+                st.markdown("##### Skill Proficiency Levels")
+                p_cols = st.columns(2)
+                for i, s_item in enumerate(user_emp_skills):
+                    col_target = p_cols[i % 2]
+                    lvl_label = s_item.get("proficiency_level", "Intermediate")
+                    lvl_pct = {"Beginner": 25, "Intermediate": 50, "Advanced": 75, "Expert": 100}.get(lvl_label, 50)
+                    with col_target:
+                        st.write(f"**{s_item['skill_name']}** &middot; <span style='font-size:0.8rem; color:#64748B;'>{s_item['category']} ({lvl_label} — {lvl_pct}%)</span>", unsafe_allow_html=True)
+                        st.progress(lvl_pct / 100)
+
+                col_d1, col_d2 = st.columns([3, 1])
+                with col_d1:
+                    sk_del_map = {f"{s['skill_name']} ({s['proficiency_level']})": s["id"] for s in user_emp_skills}
+                    sel_del_sk = st.selectbox("Select skill to remove", ["Choose a skill to delete..."] + list(sk_del_map.keys()))
+                with col_d2:
+                    st.write("")
+                    st.write("")
+                    if sel_del_sk != "Choose a skill to delete..." and st.button("Delete Skill", type="secondary"):
+                        delete_employee_skill(sk_del_map[sel_del_sk], employee_id=emp_id, org_id=org_id)
+                        delete_skill(uid, sk_del_map[sel_del_sk])
+                        st.success("Skill removed.")
+                        st.rerun()
             else:
-                st.error("Please enter a skill name.")
+                st.info("No skills cataloged yet. Add your competencies above.")
 
-        user_emp_skills = get_employee_skills(emp_id if emp_id else f"EMP-{uid}") or [
-            {"id": s.get("id", i), "skill_name": s["name"], "category": s.get("category", "Technical"), "proficiency_level": s.get("proficiency", "Intermediate"), "years_exp": s.get("years", 1.0), "last_updated": ""}
-            for i, s in enumerate(skills)
-        ]
-        if user_emp_skills:
-            st.markdown("<div style='margin-top: 1.25rem;'></div>", unsafe_allow_html=True)
-            render_html(render_colored_skills_table(user_emp_skills))
-            col_d1, col_d2 = st.columns([3, 1])
-            with col_d1:
-                sk_del_map = {f"{s['skill_name']} ({s['proficiency_level']})": s["id"] for s in user_emp_skills}
-                sel_del_sk = st.selectbox("Select skill to remove", ["Choose a skill to delete..."] + list(sk_del_map.keys()))
-            with col_d2:
-                st.write("")
-                st.write("")
-                if sel_del_sk != "Choose a skill to delete..." and st.button("Delete Skill", type="secondary"):
-                    delete_employee_skill(sk_del_map[sel_del_sk])
-                    delete_skill(uid, sk_del_map[sel_del_sk])
-                    st.success("Skill removed.")
-                    st.rerun()
+        with tab_emp_assessments:
+            st.markdown("#### Record Skill Assessment")
+            st.caption("Perform a self-evaluation on key capabilities or review your verified assessment score history.")
 
-        # Self-assessment Card matching Screenshot 2
-        st.markdown("<h3 style='font-size: 1.35rem; font-weight: 800; color: #0F172A; margin-top: 2rem; margin-bottom: 0.85rem;'>Self-assessment</h3>", unsafe_allow_html=True)
-        with st.container(border=True):
-            cap_area = st.selectbox("Capability area", ["Technical", "Leadership", "System Design", "Communication", "Problem Solving", "Project Management", "Domain Knowledge"])
-            conf_score = st.slider("Self-rated confidence", min_value=0, max_value=100, value=70)
-            if st.button("Record assessment", type="primary", key="btn_rec_assessment"):
-                add_assessment(uid, cap_area, float(conf_score))
-                st.success(f"Assessment recorded for {cap_area} with {conf_score}% confidence rating!")
-                st.rerun()
+            c_as1, c_as2 = st.columns([1.1, 1], gap="large")
+            with c_as1:
+                with st.form("emp_rec_assessment_form"):
+                    cap_areas = ["Python", "SQL", "Communication", "Leadership", "Data Analysis", "System Design", "Problem Solving", "Project Management", "Domain Knowledge", "Cloud Architecture"]
+                    cap_area = st.selectbox("Capability / Skill Area *", cap_areas)
+                    conf_score = st.slider("Evaluated Proficiency / Confidence Score (0–100%) *", min_value=0, max_value=100, value=75, step=5)
+                    ass_notes = st.text_area("Assessment Evidence & Key Deliverables", placeholder="Describe practical experience, projects, or certifications supporting this assessment...")
+                    btn_save_ass = st.form_submit_button("Record Assessment to Profile", type="primary")
 
-            prev_assessments = get_assessments(uid)
+                if btn_save_ass:
+                    ok_ass = add_assessment(
+                        uid=uid,
+                        category=cap_area,
+                        score=float(conf_score),
+                        employee_id=emp_id,
+                        org_id=org_id,
+                        skill_name=cap_area,
+                        notes=ass_notes
+                    )
+                    if ok_ass:
+                        st.success(f"Assessment recorded for {cap_area} ({conf_score}%) successfully!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to record assessment. Please try again.")
+
+            with c_as2:
+                prev_assessments = get_assessments(uid=uid, employee_id=emp_id, org_id=org_id)
+                st.markdown(f"#### Individual Assessment Results ({len(prev_assessments)})")
+                if prev_assessments:
+                    # Spider/Radar or Bar Chart of Assessments
+                    chart_skills = [a.get("skill_name") or a.get("category") for a in prev_assessments[:8]]
+                    chart_scores = [a.get("score", 0.0) for a in prev_assessments[:8]]
+                    
+                    if len(chart_skills) >= 3:
+                        fig_ass = go.Figure()
+                        fig_ass.add_trace(go.Scatterpolar(
+                            r=chart_scores + [chart_scores[0]],
+                            theta=chart_skills + [chart_skills[0]],
+                            fill='toself',
+                            fillcolor='rgba(16, 185, 129, 0.15)',
+                            line=dict(color='#10B981', width=2),
+                            name='Assessment Score'
+                        ))
+                        fig_ass.update_layout(
+                            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                            showlegend=False,
+                            height=270,
+                            margin=dict(l=25, r=25, t=25, b=25),
+                            paper_bgcolor="#FFFFFF"
+                        )
+                        st.plotly_chart(fig_ass, use_container_width=True)
+                    else:
+                        df_ass_chart = pd.DataFrame({"Capability": chart_skills, "Score": chart_scores})
+                        fig_bar_ass = px.bar(df_ass_chart, x="Capability", y="Score", range_y=[0, 100], color_discrete_sequence=["#10B981"])
+                        fig_bar_ass.update_layout(height=240, margin=dict(l=10, r=10, t=10, b=10))
+                        st.plotly_chart(fig_bar_ass, use_container_width=True)
+                else:
+                    st.info("No assessment scores logged yet. Complete the form to start your assessment baseline.")
+
+            # Full Assessment Log Table
             if prev_assessments:
-                with st.expander(f"Recorded Assessments Log ({len(prev_assessments)})"):
-                    for a_rec in prev_assessments[-5:]:
-                        st.write(f"• **{a_rec['category']}**: Confidence {int(a_rec['score'])}% ({a_rec['created_at'][:10]})")
+                st.markdown("##### Assessment History Log")
+                df_ass_log = pd.DataFrame(prev_assessments)[["skill_name", "score", "notes", "created_at"]]
+                df_ass_log.columns = ["Skill / Capability", "Score (%)", "Notes / Evidence", "Evaluation Date"]
+                st.dataframe(
+                    df_ass_log,
+                    width="stretch",
+                    hide_index=True,
+                    column_config={
+                        "Skill / Capability": st.column_config.TextColumn("Capability Area", width="medium"),
+                        "Score (%)": st.column_config.ProgressColumn("Assessment Score", min_value=0, max_value=100, format="%d%%"),
+                        "Notes / Evidence": st.column_config.TextColumn("Notes / Feedback", width="large"),
+                        "Evaluation Date": st.column_config.DateColumn("Recorded On", format="YYYY-MM-DD")
+                    }
+                )
+
+        with tab_emp_gaps:
+            st.markdown("#### Individual Skill-Gap Analysis & Benchmark Readiness")
+            all_roles = list(ROLE_CATALOG.keys())
+            def_idx = all_roles.index(profile["target_role"]) if profile.get("target_role") in all_roles else 0
+            target_role_eval = st.selectbox("Select Target Role for Gap Analysis", all_roles, index=def_idx, key="emp_sel_bench_role")
+
+            gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval, org_id=org_id)
+            c_g1, c_g2 = st.columns([1.1, 1], gap="large")
+            with c_g1:
+                st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
+                st.progress(gap_result['match_percentage'] / 100)
+
+                if gap_result["gaps"]:
+                    top_gaps = gap_result["gaps"][:6]
+                    cat_names = [g["skill"] for g in top_gaps]
+                    c_vals = [g["current_level"] for g in top_gaps]
+                    r_vals = [g["required_level"] for g in top_gaps]
+
+                    fig_radar = go.Figure()
+                    fig_radar.add_trace(go.Scatterpolar(
+                        r=c_vals + [c_vals[0]],
+                        theta=cat_names + [cat_names[0]],
+                        fill='toself',
+                        fillcolor='rgba(37, 99, 235, 0.15)',
+                        name='Current Level',
+                        line=dict(color='#2563EB', width=2)
+                    ))
+                    fig_radar.add_trace(go.Scatterpolar(
+                        r=r_vals + [r_vals[0]],
+                        theta=cat_names + [cat_names[0]],
+                        fill='toself',
+                        fillcolor='rgba(16, 185, 129, 0.10)',
+                        name='Target Benchmark',
+                        line=dict(color='#10B981', width=2, dash='dot')
+                    ))
+                    fig_radar.update_layout(
+                        polar=dict(
+                            radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
+                        ),
+                        showlegend=True,
+                        height=280,
+                        margin=dict(l=25, r=25, t=25, b=25),
+                        paper_bgcolor="#FFFFFF"
+                    )
+                    st.plotly_chart(fig_radar, use_container_width=True)
+
+            with c_g2:
+                st.markdown(f"**Benchmark Role Standard:**")
+                st.info(f"{gap_result['criteria']}")
+
+                if gap_result["gaps"]:
+                    st.markdown("##### Priority Development Areas")
+                    levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
+                    render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
+
+                if gap_result.get("recommended_training"):
+                    st.markdown("##### Recommended Targeted Training Courses")
+                    for t_item in gap_result["recommended_training"]:
+                        st.markdown(f"• **{t_item}** — Focus program to close competency gaps.")
     else:
         # Admin View with Full Organization Competency Matrix Tabs
         render_html(
@@ -2941,70 +3253,157 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
             <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
                 <div>
                     <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
-                        {get_svg_icon("skills", size=24, color="#10B981")} Skills Management & Competency Matrix
+                        {get_svg_icon("skills", size=24, color="#10B981")} Skills Management & Organization Assessments
                     </div>
                     <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
-                        Map employee competencies against 10 industry benchmark roles and coordinate upskilling programs.
+                        Manage employee competencies, record formal skills assessments, and track role gap analytics for {org_name}.
                     </div>
                 </div>
                 <div>
-                    <span class="badge-status badge-active">COMPETENCY MATRIX</span>
+                    <span class="badge-status badge-active">{org_id}</span>
                 </div>
             </div>
             """
         )
 
-        tab_sk_matrix, tab_sk_gaps, tab_sk_train = st.tabs(["Skills Portfolio", "Role Gap Analysis", "Training & Upskilling"])
+        tab_sk_matrix, tab_sk_assessments, tab_sk_gaps, tab_sk_train = st.tabs([
+            "Skills Portfolio",
+            "Assessments & Evaluations",
+            "Role Gap Analysis",
+            "Training & Upskilling"
+        ])
+
+        all_emps = get_employees(org_id=org_id)
+        if all_emps:
+            emp_sk_map = {f"{e['employee_id']} — {e['name']} ({e['designation']})": e['employee_id'] for e in all_emps}
+        else:
+            emp_sk_map = {}
 
         with tab_sk_matrix:
-            all_emps = get_employees()
-            if all_emps:
-                emp_sk_map = {f"{e['employee_id']} — {e['name']}": e['employee_id'] for e in all_emps}
-                selected_sk_emp = st.selectbox("Select Employee Profile", list(emp_sk_map.keys()))
-                target_code = emp_sk_map[selected_sk_emp]
+            if not emp_sk_map:
+                st.warning(f"No employees found in organization {org_id}. Please register or add employees first.")
             else:
-                target_code = emp_id
+                selected_sk_emp = st.selectbox("Select Employee Profile", list(emp_sk_map.keys()), key="hr_sel_sk_emp")
+                target_code = emp_sk_map[selected_sk_emp]
 
-            col_sk_form, col_sk_table = st.columns([1, 1.5])
-            with col_sk_form:
-                with st.form("add_sk_form"):
-                    st.markdown(f"##### Add Competency for `{target_code}`")
-                    sk_name = st.text_input("Skill Name *", placeholder="e.g. Python, Docker, React, Kubernetes")
-                    sk_cat = st.selectbox("Skill Category", ["Technical", "Domain", "Soft Skill", "Leadership", "Tool", "Business"])
-                    sk_prof = st.selectbox("Proficiency Level", list(LEVELS.keys()))
-                    sk_yrs = st.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.5, step=0.5)
-                    submit_sk = st.form_submit_button("Add Skill to Portfolio", type="primary")
+                col_sk_form, col_sk_table = st.columns([1, 1.5])
+                with col_sk_form:
+                    with st.form("add_sk_form"):
+                        st.markdown(f"##### Add Competency for `{target_code}`")
+                        sk_name = st.text_input("Skill Name *", placeholder="e.g. Python, SQL, Docker, React, AWS")
+                        sk_cat = st.selectbox("Skill Category", ["Technical", "Domain", "Soft Skill", "Leadership", "Tool", "Business"])
+                        sk_prof = st.selectbox("Proficiency Level", list(LEVELS.keys()))
+                        sk_yrs = st.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.5, step=0.5)
+                        submit_sk = st.form_submit_button("Add Skill to Portfolio", type="primary")
 
-                if submit_sk:
-                    ok_sk, msg_sk = add_employee_skill(target_code, sk_name, sk_prof, sk_cat, sk_yrs)
-                    if ok_sk:
-                        st.success(msg_sk)
-                        st.rerun()
+                    if submit_sk:
+                        ok_sk, msg_sk = add_employee_skill(target_code, sk_name, sk_prof, sk_cat, sk_yrs, org_id=org_id)
+                        if ok_sk:
+                            st.success(msg_sk)
+                            st.rerun()
+                        else:
+                            st.error(msg_sk)
+
+                with col_sk_table:
+                    emp_skills = get_employee_skills(target_code, org_id=org_id)
+                    st.markdown(f"##### Verified Skills Catalog ({len(emp_skills)})")
+                    if emp_skills:
+                        render_html(render_colored_skills_table(emp_skills))
+                        sk_del_map = {f"{s['skill_name']} ({s['proficiency_level']})": s["id"] for s in emp_skills}
+                        sel_del_sk = st.selectbox("Remove Competency", ["Select skill to remove..."] + list(sk_del_map.keys()), key="hr_del_sk_sel")
+                        if sel_del_sk != "Select skill to remove..." and st.button("Delete Skill", key="hr_del_sk_btn"):
+                            delete_employee_skill(sk_del_map[sel_del_sk], employee_id=target_code, org_id=org_id)
+                            st.success("Skill removed successfully.")
+                            st.rerun()
                     else:
-                        st.error(msg_sk)
+                        st.info("No skills cataloged for this employee profile yet.")
 
-            with col_sk_table:
-                emp_skills = get_employee_skills(target_code)
-                st.markdown(f"##### Verified Skills Catalog ({len(emp_skills)})")
-                if emp_skills:
-                    render_html(render_colored_skills_table(emp_skills))
-                    sk_del_map = {f"{s['skill_name']} ({s['proficiency_level']})": s["id"] for s in emp_skills}
-                    sel_del_sk = st.selectbox("Remove Competency", ["Select skill to remove..."] + list(sk_del_map.keys()))
-                    if sel_del_sk != "Select skill to remove..." and st.button("Delete Skill"):
-                        delete_employee_skill(sk_del_map[sel_del_sk])
-                        st.success("Skill removed successfully.")
-                        st.rerun()
-                else:
-                    st.info("No skills cataloged for this employee profile yet.")
+        with tab_sk_assessments:
+            st.markdown("#### HR Skills Assessment & Capability Evaluation")
+            st.caption("Record formal skills evaluations and monitor assessment score history for employees in your organization.")
 
+            if not emp_sk_map:
+                st.warning("No employees available to evaluate.")
+            else:
+                sel_ass_emp = st.selectbox("Select Employee to Assess", list(emp_sk_map.keys()), key="hr_sel_ass_emp")
+                target_ass_code = emp_sk_map[sel_ass_emp]
+
+                c_haf1, c_haf2 = st.columns([1.1, 1], gap="large")
+                with c_haf1:
+                    with st.form("hr_rec_assessment_form"):
+                        st.markdown(f"##### Record Assessment for `{target_ass_code}`")
+                        hr_cap_areas = ["Python", "SQL", "Communication", "Leadership", "Data Analysis", "System Design", "Problem Solving", "Project Management", "Domain Knowledge", "Cloud Architecture"]
+                        hr_cap_area = st.selectbox("Capability / Competency *", hr_cap_areas, key="hr_ass_cap")
+                        hr_conf_score = st.slider("Assessment Score (0–100%) *", min_value=0, max_value=100, value=80, step=5, key="hr_ass_score")
+                        hr_ass_notes = st.text_area("HR / Manager Evaluation Notes", placeholder="Demonstrated skills in recent sprint, code review scores, technical proficiency...", key="hr_ass_notes")
+                        btn_hr_ass = st.form_submit_button("Submit Assessment Record", type="primary")
+
+                    if btn_hr_ass:
+                        ok_hr_ass = add_assessment(
+                            category=hr_cap_area,
+                            score=float(hr_conf_score),
+                            employee_id=target_ass_code,
+                            org_id=org_id,
+                            skill_name=hr_cap_area,
+                            notes=hr_ass_notes
+                        )
+                        if ok_hr_ass:
+                            st.success(f"Assessment score of {hr_conf_score}% recorded for {target_ass_code} ({hr_cap_area})!")
+                            st.rerun()
+                        else:
+                            st.error("Failed to record assessment.")
+
+                with c_haf2:
+                    hr_emp_ass = get_assessments(employee_id=target_ass_code, org_id=org_id)
+                    st.markdown(f"##### Assessment Trajectory for `{target_ass_code}` ({len(hr_emp_ass)})")
+                    if hr_emp_ass:
+                        chart_skills = [a.get("skill_name") or a.get("category") for a in hr_emp_ass[:8]]
+                        chart_scores = [a.get("score", 0.0) for a in hr_emp_ass[:8]]
+                        if len(chart_skills) >= 3:
+                            fig_hr_ass = go.Figure()
+                            fig_hr_ass.add_trace(go.Scatterpolar(
+                                r=chart_scores + [chart_scores[0]],
+                                theta=chart_skills + [chart_skills[0]],
+                                fill='toself',
+                                fillcolor='rgba(16, 185, 129, 0.15)',
+                                line=dict(color='#10B981', width=2),
+                                name='Assessment Score'
+                            ))
+                            fig_hr_ass.update_layout(
+                                polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                                showlegend=False,
+                                height=270,
+                                margin=dict(l=25, r=25, t=25, b=25),
+                                paper_bgcolor="#FFFFFF"
+                            )
+                            st.plotly_chart(fig_hr_ass, use_container_width=True)
+                        else:
+                            df_h_chart = pd.DataFrame({"Capability": chart_skills, "Score": chart_scores})
+                            fig_bar_h = px.bar(df_h_chart, x="Capability", y="Score", range_y=[0, 100], color_discrete_sequence=["#10B981"])
+                            fig_bar_h.update_layout(height=240, margin=dict(l=10, r=10, t=10, b=10))
+                            st.plotly_chart(fig_bar_h, use_container_width=True)
+                    else:
+                        st.info(f"No assessments recorded for {target_ass_code} yet.")
+
+                if hr_emp_ass:
+                    st.markdown("##### Assessment Records Log")
+                    df_h_log = pd.DataFrame(hr_emp_ass)[["skill_name", "score", "notes", "created_at"]]
+                    df_h_log.columns = ["Skill / Competency", "Score (%)", "Manager Notes", "Evaluation Date"]
+                    st.dataframe(df_h_log, width="stretch", hide_index=True)
 
         with tab_sk_gaps:
             st.markdown("#### Benchmark Role Gap Analysis & Competency Radar")
             st.caption("Compare current verified competencies against 10 corporate benchmark roles to pinpoint development priorities.")
+            if emp_sk_map:
+                sel_gap_emp = st.selectbox("Select Employee for Gap Analysis", list(emp_sk_map.keys()), key="hr_sel_gap_emp")
+                target_gap_code = emp_sk_map[sel_gap_emp]
+            else:
+                target_gap_code = emp_id
+
             all_roles = list(ROLE_CATALOG.keys())
             target_role_eval = st.selectbox("Benchmark Target Role", all_roles, key="sel_bench_role")
 
-            gap_result = get_employee_skill_gaps(target_code, target_role_eval)
+            gap_result = get_employee_skill_gaps(target_gap_code, target_role_eval, org_id=org_id)
             
             c_radar1, c_radar2 = st.columns([1.1, 1])
             with c_radar1:
@@ -3056,7 +3455,6 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                 if gap_result["gaps"]:
                     sim_skill = st.selectbox("Select Competency to Boost", [g["skill"] for g in gap_result["gaps"]], key="sim_sk_sel")
                     sim_level = st.select_slider("Target Simulated Level", options=[1, 2, 3, 4], value=3, format_func=lambda x: ['None', 'Beginner', 'Intermediate', 'Advanced', 'Expert'][x], key="sim_sk_lvl")
-                    # Calculate simulated match
                     old_m = gap_result['match_percentage']
                     boosted_m = min(100, old_m + (sim_level * 5))
                     st.markdown(
@@ -3094,18 +3492,18 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                     submit_train = st.form_submit_button("Assign Course", type="primary")
 
                 if submit_train:
-                    ok_tr, msg_tr = add_training_record(t_emp_code, t_course, t_skill, t_provider, t_due.isoformat(), "Enrolled")
+                    ok_tr, msg_tr = add_training_record(t_emp_code, t_course, t_skill, t_provider, t_due.isoformat(), "Enrolled", org_id=org_id)
                     if ok_tr:
                         st.success(msg_tr)
                         st.rerun()
                     else:
                         st.error(msg_tr)
 
-            trainings = get_training_records(None if is_admin else target_code)
+            trainings = get_training_records(org_id=org_id)
             if trainings:
                 render_html(render_colored_training_table(trainings))
             else:
-                st.info("No active training courses recorded.")
+                st.info(f"No active training courses recorded for {org_id}.")
 
 # ==============================================================================
 # 5B. ROLE MATCH & GAPS
@@ -3128,7 +3526,7 @@ elif page in ["Role Match & Gaps", "Role Match & Competency Gaps", "Competency G
     default_role_idx = all_roles.index(profile["target_role"]) if profile.get("target_role") in all_roles else 0
     target_role_eval = st.selectbox("Benchmark Target Role", all_roles, index=default_role_idx, key="sel_role_match_page")
 
-    gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval)
+    gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval, org_id=org_id)
 
     c_radar1, c_radar2 = st.columns([1.1, 1], gap="large")
     with c_radar1:
@@ -3225,7 +3623,7 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
 
 
     goal_user_id = None if is_admin else uid
-    goal_stats = get_goal_stats(user_id=goal_user_id)
+    goal_stats = get_goal_stats(user_id=goal_user_id, org_id=org_id)
 
     if "cg_status_sel" not in st.session_state:
         st.session_state.cg_status_sel = "All Statuses"
@@ -3461,7 +3859,7 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
                     st.session_state.cg_status_sel = "All Statuses"
                     st.rerun()
 
-        goals_data = get_goals(user_id=goal_user_id, status_filter=status_filter if status_filter != "All Statuses" else None)
+        goals_data = get_goals(user_id=goal_user_id, status_filter=status_filter if status_filter != "All Statuses" else None, org_id=org_id)
 
         if goals_data:
             if goal_view_mode == "Roadmap View":
@@ -3593,7 +3991,8 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
                     target_date=cg_date.isoformat(),
                     progress=cg_prog,
                     employee_id=emp_id,
-                    target_designation="" if cg_role == "Not Specified" else cg_role
+                    target_designation="" if cg_role == "Not Specified" else cg_role,
+                    org_id=org_id
                 )
                 if ok_cg:
                     st.success(msg_cg)
@@ -3604,7 +4003,7 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
     # --- TAB 3: MANAGE GOALS ---
     with tab_g_edit:
         st.markdown("#### Edit or Delete Career Goals")
-        my_all_goals = get_goals(user_id=goal_user_id)
+        my_all_goals = get_goals(user_id=goal_user_id, org_id=org_id)
         if not my_all_goals:
             st.info("No goals available to manage.")
         else:
@@ -3688,10 +4087,10 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
         """
     )
 
-    employees = get_employees()
-    reviews = get_performance_reviews()
-    goals = get_goals()
-    dept_summary = get_department_performance_summary()
+    employees = get_employees(org_id=org_id)
+    reviews = get_performance_reviews(org_id=org_id)
+    goals = get_goals(org_id=org_id)
+    dept_summary = get_department_performance_summary(org_id=org_id)
     tab_rep_overview, tab_rep_csv, tab_rep_pdf = st.tabs(["Analytics Overview", "Download CSV Data Reports", "Generate PDF Dossier"])
 
     with tab_rep_overview:
@@ -3752,10 +4151,10 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
         a = analysis_bundle()
         gaps = gap_analysis(profile.get("target_role", ""), skills)
         recs = recommendations(profile, skills)
-        assessments = get_assessments(uid)
+        assessments = get_assessments(uid=uid, employee_id=emp_id, org_id=org_id)
         progress = get_progress(uid)
-        user_goals = get_goals(user_id=uid)
-        user_reviews = get_performance_reviews(employee_id=emp_id)
+        user_goals = get_goals(user_id=uid, org_id=org_id)
+        user_reviews = get_performance_reviews(employee_id=emp_id, org_id=org_id)
 
         pdf_bytes = create_report(
             profile=profile,
