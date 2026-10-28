@@ -1030,3 +1030,28 @@ def test_21_resume_studio_text_formatting_and_ai_audit_integration(monkeypatch):
     assert audit["ats_score"] > 0
     assert len(audit["bullet_optimizations"]) > 0
 
+def test_22_employee_dashboard_skills_and_assessment_key_resilience():
+    """Scenario 22: Dashboard skills and assessment data structures never raise KeyError."""
+    from services.core import get_employee_dashboard_data, add_skill, add_employee_skill
+
+    # 1. Existing user dashboard data has required fields
+    dash = get_employee_dashboard_data(user_id=1)
+    assert "skills" in dash
+    assert isinstance(dash["skills"], list)
+    for s in dash["skills"]:
+        assert "category" in s
+        assert "skill_name" in s
+        assert "proficiency_level" in s
+        # Ensure string interpolation works without KeyError
+        formatted = f"**{s['skill_name']}** ({s['proficiency_level']}) - {s['category']}"
+        assert len(formatted) > 0
+
+    # 2. Existing employee EMP107 in ORG-TALENT-01 has verified skills
+    dash_emp = get_employee_dashboard_data(user_id=2, employee_id="EMP107", org_id="ORG-TALENT-01")
+    assert any(s["skill_name"] == "Python" and "category" in s for s in dash_emp["skills"])
+
+    # 3. Verify user with no skills returns empty list safely without exception
+    dash_empty = get_employee_dashboard_data(user_id=99999, employee_id="EMP-NONE", org_id="ORG-TALENT-01")
+    assert isinstance(dash_empty["skills"], list)
+    assert isinstance(dash_empty["assessments"], list)
+

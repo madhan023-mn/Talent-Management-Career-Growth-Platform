@@ -202,10 +202,10 @@ def create_report(
         skill_rows = [[Paragraph("<b>Skill</b>", bold_style), Paragraph("<b>Category</b>", bold_style), Paragraph("<b>Proficiency</b>", bold_style), Paragraph("<b>Experience</b>", bold_style)]]
         for s in skills:
             skill_rows.append([
-                Paragraph(s["name"], body_style),
-                Paragraph(s["category"], body_style),
-                Paragraph(s["proficiency"], body_style),
-                Paragraph(f"{s['years']} yrs", body_style)
+                Paragraph(s.get("name") or s.get("skill_name") or "Skill", body_style),
+                Paragraph(s.get("category") or "Technical", body_style),
+                Paragraph(s.get("proficiency") or s.get("proficiency_level") or "Intermediate", body_style),
+                Paragraph(f"{s.get('years', s.get('years_exp', 1.0))} yrs", body_style)
             ])
         s_table = Table(skill_rows, colWidths=[180, 120, 120, 110])
         s_table.setStyle(TableStyle([

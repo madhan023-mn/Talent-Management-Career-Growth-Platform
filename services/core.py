@@ -2004,10 +2004,14 @@ def get_profile(uid: Optional[int] = None, user_id: Optional[int] = None) -> Dic
         row = cursor.fetchone()
         if row:
             return dict(row)
-        with conn:
-            conn.execute("INSERT OR IGNORE INTO profiles (user_id) VALUES (?)", (target_id,))
-        cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (target_id,))
-        return dict(cursor.fetchone())
+        try:
+            with conn:
+                conn.execute("INSERT OR IGNORE INTO profiles (user_id) VALUES (?)", (target_id,))
+            cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (target_id,))
+            res = cursor.fetchone()
+            return dict(res) if res else {}
+        except Exception:
+            return {}
     finally:
         conn.close()
 
@@ -2564,7 +2568,26 @@ def get_employee_dashboard_data(user_id: int, employee_id: Optional[str] = None,
     trainings = get_training_records(employee_id=resolved_emp_id, org_id=resolved_org) if resolved_emp_id else []
 
     legacy_skills = list_skills(user_id)
-    all_skills_formatted = skills if skills else [{"skill_name": s["name"], "proficiency_level": s["proficiency"], "years_exp": s["years"]} for s in legacy_skills]
+    if skills:
+        all_skills_formatted = [
+            {
+                "skill_name": s.get("skill_name") or s.get("name") or "Skill",
+                "proficiency_level": s.get("proficiency_level") or s.get("proficiency") or "Intermediate",
+                "years_exp": s.get("years_exp") or s.get("years") or 0.0,
+                "category": s.get("category") or "Technical"
+            }
+            for s in skills
+        ]
+    else:
+        all_skills_formatted = [
+            {
+                "skill_name": s.get("name") or s.get("skill_name") or "Skill",
+                "proficiency_level": s.get("proficiency") or s.get("proficiency_level") or "Intermediate",
+                "years_exp": s.get("years") or s.get("years_exp") or 0.0,
+                "category": s.get("category") or "Technical"
+            }
+            for s in legacy_skills
+        ]
     comp_skills = [{"name": s.get("skill_name") or s.get("name"), "proficiency": s.get("proficiency_level") or s.get("proficiency")} for s in all_skills_formatted]
 
     completion, missing = profile_completion(profile, comp_skills)

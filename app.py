@@ -1208,8 +1208,8 @@ if not st.session_state.user:
 # ------------------------------------------------------------------------------
 # AUTHENTICATED CONTEXT
 # ------------------------------------------------------------------------------
-user = st.session_state.user
-uid = user["id"]
+user = st.session_state.get("user") or {}
+uid = user.get("id", 1)
 is_admin = user.get("role") == "admin"
 emp_id = user.get("employee_id") or f"EMP{uid:03d}"
 org_id = user.get("org_id") or "ORG-TALENT-01"
@@ -1218,7 +1218,7 @@ profile = get_profile(uid)
 skills = list_skills(uid)
 
 # Initials for avatar
-name_parts = user["name"].strip().split()
+name_parts = (user.get("name") or "User").strip().split()
 initials = (name_parts[0][0] + (name_parts[-1][0] if len(name_parts) > 1 else "")).upper()
 
 def navigate_to(target_page: str):
@@ -2056,14 +2056,17 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
             if skills_dist:
                 sk_rows_html = ""
                 for s in skills_dist[:4]:
-                    pct = int(min(100, (s["avg_level"] / 4.0) * 100))
+                    s_name = s.get("skill_name") or s.get("name") or "Skill"
+                    s_cnt = s.get("count", 0)
+                    s_avg = s.get("avg_level", 2)
+                    pct = int(min(100, (s_avg / 4.0) * 100))
                     sk_rows_html += f"""
                     <div class="progress-widget-row" style="margin-bottom: 9px;">
-                        <span class="progress-widget-name" style="font-size: 0.82rem; min-width: 95px;">{s['skill_name']} ({s['count']})</span>
+                        <span class="progress-widget-name" style="font-size: 0.82rem; min-width: 95px;">{s_name} ({s_cnt})</span>
                         <div class="progress-bar-track">
                             <div class="progress-bar-fill-blue" style="width: {pct}%;"></div>
                         </div>
-                        <span class="progress-widget-pct" style="font-size: 0.80rem;">Lvl {s['avg_level']}</span>
+                        <span class="progress-widget-pct" style="font-size: 0.80rem;">Lvl {s_avg}</span>
                     </div>
                     """
                 render_html(f"<div style='margin-top: 12px;'>{sk_rows_html}</div>")
@@ -2353,9 +2356,11 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
             indiv_skills = emp_dash_data.get("skills", [])
             if indiv_skills:
                 for s_i in indiv_skills:
-                    lvl_lbl = s_i.get("proficiency_level", "Intermediate")
+                    s_name = s_i.get("skill_name") or s_i.get("name") or "Skill"
+                    lvl_lbl = s_i.get("proficiency_level") or s_i.get("proficiency") or "Intermediate"
                     lvl_num = {"Beginner": 25, "Intermediate": 50, "Advanced": 75, "Expert": 100}.get(lvl_lbl, 50)
-                    st.write(f"**{s_i['skill_name']}** ({lvl_lbl}) &middot; <span style='font-size:0.8rem; color:#64748B;'>{s_i['category']}</span>", unsafe_allow_html=True)
+                    s_cat = s_i.get("category") or "Technical"
+                    st.write(f"**{s_name}** ({lvl_lbl}) &middot; <span style='font-size:0.8rem; color:#64748B;'>{s_cat}</span>", unsafe_allow_html=True)
                     st.progress(lvl_num / 100)
             else:
                 st.info("No individual skills cataloged yet.")
@@ -2366,8 +2371,16 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
             st.markdown("#### Recent Assessment Evaluations")
             indiv_ass = emp_dash_data.get("assessments", [])
             if indiv_ass:
-                df_ia = pd.DataFrame(indiv_ass[:6])[["skill_name", "score", "notes", "created_at"]]
-                df_ia.columns = ["Capability", "Score (%)", "Notes", "Date"]
+                ass_records = [
+                    {
+                        "Capability": a.get("skill_name") or a.get("name") or "Capability Area",
+                        "Score (%)": a.get("score") if a.get("score") is not None else (a.get("assessment_score") or 0),
+                        "Notes": a.get("notes") or "",
+                        "Date": a.get("created_at") or a.get("date") or "",
+                    }
+                    for a in indiv_ass[:6]
+                ]
+                df_ia = pd.DataFrame(ass_records)
                 st.dataframe(
                     df_ia,
                     width="stretch",
@@ -3088,15 +3101,17 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                 p_cols = st.columns(2)
                 for i, s_item in enumerate(user_emp_skills):
                     col_target = p_cols[i % 2]
-                    lvl_label = s_item.get("proficiency_level", "Intermediate")
+                    lvl_label = s_item.get("proficiency_level") or s_item.get("proficiency") or "Intermediate"
                     lvl_pct = {"Beginner": 25, "Intermediate": 50, "Advanced": 75, "Expert": 100}.get(lvl_label, 50)
+                    s_name = s_item.get("skill_name") or s_item.get("name") or "Skill"
+                    s_cat = s_item.get("category") or "Technical"
                     with col_target:
-                        st.write(f"**{s_item['skill_name']}** &middot; <span style='font-size:0.8rem; color:#64748B;'>{s_item['category']} ({lvl_label} — {lvl_pct}%)</span>", unsafe_allow_html=True)
+                        st.write(f"**{s_name}** &middot; <span style='font-size:0.8rem; color:#64748B;'>{s_cat} ({lvl_label} — {lvl_pct}%)</span>", unsafe_allow_html=True)
                         st.progress(lvl_pct / 100)
 
                 col_d1, col_d2 = st.columns([3, 1])
                 with col_d1:
-                    sk_del_map = {f"{s['skill_name']} ({s['proficiency_level']})": s["id"] for s in user_emp_skills}
+                    sk_del_map = {f"{s.get('skill_name') or s.get('name') or 'Skill'} ({s.get('proficiency_level') or s.get('proficiency') or 'Intermediate'})": s.get("id") for s in user_emp_skills}
                     sel_del_sk = st.selectbox("Select skill to remove", ["Choose a skill to delete..."] + list(sk_del_map.keys()))
                 with col_d2:
                     st.write("")
@@ -3175,8 +3190,16 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
             # Full Assessment Log Table
             if prev_assessments:
                 st.markdown("##### Assessment History Log")
-                df_ass_log = pd.DataFrame(prev_assessments)[["skill_name", "score", "notes", "created_at"]]
-                df_ass_log.columns = ["Skill / Capability", "Score (%)", "Notes / Evidence", "Evaluation Date"]
+                ass_log_records = [
+                    {
+                        "Skill / Capability": a.get("skill_name") or a.get("name") or "Capability Area",
+                        "Score (%)": a.get("score") if a.get("score") is not None else (a.get("assessment_score") or 0),
+                        "Notes / Evidence": a.get("notes") or "",
+                        "Evaluation Date": a.get("created_at") or a.get("date") or "",
+                    }
+                    for a in prev_assessments
+                ]
+                df_ass_log = pd.DataFrame(ass_log_records)
                 st.dataframe(
                     df_ass_log,
                     width="stretch",
@@ -3311,7 +3334,7 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                     st.markdown(f"##### Verified Skills Catalog ({len(emp_skills)})")
                     if emp_skills:
                         render_html(render_colored_skills_table(emp_skills))
-                        sk_del_map = {f"{s['skill_name']} ({s['proficiency_level']})": s["id"] for s in emp_skills}
+                        sk_del_map = {f"{s.get('skill_name') or s.get('name') or 'Skill'} ({s.get('proficiency_level') or s.get('proficiency') or 'Intermediate'})": s.get("id") for s in emp_skills}
                         sel_del_sk = st.selectbox("Remove Competency", ["Select skill to remove..."] + list(sk_del_map.keys()), key="hr_del_sk_sel")
                         if sel_del_sk != "Select skill to remove..." and st.button("Delete Skill", key="hr_del_sk_btn"):
                             delete_employee_skill(sk_del_map[sel_del_sk], employee_id=target_code, org_id=org_id)
@@ -3389,8 +3412,16 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
 
                 if hr_emp_ass:
                     st.markdown("##### Assessment Records Log")
-                    df_h_log = pd.DataFrame(hr_emp_ass)[["skill_name", "score", "notes", "created_at"]]
-                    df_h_log.columns = ["Skill / Competency", "Score (%)", "Manager Notes", "Evaluation Date"]
+                    hr_ass_records = [
+                        {
+                            "Skill / Competency": a.get("skill_name") or a.get("name") or "Competency Area",
+                            "Score (%)": a.get("score") if a.get("score") is not None else (a.get("assessment_score") or 0),
+                            "Manager Notes": a.get("notes") or "",
+                            "Evaluation Date": a.get("created_at") or a.get("date") or "",
+                        }
+                        for a in hr_emp_ass
+                    ]
+                    df_h_log = pd.DataFrame(hr_ass_records)
                     st.dataframe(df_h_log, width="stretch", hide_index=True)
 
         with tab_sk_gaps:
