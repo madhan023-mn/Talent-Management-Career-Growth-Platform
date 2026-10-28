@@ -1055,3 +1055,39 @@ def test_22_employee_dashboard_skills_and_assessment_key_resilience():
     assert isinstance(dash_empty["skills"], list)
     assert isinstance(dash_empty["assessments"], list)
 
+def test_23_healthcheck_and_database_backup_resilience():
+    """Scenario 23: Production healthcheck, WAL mode, and online database snapshots work cleanly."""
+    from services.core import get_connection, check_db_health
+    from healthcheck import evaluate_health
+    from scripts.db_backup import create_backup, list_backups
+
+    # 1. Verify WAL mode and busy timeout
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("PRAGMA journal_mode")
+        mode = cur.fetchone()[0]
+        assert mode.lower() == "wal"
+    finally:
+        conn.close()
+
+    # 2. Verify healthcheck evaluation
+    health = evaluate_health()
+    assert "status" in health
+    assert "database" in health
+    assert health["database"]["connected"] is True
+    assert health["database"]["integrity"].lower() == "ok"
+    # Verify no employee records or sensitive details leaked in healthcheck
+    health_str = str(health)
+    assert "password" not in health_str.lower()
+    assert "salt" not in health_str.lower()
+
+    # 3. Verify online snapshot backup
+    backup_file = create_backup(retention_count=5)
+    assert backup_file.exists()
+    assert backup_file.stat().st_size > 0
+    backups = list_backups()
+    assert len(backups) >= 1
+    assert any(b["filename"] == backup_file.name for b in backups)
+
+

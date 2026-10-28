@@ -154,3 +154,25 @@ All 13 automated test suites verify:
 - `career_goals` (id, user_id, employee_id, title, target_designation, description, target_date, progress, status, created_at, updated_at)
 - `training_records` (id, employee_id, course_name, provider, target_skill, target_completion_date, status, score, created_at)
 - `profiles`, `skills`, `assessments`, `progress`, `goals` (backward compatibility)
+
+---
+
+## 🚀 24/7 Production Deployment & Hosting
+
+Talent Growth is configured for **24/7 continuous uptime** without inactivity sleep or data loss:
+
+- **Deployment Guide**: Full platform comparison, pricing, and step-by-step runbooks for Render, Railway, Fly.io, and Linux VPS are available in [`docs/DEPLOYMENT_AND_24_7_HOSTING.md`](docs/DEPLOYMENT_AND_24_7_HOSTING.md).
+- **Docker Compose**:
+  ```bash
+  docker compose up -d --build
+  ```
+- **Health Check & Diagnostics**:
+  ```bash
+  python healthcheck.py
+  ```
+- **Online Database Backups**:
+  ```bash
+  python scripts/db_backup.py --backup
+  python scripts/db_backup.py --list
+  ```
+

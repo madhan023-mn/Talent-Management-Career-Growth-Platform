@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
   <title>Talent Growth — Talent Management Platform</title>
   <meta name="description" content="Talent Management Platform for Employee Performance and Career Growth." />
-  <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="apple-touch-icon" href="favicon.png" />
+  <meta name="app-backend-url" content="https://talent-growth.streamlit.app" />
   <style>
     * {
       box-sizing: border-box;
@@ -115,11 +115,13 @@
     const frame = document.getElementById("mainFrame");
     const loader = document.getElementById("loadingScreen");
 
-    // Allow dynamic override via ?app= query param if needed
+    // Allow dynamic override via ?app= query param or app-backend-url meta tag
+    const metaBackend = document.querySelector('meta[name="app-backend-url"]');
+    const defaultBackend = (metaBackend ? metaBackend.getAttribute("content") : "https://talent-growth.streamlit.app").replace(/\/$/, "");
     const params = new URLSearchParams(window.location.search);
-    if (params.get("app")) {
-      const customUrl = params.get("app").replace(/\/$/, "");
-      const embedUrl = customUrl.includes("?") ? `${customUrl}&embed=true` : `${customUrl}/?embed=true`;
+    const targetUrl = params.get("app") ? params.get("app").replace(/\/$/, "") : defaultBackend;
+    const embedUrl = targetUrl.includes("?") ? `${targetUrl}&embed=true` : `${targetUrl}/?embed=true`;
+    if (frame.src !== embedUrl) {
       frame.src = embedUrl;
     }
 

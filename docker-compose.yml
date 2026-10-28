@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  talent-growth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: talent-growth-app:latest
+    container_name: talent_growth_platform
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8501}:8501"
+    environment:
+      - PORT=8501
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - DATABASE_PATH=/app/data/talentsphere.db
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - APP_URL=${APP_URL:-http://localhost:8501}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+    volumes:
+      # Persistent named volume ensures database records survive container restarts and updates
+      - talent_growth_data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+volumes:
+  talent_growth_data:
+    name: talent_growth_production_data
