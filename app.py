@@ -59,8 +59,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize database schema and ensure migrations
-init_db()
+# Initialize database schema and ensure migrations (cached once per application lifecycle)
+@st.cache_resource(show_spinner="Initializing Talent Growth database...")
+def ensure_database_ready() -> bool:
+    init_db()
+    return True
+
+ensure_database_ready()
 
 @st.cache_data
 def get_logo_b64(which: str = "icon") -> str:
