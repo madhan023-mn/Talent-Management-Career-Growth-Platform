@@ -5,13 +5,28 @@ on:
     - cron: '0 */3 * * *' # Runs automatically every 3 hours
   workflow_dispatch: # Allows manual trigger from GitHub Actions tab
 
+permissions:
+  contents: read
+
 jobs:
   keep-alive:
     runs-on: ubuntu-latest
     steps:
+      - name: Fast Ping Endpoints
+        run: |
+          echo "Pinging web endpoints..."
+          for url in \
+            "https://talent-growth.streamlit.app" \
+            "https://talent-growths.vercel.app" \
+            "https://talent-growth-snowy.vercel.app"; do
+            echo "Ping: $url"
+            curl -sS -L --max-time 15 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" "$url" > /dev/null || true
+          done
+
       - name: Wake and Keep Alive Streamlit App
-        uses: gpenessot/streamlit-keep-alive@v1
+        uses: gpenessot/streamlit-keep-alive@main
         with:
           app-urls: |
             https://talent-growth.streamlit.app
-            https://talent-growth-snowy.vercel.app
+            https://talent-growths.vercel.app
+          timeout: '90'
