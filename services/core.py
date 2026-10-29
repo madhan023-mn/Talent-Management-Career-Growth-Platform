@@ -1,4 +1,5 @@
 from __future__ import annotations
+import sys
 import os
 import re
 import json
@@ -9,10 +10,13 @@ from io import BytesIO
 from pathlib import Path
 from datetime import datetime, date
 from typing import Any, Dict, List, Optional, Tuple
-import pandas as pd
-from services.email_service import send_welcome_email
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+import pandas as pd
+from services.email_service import send_welcome_email
 
 LEVELS = {
     "Beginner": 1,

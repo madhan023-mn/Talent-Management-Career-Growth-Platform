@@ -1,8 +1,20 @@
 from __future__ import annotations
+import sys
+import os
+from pathlib import Path
+
+# Guarantee application root directory is on sys.path and is current working directory
+_ROOT = Path(__file__).resolve().parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+try:
+    os.chdir(str(_ROOT))
+except Exception:
+    pass
+
 from typing import Any, Dict, List, Optional, Tuple, Union
 import json
 import textwrap
-import os
 import base64
 from io import BytesIO
 from datetime import datetime, date
@@ -1699,7 +1711,7 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
             st.markdown(
                 f"""
                 <div style="font-size: 0.83rem; color: {user_subtitle_color}; margin-top: 2px; margin-bottom: 4px; padding-left: 2px;">
-                    Signed in as <strong>{user['name']}</strong> &bull; {role_title}
+                    Signed in as <strong>{user.get('name', 'User')}</strong> &bull; {role_title}
                 </div>
                 <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(37, 99, 235, 0.12); border: 1px solid rgba(37, 99, 235, 0.28); border-radius: 6px; padding: 3px 8px; margin-bottom: 1.15rem; font-size: 0.76rem; color: {user_subtitle_color};">
                     <span style="font-weight: 700; color: #60A5FA;">{user.get('org_name', 'Talent Growth')}</span>
@@ -1793,7 +1805,7 @@ with col_top_trail:
         <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
             <span style="display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 3px 10px; border-radius: 9999px;">
                 {get_svg_icon("user", size=13, color="#475569")}
-                <strong>{user['name']}</strong> &bull; {user['role'].upper()}
+                <strong>{user.get('name', 'User')}</strong> &bull; {user.get('role', 'employee').upper()}
             </span>
             <span style="color: #CBD5E1;">|</span>
             <span style="color: {badge_color}; font-weight: 700; background: {badge_bg}; border: 1px solid {badge_border}; padding: 3px 10px; border-radius: 9999px;">{page}</span>
@@ -1835,7 +1847,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                 </div>
                 <div class="header-user-badge">
                     <div class="header-user-avatar">{initials}</div>
-                    <span class="header-user-name">{user['name']}</span>
+                    <span class="header-user-name">{user.get('name', 'User')}</span>
                     <span style="font-size: 0.72rem; color: #2563EB; font-weight: 700; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 9999px; padding: 2px 7px;">ADMIN</span>
                 </div>
             </div>
@@ -1856,7 +1868,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     {get_svg_icon("sparkles", size=13, color="#FEF08A")} Executive Talent Hub &bull; {org_display_name}
                 </div>
                 <div style="font-size: 1.85rem; font-weight: 800; color: #FFFFFF; line-height: 1.25; margin-bottom: 6px;">
-                    Welcome back, {user['name']}
+                    Welcome back, {user.get('name', 'User')}
                 </div>
                 <div style="font-size: 0.96rem; color: rgba(255, 255, 255, 0.92); font-weight: 400; line-height: 1.5;">
                     Here's an overview of workforce performance, competency shortfalls, and career growth milestones.
@@ -2180,7 +2192,7 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
                     <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
                 </svg>
                 <h1 style="font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin: 0;">
-                    Good to see you, {user['name']}
+                    Good to see you, {user.get('name', 'User')}
                 </h1>
             </div>
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px;">
@@ -4294,7 +4306,7 @@ elif page == "My Profile":
     with st.form("my_profile_form"):
         col_p1, col_p2 = st.columns(2, gap="large")
         with col_p1:
-            st.text_input("Full name", value=user["name"], disabled=True)
+            st.text_input("Full name", value=user.get("name", ""), disabled=True)
             phone = st.text_input("Phone", value=profile.get("phone", ""))
             location = st.text_input("Location", value=profile.get("location", ""))
             job = st.text_input("Current job title", value=profile.get("job_title", ""))
@@ -4903,7 +4915,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
             pdf_bytes = generate_resume_pdf(
                 res_data,
                 {
-                    "name": active_target_user["name"],
+                    "name": active_target_user.get("name", "User"),
                     "email": active_target_user.get("email", ""),
                     "phone": active_target_profile.get("phone", ""),
                     "location": active_target_profile.get("location", "")
@@ -4923,18 +4935,18 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
         preview_links_list = [f'<a href="{l["url"] if l["url"].startswith("http") else "https://" + l["url"]}" class="ts-resume-contact-link" target="_blank">{l["label"]}</a>' for l in links_list]
         contact_line_parts = []
         if active_target_user.get("email"):
-            contact_line_parts.append(f'<a href="mailto:{active_target_user["email"]}" class="ts-resume-contact-link">{active_target_user["email"]}</a>')
+            contact_line_parts.append(f'<a href="mailto:{active_target_user.get("email")}" class="ts-resume-contact-link">{active_target_user.get("email")}</a>')
         if active_target_profile.get("phone"):
-            contact_line_parts.append(f"<span>{active_target_profile['phone']}</span>")
+            contact_line_parts.append(f"<span>{active_target_profile.get('phone', '')}</span>")
         if active_target_profile.get("location"):
-            contact_line_parts.append(f"<span>{active_target_profile['location']}</span>")
+            contact_line_parts.append(f"<span>{active_target_profile.get('location', '')}</span>")
         contact_line_parts.extend(preview_links_list)
 
         # ATS Paper Render
         render_html(
             f"""
             <div class="ts-resume-paper">
-                <div class="ts-resume-header-name">{active_target_user['name']}</div>
+                <div class="ts-resume-header-name">{active_target_user.get('name', 'User')}</div>
                 <div style="font-size: 0.92rem; color: #475569; margin-bottom: 1.25rem;">
                     {' &nbsp;&bull;&nbsp; '.join(contact_line_parts)}
                 </div>
@@ -5269,7 +5281,7 @@ elif page in ["Career Coach", "AI Career Coach"]:
             
             with st.spinner("Consulting AI Career Coach (evaluating profile benchmarks and skill gaps)..."):
                 advice_res = generate_ai_coaching_guidance(
-                    user_name=user["name"],
+                    user_name=user.get("name", "User"),
                     question=question,
                     profile=profile,
                     skills=skills,
@@ -5335,7 +5347,7 @@ elif page in ["Settings", "Settings & System", "Settings & Privacy"]:
     db_status_color = "#10B981" if db_health["connected"] else "#EF4444"
     db_status_text = "CONNECTED & PERSISTING" if db_health["connected"] else "ATTENTION NEEDED"
 
-    st.write(f"Logged in as: **{user['name']}** (`{user['email']}`) · Role: `{user['role'].upper()}`")
+    st.write(f"Logged in as: **{user.get('name', 'User')}** (`{user.get('email', '')}`) · Role: `{user.get('role', 'employee').upper()}`")
 
     render_html(
         f"""
