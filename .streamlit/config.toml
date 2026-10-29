@@ -17,5 +17,5 @@ gatherUsageStats = false
 
 [client]
 toolbarMode = "minimal"
-showErrorDetails = false
+showErrorDetails = "full"
 

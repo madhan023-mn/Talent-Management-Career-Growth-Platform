@@ -3,12 +3,14 @@ import os
 from pathlib import Path
 import runpy
 
-# Ensure repository root is on sys.path and is current working directory
-_ROOT = Path(__file__).resolve().parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
+# Ensure repository root is at the very front of sys.path and is working directory
+_ROOT = str(Path(__file__).resolve().parent)
+while _ROOT in sys.path:
+    sys.path.remove(_ROOT)
+sys.path.insert(0, _ROOT)
+
 try:
-    os.chdir(str(_ROOT))
+    os.chdir(_ROOT)
 except Exception:
     pass
 
@@ -19,6 +21,10 @@ app = handler
 application = handler
 
 if __name__ == "__main__":
-    # Forward execution to app.py
-    _app_file = _ROOT / "app.py"
-    runpy.run_path(str(_app_file), run_name="__main__")
+    # Execute app.py directly within Streamlit context
+    _app_file = Path(_ROOT) / "app.py"
+    with open(_app_file, "r", encoding="utf-8") as _f:
+        _code = compile(_f.read(), str(_app_file), "exec")
+        _g = globals()
+        _g["__file__"] = str(_app_file)
+        exec(_code, _g, _g)

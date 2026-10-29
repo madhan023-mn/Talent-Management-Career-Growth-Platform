@@ -12,11 +12,16 @@ from datetime import datetime, date
 from typing import Any, Dict, List, Optional, Tuple
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
+_BASE_STR = str(BASE_DIR)
+while _BASE_STR in sys.path:
+    sys.path.remove(_BASE_STR)
+sys.path.insert(0, _BASE_STR)
 
 import pandas as pd
-from services.email_service import send_welcome_email
+try:
+    from services.email_service import send_welcome_email
+except ImportError:
+    from .email_service import send_welcome_email
 
 LEVELS = {
     "Beginner": 1,

@@ -3,12 +3,13 @@ import sys
 import os
 from pathlib import Path
 
-# Guarantee application root directory is on sys.path and is current working directory
-_ROOT = Path(__file__).resolve().parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
+# Guarantee application root directory is at the very front of sys.path and is current working directory
+_ROOT = str(Path(__file__).resolve().parent)
+while _ROOT in sys.path:
+    sys.path.remove(_ROOT)
+sys.path.insert(0, _ROOT)
 try:
-    os.chdir(str(_ROOT))
+    os.chdir(_ROOT)
 except Exception:
     pass
 
@@ -26,32 +27,53 @@ from dotenv import load_dotenv
 from pypdf import PdfReader
 from docx import Document
 
-from services.core import (
-    BASE_DIR, ROLE_CATALOG, LEVELS, STANDARD_DEPARTMENTS, EMPLOYMENT_STATUSES,
-    init_db, register, login, get_user_by_id,
-    create_organization, get_organization, list_organizations, get_organization_by_name, generate_unique_org_id,
-    verify_and_activate_hr_admin,
-    get_profile, save_profile, list_skills, add_skill, delete_skill,
-    add_assessment, get_assessments, save_progress, get_progress,
-    profile_completion, gap_analysis, recommendations, profile_analysis,
-    role_match, export_user_data,
-    add_employee, get_employees, get_employee_by_id, update_employee, delete_employee, get_all_departments,
-    bulk_import_employees_df, get_sample_employee_csv,
-    add_performance_review, get_performance_reviews, get_department_performance_summary,
-    add_employee_skill, get_employee_skills, delete_employee_skill, get_employee_skill_gaps,
-    add_goal, get_goals, get_goal_by_id, update_goal, update_goal_progress, delete_goal, get_goal_stats,
-    add_training_record, get_training_records,
-    get_org_dashboard_stats, get_employee_dashboard_data,
-    get_db_path, check_db_health,
-    get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
-    validate_url, validate_date_range
-)
-from services.reports import create_report
-from services.ai_coach import (
-    generate_ai_coaching_guidance,
-    analyze_resume_with_ai,
-    get_gemini_api_key
-)
+try:
+    from services.core import (
+        BASE_DIR, ROLE_CATALOG, LEVELS, STANDARD_DEPARTMENTS, EMPLOYMENT_STATUSES,
+        init_db, register, login, get_user_by_id,
+        create_organization, get_organization, list_organizations, get_organization_by_name, generate_unique_org_id,
+        verify_and_activate_hr_admin,
+        get_profile, save_profile, list_skills, add_skill, delete_skill,
+        add_assessment, get_assessments, save_progress, get_progress,
+        profile_completion, gap_analysis, recommendations, profile_analysis,
+        role_match, export_user_data,
+        add_employee, get_employees, get_employee_by_id, update_employee, delete_employee, get_all_departments,
+        bulk_import_employees_df, get_sample_employee_csv,
+        add_performance_review, get_performance_reviews, get_department_performance_summary,
+        add_employee_skill, get_employee_skills, delete_employee_skill, get_employee_skill_gaps,
+        add_goal, get_goals, get_goal_by_id, update_goal, update_goal_progress, delete_goal, get_goal_stats,
+        add_training_record, get_training_records,
+        get_org_dashboard_stats, get_employee_dashboard_data,
+        get_db_path, check_db_health,
+        get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
+        validate_url, validate_date_range
+    )
+except Exception as _core_err:
+    import traceback
+    st.error(f"### Critical Startup Error: Failed to load services.core\n\n**Error:** `{_core_err}`")
+    st.code(traceback.format_exc(), language="python")
+    st.stop()
+
+try:
+    from services.reports import create_report
+except Exception as _rep_err:
+    import traceback
+    st.error(f"### Startup Error: Failed to load services.reports\n\n**Error:** `{_rep_err}`")
+    st.code(traceback.format_exc(), language="python")
+    st.stop()
+
+try:
+    from services.ai_coach import (
+        generate_ai_coaching_guidance,
+        analyze_resume_with_ai,
+        get_gemini_api_key
+    )
+except Exception as _ai_err:
+    import traceback
+    st.error(f"### Startup Error: Failed to load services.ai_coach\n\n**Error:** `{_ai_err}`")
+    st.code(traceback.format_exc(), language="python")
+    st.stop()
+
 from style import load_css
 
 # Vercel serverless entrypoint compatibility
