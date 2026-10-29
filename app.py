@@ -17,7 +17,8 @@ from docx import Document
 from services.core import (
     BASE_DIR, ROLE_CATALOG, LEVELS, STANDARD_DEPARTMENTS, EMPLOYMENT_STATUSES,
     init_db, register, login, get_user_by_id,
-    create_organization, get_organization, list_organizations,
+    create_organization, get_organization, list_organizations, get_organization_by_name, generate_unique_org_id,
+    verify_and_activate_hr_admin,
     get_profile, save_profile, list_skills, add_skill, delete_skill,
     add_assessment, get_assessments, save_progress, get_progress,
     profile_completion, gap_analysis, recommendations, profile_analysis,
@@ -1099,67 +1100,92 @@ def register_page():
             )
 
             existing_orgs = list_organizations()
-            org_options = [f"{o['name']} ({o['org_id']})" for o in existing_orgs] + ["+ Register New Organization"]
+            org_options = [f"{o['name']} ({o['org_id']})" for o in existing_orgs] + ["Register New Organization"]
 
-            with st.form("dedicated_register_form"):
-                name = st.text_input("Full Legal Name *", placeholder="e.g. Jordan Miller")
-                new_email = st.text_input("Corporate Email Address *", placeholder="jordan.miller@company.com")
-                new_password = st.text_input("Password (min 8 characters) *", type="password", placeholder="Set a secure password")
+            name = st.text_input("Full Legal Name *", placeholder="e.g. Jordan Miller", key="reg_name")
+            new_email = st.text_input("Corporate Email Address *", placeholder="jordan.miller@company.com", key="reg_email")
+            new_password = st.text_input("Password (min 8 characters) *", type="password", placeholder="Set a secure password", key="reg_password")
 
-                c_r1, c_r2 = st.columns(2)
-                role = c_r1.selectbox(
-                    "Account Type *",
-                    ["employee", "admin"],
-                    format_func=lambda x: "Employee (Self-Service)" if x == "employee" else "HR Administrator"
+            c_r1, c_r2 = st.columns(2)
+            role = c_r1.selectbox(
+                "Account Type *",
+                ["employee", "admin"],
+                format_func=lambda x: "Employee (Self-Service)" if x == "employee" else "HR Administrator",
+                key="reg_role"
+            )
+            emp_code = c_r2.text_input("Employee ID (Optional - auto-assigned if empty)", placeholder="e.g. EMP208", key="reg_emp_code").strip().upper()
+
+            # Organization Membership *
+            st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 8px; margin-bottom: 4px;'>Organization Membership *</div>", unsafe_allow_html=True)
+            sel_org_choice = st.selectbox(
+                "Organization Membership *",
+                org_options,
+                index=0,
+                key="reg_org_membership",
+                label_visibility="collapsed"
+            )
+
+            is_new_org = (sel_org_choice == "Register New Organization")
+
+            # Dynamically display Organization Name input field only when "Register New Organization" is selected
+            new_org_name_val = ""
+            if is_new_org:
+                new_org_name_val = st.text_input(
+                    "Organization Name *",
+                    placeholder="Enter your organization name",
+                    key="reg_new_org_name"
                 )
-                emp_code = c_r2.text_input("Employee ID (Optional - auto-assigned if empty)", placeholder="e.g. EMP208").strip().upper()
 
-                st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 6px;'>Organization Membership *</div>", unsafe_allow_html=True)
-                sel_org_choice = st.selectbox(
-                    "Select Organization *",
-                    org_options,
-                    index=0,
-                    label_visibility="collapsed"
+            # HR Administrator verification/authorization key (Requirement 9)
+            hr_auth_code_val = ""
+            if role == "admin":
+                hr_auth_code_val = st.text_input(
+                    "HR Administrator Authorization Key *",
+                    type="password",
+                    placeholder="Enter HR verification key (default: HR2026)",
+                    key="reg_hr_auth_key",
+                    help="Authorized verification passkey required to access or create organization HR administrative controls."
                 )
 
-                new_org_name_val = ""
-                new_org_id_val = ""
-                if sel_org_choice == "+ Register New Organization":
-                    c_no1, c_no2 = st.columns(2)
-                    new_org_name_val = c_no1.text_input("Organization Name *", placeholder="e.g. Apex Global Solutions")
-                    new_org_id_val = c_no2.text_input("Organization ID Code *", placeholder="e.g. ORG-APEX-01").strip().upper()
+            c_dep1, c_dep2 = st.columns(2)
+            depts_list = [
+                "Engineering", "Product Management", "Data & Analytics",
+                "Human Resources", "Finance & Operations", "Marketing & Growth",
+                "Design", "Sales & Customer Success"
+            ]
+            dept_val = c_dep1.selectbox("Department *", depts_list, key="reg_dept")
+            title_val = c_dep2.text_input("Job Title / Designation *", placeholder="e.g. Software Engineer / HRBP", key="reg_title")
 
-                c_dep1, c_dep2 = st.columns(2)
-                depts_list = [
-                    "Engineering", "Product Management", "Data & Analytics",
-                    "Human Resources", "Finance & Operations", "Marketing & Growth",
-                    "Design", "Sales & Customer Success"
-                ]
-                dept_val = c_dep1.selectbox("Department *", depts_list)
-                title_val = c_dep2.text_input("Job Title / Designation *", placeholder="e.g. Software Engineer / HRBP")
+            c_sk1, c_sk2 = st.columns([2, 1])
+            skills_val = c_sk1.text_input("Primary Skills (Comma-separated)", value="Python, SQL, Communication", placeholder="e.g. Python, SQL, React, Data Analysis", key="reg_skills")
+            exp_val = c_sk2.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.0, step=0.5, key="reg_exp")
 
-                c_sk1, c_sk2 = st.columns([2, 1])
-                skills_val = c_sk1.text_input("Primary Skills (Comma-separated)", value="Python, SQL, Communication", placeholder="e.g. Python, SQL, React, Data Analysis")
-                exp_val = c_sk2.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.0, step=0.5)
-
-                terms = st.checkbox("I agree to the Enterprise Talent Governance Terms", value=True)
-                submit_reg = st.form_submit_button("Create Account & Join Organization", type="primary", use_container_width=True)
+            terms = st.checkbox("I agree to the Enterprise Talent Governance Terms", value=True, key="reg_terms")
+            submit_reg = st.button("Create Account & Join Organization", type="primary", use_container_width=True, key="btn_submit_reg")
 
             if submit_reg:
-                if not name.strip():
+                clean_name = (name or "").strip()
+                clean_email = (new_email or "").strip()
+                clean_pwd = new_password or ""
+                clean_org_name = (new_org_name_val or "").strip() if is_new_org else ""
+
+                if not clean_name:
                     st.error("Full Legal Name is required.")
-                elif not new_email.strip() or "@" not in new_email:
+                elif not clean_email or "@" not in clean_email or "." not in clean_email:
                     st.error("A valid corporate email address is required.")
-                elif len(new_password) < 8:
+                elif len(clean_pwd) < 8:
                     st.error("Password must be at least 8 characters long.")
-                elif sel_org_choice == "+ Register New Organization" and (not new_org_name_val.strip() or not new_org_id_val.strip()):
-                    st.error("Please provide both Organization Name and Organization ID Code.")
+                elif is_new_org and not clean_org_name:
+                    st.error("Organization Name is required when registering a new organization.")
+                elif is_new_org and get_organization_by_name(clean_org_name):
+                    existing = get_organization_by_name(clean_org_name)
+                    st.error(f"An organization named '{existing['name']}' already exists ({existing['org_id']}). Please select it from the existing organizations dropdown or choose a different name.")
                 elif not terms:
                     st.error("Please agree to the enterprise governance terms to proceed.")
                 else:
-                    if sel_org_choice == "+ Register New Organization":
-                        chosen_org_id = new_org_id_val.strip().upper()
-                        chosen_org_name = new_org_name_val.strip()
+                    if is_new_org:
+                        chosen_org_id = None
+                        chosen_org_name = clean_org_name
                     else:
                         for o in existing_orgs:
                             if f"{o['name']} ({o['org_id']})" == sel_org_choice:
@@ -1171,9 +1197,9 @@ def register_page():
                             chosen_org_name = "Talent Growth Technologies"
 
                     ok, msg = register(
-                        name=name.strip(),
-                        email=new_email.strip(),
-                        password=new_password,
+                        name=clean_name,
+                        email=clean_email,
+                        password=clean_pwd,
                         role=role,
                         employee_id=emp_code if emp_code else None,
                         org_id=chosen_org_id,
@@ -1181,10 +1207,13 @@ def register_page():
                         department=dept_val,
                         job_title=title_val.strip() or ("Software Engineer" if role == "employee" else "HR Administrator"),
                         primary_skills=skills_val.strip() or "Python, SQL, Communication",
-                        years_experience=exp_val
+                        years_experience=exp_val,
+                        is_new_org=is_new_org,
+                        hr_verification_code=hr_auth_code_val if role == "admin" else None,
+                        require_hr_approval=True
                     )
                     if ok:
-                        st.success(f"{msg} A welcome email has been sent to {new_email.strip()}.")
+                        st.success(f"{msg} A welcome email has been sent to {clean_email}.")
                         st.session_state.auth_view = "login"
                         st.rerun()
                     else:
@@ -1215,7 +1244,8 @@ if not st.session_state.user:
 # ------------------------------------------------------------------------------
 user = st.session_state.get("user") or {}
 uid = user.get("id", 1)
-is_admin = user.get("role") == "admin"
+is_admin = (user.get("role") == "admin" and user.get("status") != "Pending Approval")
+is_pending_hr = (user.get("role") == "admin" and user.get("status") == "Pending Approval")
 emp_id = user.get("employee_id") or f"EMP{uid:03d}"
 org_id = user.get("org_id") or "ORG-TALENT-01"
 org_name = user.get("org_name") or "Talent Growth Technologies"
@@ -1772,6 +1802,20 @@ with col_top_trail:
     )
 st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
 
+if is_pending_hr:
+    st.warning("Your account is registered as an HR Administrator but is currently pending verification approval. Administrative control panels will be unlocked once approved.")
+    with st.expander("Unlock HR Administrator Access with Authorization Key", expanded=True):
+        c_v1, c_v2 = st.columns([3, 1])
+        vcode = c_v1.text_input("Enter HR Authorization Key", type="password", key="inline_vkey", placeholder="e.g. HR2026")
+        if c_v2.button("Verify & Activate", key="btn_inline_verify_hr", type="primary", use_container_width=True):
+            ok_act, msg_act = verify_and_activate_hr_admin(uid, vcode)
+            if ok_act:
+                st.session_state.user["status"] = "Active"
+                st.success("Verification successful! HR Administrator access granted.")
+                st.rerun()
+            else:
+                st.error(msg_act)
+
 # ==============================================================================
 # 1. ADMIN: EXECUTIVE DASHBOARD
 # ==============================================================================
@@ -1803,12 +1847,13 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
     career_growth_b64 = get_career_growth_illustration_b64()
 
     # Welcome Hero Banner with Career Growth Illustration
+    org_display_name = user.get("org_name") or "Talent Growth Technologies"
     render_html(
         f"""
         <div style="background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 55%, #3B82F6 100%); border-radius: 16px; padding: 1.6rem 2.2rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22); position: relative; overflow: hidden;">
             <div style="z-index: 2; max-width: 62%;">
                 <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.28); padding: 4px 11px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
-                    {get_svg_icon("sparkles", size=13, color="#FEF08A")} Executive Talent Hub
+                    {get_svg_icon("sparkles", size=13, color="#FEF08A")} Executive Talent Hub &bull; {org_display_name}
                 </div>
                 <div style="font-size: 1.85rem; font-weight: 800; color: #FFFFFF; line-height: 1.25; margin-bottom: 6px;">
                     Welcome back, {user['name']}
@@ -1851,7 +1896,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                     <div class="kpi-vibrant-title">Organization Workforce</div>
                     <div class="kpi-vibrant-number">{total_emp_count}</div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("building", size=13, color="#FFFFFF")} {org_id}
+                        {get_svg_icon("building", size=13, color="#FFFFFF")} {org_display_name} ({org_id})
                     </div>
                 </div>
             </div>
@@ -2123,6 +2168,7 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
     emp_record = get_employee_by_id(emp_id) if emp_id else None
 
     # Header matching Screenshot 4
+    org_display_name = user.get("org_name") or "Talent Growth Technologies"
     render_html(
         f"""
         <div style="margin-bottom: 1.5rem;">
@@ -2137,8 +2183,11 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
                     Good to see you, {user['name']}
                 </h1>
             </div>
-            <div style="font-size: 0.95rem; color: #64748B; margin-top: 4px;">
-                Build a clearer view of where you are and what comes next.
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px;">
+                <span style="font-size: 0.95rem; color: #64748B;">Build a clearer view of where you are and what comes next.</span>
+                <span style="display: inline-flex; align-items: center; gap: 5px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 9999px; padding: 2px 10px; font-size: 0.78rem; font-weight: 700; color: #1D4ED8;">
+                    {get_svg_icon("building", size=13, color="#2563EB")} {org_display_name} <span style="font-family: monospace; font-size: 0.72rem; opacity: 0.8;">({org_id})</span>
+                </span>
             </div>
         </div>
         """
@@ -4219,7 +4268,28 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
 # 8. MY PROFILE
 # ==============================================================================
 elif page == "My Profile":
-    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 1.5rem;'>My professional profile</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.85rem;'>My professional profile</h1>", unsafe_allow_html=True)
+
+    org_display_name = user.get("org_name") or profile.get("company") or "Talent Growth Technologies"
+    org_display_id = user.get("org_id", "ORG-TALENT-01")
+    render_html(
+        f"""
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 18px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 38px; height: 38px; border-radius: 10px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1);">
+                    {get_svg_icon("building", size=20, color="#2563EB")}
+                </div>
+                <div>
+                    <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Organization Membership</div>
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A;">{org_display_name}</div>
+                </div>
+            </div>
+            <div style="font-size: 0.8rem; font-family: monospace; font-weight: 700; color: #1E40AF; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 4px 10px; border-radius: 6px;">
+                {org_display_id}
+            </div>
+        </div>
+        """
+    )
 
     with st.form("my_profile_form"):
         col_p1, col_p2 = st.columns(2, gap="large")
@@ -4228,7 +4298,7 @@ elif page == "My Profile":
             phone = st.text_input("Phone", value=profile.get("phone", ""))
             location = st.text_input("Location", value=profile.get("location", ""))
             job = st.text_input("Current job title", value=profile.get("job_title", ""))
-            company = st.text_input("Company", value=profile.get("company", ""))
+            company = st.text_input("Company", value=profile.get("company", org_display_name))
             department = st.text_input("Department", value=profile.get("department", ""))
             industry = st.text_input("Industry", value=profile.get("industry", ""))
         with col_p2:

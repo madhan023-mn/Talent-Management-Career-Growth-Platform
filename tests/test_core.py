@@ -26,6 +26,7 @@ from services.core import (
     add_training_record, get_training_records,
     bulk_import_employees_df, get_sample_employee_csv,
     create_organization, get_organization, list_organizations,
+    get_organization_by_name, generate_unique_org_id, verify_and_activate_hr_admin,
     get_org_dashboard_stats, get_employee_dashboard_data,
     hash_password, verify_password,
     get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
@@ -1089,5 +1090,178 @@ def test_23_healthcheck_and_database_backup_resilience():
     backups = list_backups()
     assert len(backups) >= 1
     assert any(b["filename"] == backup_file.name for b in backups)
+
+
+# ----------------- Organization Membership & Dynamic Registration Tests -----------------
+
+def test_24_organization_id_generation_and_case_insensitive_lookup():
+    """Scenario 24: Unique organization ID generation and case-insensitive name resolution."""
+    org_name = "Horizon Dynamics Corp"
+    org_id_1 = generate_unique_org_id(org_name)
+    assert org_id_1.startswith("ORG-HORIZOND")
+
+    ok, msg = create_organization(org_id=org_id_1, name=org_name)
+    assert ok is True
+
+    # Next generation for same base name should generate sequential candidate
+    org_id_2 = generate_unique_org_id(org_name)
+    assert org_id_2 != org_id_1
+    assert "ORG-HORIZOND" in org_id_2
+
+    # Case-insensitive lookups
+    assert get_organization_by_name("horizon dynamics corp") is not None
+    assert get_organization_by_name("HORIZON DYNAMICS CORP")["org_id"] == org_id_1
+    assert get_organization_by_name("  Horizon Dynamics Corp  ")["name"] == org_name
+    assert get_organization_by_name("Nonexistent Org") is None
+
+
+def test_25_register_new_organization_creates_org_and_unique_id():
+    """Scenario 25: Registering with a new organization generates unique ID and associates user."""
+    new_org = "Starlight Quantum Systems"
+    ok, msg = register(
+        name="Sarah Connor",
+        email="sarah.c@starlight.com",
+        password="Password123",
+        role="employee",
+        is_new_org=True,
+        org_name=new_org,
+        department="Engineering",
+        job_title="Lead Quantum Engineer"
+    )
+    assert ok is True
+    assert "created successfully" in msg.lower() or "please sign in" in msg.lower()
+
+    # 1. Organization record exists in DB
+    found_org = get_organization_by_name(new_org)
+    assert found_org is not None
+    generated_org_id = found_org["org_id"]
+    assert generated_org_id.startswith("ORG-")
+
+    # 2. User record is associated with newly created org
+    user_data = login("sarah.c@starlight.com", "Password123")
+    assert user_data is not None
+    assert user_data["org_id"] == generated_org_id
+    assert user_data["org_name"] == new_org
+
+    # 3. User profile and get_user_by_id have correct company and org details
+    user_by_id = get_user_by_id(user_data["id"])
+    assert user_by_id["org_name"] == new_org
+    prof = get_profile(user_data["id"])
+    assert prof["company"] == new_org
+
+
+def test_26_register_duplicate_organization_case_insensitive():
+    """Scenario 26: Duplicate organization registration is rejected with case-insensitive check."""
+    # Attempt duplicate with lowercase
+    ok_dup_lower, msg_lower = register(
+        name="John Connor",
+        email="john.c@starlight.com",
+        password="Password123",
+        role="employee",
+        is_new_org=True,
+        org_name="starlight quantum systems"
+    )
+    assert ok_dup_lower is False
+    assert "already exists" in msg_lower.lower()
+
+    # Attempt duplicate with uppercase and whitespace
+    ok_dup_upper, msg_upper = register(
+        name="Kyle Reese",
+        email="kyle.r@starlight.com",
+        password="Password123",
+        role="employee",
+        is_new_org=True,
+        org_name="  STARLIGHT QUANTUM SYSTEMS  "
+    )
+    assert ok_dup_upper is False
+    assert "already exists" in msg_upper.lower()
+
+
+def test_27_register_new_organization_validation_and_atomic_creation():
+    """Scenario 27: Organization name is required for new orgs; org not created on invalid forms."""
+    # Empty org name
+    ok_empty, msg_empty = register(
+        name="Marcus Wright",
+        email="marcus@future.com",
+        password="Password123",
+        role="employee",
+        is_new_org=True,
+        org_name="   "
+    )
+    assert ok_empty is False
+    assert "organization name is required" in msg_empty.lower()
+
+    # Invalid form submission (short password) should not create org
+    org_candidate = "Phantom Innovations Lab"
+    ok_fail, _ = register(
+        name="Marcus Wright",
+        email="marcus@future.com",
+        password="short",  # Invalid password
+        role="employee",
+        is_new_org=True,
+        org_name=org_candidate
+    )
+    assert ok_fail is False
+    # Verify organization was NOT created
+    assert get_organization_by_name(org_candidate) is None
+
+
+def test_28_register_with_existing_organization_selection():
+    """Scenario 28: Registering with existing organization associates user without duplicating org."""
+    orgs_before = len(list_organizations())
+
+    ok, msg = register(
+        name="Existing Org Employee",
+        email="existing_emp@company.com",
+        password="Password123",
+        role="employee",
+        is_new_org=False,
+        org_id="ORG-TALENT-01"
+    )
+    assert ok is True
+
+    orgs_after = len(list_organizations())
+    assert orgs_after == orgs_before  # No new organization created
+
+    user_info = login("existing_emp@company.com", "Password123")
+    assert user_info["org_id"] == "ORG-TALENT-01"
+
+
+def test_29_hr_admin_registration_requires_verification_and_approval():
+    """Scenario 29: HR administrator registration requires authorization key or approval."""
+    # 1. HR admin registered without valid authorization key
+    ok_unverified, msg_unverified = register(
+        name="Unverified Admin",
+        email="unverified_admin@company.com",
+        password="AdminPassword123",
+        role="admin",
+        require_hr_approval=True,
+        hr_verification_code="INVALID_CODE"
+    )
+    assert ok_unverified is True
+    assert "pending verification" in msg_unverified.lower()
+
+    unverified_user = login("unverified_admin@company.com", "AdminPassword123")
+    assert unverified_user["status"] == "Pending Approval"
+
+    # 2. Activate via verification function
+    ok_act, msg_act = verify_and_activate_hr_admin(unverified_user["id"], "HR2026")
+    assert ok_act is True
+    verified_user = get_user_by_id(unverified_user["id"])
+    assert verified_user["status"] == "Active"
+
+    # 3. HR admin registered directly with valid verification key
+    ok_verified, msg_verified = register(
+        name="Directly Verified Admin",
+        email="verified_admin@company.com",
+        password="AdminPassword123",
+        role="admin",
+        require_hr_approval=True,
+        hr_verification_code="HR2026"
+    )
+    assert ok_verified is True
+    directly_verified = login("verified_admin@company.com", "AdminPassword123")
+    assert directly_verified["status"] == "Active"
+
 
 

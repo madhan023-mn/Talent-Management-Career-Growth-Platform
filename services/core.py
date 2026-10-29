@@ -747,22 +747,84 @@ def init_db() -> None:
 
 # ----------------- Organization Management -----------------
 
-def create_organization(org_id: str, name: str) -> Tuple[bool, str]:
-    org_id = (org_id or "").strip().upper()
+def generate_unique_org_id(name: str) -> str:
+    """Generates an enterprise-standard, guaranteed-unique organization ID from the org name."""
+    clean = re.sub(r"[^A-Z0-9]", "", (name or "").upper())[:8] or "CORP"
+    base = f"ORG-{clean}"
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (base,))
+        if not cursor.fetchone():
+            return base
+        for i in range(1, 100):
+            cand = f"{base}-{i:02d}"
+            cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (cand,))
+            if not cursor.fetchone():
+                return cand
+        import secrets
+        return f"{base}-{secrets.token_hex(2).upper()}"
+    finally:
+        conn.close()
+
+def get_organization_by_name(name: str) -> Optional[Dict[str, Any]]:
+    """Case-insensitive lookup of an organization by its name."""
+    if not name or not name.strip():
+        return None
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM organizations WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))", (name.strip(),))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+def create_organization(org_id: Optional[str] = None, name: Optional[str] = None) -> Tuple[bool, str]:
+    """
+    Creates a new organization record with case-insensitive name uniqueness.
+    If org_id is omitted, a unique ID is automatically generated.
+    """
+    if name is None and org_id is not None and not org_id.upper().startswith("ORG-"):
+        name = org_id
+        org_id = None
+
     name = (name or "").strip()
-    if not org_id:
-        return False, "Organization ID is required."
     if not name:
         return False, "Organization Name is required."
+
     conn = get_connection()
     try:
         with conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (org_id,))
-            if cursor.fetchone():
-                return False, f"Organization ID '{org_id}' already exists."
-            cursor.execute("INSERT INTO organizations (org_id, name) VALUES (?, ?)", (org_id, name))
-        return True, f"Organization '{name}' ({org_id}) created successfully!"
+            # Case-insensitive duplicate organization name check
+            cursor.execute("SELECT id, org_id, name FROM organizations WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))", (name,))
+            existing = cursor.fetchone()
+            if existing:
+                return False, f"An organization named '{existing['name']}' already exists ({existing['org_id']})."
+
+            if org_id and org_id.strip():
+                final_org_id = org_id.strip().upper()
+                cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (final_org_id,))
+                if cursor.fetchone():
+                    return False, f"Organization ID '{final_org_id}' already exists."
+            else:
+                clean = re.sub(r"[^A-Z0-9]", "", name.upper())[:8] or "CORP"
+                base = f"ORG-{clean}"
+                cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (base,))
+                if not cursor.fetchone():
+                    final_org_id = base
+                else:
+                    final_org_id = base
+                    for i in range(1, 100):
+                        cand = f"{base}-{i:02d}"
+                        cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (cand,))
+                        if not cursor.fetchone():
+                            final_org_id = cand
+                            break
+
+            cursor.execute("INSERT INTO organizations (org_id, name) VALUES (?, ?)", (final_org_id, name))
+        return True, f"Organization '{name}' ({final_org_id}) created successfully!"
     except Exception as e:
         return False, f"Database error creating organization: {e}"
     finally:
@@ -784,6 +846,29 @@ def list_organizations() -> List[Dict[str, Any]]:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM organizations ORDER BY name ASC")
         return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+def verify_and_activate_hr_admin(user_id: int, verification_code: str) -> Tuple[bool, str]:
+    """Verifies an HR authorization key and activates a Pending Approval HR Administrator account."""
+    valid_keys = ["HR2026", "TALENT-HR", "HR-AUTH-2026", "ADMIN2026", "ADMIN-2026"]
+    env_key = os.getenv("HR_ADMIN_KEY", "").strip()
+    if env_key:
+        valid_keys.append(env_key)
+
+    clean_code = (verification_code or "").strip().upper()
+    if clean_code not in [k.upper() for k in valid_keys]:
+        return False, "Invalid HR authorization verification key."
+
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET status = 'Active' WHERE id = ?", (user_id,))
+            cursor.execute("UPDATE employees SET account_status = 'Active' WHERE user_id = ?", (user_id,))
+        return True, "HR Administrator access verified and granted successfully."
+    except Exception as e:
+        return False, f"Database error during verification: {e}"
     finally:
         conn.close()
 
@@ -810,20 +895,21 @@ def register(
     password: str,
     role: str = "employee",
     employee_id: Optional[str] = None,
-    org_id: str = "ORG-TALENT-01",
+    org_id: Optional[str] = None,
     org_name: Optional[str] = None,
     department: str = "Engineering",
     job_title: str = "Software Engineer",
     primary_skills: str = "Python, SQL, Communication",
     years_experience: float = 1.0,
-    app_url: Optional[str] = None
+    app_url: Optional[str] = None,
+    is_new_org: bool = False,
+    hr_verification_code: Optional[str] = None,
+    require_hr_approval: bool = False
 ) -> Tuple[bool, str]:
     name = (name or "").strip()
     email = (email or "").strip().lower()
     password = password or ""
     role = role if role in ["admin", "employee"] else "employee"
-    org_id = (org_id or "ORG-TALENT-01").strip().upper()
-    org_name = (org_name or "").strip()
     department = (department or "Engineering").strip()
     job_title = (job_title or "Software Engineer").strip()
     primary_skills = (primary_skills or "Python, SQL, Communication").strip()
@@ -847,17 +933,79 @@ def register(
     try:
         with conn:
             cursor = conn.cursor()
-            # Ensure organization exists
-            cursor.execute("SELECT id, name FROM organizations WHERE org_id = ?", (org_id,))
-            org_row = cursor.fetchone()
-            if not org_row:
-                resolved_org_name = org_name or f"Organization {org_id}"
+
+            # Handle Organization Registration or Selection
+            if is_new_org:
+                clean_org_name = (org_name or "").strip()
+                if not clean_org_name:
+                    return False, "Organization Name is required when registering a new organization."
+
+                # Case-insensitive duplicate check
+                cursor.execute(
+                    "SELECT id, org_id, name FROM organizations WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))",
+                    (clean_org_name,)
+                )
+                existing_dup = cursor.fetchone()
+                if existing_dup:
+                    return False, f"An organization named '{existing_dup['name']}' already exists ({existing_dup['org_id']}). Please select it from existing organizations or enter a different name."
+
+                # Auto-generate unique organization ID if not provided
+                if not org_id or not str(org_id).strip() or str(org_id).strip().upper() == "ORG-TALENT-01":
+                    clean = re.sub(r"[^A-Z0-9]", "", clean_org_name.upper())[:8] or "CORP"
+                    base = f"ORG-{clean}"
+                    cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (base,))
+                    if not cursor.fetchone():
+                        final_org_id = base
+                    else:
+                        final_org_id = base
+                        for i in range(1, 100):
+                            cand = f"{base}-{i:02d}"
+                            cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (cand,))
+                            if not cursor.fetchone():
+                                final_org_id = cand
+                                break
+                else:
+                    final_org_id = str(org_id).strip().upper()
+                    cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (final_org_id,))
+                    if cursor.fetchone():
+                        return False, f"Organization ID '{final_org_id}' already exists."
+
                 cursor.execute(
                     "INSERT INTO organizations (org_id, name) VALUES (?, ?)",
-                    (org_id, resolved_org_name)
+                    (final_org_id, clean_org_name)
                 )
+                resolved_org_id = final_org_id
+                resolved_org_name = clean_org_name
             else:
-                resolved_org_name = org_row["name"]
+                resolved_org_id = (org_id or "ORG-TALENT-01").strip().upper()
+                cursor.execute("SELECT id, name FROM organizations WHERE org_id = ?", (resolved_org_id,))
+                org_row = cursor.fetchone()
+                if not org_row:
+                    resolved_org_name = org_name or f"Organization {resolved_org_id}"
+                    cursor.execute(
+                        "INSERT INTO organizations (org_id, name) VALUES (?, ?)",
+                        (resolved_org_id, resolved_org_name)
+                    )
+                else:
+                    resolved_org_name = org_row["name"]
+
+            # Role Authorization & HR Approval Verification (Requirement 9)
+            user_status = "Active"
+            if role == "admin":
+                if require_hr_approval:
+                    valid_keys = ["HR2026", "TALENT-HR", "HR-AUTH-2026", "ADMIN2026", "ADMIN-2026"]
+                    env_key = os.getenv("HR_ADMIN_KEY", "").strip()
+                    if env_key:
+                        valid_keys.append(env_key)
+                    clean_code = (hr_verification_code or "").strip().upper()
+                    if clean_code in [k.upper() for k in valid_keys]:
+                        user_status = "Active"
+                    else:
+                        user_status = "Pending Approval"
+                else:
+                    user_status = "Active"
+            else:
+                user_status = "Active"
 
             # Auto-assign or validate employee_id
             if employee_id and employee_id.strip():
@@ -877,9 +1025,9 @@ def register(
             cursor.execute(
                 """
                 INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, department, job_title, status, date_joined)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (name, email, pwd_hash, salt, role, final_emp_id, org_id, department, job_title, date.today().isoformat())
+                (name, email, pwd_hash, salt, role, final_emp_id, resolved_org_id, department, job_title, user_status, date.today().isoformat())
             )
             user_id = cursor.lastrowid
 
@@ -899,18 +1047,18 @@ def register(
                 cursor.execute(
                     """
                     UPDATE employees
-                    SET user_id = ?, email = COALESCE(email, ?), org_id = ?, department = ?, designation = ?
+                    SET user_id = ?, email = COALESCE(email, ?), org_id = ?, department = ?, designation = ?, account_status = ?
                     WHERE employee_id = ?
                     """,
-                    (user_id, email, org_id, department, job_title, final_emp_id)
+                    (user_id, email, resolved_org_id, department, job_title, user_status, final_emp_id)
                 )
             else:
                 cursor.execute(
                     """
                     INSERT INTO employees (employee_id, org_id, user_id, name, email, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, 'Active', ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?)
                     """,
-                    (final_emp_id, org_id, user_id, name, email, department, job_title, date.today().isoformat(), years_experience, primary_skills, user_id)
+                    (final_emp_id, resolved_org_id, user_id, name, email, department, job_title, date.today().isoformat(), years_experience, primary_skills, user_status, user_id)
                 )
 
             # Initialize INDIVIDUAL skills profile for this employee (clean, isolated, never copying another employee's assessments)
@@ -923,7 +1071,7 @@ def register(
                     INSERT OR IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp)
                     VALUES (?, ?, ?, ?, 'Technical', 'Intermediate', ?)
                     """,
-                    (final_emp_id, org_id, user_id, sk, years_experience)
+                    (final_emp_id, resolved_org_id, user_id, sk, years_experience)
                 )
                 cursor.execute(
                     """
@@ -946,7 +1094,9 @@ def register(
             # Gracefully ignore email transport failures to avoid corrupting account creation
             pass
 
-        return True, "Account created successfully! Please sign in."
+        if user_status == "Pending Approval":
+            return True, f"Account created for {resolved_org_name}! Your HR Administrator access is pending verification. Please sign in."
+        return True, f"Account created successfully for {resolved_org_name}! Please sign in."
     except sqlite3.IntegrityError:
         return False, "An account with this email already exists."
     except Exception as e:
