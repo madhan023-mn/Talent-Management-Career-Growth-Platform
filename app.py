@@ -37,13 +37,15 @@ try:
         add_assessment, get_assessments, save_progress, get_progress,
         profile_completion, gap_analysis, recommendations, profile_analysis,
         role_match, export_user_data,
-        add_employee, get_employees, get_employee_by_id, update_employee, delete_employee, get_all_departments,
+        add_employee, get_employees, get_employee_by_id, update_employee, delete_employee, deactivate_employee,
+        get_all_departments, get_all_designations,
         bulk_import_employees_df, get_sample_employee_csv,
         add_performance_review, get_performance_reviews, get_department_performance_summary,
         add_employee_skill, get_employee_skills, delete_employee_skill, get_employee_skill_gaps,
         add_goal, get_goals, get_goal_by_id, update_goal, update_goal_progress, delete_goal, get_goal_stats,
         add_training_record, get_training_records,
         get_org_dashboard_stats, get_employee_dashboard_data,
+        generate_invitation_code, list_invitation_codes, revoke_invitation_code, validate_invitation_code,
         get_db_path, check_db_health,
         get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
         validate_url, validate_date_range
@@ -1149,30 +1151,64 @@ def register_page():
             )
             emp_code = c_r2.text_input("Employee ID (Optional - auto-assigned if empty)", placeholder="e.g. EMP208", key="reg_emp_code").strip().upper()
 
-            # Organization Membership *
-            st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 8px; margin-bottom: 4px;'>Organization Membership *</div>", unsafe_allow_html=True)
-            sel_org_choice = st.selectbox(
-                "Organization Membership *",
-                org_options,
-                index=0,
-                key="reg_org_membership",
-                label_visibility="collapsed"
-            )
-
-            is_new_org = (sel_org_choice == "Register New Organization")
-
-            # Dynamically display Organization Name input field only when "Register New Organization" is selected
+            # Organization Mapping: Invitation Code for Employees / Org Setup for HR Admin
+            emp_invitation_code_val = ""
+            is_new_org = False
             new_org_name_val = ""
-            if is_new_org:
-                new_org_name_val = st.text_input(
-                    "Organization Name *",
-                    placeholder="Enter your organization name",
-                    key="reg_new_org_name"
+            official_email_val = ""
+            contact_number_val = ""
+            hr_auth_code_val = ""
+            sel_org_choice = ""
+
+            if role == "employee":
+                st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 8px; margin-bottom: 4px;'>Organization Invitation Code *</div>", unsafe_allow_html=True)
+                emp_invitation_code_val = st.text_input(
+                    "Organization Invitation Code *",
+                    placeholder="Enter code provided by HR (e.g. INV-ORG-XXXX-YYYY)",
+                    key="reg_invitation_code",
+                    label_visibility="collapsed",
+                    help="Enter the invitation code provided by your organization HR administrator."
+                ).strip()
+
+                if emp_invitation_code_val:
+                    is_valid_inv, inv_meta = validate_invitation_code(emp_invitation_code_val)
+                    if is_valid_inv:
+                        st.success(f"Verified Organization: **{inv_meta['org_name']}** (`{inv_meta['org_id']}`) &bull; Remaining Uses: {inv_meta['max_uses'] - inv_meta['used_count']}")
+                    else:
+                        st.error(f"Invitation Code Error: {inv_meta.get('error', 'Invalid, expired, or depleted invitation code.')}")
+                else:
+                    st.info("Employees join their organization securely using an HR-issued invitation code.")
+            else:
+                # HR Administrator flow
+                st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 8px; margin-bottom: 4px;'>Organization Membership *</div>", unsafe_allow_html=True)
+                sel_org_choice = st.selectbox(
+                    "Organization Membership *",
+                    org_options,
+                    index=0,
+                    key="reg_org_membership",
+                    label_visibility="collapsed"
                 )
 
-            # HR Administrator verification/authorization key (Requirement 9)
-            hr_auth_code_val = ""
-            if role == "admin":
+                is_new_org = (sel_org_choice == "Register New Organization")
+
+                if is_new_org:
+                    new_org_name_val = st.text_input(
+                        "Organization Name *",
+                        placeholder="Enter your organization name",
+                        key="reg_new_org_name"
+                    )
+                    c_org_m1, c_org_m2 = st.columns(2)
+                    official_email_val = c_org_m1.text_input(
+                        "Official Organization Email *",
+                        placeholder="e.g. admin@company.com",
+                        key="reg_org_email"
+                    )
+                    contact_number_val = c_org_m2.text_input(
+                        "Contact Number",
+                        placeholder="e.g. +1 (555) 019-2834",
+                        key="reg_org_phone"
+                    )
+
                 hr_auth_code_val = st.text_input(
                     "HR Administrator Authorization Key *",
                     type="password",
@@ -1202,6 +1238,8 @@ def register_page():
                 clean_email = (new_email or "").strip()
                 clean_pwd = new_password or ""
                 clean_org_name = (new_org_name_val or "").strip() if is_new_org else ""
+                clean_official_email = (official_email_val or "").strip()
+                clean_contact = (contact_number_val or "").strip()
 
                 if not clean_name:
                     st.error("Full Legal Name is required.")
@@ -1209,8 +1247,14 @@ def register_page():
                     st.error("A valid corporate email address is required.")
                 elif len(clean_pwd) < 8:
                     st.error("Password must be at least 8 characters long.")
+                elif role == "employee" and not emp_invitation_code_val:
+                    st.error("An Organization Invitation Code is required for employee registration.")
+                elif role == "employee" and not validate_invitation_code(emp_invitation_code_val)[0]:
+                    st.error("The provided invitation code is invalid, expired, or depleted.")
                 elif is_new_org and not clean_org_name:
                     st.error("Organization Name is required when registering a new organization.")
+                elif is_new_org and not clean_official_email:
+                    st.error("Official Organization Email is required when registering a new organization.")
                 elif is_new_org and get_organization_by_name(clean_org_name):
                     existing = get_organization_by_name(clean_org_name)
                     st.error(f"An organization named '{existing['name']}' already exists ({existing['org_id']}). Please select it from the existing organizations dropdown or choose a different name.")
@@ -1220,7 +1264,7 @@ def register_page():
                     if is_new_org:
                         chosen_org_id = None
                         chosen_org_name = clean_org_name
-                    else:
+                    elif role == "admin":
                         for o in existing_orgs:
                             if f"{o['name']} ({o['org_id']})" == sel_org_choice:
                                 chosen_org_id = o["org_id"]
@@ -1229,6 +1273,10 @@ def register_page():
                         else:
                             chosen_org_id = "ORG-TALENT-01"
                             chosen_org_name = "Talent Growth Technologies"
+                    else:
+                        # For employee with verified code, backend resolves exact org_id from the code
+                        chosen_org_id = None
+                        chosen_org_name = None
 
                     ok, msg = register(
                         name=clean_name,
@@ -1244,7 +1292,10 @@ def register_page():
                         years_experience=exp_val,
                         is_new_org=is_new_org,
                         hr_verification_code=hr_auth_code_val if role == "admin" else None,
-                        require_hr_approval=True
+                        require_hr_approval=True,
+                        invitation_code=emp_invitation_code_val if role == "employee" else None,
+                        official_email=clean_official_email if is_new_org else None,
+                        contact_number=clean_contact if is_new_org else None
                     )
                     if ok:
                         st.success(f"{msg} A welcome email has been sent to {clean_email}.")
@@ -1906,17 +1957,65 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
     )
 
     org_stats = get_org_dashboard_stats(org_id)
+    org_info = get_organization(org_id) or {}
     employees = get_employees(org_id=org_id)
     reviews = get_performance_reviews(org_id=org_id)
     dept_summary = get_department_performance_summary(org_id=org_id)
     all_goals = get_goals(org_id=org_id)
 
     total_emp_count = org_stats["total_employees"]
+    active_emp_count = org_stats.get("active_employees", 0)
+    pending_emp_count = org_stats.get("pending_employees", 0)
     dept_count = org_stats["total_departments"]
     avg_perf = org_stats["avg_performance"]
     goal_completion_pct = org_stats["goal_completion_rate"]
     assessment_completion_pct = org_stats["assessment_completion_rate"]
     total_assessments = org_stats["total_assessments"]
+    org_status_val = org_info.get("status", "Active")
+    org_contact = org_info.get("official_email") or user.get("email") or "Not provided"
+
+    # Dedicated Organization Information Section (Requirement 5)
+    render_html(
+        f"""
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; margin-bottom: 1.25rem; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center;">
+                        {get_svg_icon("building", size=22, color="#2563EB")}
+                    </div>
+                    <div>
+                        <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">{org_display_name}</div>
+                        <div style="font-size: 0.82rem; color: #64748B;">
+                            Organization ID: <span class="tbl-id-pill" style="font-size: 0.82rem; font-weight: 700;">{org_id}</span> &bull; Status: <span class="badge-status badge-active" style="padding: 2px 8px;">{org_status_val.upper()}</span> &bull; Official Contact: <strong>{org_contact}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <span style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 6px 12px; font-size: 0.82rem; color: #475569;">
+                        {get_svg_icon("sparkles", size=13, color="#2563EB")} Isolated Tenant Scope
+                    </span>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 18px;">
+                <div style="text-align: center; border-right: 1px solid #E2E8F0;">
+                    <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Total Employees</div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; margin-top: 2px;">{total_emp_count}</div>
+                    <div style="font-size: 0.72rem; color: #2563EB; font-weight: 600;">All Org Personnel</div>
+                </div>
+                <div style="text-align: center; border-right: 1px solid #E2E8F0;">
+                    <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Active Employees</div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: #10B981; margin-top: 2px;">{active_emp_count}</div>
+                    <div style="font-size: 0.72rem; color: #10B981; font-weight: 600;">Verified & On Duty</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Pending Employees</div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: #F59E0B; margin-top: 2px;">{pending_emp_count}</div>
+                    <div style="font-size: 0.72rem; color: #F59E0B; font-weight: 600;">Pending Approval</div>
+                </div>
+            </div>
+        </div>
+        """
+    )
 
     # Row of 4 Solid Vibrant KPI Cards matching Organization Scope
     render_html(
@@ -2536,11 +2635,12 @@ elif page in ["Employees", "Employee Management"]:
         """
     )
 
-    tab_dir, tab_add, tab_bulk, tab_edit = st.tabs([
+    tab_dir, tab_add, tab_bulk, tab_edit, tab_invite = st.tabs([
         "Workforce Directory",
         "Add New Employee",
         "Bulk Dataset Upload (CSV/Excel)",
-        "Manage Records (Edit / Delete)"
+        "Manage Records (Edit / Delete / Deactivate)",
+        "Organization Invitation Codes"
     ])
 
     # --- TAB 1: WORKFORCE DIRECTORY (PRIMARY VIEW) ---
@@ -2552,14 +2652,16 @@ elif page in ["Employees", "Employee Management"]:
         with c_toggle:
             view_mode = st.radio("Display Layout", ["Cards View", "Table View"], horizontal=True, key="emp_view_mode", label_visibility="collapsed")
 
-        f1, f2, f3 = st.columns([2, 1, 1])
+        f1, f2, f3, f4 = st.columns([1.6, 1, 1, 1])
         s_query = f1.text_input("Live Search (Name, ID, Role, Skill)", placeholder="Search by name, designation, skill, or ID...", key="emp_live_search")
         s_dept = f2.selectbox("Filter by Department", ["All Departments"] + get_all_departments(org_id=org_id), key="emp_dept_filter")
-        s_status = f3.selectbox("Filter by Status", ["All Statuses"] + EMPLOYMENT_STATUSES, key="emp_status_filter")
+        s_desig = f3.selectbox("Filter by Designation", ["All Designations"] + get_all_designations(org_id=org_id), key="emp_desig_filter")
+        s_status = f4.selectbox("Filter by Status", ["All Statuses"] + EMPLOYMENT_STATUSES, key="emp_status_filter")
 
         emp_results = get_employees(
             search_query=s_query if s_query.strip() else None,
             department_filter=s_dept if s_dept != "All Departments" else None,
+            designation_filter=s_desig if s_desig != "All Designations" else None,
             status_filter=s_status if s_status != "All Statuses" else None,
             org_id=org_id
         )
@@ -2597,6 +2699,9 @@ elif page in ["Employees", "Employee Management"]:
                                     </div>
                                     <span class="badge-status {status_cls}">{emp['employment_status'].upper()}</span>
                                 </div>
+                                <div style="font-size: 0.74rem; color: #1E40AF; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 6px; padding: 2px 7px; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 5px;">
+                                    {get_svg_icon("sparkles", size=11, color="#2563EB")} <strong>{emp.get('org_name', org_name)}</strong> ({emp.get('org_id', org_id)})
+                                </div>
                                 <div style="font-size: 0.78rem; color: #64748B; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
                                     {get_svg_icon("building", size=13, color="#64748B")} <strong>{emp['department']}</strong> · <span class="tbl-id-pill">{emp['employee_id']}</span>
                                 </div>
@@ -2622,6 +2727,8 @@ elif page in ["Employees", "Employee Management"]:
                             """
                         )
                         with st.expander(f"Contact & Profile ({emp['employee_id']})"):
+                            st.write(f"**Organization:** {emp.get('org_name', org_name)} (`{emp.get('org_id', org_id)}`)")
+                            st.write(f"**Employment Status:** {emp.get('employment_status', 'Active')} &bull; **Account Status:** {emp.get('account_status', 'Active')}")
                             st.write(f"**Email:** `{emp['email']}`")
                             st.write(f"**Phone:** `{emp['phone'] or 'Not provided'}`")
                             st.write(f"**Primary Skills:** {emp['primary_skills'] or 'None recorded'}")
@@ -2881,24 +2988,104 @@ elif page in ["Employees", "Employee Management"]:
 
                 with col_rm:
                     with st.container(border=True):
-                        st.markdown("##### Remove Employee Record")
+                        st.markdown("##### Deactivate or Remove Record")
                         st.markdown(
                             f"""
                             <div style="font-size: 0.88rem; color: #475569; margin-bottom: 8px;">
-                                Permanently delete <strong>{emp_curr['name']}</strong> (<code>{emp_curr['employee_id']}</code>)?
+                                Manage status or delete <strong>{emp_curr['name']}</strong> (<code>{emp_curr['employee_id']}</code>).
                             </div>
                             """,
                             unsafe_allow_html=True
                         )
+                        st.markdown("**Action 1: Deactivate Account**")
+                        st.caption("Deactivating suspends login and sets employment status to Terminated while preserving performance history.")
+                        if st.button("Deactivate Employee", key=f"btn_deact_{emp_curr['employee_id']}", type="secondary", use_container_width=True):
+                            ok_dea, msg_dea = deactivate_employee(emp_curr["employee_id"], org_id=org_id)
+                            if ok_dea:
+                                st.success(msg_dea)
+                                st.rerun()
+                            else:
+                                st.error(msg_dea)
+
+                        st.markdown("<div style='border-top: 1px solid #E2E8F0; margin: 12px 0 8px 0;'></div>", unsafe_allow_html=True)
+                        st.markdown("**Action 2: Permanent Removal**")
                         st.caption("Cascade removes associated reviews, skills, and training logs.")
-                        confirm_deletion = st.checkbox("I confirm deletion of this record.")
-                        if st.button("Permanently Delete", type="secondary", disabled=not confirm_deletion):
+                        confirm_deletion = st.checkbox("I confirm permanent deletion of this record.", key=f"chk_del_{emp_curr['employee_id']}")
+                        if st.button("Permanently Delete", type="secondary", disabled=not confirm_deletion, key=f"btn_del_{emp_curr['employee_id']}", use_container_width=True):
                             ok_del, msg_del = delete_employee(emp_curr["employee_id"], org_id=org_id)
                             if ok_del:
                                 st.success(msg_del)
                                 st.rerun()
                             else:
                                 st.error(msg_del)
+
+    # --- TAB 5: INVITATION CODES ---
+    with tab_invite:
+        st.markdown("#### Organization Employee Invitation Codes")
+        st.caption("Generate secure, expiring, multi-use invitation codes to onboarding employees into your organization.")
+
+        c_inv_l, c_inv_r = st.columns([1.2, 1.8], gap="large")
+        with c_inv_l:
+            with st.container(border=True):
+                st.markdown("##### Generate New Invitation Code")
+                st.markdown(f"Issuing for: **{org_name}** (`{org_id}`)")
+                inv_expiry_days = st.slider("Expiration Period (Days)", min_value=1, max_value=90, value=14, step=1, key="inv_gen_exp")
+                inv_max_uses = st.number_input("Maximum Allowed Uses", min_value=1, max_value=500, value=10, step=1, key="inv_gen_max")
+
+                if st.button("Generate Invitation Code", type="primary", use_container_width=True, key="btn_gen_inv_code"):
+                    ok_inv, inv_data = generate_invitation_code(
+                        org_id=org_id,
+                        created_by=user.get("name", "HR Admin"),
+                        expiry_days=inv_expiry_days,
+                        max_uses=inv_max_uses
+                    )
+                    if ok_inv:
+                        st.session_state["latest_inv_code"] = inv_data["code"]
+                        st.success("New invitation code generated successfully!")
+                    else:
+                        st.error(inv_data.get("error", "Failed to generate code"))
+
+                if "latest_inv_code" in st.session_state:
+                    st.markdown("---")
+                    st.markdown("###### Share this code with new employees:")
+                    st.code(st.session_state["latest_inv_code"], language="text")
+                    st.caption("Copy this code and share it with employees. During registration, entering this code will automatically map the employee to your organization.")
+
+        with c_inv_r:
+            with st.container(border=True):
+                st.markdown("##### Active & Historical Invitation Codes")
+                codes_list = list_invitation_codes(org_id=org_id)
+                if not codes_list:
+                    st.info("No invitation codes generated yet for this organization.")
+                else:
+                    for c_item in codes_list:
+                        status_color = "#10B981" if c_item["status"] == "Active" else ("#EF4444" if c_item["status"] == "Revoked" else "#F59E0B")
+                        col_code_info, col_code_action = st.columns([3, 1])
+                        with col_code_info:
+                            st.markdown(
+                                f"""
+                                <div style="font-family: monospace; font-size: 0.96rem; font-weight: 700; color: #1E293B;">
+                                    {c_item['code_prefix']}
+                                    <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: {status_color}22; color: {status_color}; font-weight: 700; text-transform: uppercase; margin-left: 8px;">
+                                        {c_item['status']}
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.8rem; color: #64748B; margin-top: 2px;">
+                                    Uses: <strong>{c_item['used_count']} / {c_item['max_uses']}</strong> &bull; Expires: {c_item['expires_at']} &bull; Created: {c_item['created_at'][:10]} by {c_item['created_by']}
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        with col_code_action:
+                            if c_item["status"] == "Active":
+                                if st.button("Revoke", key=f"btn_revoke_{c_item['id']}", type="secondary", use_container_width=True):
+                                    ok_rev, msg_rev = revoke_invitation_code(c_item["id"], org_id=org_id)
+                                    if ok_rev:
+                                        st.success(msg_rev)
+                                        st.rerun()
+                                    else:
+                                        st.error(msg_rev)
+                        st.markdown("<div style='border-bottom: 1px solid #F1F5F9; margin: 8px 0;'></div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # 4. PERFORMANCE REVIEWS & EVALUATIONS

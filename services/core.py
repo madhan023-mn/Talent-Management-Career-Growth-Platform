@@ -8,7 +8,7 @@ import hashlib
 import secrets
 from io import BytesIO
 from pathlib import Path
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -151,7 +151,7 @@ def check_db_health() -> Dict[str, Any]:
             row = cur.fetchone()
             info["integrity"] = row[0] if row else "ok"
             info["connected"] = (info["integrity"].lower() == "ok")
-            for table in ["organizations", "users", "employees", "performance_reviews", "employee_skills", "assessments", "career_goals", "training_records"]:
+            for table in ["organizations", "users", "employees", "invitation_codes", "performance_reviews", "employee_skills", "assessments", "career_goals", "training_records"]:
                 try:
                     cur.execute(f"SELECT COUNT(*) FROM {table}")
                     info["counts"][table] = cur.fetchone()[0]
@@ -179,7 +179,24 @@ def init_db() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 org_id TEXT UNIQUE NOT NULL,
                 name TEXT NOT NULL,
+                official_email TEXT DEFAULT '',
+                contact_number TEXT DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Pending', 'Suspended')),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS invitation_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                org_id TEXT NOT NULL,
+                code_hash TEXT UNIQUE NOT NULL,
+                code_prefix TEXT NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                used_count INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Revoked', 'Expired', 'Depleted')),
+                created_by TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS users (
@@ -383,8 +400,45 @@ def init_db() -> None:
                            ('ORG-TALENT-01', 'Talent Growth Technologies'))
         cursor.execute("SELECT id FROM organizations WHERE org_id = 'ORG-TECHCORP-02'")
         if not cursor.fetchone():
-            cursor.execute("INSERT OR IGNORE INTO organizations (org_id, name) VALUES (?, ?)",
-                           ('ORG-TECHCORP-02', 'TechCorp Solutions'))
+            cursor.execute("INSERT OR IGNORE INTO organizations (org_id, name, official_email, contact_number, status) VALUES (?, ?, ?, ?, ?)",
+                           ('ORG-TECHCORP-02', 'TechCorp Solutions', 'contact@techcorp.com', '+1-555-0900', 'Active'))
+
+        # Migrate organizations table
+        cursor.execute("PRAGMA table_info(organizations)")
+        org_cols = {row["name"] for row in cursor.fetchall()}
+        if "official_email" not in org_cols:
+            cursor.execute("ALTER TABLE organizations ADD COLUMN official_email TEXT DEFAULT ''")
+        if "contact_number" not in org_cols:
+            cursor.execute("ALTER TABLE organizations ADD COLUMN contact_number TEXT DEFAULT ''")
+        if "status" not in org_cols:
+            cursor.execute("ALTER TABLE organizations ADD COLUMN status TEXT NOT NULL DEFAULT 'Active'")
+
+        # Migrate invitation_codes table if legacy schema exists with foreign key on created_by or restricted status
+        cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='invitation_codes'")
+        inv_row = cursor.fetchone()
+        if inv_row and ("REFERENCES users" in inv_row[0] or "'Expired'))" in inv_row[0]):
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS invitation_codes_v2 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    org_id TEXT NOT NULL,
+                    code_hash TEXT UNIQUE NOT NULL,
+                    code_prefix TEXT NOT NULL,
+                    expires_at TIMESTAMP NOT NULL,
+                    max_uses INTEGER NOT NULL DEFAULT 1,
+                    used_count INTEGER NOT NULL DEFAULT 0,
+                    status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Revoked', 'Expired', 'Depleted')),
+                    created_by TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
+                )
+            """)
+            cursor.execute("""
+                INSERT OR IGNORE INTO invitation_codes_v2 (id, org_id, code_hash, code_prefix, expires_at, max_uses, used_count, status, created_by, created_at)
+                SELECT id, org_id, code_hash, code_prefix, expires_at, max_uses, used_count, status, CAST(created_by AS TEXT), created_at
+                FROM invitation_codes
+            """)
+            cursor.execute("DROP TABLE invitation_codes")
+            cursor.execute("ALTER TABLE invitation_codes_v2 RENAME TO invitation_codes")
 
         # Migrate users table
         cursor.execute("PRAGMA table_info(users)")
@@ -478,6 +532,12 @@ def init_db() -> None:
         cursor.execute("UPDATE assessments SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
         cursor.execute("UPDATE users SET employee_id = 'EMP101' WHERE email = 'alex@company.com' AND (employee_id IS NULL OR employee_id = '')")
         cursor.execute("UPDATE employees SET user_id = (SELECT id FROM users WHERE users.email = employees.email) WHERE user_id IS NULL AND email IS NOT NULL")
+
+        # Database Indexes for Organization-Level Data Isolation and Performance
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_invitation_codes_org ON invitation_codes(org_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_invitation_codes_hash ON invitation_codes(code_hash)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_employees_org ON employees(org_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id)")
 
         # Seed initial admin user if none exists (supporting admin@talentgrowth.com)
         cursor.execute("SELECT id FROM users WHERE email IN ('admin@talentgrowth.com', 'admin@talentsphere.com')")
@@ -789,18 +849,33 @@ def get_organization_by_name(name: str) -> Optional[Dict[str, Any]]:
     finally:
         conn.close()
 
-def create_organization(org_id: Optional[str] = None, name: Optional[str] = None) -> Tuple[bool, str]:
+def create_organization(
+    org_id: Optional[str] = None,
+    name: Optional[str] = None,
+    official_email: Optional[str] = None,
+    contact_number: Optional[str] = None,
+    status: str = "Active"
+) -> Tuple[bool, str]:
     """
-    Creates a new organization record with case-insensitive name uniqueness.
+    Creates a new organization record with case-insensitive name uniqueness,
+    official email validation, contact number, and organization status tracking.
     If org_id is omitted, a unique ID is automatically generated.
     """
-    if name is None and org_id is not None and not org_id.upper().startswith("ORG-"):
+    if name is None and org_id is not None and not str(org_id).upper().startswith("ORG-"):
         name = org_id
         org_id = None
 
     name = (name or "").strip()
     if not name:
         return False, "Organization Name is required."
+
+    official_email = (official_email or "").strip().lower()
+    contact_number = (contact_number or "").strip()
+    valid_statuses = ["Active", "Pending", "Suspended"]
+    status = status if status in valid_statuses else "Active"
+
+    if official_email and ("@" not in official_email or "." not in official_email):
+        return False, "Please provide a valid official email address."
 
     conn = get_connection()
     try:
@@ -812,27 +887,28 @@ def create_organization(org_id: Optional[str] = None, name: Optional[str] = None
             if existing:
                 return False, f"An organization named '{existing['name']}' already exists ({existing['org_id']})."
 
+            # Check duplicate official email if provided
+            if official_email:
+                cursor.execute("SELECT id, org_id, name FROM organizations WHERE LOWER(TRIM(official_email)) = ?", (official_email,))
+                dup_email = cursor.fetchone()
+                if dup_email:
+                    return False, f"An organization with official email '{official_email}' already exists ({dup_email['org_id']})."
+
             if org_id and org_id.strip():
                 final_org_id = org_id.strip().upper()
                 cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (final_org_id,))
                 if cursor.fetchone():
                     return False, f"Organization ID '{final_org_id}' already exists."
             else:
-                clean = re.sub(r"[^A-Z0-9]", "", name.upper())[:8] or "CORP"
-                base = f"ORG-{clean}"
-                cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (base,))
-                if not cursor.fetchone():
-                    final_org_id = base
-                else:
-                    final_org_id = base
-                    for i in range(1, 100):
-                        cand = f"{base}-{i:02d}"
-                        cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (cand,))
-                        if not cursor.fetchone():
-                            final_org_id = cand
-                            break
+                final_org_id = generate_unique_org_id(name)
 
-            cursor.execute("INSERT INTO organizations (org_id, name) VALUES (?, ?)", (final_org_id, name))
+            cursor.execute(
+                """
+                INSERT INTO organizations (org_id, name, official_email, contact_number, status)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (final_org_id, name, official_email, contact_number, status)
+            )
         return True, f"Organization '{name}' ({final_org_id}) created successfully!"
     except Exception as e:
         return False, f"Database error creating organization: {e}"
@@ -881,6 +957,280 @@ def verify_and_activate_hr_admin(user_id: int, verification_code: str) -> Tuple[
     finally:
         conn.close()
 
+# ----------------- Organization Invitation Codes & Employee Mapping -----------------
+
+def hash_invitation_code(code: str) -> str:
+    """Computes SHA-256 hash of the normalized invitation code for secure storage and lookup."""
+    normalized = (code or "").strip().upper()
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+def generate_invitation_code(
+    org_id: str,
+    created_by: Optional[Any] = None,
+    expiry_days: int = 7,
+    max_uses: int = 1
+) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Generates a secure, human-friendly invitation code for employee registration.
+    Stores the SHA-256 hash in the database rather than the plaintext code.
+    Returns (success, result_dict).
+    """
+    org_id = (org_id or "").strip().upper()
+    org = get_organization(org_id)
+    if not org:
+        return False, {"error": f"Organization '{org_id}' not found.", "message": f"Organization '{org_id}' not found."}
+
+    if org.get("status") == "Suspended":
+        return False, {"error": f"Organization '{org_id}' is suspended. Cannot issue invitations.", "message": f"Organization '{org_id}' is suspended. Cannot issue invitations."}
+
+    try:
+        max_uses = int(max_uses)
+        if max_uses <= 0:
+            max_uses = 1
+    except (ValueError, TypeError):
+        max_uses = 1
+
+    try:
+        expiry_days = int(expiry_days)
+        if expiry_days <= 0:
+            expiry_days = 7
+    except (ValueError, TypeError):
+        expiry_days = 7
+
+    clean_org = re.sub(r"[^A-Z0-9]", "", org_id.replace("ORG-", ""))[:4] or "CORP"
+    part1 = secrets.token_hex(2).upper()
+    part2 = secrets.token_hex(2).upper()
+    plaintext_code = f"INV-{clean_org}-{part1}-{part2}"
+
+    code_hash = hash_invitation_code(plaintext_code)
+    code_prefix = f"INV-{clean_org}-{part1}-****"
+    expires_at = (datetime.now(timezone.utc) + timedelta(days=expiry_days)).strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO invitation_codes (org_id, code_hash, code_prefix, expires_at, max_uses, used_count, status, created_by)
+                VALUES (?, ?, ?, ?, ?, 0, 'Active', ?)
+                """,
+                (org_id, code_hash, code_prefix, expires_at, max_uses, str(created_by) if created_by else None)
+            )
+            code_id = cursor.lastrowid
+        return True, {
+            "id": code_id,
+            "code": plaintext_code,
+            "code_prefix": code_prefix,
+            "org_id": org_id,
+            "org_name": org["name"],
+            "expires_at": expires_at,
+            "max_uses": max_uses,
+            "used_count": 0,
+            "status": "Active",
+            "message": f"Invitation code created for {org['name']} (expires in {expiry_days} days, max uses: {max_uses})."
+        }
+    except Exception as e:
+        return False, {"error": f"Database error generating invitation code: {e}", "message": f"Database error generating invitation code: {e}"}
+    finally:
+        conn.close()
+
+def validate_invitation_code(code: str) -> Tuple[bool, Dict[str, Any]]:
+    """
+    Validates an employee invitation code against hashes, expiration, usage limits, and revocation.
+    Returns (is_valid, code_info_dict).
+    """
+    clean_code = (code or "").strip().upper()
+    if not clean_code:
+        return False, {"error": "Invitation code is required.", "message": "Invitation code is required."}
+
+    code_hash = hash_invitation_code(clean_code)
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT ic.*, o.name as org_name, o.status as org_status
+            FROM invitation_codes ic
+            JOIN organizations o ON ic.org_id = o.org_id
+            WHERE ic.code_hash = ?
+            """,
+            (code_hash,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return False, {"error": "Invalid invitation code. Please check the code and try again.", "message": "Invalid invitation code. Please check the code and try again."}
+
+        code_info = dict(row)
+
+        if code_info["status"] == "Revoked":
+            return False, {"error": "This invitation code has been revoked by your organization administrator.", "message": "This invitation code has been revoked by your organization administrator.", "status": "Revoked"}
+
+        # Check expiration timestamp
+        try:
+            exp_dt = datetime.strptime(code_info["expires_at"], "%Y-%m-%d %H:%M:%S")
+            now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+            if now_utc > exp_dt:
+                with conn:
+                    cursor.execute("UPDATE invitation_codes SET status = 'Expired' WHERE id = ?", (code_info["id"],))
+                return False, {"error": "This invitation code has expired. Please request a new code from HR.", "message": "This invitation code has expired. Please request a new code from HR.", "status": "Expired"}
+        except Exception:
+            pass
+
+        # Check max usage limit
+        if code_info["used_count"] >= code_info["max_uses"]:
+            return False, {"error": "This invitation code has already reached its maximum usage limit.", "message": "This invitation code has already reached its maximum usage limit.", "status": "Depleted"}
+
+        if code_info["status"] in ("Expired", "Depleted"):
+            return False, {"error": "This invitation code has expired. Please request a new code from HR.", "message": "This invitation code has expired. Please request a new code from HR.", "status": "Expired"}
+
+        if code_info.get("org_status") == "Suspended":
+            return False, {"error": "This organization is currently suspended.", "message": "This organization is currently suspended.", "status": "Suspended"}
+
+        code_info["message"] = f"Valid invitation code for {code_info['org_name']}."
+        return True, code_info
+    finally:
+        conn.close()
+
+def use_invitation_code(code: str, conn: Optional[sqlite3.Connection] = None) -> Tuple[bool, str]:
+    """Increments the used count of an invitation code and marks as depleted if max uses reached."""
+    code_hash = hash_invitation_code(code)
+    manage_conn = False
+    if conn is None:
+        conn = get_connection()
+        manage_conn = True
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, max_uses, used_count FROM invitation_codes WHERE code_hash = ?", (code_hash,))
+        row = cursor.fetchone()
+        if not row:
+            return False, "Invitation code not found."
+
+        new_count = row["used_count"] + 1
+        new_status = "Depleted" if new_count >= row["max_uses"] else "Active"
+
+        cursor.execute(
+            """
+            UPDATE invitation_codes
+            SET used_count = ?, status = ?
+            WHERE id = ?
+            """,
+            (new_count, new_status, row["id"])
+        )
+        if manage_conn:
+            conn.commit()
+        return True, "Invitation code applied successfully."
+    except Exception as e:
+        return False, f"Error applying invitation code: {e}"
+    finally:
+        if manage_conn:
+            conn.close()
+
+def list_invitation_codes(org_id: str) -> List[Dict[str, Any]]:
+    """Returns all invitation codes for an organization with lazy expiration evaluation."""
+    org_id = (org_id or "").strip().upper()
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        with conn:
+            cursor.execute(
+                """
+                UPDATE invitation_codes
+                SET status = 'Expired'
+                WHERE org_id = ? AND status = 'Active' AND (expires_at < ? OR used_count >= max_uses)
+                """,
+                (org_id, now_str)
+            )
+
+        cursor.execute(
+            """
+            SELECT ic.*, u.name as creator_name
+            FROM invitation_codes ic
+            LEFT JOIN users u ON ic.created_by = u.id
+            WHERE ic.org_id = ?
+            ORDER BY ic.created_at DESC
+            """,
+            (org_id,)
+        )
+        return [dict(r) for r in cursor.fetchall()]
+    finally:
+        conn.close()
+
+def revoke_invitation_code(code_id: int, org_id: str) -> Tuple[bool, str]:
+    """Revokes an active invitation code, scoped strictly to the organization."""
+    org_id = (org_id or "").strip().upper()
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE invitation_codes
+                SET status = 'Revoked'
+                WHERE id = ? AND org_id = ?
+                """,
+                (code_id, org_id)
+            )
+            if cursor.rowcount == 0:
+                return False, "Invitation code not found or permission denied."
+        return True, "Invitation code has been revoked successfully."
+    except Exception as e:
+        return False, f"Database error revoking invitation code: {e}"
+    finally:
+        conn.close()
+
+def deactivate_employee(employee_id: str, org_id: Optional[str] = None) -> Tuple[bool, str]:
+    """
+    Deactivates an employee record by setting employment_status to 'Terminated'
+    and account_status to 'Suspended'. Enforces strict organization tenancy.
+    """
+    employee_id = (employee_id or "").strip().upper()
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            query = """
+                UPDATE employees
+                SET employment_status = 'Terminated', account_status = 'Suspended', updated_at = CURRENT_TIMESTAMP
+                WHERE employee_id = ?
+            """
+            params = [employee_id]
+            if org_id:
+                query += " AND org_id = ?"
+                params.append(org_id.strip().upper())
+            cursor.execute(query, params)
+            if cursor.rowcount == 0:
+                return False, f"Employee '{employee_id}' not found or permission denied."
+
+            # Also suspend corresponding user login account if linked
+            u_query = "UPDATE users SET status = 'Suspended' WHERE employee_id = ?"
+            u_params = [employee_id]
+            if org_id:
+                u_query += " AND org_id = ?"
+                u_params.append(org_id.strip().upper())
+            cursor.execute(u_query, u_params)
+
+        return True, f"Employee '{employee_id}' has been deactivated (status: Terminated / Suspended)."
+    except Exception as e:
+        return False, f"Database error deactivating employee: {e}"
+    finally:
+        conn.close()
+
+def get_all_designations(org_id: Optional[str] = None) -> List[str]:
+    """Returns a sorted list of unique designations across employees in the organization."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        if org_id:
+            cursor.execute("SELECT DISTINCT designation FROM employees WHERE designation IS NOT NULL AND designation != '' AND org_id = ? ORDER BY designation ASC", (org_id.strip().upper(),))
+        else:
+            cursor.execute("SELECT DISTINCT designation FROM employees WHERE designation IS NOT NULL AND designation != '' ORDER BY designation ASC")
+        return [row["designation"] for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
 # ----------------- Authentication & Security -----------------
 
 def hash_password(password: str, salt: Optional[str] = None) -> Tuple[str, str]:
@@ -913,7 +1263,10 @@ def register(
     app_url: Optional[str] = None,
     is_new_org: bool = False,
     hr_verification_code: Optional[str] = None,
-    require_hr_approval: bool = False
+    require_hr_approval: bool = False,
+    invitation_code: Optional[str] = None,
+    official_email: Optional[str] = None,
+    contact_number: Optional[str] = None
 ) -> Tuple[bool, str]:
     name = (name or "").strip()
     email = (email or "").strip().lower()
@@ -922,6 +1275,8 @@ def register(
     department = (department or "Engineering").strip()
     job_title = (job_title or "Software Engineer").strip()
     primary_skills = (primary_skills or "Python, SQL, Communication").strip()
+    clean_official_email = (official_email or "").strip().lower()
+    clean_contact_number = (contact_number or "").strip()
 
     try:
         years_experience = float(years_experience)
@@ -937,19 +1292,31 @@ def register(
     if len(password) < 8:
         return False, "Password must be at least 8 characters long."
 
+    # Validate employee invitation code upfront if provided
+    invitation_info: Optional[Dict[str, Any]] = None
+    if invitation_code and invitation_code.strip():
+        ok_invite, inv_data = validate_invitation_code(invitation_code.strip())
+        if not ok_invite:
+            return False, inv_data.get("error", "Invalid invitation code.")
+        invitation_info = inv_data
+
     pwd_hash, salt = hash_password(password)
     conn = get_connection()
     try:
         with conn:
             cursor = conn.cursor()
 
-            # Handle Organization Registration or Selection
-            if is_new_org:
+            # Handle Organization Registration, Invitation Code Mapping, or Selection
+            if invitation_info:
+                # Employee joined via invitation code - strictly bound to invitation's org_id
+                resolved_org_id = invitation_info["org_id"]
+                resolved_org_name = invitation_info["org_name"]
+            elif is_new_org:
                 clean_org_name = (org_name or "").strip()
                 if not clean_org_name:
                     return False, "Organization Name is required when registering a new organization."
 
-                # Case-insensitive duplicate check
+                # Case-insensitive duplicate name check
                 cursor.execute(
                     "SELECT id, org_id, name FROM organizations WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))",
                     (clean_org_name,)
@@ -958,21 +1325,21 @@ def register(
                 if existing_dup:
                     return False, f"An organization named '{existing_dup['name']}' already exists ({existing_dup['org_id']}). Please select it from existing organizations or enter a different name."
 
+                # Validate and check duplicate official email if provided
+                if clean_official_email:
+                    if "@" not in clean_official_email or "." not in clean_official_email:
+                        return False, "Please provide a valid official email address for the organization."
+                    cursor.execute(
+                        "SELECT id, org_id, name FROM organizations WHERE LOWER(TRIM(official_email)) = ?",
+                        (clean_official_email,)
+                    )
+                    dup_off = cursor.fetchone()
+                    if dup_off:
+                        return False, f"An organization with official email '{clean_official_email}' already exists ({dup_off['org_id']})."
+
                 # Auto-generate unique organization ID if not provided
                 if not org_id or not str(org_id).strip() or str(org_id).strip().upper() == "ORG-TALENT-01":
-                    clean = re.sub(r"[^A-Z0-9]", "", clean_org_name.upper())[:8] or "CORP"
-                    base = f"ORG-{clean}"
-                    cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (base,))
-                    if not cursor.fetchone():
-                        final_org_id = base
-                    else:
-                        final_org_id = base
-                        for i in range(1, 100):
-                            cand = f"{base}-{i:02d}"
-                            cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (cand,))
-                            if not cursor.fetchone():
-                                final_org_id = cand
-                                break
+                    final_org_id = generate_unique_org_id(clean_org_name)
                 else:
                     final_org_id = str(org_id).strip().upper()
                     cursor.execute("SELECT id FROM organizations WHERE org_id = ?", (final_org_id,))
@@ -980,8 +1347,11 @@ def register(
                         return False, f"Organization ID '{final_org_id}' already exists."
 
                 cursor.execute(
-                    "INSERT INTO organizations (org_id, name) VALUES (?, ?)",
-                    (final_org_id, clean_org_name)
+                    """
+                    INSERT INTO organizations (org_id, name, official_email, contact_number, status)
+                    VALUES (?, ?, ?, ?, 'Active')
+                    """,
+                    (final_org_id, clean_org_name, clean_official_email, clean_contact_number)
                 )
                 resolved_org_id = final_org_id
                 resolved_org_name = clean_org_name
@@ -997,6 +1367,10 @@ def register(
                     )
                 else:
                     resolved_org_name = org_row["name"]
+
+            # Increment invitation code usage atomically if registering via invite
+            if invitation_info and invitation_code:
+                use_invitation_code(invitation_code.strip(), conn=conn)
 
             # Role Authorization & HR Approval Verification (Requirement 9)
             user_status = "Active"
@@ -1391,6 +1765,7 @@ def get_employees(
     search_query: Optional[str] = None,
     department_filter: Optional[str] = None,
     status_filter: Optional[str] = None,
+    designation_filter: Optional[str] = None,
     created_by: Optional[int] = None,
     org_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:
@@ -1418,6 +1793,10 @@ def get_employees(
         if department_filter and department_filter != "All Departments":
             query += " AND e.department = ?"
             params.append(department_filter)
+
+        if designation_filter and designation_filter != "All Designations":
+            query += " AND e.designation = ?"
+            params.append(designation_filter)
 
         if status_filter and status_filter != "All Statuses":
             query += " AND e.employment_status = ?"
@@ -2595,6 +2974,19 @@ def get_org_dashboard_stats(org_id: str) -> Dict[str, Any]:
         cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ?", (org_id,))
         total_employees = cursor.fetchone()["cnt"]
 
+        # Active employees
+        cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ? AND employment_status = 'Active' AND account_status = 'Active'", (org_id,))
+        active_employees = cursor.fetchone()["cnt"]
+
+        # Pending / On leave employees
+        cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ? AND (account_status IN ('Pending', 'Pending Approval') OR employment_status = 'On Leave')", (org_id,))
+        pending_employees = cursor.fetchone()["cnt"]
+
+        # Active invitations
+        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("SELECT COUNT(*) as cnt FROM invitation_codes WHERE org_id = ? AND status = 'Active' AND expires_at >= ? AND used_count < max_uses", (org_id, now_str))
+        active_invitations = cursor.fetchone()["cnt"]
+
         # Total departments
         cursor.execute(
             "SELECT COUNT(DISTINCT department) as cnt FROM employees WHERE org_id = ? AND department IS NOT NULL AND department != ''",
@@ -2700,6 +3092,9 @@ def get_org_dashboard_stats(org_id: str) -> Dict[str, Any]:
         return {
             "org_id": org_id,
             "total_employees": total_employees,
+            "active_employees": active_employees,
+            "pending_employees": pending_employees,
+            "active_invitations": active_invitations,
             "total_departments": total_departments,
             "avg_performance": avg_performance,
             "total_assessments": total_assessments,

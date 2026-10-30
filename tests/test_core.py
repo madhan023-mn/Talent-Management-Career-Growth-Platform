@@ -27,6 +27,8 @@ from services.core import (
     bulk_import_employees_df, get_sample_employee_csv,
     create_organization, get_organization, list_organizations,
     get_organization_by_name, generate_unique_org_id, verify_and_activate_hr_admin,
+    generate_invitation_code, list_invitation_codes, revoke_invitation_code, validate_invitation_code, use_invitation_code,
+    deactivate_employee, get_all_designations,
     get_org_dashboard_stats, get_employee_dashboard_data,
     hash_password, verify_password,
     get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
@@ -1262,6 +1264,341 @@ def test_29_hr_admin_registration_requires_verification_and_approval():
     assert ok_verified is True
     directly_verified = login("verified_admin@company.com", "AdminPassword123")
     assert directly_verified["status"] == "Active"
+
+
+# ----------------- Organization-Based Employee Mapping & HR Management Tests (Scenarios 1 - 13) -----------------
+
+def test_scenario_1_and_2_register_organizations_a_and_b():
+    """Scenario 1 & 2: Register Organization A and Organization B with official emails, contacts, and unique IDs."""
+    ok_a, msg_a = create_organization(
+        org_id="ORG-TEST-AAA",
+        name="Apex Global Technologies",
+        official_email="contact@apextech.com",
+        contact_number="+1-555-0101",
+        status="Active"
+    )
+    assert ok_a is True
+    org_a = get_organization("ORG-TEST-AAA")
+    assert org_a is not None
+    assert org_a["org_id"] == "ORG-TEST-AAA"
+    assert org_a["name"] == "Apex Global Technologies"
+    assert org_a["status"] == "Active"
+
+    ok_b, msg_b = create_organization(
+        org_id="ORG-TEST-BBB",
+        name="Beacon Enterprises Inc",
+        official_email="info@beaconent.com",
+        contact_number="+1-555-0202",
+        status="Active"
+    )
+    assert ok_b is True
+    org_b = get_organization("ORG-TEST-BBB")
+    assert org_b is not None
+    assert org_b["org_id"] == "ORG-TEST-BBB"
+    assert org_b["name"] == "Beacon Enterprises Inc"
+
+    # Verify duplicate prevention by case-insensitive name
+    dup_name_ok, dup_name_err = create_organization(
+        name="apex global technologies",
+        official_email="another@apextech.com"
+    )
+    assert dup_name_ok is False
+    assert "already exists" in dup_name_err.lower()
+
+
+def test_scenario_3_and_4_register_hr_for_org_a_and_org_b():
+    """Scenario 3 & 4: Register HR for Organization A and HR for Organization B with authorization verification."""
+    # HR A
+    ok_hra, _ = register(
+        name="HR Leader Alpha",
+        email="hr.alpha@apextech.com",
+        password="SecureHRPassword123",
+        role="admin",
+        employee_id="HRA-01",
+        org_id="ORG-TEST-AAA",
+        require_hr_approval=True,
+        hr_verification_code="HR2026"
+    )
+    assert ok_hra is True
+    user_hra = login("hr.alpha@apextech.com", "SecureHRPassword123")
+    assert user_hra is not None
+    assert user_hra["org_id"] == "ORG-TEST-AAA"
+    assert user_hra["role"] == "admin"
+    assert user_hra["status"] == "Active"
+
+    # HR B
+    ok_hrb, _ = register(
+        name="HR Leader Beta",
+        email="hr.beta@beaconent.com",
+        password="SecureHRPassword123",
+        role="admin",
+        employee_id="HRB-01",
+        org_id="ORG-TEST-BBB",
+        require_hr_approval=True,
+        hr_verification_code="HR2026"
+    )
+    assert ok_hrb is True
+    user_hrb = login("hr.beta@beaconent.com", "SecureHRPassword123")
+    assert user_hrb is not None
+    assert user_hrb["org_id"] == "ORG-TEST-BBB"
+    assert user_hrb["role"] == "admin"
+
+    # Verify that attempting to register HR with an invalid authorization key flags Pending Approval
+    ok_unauth, _ = register(
+        name="Imposter HR",
+        email="imposter@beaconent.com",
+        password="SecureHRPassword123",
+        role="admin",
+        employee_id="HR-FAKE-01",
+        org_id="ORG-TEST-BBB",
+        require_hr_approval=True,
+        hr_verification_code="WRONG_KEY"
+    )
+    assert ok_unauth is True
+    unauth_user = login("imposter@beaconent.com", "SecureHRPassword123")
+    assert unauth_user["status"] == "Pending Approval"
+
+
+def test_scenario_5_hr_a_generates_employee_invitation_code():
+    """Scenario 5: HR A generates an employee invitation code."""
+    ok_code, code_data = generate_invitation_code(
+        org_id="ORG-TEST-AAA",
+        created_by="HR Leader Alpha",
+        expiry_days=7,
+        max_uses=5
+    )
+    assert ok_code is True
+    assert "code" in code_data
+    assert code_data["code"].startswith("INV-")
+    assert code_data["max_uses"] == 5
+    assert code_data["used_count"] == 0
+    assert code_data["status"] == "Active"
+
+    # Validate code resolution
+    valid, info = validate_invitation_code(code_data["code"])
+    assert valid is True
+    assert info["org_id"] == "ORG-TEST-AAA"
+    assert info["org_name"] == "Apex Global Technologies"
+
+
+def test_scenario_6_and_7_employee_joins_using_hr_a_invitation_code_and_maps_to_org_a():
+    """Scenario 6 & 7: Employee joins using HR A's invitation code; verify employee is mapped strictly to Org A."""
+    ok_code, code_data = generate_invitation_code(
+        org_id="ORG-TEST-AAA",
+        created_by="HR Leader Alpha",
+        expiry_days=7,
+        max_uses=2
+    )
+    invite_code = code_data["code"]
+
+    # Even if client maliciously attempts to submit org_id="ORG-TEST-BBB", backend binds strictly to Org A
+    ok_reg, msg_reg = register(
+        name="Clara Oswald",
+        email="clara@apextech.com",
+        password="EmployeePassword123",
+        role="employee",
+        employee_id="EMP-APEX-01",
+        org_id="ORG-TEST-BBB",  # Malicious attempt
+        department="Engineering",
+        job_title="Software Architect",
+        invitation_code=invite_code
+    )
+    assert ok_reg is True
+
+    # Login and verify mapping
+    emp_user = login("clara@apextech.com", "EmployeePassword123")
+    assert emp_user is not None
+    assert emp_user["org_id"] == "ORG-TEST-AAA"  # Overridden and bound to Org A!
+    assert emp_user["employee_id"] == "EMP-APEX-01"
+
+    # Check employee record in database
+    emp_record = get_employee_by_id("EMP-APEX-01", org_id="ORG-TEST-AAA")
+    assert emp_record is not None
+    assert emp_record["org_id"] == "ORG-TEST-AAA"
+    assert emp_record["name"] == "Clara Oswald"
+
+    # Verify invitation code used_count incremented
+    _, updated_info = validate_invitation_code(invite_code)
+    assert updated_info["used_count"] == 1
+
+
+def test_scenario_8_hr_a_can_view_that_employee():
+    """Scenario 8: HR A can view that employee in their organization directory."""
+    emp_list = get_employees(org_id="ORG-TEST-AAA")
+    matching = [e for e in emp_list if e["employee_id"] == "EMP-APEX-01"]
+    assert len(matching) == 1
+    assert matching[0]["name"] == "Clara Oswald"
+    assert matching[0]["org_id"] == "ORG-TEST-AAA"
+    assert matching[0]["designation"] == "Software Architect"
+
+
+def test_scenario_9_hr_b_cannot_view_that_employee():
+    """Scenario 9: HR B cannot view that employee belonging to Org A."""
+    # HR B queries their own organization
+    hr_b_employees = get_employees(org_id="ORG-TEST-BBB")
+    assert not any(e["employee_id"] == "EMP-APEX-01" for e in hr_b_employees)
+    assert not any(e["email"] == "clara@apextech.com" for e in hr_b_employees)
+
+    # Direct query targeting Clara under Org B must return None
+    cross_lookup = get_employee_by_id("EMP-APEX-01", org_id="ORG-TEST-BBB")
+    assert cross_lookup is None
+
+
+def test_scenario_10_hr_b_cannot_update_or_delete_that_employee():
+    """Scenario 10: HR B cannot update or delete employees belonging to another organization."""
+    # Attempt update by HR B (scoped with org_id="ORG-TEST-BBB")
+    ok_upd, msg_upd = update_employee(
+        employee_id="EMP-APEX-01",
+        name="Malicious Name Overwrite",
+        department="Finance",
+        designation="Janitor",
+        years_experience=0.0,
+        primary_skills="None",
+        org_id="ORG-TEST-BBB"  # HR B's tenant scope
+    )
+    assert ok_upd is False
+    assert "not found" in msg_upd.lower()
+
+    # Verify Clara was not altered
+    clara_intact = get_employee_by_id("EMP-APEX-01", org_id="ORG-TEST-AAA")
+    assert clara_intact["name"] == "Clara Oswald"
+    assert clara_intact["department"] == "Engineering"
+
+    # Attempt deletion by HR B
+    ok_del, msg_del = delete_employee("EMP-APEX-01", org_id="ORG-TEST-BBB")
+    assert ok_del is False
+
+    # Attempt deactivation by HR B
+    ok_dea, msg_dea = deactivate_employee("EMP-APEX-01", org_id="ORG-TEST-BBB")
+    assert ok_dea is False
+
+    # Verify Clara still exists in Org A
+    clara_still_there = get_employee_by_id("EMP-APEX-01", org_id="ORG-TEST-AAA")
+    assert clara_still_there is not None
+
+
+def test_scenario_11_employee_cannot_change_their_organization_id():
+    """Scenario 11: Employee cannot modify their organizationId directly."""
+    emp_user = login("clara@apextech.com", "EmployeePassword123")
+    assert emp_user["org_id"] == "ORG-TEST-AAA"
+
+    # Employee tries to update their profile and inject a new org_id
+    save_profile(
+        user_id=emp_user["id"],
+        data={
+            "job_title": "Lead Software Engineer",
+            "org_id": "ORG-TEST-BBB",  # Tampering attempt
+            "summary": "Specialist in distributed microservices."
+        }
+    )
+
+    # Reload user and employee records
+    reloaded_user = get_user_by_id(emp_user["id"])
+    assert reloaded_user["org_id"] == "ORG-TEST-AAA"  # Immutable org_id!
+
+    reloaded_emp = get_employee_by_id("EMP-APEX-01", org_id="ORG-TEST-AAA")
+    assert reloaded_emp["org_id"] == "ORG-TEST-AAA"  # Intact!
+
+    # Attempting to call update_employee with employee permissions should also never change org_id
+    update_employee(
+        employee_id="EMP-APEX-01",
+        name="Clara Oswald",
+        department="Engineering",
+        designation="Lead Engineer",
+        years_experience=3.5,
+        primary_skills="Python, SQL, Cloud",
+        org_id="ORG-TEST-AAA"
+    )
+    clara_check = get_employee_by_id("EMP-APEX-01", org_id="ORG-TEST-AAA")
+    assert clara_check["org_id"] == "ORG-TEST-AAA"
+
+
+def test_scenario_12_expired_and_revoked_invitation_codes_are_rejected():
+    """Scenario 12: Expired and revoked invitation codes must be rejected."""
+    # 1. Create a revoked code
+    ok_gen, code_data = generate_invitation_code(
+        org_id="ORG-TEST-AAA",
+        created_by="HR Leader Alpha",
+        expiry_days=10,
+        max_uses=5
+    )
+    rev_code = code_data["code"]
+
+    # Revoke it
+    ok_rev, _ = revoke_invitation_code(code_data["id"], org_id="ORG-TEST-AAA")
+    assert ok_rev is True
+
+    # Validate rejected
+    val_rev, rev_info = validate_invitation_code(rev_code)
+    assert val_rev is False
+    assert "revoked" in rev_info.get("error", "").lower()
+
+    # Attempt registration with revoked code
+    ok_reg_rev, msg_reg_rev = register(
+        name="Rejected Candidate",
+        email="rejected.candidate@apextech.com",
+        password="Password123",
+        role="employee",
+        invitation_code=rev_code
+    )
+    assert ok_reg_rev is False
+    assert "revoked" in msg_reg_rev.lower()
+
+    # 2. Simulate expired code (expiry in the past)
+    from services.core import get_connection, hash_invitation_code
+    conn = get_connection()
+    c = conn.cursor()
+    exp_code = "INV-EXPIRED-TEST-CODE"
+    c.execute("""
+        INSERT INTO invitation_codes (org_id, code_hash, code_prefix, expires_at, max_uses, used_count, status, created_by, created_at)
+        VALUES (?, ?, ?, datetime('now', '-2 days'), 10, 0, 'Active', 'HR Admin', datetime('now', '-5 days'))
+    """, ("ORG-TEST-AAA", hash_invitation_code(exp_code), "INV-EXP...",))
+    conn.commit()
+    conn.close()
+
+    val_exp, exp_info = validate_invitation_code(exp_code)
+    assert val_exp is False
+    assert "expired" in exp_info.get("error", "").lower()
+
+
+def test_scenario_13_invitation_code_cannot_exceed_usage_limit():
+    """Scenario 13: An invitation code must not exceed its maximum usage limit."""
+    # Create single-use code
+    ok_gen, code_data = generate_invitation_code(
+        org_id="ORG-TEST-AAA",
+        created_by="HR Leader Alpha",
+        expiry_days=7,
+        max_uses=1
+    )
+    single_code = code_data["code"]
+
+    # First employee uses it
+    ok1, _ = register(
+        name="Lucky Joiner 1",
+        email="lucky1@apextech.com",
+        password="Password123",
+        role="employee",
+        employee_id="EMP-LUCKY-01",
+        invitation_code=single_code
+    )
+    assert ok1 is True
+
+    # Code should now be Depleted
+    val_dep, dep_info = validate_invitation_code(single_code)
+    assert val_dep is False
+    assert "maximum" in dep_info.get("error", "").lower() or "depleted" in dep_info.get("error", "").lower()
+
+    # Second employee tries to use it
+    ok2, msg2 = register(
+        name="Unlucky Joiner 2",
+        email="unlucky2@apextech.com",
+        password="Password123",
+        role="employee",
+        employee_id="EMP-UNLUCKY-02",
+        invitation_code=single_code
+    )
+    assert ok2 is False
+    assert "maximum" in msg2.lower() or "depleted" in msg2.lower()
 
 
 
