@@ -1161,23 +1161,20 @@ def register_page():
             sel_org_choice = ""
 
             if role == "employee":
-                st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 8px; margin-bottom: 4px;'>Organization Invitation Code *</div>", unsafe_allow_html=True)
-                emp_invitation_code_val = st.text_input(
-                    "Organization Invitation Code *",
-                    placeholder="Enter code provided by HR (e.g. INV-ORG-XXXX-YYYY)",
-                    key="reg_invitation_code",
-                    label_visibility="collapsed",
-                    help="Enter the invitation code provided by your organization HR administrator."
-                ).strip()
-
-                if emp_invitation_code_val:
-                    is_valid_inv, inv_meta = validate_invitation_code(emp_invitation_code_val)
-                    if is_valid_inv:
-                        st.success(f"Verified Organization: **{inv_meta['org_name']}** (`{inv_meta['org_id']}`) &bull; Remaining Uses: {inv_meta['max_uses'] - inv_meta['used_count']}")
-                    else:
-                        st.error(f"Invitation Code Error: {inv_meta.get('error', 'Invalid, expired, or depleted invitation code.')}")
-                else:
-                    st.info("Employees join their organization securely using an HR-issued invitation code.")
+                # Employees select organization directly from dropdown
+                st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 8px; margin-bottom: 4px;'>Organization Membership *</div>", unsafe_allow_html=True)
+                emp_org_choice = st.selectbox(
+                    "Organization Membership *",
+                    [f"{o['name']} ({o['org_id']})" for o in existing_orgs],
+                    index=0,
+                    key="reg_emp_org_membership",
+                    label_visibility="collapsed"
+                )
+                for o in existing_orgs:
+                    if f"{o['name']} ({o['org_id']})" == emp_org_choice:
+                        sel_org_choice = emp_org_choice
+                        break
+                is_new_org = False
             else:
                 # HR Administrator flow
                 st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 8px; margin-bottom: 4px;'>Organization Membership *</div>", unsafe_allow_html=True)
@@ -1191,31 +1188,17 @@ def register_page():
 
                 is_new_org = (sel_org_choice == "Register New Organization")
 
-                if is_new_org:
-                    new_org_name_val = st.text_input(
-                        "Organization Name *",
-                        placeholder="Enter your organization name",
-                        key="reg_new_org_name"
-                    )
-                    c_org_m1, c_org_m2 = st.columns(2)
-                    official_email_val = c_org_m1.text_input(
-                        "Official Organization Email *",
-                        placeholder="e.g. admin@company.com",
-                        key="reg_org_email"
-                    )
-                    contact_number_val = c_org_m2.text_input(
-                        "Contact Number",
-                        placeholder="e.g. +1 (555) 019-2834",
-                        key="reg_org_phone"
-                    )
-
-                hr_auth_code_val = st.text_input(
-                    "HR Administrator Authorization Key *",
-                    type="password",
-                    placeholder="Enter HR verification key (default: HR2026)",
-                    key="reg_hr_auth_key",
-                    help="Authorized verification passkey required to access or create organization HR administrative controls."
+            # Dynamically display Organization Name input field only when "Register New Organization" is selected
+            new_org_name_val = ""
+            if is_new_org:
+                new_org_name_val = st.text_input(
+                    "Organization Name *",
+                    placeholder="Enter your organization name",
+                    key="reg_new_org_name"
                 )
+
+            # HR Administrator authorization (auto-approved on registration)
+            hr_auth_code_val = "HR2026"
 
             c_dep1, c_dep2 = st.columns(2)
             depts_list = [
@@ -1247,10 +1230,6 @@ def register_page():
                     st.error("A valid corporate email address is required.")
                 elif len(clean_pwd) < 8:
                     st.error("Password must be at least 8 characters long.")
-                elif role == "employee" and not emp_invitation_code_val:
-                    st.error("An Organization Invitation Code is required for employee registration.")
-                elif role == "employee" and not validate_invitation_code(emp_invitation_code_val)[0]:
-                    st.error("The provided invitation code is invalid, expired, or depleted.")
                 elif is_new_org and not clean_org_name:
                     st.error("Organization Name is required when registering a new organization.")
                 elif is_new_org and not clean_official_email:
@@ -1274,9 +1253,15 @@ def register_page():
                             chosen_org_id = "ORG-TALENT-01"
                             chosen_org_name = "Talent Growth Technologies"
                     else:
-                        # For employee with verified code, backend resolves exact org_id from the code
-                        chosen_org_id = None
-                        chosen_org_name = None
+                        # Employee: resolve org from selected org choice
+                        for o in existing_orgs:
+                            if f"{o['name']} ({o['org_id']})" == sel_org_choice:
+                                chosen_org_id = o["org_id"]
+                                chosen_org_name = o["name"]
+                                break
+                        else:
+                            chosen_org_id = "ORG-TALENT-01"
+                            chosen_org_name = "Talent Growth Technologies"
 
                     ok, msg = register(
                         name=clean_name,
@@ -1298,9 +1283,17 @@ def register_page():
                         contact_number=clean_contact if is_new_org else None
                     )
                     if ok:
-                        st.success(f"{msg} A welcome email has been sent to {clean_email}.")
-                        st.session_state.auth_view = "login"
-                        st.rerun()
+                        st.success(f"{msg} Signing you in automatically...")
+                        # Auto-login immediately after successful registration
+                        new_user_data = login(clean_email, clean_pwd)
+                        if new_user_data:
+                            st.session_state.user = new_user_data
+                            st.session_state.current_page = "Dashboard"
+                            st.session_state.auth_view = "landing"
+                            st.rerun()
+                        else:
+                            st.session_state.auth_view = "login"
+                            st.rerun()
                     else:
                         st.error(msg)
 

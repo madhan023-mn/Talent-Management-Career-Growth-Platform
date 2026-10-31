@@ -388,7 +388,22 @@ def init_db() -> None:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS invitation_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
+                code TEXT NOT NULL UNIQUE,
+                status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Used', 'Expired', 'Revoked')),
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                used_count INTEGER NOT NULL DEFAULT 0,
+                expires_at TEXT NOT NULL DEFAULT '2099-12-31 23:59:59',
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE,
+                FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+            );
         """)
+
 
         # Auto-migrate existing database tables if columns are missing
         cursor = conn.cursor()
