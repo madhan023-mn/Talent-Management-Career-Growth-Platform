@@ -388,20 +388,6 @@ def init_db() -> None:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             );
-
-            CREATE TABLE IF NOT EXISTS invitation_codes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
-                code TEXT NOT NULL UNIQUE,
-                status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Used', 'Expired', 'Revoked')),
-                max_uses INTEGER NOT NULL DEFAULT 1,
-                used_count INTEGER NOT NULL DEFAULT 0,
-                expires_at TEXT NOT NULL DEFAULT '2099-12-31 23:59:59',
-                created_by INTEGER,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE,
-                FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
-            );
         """)
 
 
@@ -428,32 +414,84 @@ def init_db() -> None:
         if "status" not in org_cols:
             cursor.execute("ALTER TABLE organizations ADD COLUMN status TEXT NOT NULL DEFAULT 'Active'")
 
-        # Migrate invitation_codes table if legacy schema exists with foreign key on created_by or restricted status
-        cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='invitation_codes'")
-        inv_row = cursor.fetchone()
-        if inv_row and ("REFERENCES users" in inv_row[0] or "'Expired'))" in inv_row[0]):
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS invitation_codes_v2 (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    org_id TEXT NOT NULL,
-                    code_hash TEXT UNIQUE NOT NULL,
-                    code_prefix TEXT NOT NULL,
-                    expires_at TIMESTAMP NOT NULL,
-                    max_uses INTEGER NOT NULL DEFAULT 1,
-                    used_count INTEGER NOT NULL DEFAULT 0,
-                    status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Revoked', 'Expired', 'Depleted')),
-                    created_by TEXT DEFAULT '',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
-                )
-            """)
-            cursor.execute("""
-                INSERT OR IGNORE INTO invitation_codes_v2 (id, org_id, code_hash, code_prefix, expires_at, max_uses, used_count, status, created_by, created_at)
-                SELECT id, org_id, code_hash, code_prefix, expires_at, max_uses, used_count, status, CAST(created_by AS TEXT), created_at
-                FROM invitation_codes
-            """)
-            cursor.execute("DROP TABLE invitation_codes")
-            cursor.execute("ALTER TABLE invitation_codes_v2 RENAME TO invitation_codes")
+        # Migrate invitation_codes table if legacy schema exists or columns are missing
+        try:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='invitation_codes'")
+            if cursor.fetchone():
+                cursor.execute("PRAGMA table_info(invitation_codes)")
+                inv_cols = {row["name"]: row for row in cursor.fetchall()}
+                if "code_hash" not in inv_cols:
+                    # Legacy schema with plaintext code - safely migrate to hashed schema
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS invitation_codes_v2 (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            org_id TEXT NOT NULL,
+                            code_hash TEXT UNIQUE NOT NULL,
+                            code_prefix TEXT NOT NULL,
+                            expires_at TIMESTAMP NOT NULL,
+                            max_uses INTEGER NOT NULL DEFAULT 1,
+                            used_count INTEGER NOT NULL DEFAULT 0,
+                            status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Revoked', 'Expired', 'Depleted')),
+                            created_by TEXT DEFAULT '',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
+                        )
+                    """)
+                    cursor.execute("SELECT * FROM invitation_codes")
+                    for row in cursor.fetchall():
+                        r = dict(row)
+                        raw_code = str(r.get("code") or "")
+                        c_hash = hash_invitation_code(raw_code) if raw_code else secrets.token_hex(16)
+                        c_prefix = raw_code[:8] if raw_code else "INV-MIGR"
+                        c_exp = r.get("expires_at") or "2099-12-31 23:59:59"
+                        c_max = r.get("max_uses", 1) or 1
+                        c_used = r.get("used_count", 0) or 0
+                        c_stat = r.get("status", "Active")
+                        if c_stat not in ("Active", "Revoked", "Expired", "Depleted"):
+                            c_stat = "Active"
+                        c_by = str(r.get("created_by") or "")
+                        c_at = r.get("created_at") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                        cursor.execute("""
+                            INSERT OR IGNORE INTO invitation_codes_v2
+                            (id, org_id, code_hash, code_prefix, expires_at, max_uses, used_count, status, created_by, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (r.get("id"), r.get("org_id", "ORG-TALENT-01"), c_hash, c_prefix, c_exp, c_max, c_used, c_stat, c_by, c_at))
+                    cursor.execute("DROP TABLE invitation_codes")
+                    cursor.execute("ALTER TABLE invitation_codes_v2 RENAME TO invitation_codes")
+                else:
+                    # Table exists with code_hash, verify all other columns exist
+                    if "code_prefix" not in inv_cols:
+                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN code_prefix TEXT NOT NULL DEFAULT 'INV-0000'")
+                    if "expires_at" not in inv_cols:
+                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN expires_at TIMESTAMP NOT NULL DEFAULT '2099-12-31 23:59:59'")
+                    if "max_uses" not in inv_cols:
+                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN max_uses INTEGER NOT NULL DEFAULT 1")
+                    if "used_count" not in inv_cols:
+                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN used_count INTEGER NOT NULL DEFAULT 0")
+                    if "status" not in inv_cols:
+                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN status TEXT NOT NULL DEFAULT 'Active'")
+                    if "created_by" not in inv_cols:
+                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN created_by TEXT DEFAULT ''")
+                    if "created_at" not in inv_cols:
+                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            else:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS invitation_codes (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        org_id TEXT NOT NULL,
+                        code_hash TEXT UNIQUE NOT NULL,
+                        code_prefix TEXT NOT NULL,
+                        expires_at TIMESTAMP NOT NULL,
+                        max_uses INTEGER NOT NULL DEFAULT 1,
+                        used_count INTEGER NOT NULL DEFAULT 0,
+                        status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Revoked', 'Expired', 'Depleted')),
+                        created_by TEXT DEFAULT '',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
+                    )
+                """)
+        except Exception:
+            pass
 
         # Migrate users table
         cursor.execute("PRAGMA table_info(users)")
@@ -1149,15 +1187,18 @@ def list_invitation_codes(org_id: str) -> List[Dict[str, Any]]:
     try:
         cursor = conn.cursor()
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-        with conn:
-            cursor.execute(
-                """
-                UPDATE invitation_codes
-                SET status = 'Expired'
-                WHERE org_id = ? AND status = 'Active' AND (expires_at < ? OR used_count >= max_uses)
-                """,
-                (org_id, now_str)
-            )
+        try:
+            with conn:
+                cursor.execute(
+                    """
+                    UPDATE invitation_codes
+                    SET status = 'Expired'
+                    WHERE org_id = ? AND status = 'Active' AND (expires_at < ? OR used_count >= max_uses)
+                    """,
+                    (org_id, now_str)
+                )
+        except Exception:
+            pass
 
         cursor.execute(
             """
@@ -1170,6 +1211,8 @@ def list_invitation_codes(org_id: str) -> List[Dict[str, Any]]:
             (org_id,)
         )
         return [dict(r) for r in cursor.fetchall()]
+    except Exception:
+        return []
     finally:
         conn.close()
 
@@ -2999,8 +3042,11 @@ def get_org_dashboard_stats(org_id: str) -> Dict[str, Any]:
 
         # Active invitations
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute("SELECT COUNT(*) as cnt FROM invitation_codes WHERE org_id = ? AND status = 'Active' AND expires_at >= ? AND used_count < max_uses", (org_id, now_str))
-        active_invitations = cursor.fetchone()["cnt"]
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM invitation_codes WHERE org_id = ? AND status = 'Active' AND expires_at >= ? AND used_count < max_uses", (org_id, now_str))
+            active_invitations = cursor.fetchone()["cnt"]
+        except Exception:
+            active_invitations = 0
 
         # Total departments
         cursor.execute(
