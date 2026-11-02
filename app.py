@@ -27,6 +27,11 @@ from dotenv import load_dotenv
 from pypdf import PdfReader
 from docx import Document
 
+# Evict stale cached in-memory services modules during hot reload
+if "services.core" in sys.modules and not hasattr(sys.modules["services.core"], "register_individual"):
+    for _m in [k for k in list(sys.modules.keys()) if k.startswith("services")]:
+        sys.modules.pop(_m, None)
+
 try:
     from services.core import (
         BASE_DIR, ROLE_CATALOG, LEVELS, STANDARD_DEPARTMENTS, EMPLOYMENT_STATUSES,
@@ -49,14 +54,103 @@ try:
         get_db_path, check_db_health,
         get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
         validate_url, validate_date_range,
-        register_individual, create_membership_request, get_membership_requests,
+        create_membership_request, get_membership_requests,
         approve_membership_request, reject_membership_request, get_user_membership_request
     )
+    try:
+        from services.core import register_individual
+    except ImportError:
+        import services.core as _core_mod
+        import importlib
+        _core_mod = importlib.reload(_core_mod)
+        register_individual = getattr(_core_mod, "register_individual", None)
 except Exception as _core_err:
-    import traceback
-    st.error(f"### Critical Startup Error: Failed to load services.core\n\n**Error:** `{_core_err}`")
-    st.code(traceback.format_exc(), language="python")
-    st.stop()
+    try:
+        for _m in [k for k in list(sys.modules.keys()) if k.startswith("services")]:
+            sys.modules.pop(_m, None)
+        import services.core as _core_mod
+        register_individual = getattr(_core_mod, "register_individual", None)
+        BASE_DIR = _core_mod.BASE_DIR
+        ROLE_CATALOG = _core_mod.ROLE_CATALOG
+        LEVELS = _core_mod.LEVELS
+        STANDARD_DEPARTMENTS = _core_mod.STANDARD_DEPARTMENTS
+        EMPLOYMENT_STATUSES = _core_mod.EMPLOYMENT_STATUSES
+        init_db = _core_mod.init_db
+        register = _core_mod.register
+        login = _core_mod.login
+        get_user_by_id = _core_mod.get_user_by_id
+        create_organization = _core_mod.create_organization
+        get_organization = _core_mod.get_organization
+        list_organizations = _core_mod.list_organizations
+        get_organization_by_name = _core_mod.get_organization_by_name
+        generate_unique_org_id = _core_mod.generate_unique_org_id
+        verify_and_activate_hr_admin = _core_mod.verify_and_activate_hr_admin
+        get_profile = _core_mod.get_profile
+        save_profile = _core_mod.save_profile
+        list_skills = _core_mod.list_skills
+        add_skill = _core_mod.add_skill
+        delete_skill = _core_mod.delete_skill
+        add_assessment = _core_mod.add_assessment
+        get_assessments = _core_mod.get_assessments
+        save_progress = _core_mod.save_progress
+        get_progress = _core_mod.get_progress
+        profile_completion = _core_mod.profile_completion
+        gap_analysis = _core_mod.gap_analysis
+        recommendations = _core_mod.recommendations
+        profile_analysis = _core_mod.profile_analysis
+        role_match = _core_mod.role_match
+        export_user_data = _core_mod.export_user_data
+        add_employee = _core_mod.add_employee
+        get_employees = _core_mod.get_employees
+        get_employee_by_id = _core_mod.get_employee_by_id
+        update_employee = _core_mod.update_employee
+        delete_employee = _core_mod.delete_employee
+        deactivate_employee = _core_mod.deactivate_employee
+        get_all_departments = _core_mod.get_all_departments
+        get_all_designations = _core_mod.get_all_designations
+        bulk_import_employees_df = _core_mod.bulk_import_employees_df
+        get_sample_employee_csv = _core_mod.get_sample_employee_csv
+        add_performance_review = _core_mod.add_performance_review
+        get_performance_reviews = _core_mod.get_performance_reviews
+        get_department_performance_summary = _core_mod.get_department_performance_summary
+        add_employee_skill = _core_mod.add_employee_skill
+        get_employee_skills = _core_mod.get_employee_skills
+        delete_employee_skill = _core_mod.delete_employee_skill
+        get_employee_skill_gaps = _core_mod.get_employee_skill_gaps
+        add_goal = _core_mod.add_goal
+        get_goals = _core_mod.get_goals
+        get_goal_by_id = _core_mod.get_goal_by_id
+        update_goal = _core_mod.update_goal
+        update_goal_progress = _core_mod.update_goal_progress
+        delete_goal = _core_mod.delete_goal
+        get_goal_stats = _core_mod.get_goal_stats
+        add_training_record = _core_mod.add_training_record
+        get_training_records = _core_mod.get_training_records
+        get_org_dashboard_stats = _core_mod.get_org_dashboard_stats
+        get_employee_dashboard_data = _core_mod.get_employee_dashboard_data
+        generate_invitation_code = _core_mod.generate_invitation_code
+        list_invitation_codes = _core_mod.list_invitation_codes
+        revoke_invitation_code = _core_mod.revoke_invitation_code
+        validate_invitation_code = _core_mod.validate_invitation_code
+        get_db_path = _core_mod.get_db_path
+        check_db_health = _core_mod.check_db_health
+        get_resume = _core_mod.get_resume
+        save_resume = _core_mod.save_resume
+        import_skills_to_resume = _core_mod.import_skills_to_resume
+        format_resume_as_text = _core_mod.format_resume_as_text
+        generate_resume_pdf = _core_mod.generate_resume_pdf
+        validate_url = _core_mod.validate_url
+        validate_date_range = _core_mod.validate_date_range
+        create_membership_request = _core_mod.create_membership_request
+        get_membership_requests = _core_mod.get_membership_requests
+        approve_membership_request = _core_mod.approve_membership_request
+        reject_membership_request = _core_mod.reject_membership_request
+        get_user_membership_request = _core_mod.get_user_membership_request
+    except Exception as _retry_err:
+        import traceback
+        st.error(f"### Critical Startup Error: Failed to load services.core\n\n**Error:** `{_retry_err}`")
+        st.code(traceback.format_exc(), language="python")
+        st.stop()
 
 try:
     from services.individual_ui import (
