@@ -26,7 +26,8 @@ from services.core import (
     gap_analysis, role_match, ROLE_CATALOG,
     get_membership_requests, approve_membership_request, reject_membership_request,
     get_organization_by_name,
-    get_org_dashboard_stats
+    get_org_dashboard_stats,
+    get_recent_email_logs, send_test_email
 )
 
 @pytest.fixture(autouse=True)
@@ -643,3 +644,29 @@ def test_employee_joins_org_immediately_in_hr_dashboard():
     updated_stats = get_org_dashboard_stats(org_id)
     assert updated_stats["total_employees"] == initial_emp_count + 1
     assert updated_stats["active_employees"] >= 1
+
+
+def test_welcome_email_dispatch_and_logging_on_registration():
+    """Verifies that creating an account dispatches and logs a welcome email."""
+    test_email = "mail.recipient@example.com"
+    ok, msg = register(
+        name="Email Test User",
+        email=test_email,
+        password="TestPassword123!",
+        role="employee",
+        org_id="ORG-TALENT-01",
+        org_name="Talent Growth Technologies"
+    )
+    assert ok is True
+    assert "welcome email" in msg.lower() or "confirmation email" in msg.lower()
+
+    # Verify log entry in email_logs table
+    logs = get_recent_email_logs(limit=10)
+    matched = next((l for l in logs if l["to_email"] == test_email), None)
+    assert matched is not None
+    assert matched["user_name"] == "Email Test User"
+    assert "welcome" in matched["subject"].lower()
+
+    # Test send_test_email helper
+    ok_test, msg_test = send_test_email("tester@company.com")
+    assert ok_test is True

@@ -169,6 +169,13 @@ except Exception as _ind_err:
     st.stop()
 
 try:
+    from services.email_service import get_email_config, get_recent_email_logs, send_test_email
+except Exception:
+    get_email_config = lambda: {"smtp_host": "", "smtp_port": 587, "smtp_user": "", "smtp_from": "no-reply@talentgrowth.com"}
+    get_recent_email_logs = lambda limit=25: []
+    send_test_email = lambda email: (False, "Email service not initialized")
+
+try:
     from services.reports import create_report
 except Exception as _rep_err:
     import traceback
@@ -1351,7 +1358,7 @@ def register_page():
                         job_title=title_val.strip() or "Independent Professional"
                     )
                     if ok:
-                        st.success(f"{msg} Welcome! Signing you in automatically...")
+                        st.success(f"{msg} A welcome confirmation email has been dispatched to **{clean_email}**. Signing you in automatically...")
                         new_user_data = login(clean_email, clean_pwd)
                         if new_user_data:
                             st.session_state.user = new_user_data
@@ -1396,7 +1403,7 @@ def register_page():
                         require_hr_approval=False
                     )
                     if ok:
-                        st.success(f"{msg} Signing you in automatically...")
+                        st.success(f"{msg} A welcome confirmation email has been dispatched to **{clean_email}**. Signing you in automatically...")
                         new_user_data = login(clean_email, clean_pwd)
                         if new_user_data:
                             st.session_state.user = new_user_data
@@ -5886,3 +5893,65 @@ elif page in ["Settings", "Settings & System", "Settings & Privacy"]:
     )
     payload = json.dumps(export_user_data(uid), indent=2, default=str).encode("utf-8")
     st.download_button("Download Complete System Snapshot (JSON)", payload, file_name="talent_growth_snapshot.json", mime="application/json", type="primary")
+
+    render_html(
+        f"""
+        <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.5rem 0 0.75rem 0;">
+            {get_svg_icon("mail", size=20, color="#2563EB")} Welcome Email Dispatch & SMTP Delivery
+        </div>
+        """
+    )
+    email_cfg = get_email_config()
+    is_smtp_live = bool(email_cfg.get("smtp_host") and email_cfg.get("smtp_user"))
+    smtp_status_color = "#10B981" if is_smtp_live else "#F59E0B"
+    smtp_status_badge = "LIVE NETWORK DELIVERY" if is_smtp_live else "LOCAL LOGGING / SAFE MODE"
+
+    render_html(
+        f"""
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="width: 10px; height: 10px; background: {smtp_status_color}; border-radius: 50%; display: inline-block;"></span>
+                    <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">SMTP Server: {email_cfg.get('smtp_host') or 'Not Configured (Safe Mode)'}</span>
+                </div>
+                <span style="background: {smtp_status_color}22; border: 1px solid {smtp_status_color}55; color: {smtp_status_color}; font-size: 0.74rem; font-weight: 800; padding: 3px 10px; border-radius: 9999px;">
+                    {smtp_status_badge}
+                </span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px;">
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.72rem; color: #64748B; text-transform: uppercase;">Sender Address</div>
+                    <div style="font-weight: 700; color: #0F172A; font-size: 0.88rem; word-break: break-all;">{email_cfg.get('smtp_from', 'no-reply@talentgrowth.com')}</div>
+                </div>
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.72rem; color: #64748B; text-transform: uppercase;">SMTP Port & TLS</div>
+                    <div style="font-weight: 700; color: #0F172A; font-size: 0.88rem;">Port {email_cfg.get('smtp_port', 587)} · {'TLS Enabled' if email_cfg.get('smtp_use_tls') else 'Plain'}</div>
+                </div>
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 8px 12px;">
+                    <div style="font-size: 0.72rem; color: #64748B; text-transform: uppercase;">Active Auth User</div>
+                    <div style="font-weight: 700; color: #2563EB; font-size: 0.88rem;">{email_cfg.get('smtp_user') or 'None (Logged to DB)'}</div>
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    with st.expander("Send Test Welcome Email"):
+        c_t1, c_t2 = st.columns([3, 1.2])
+        test_email_target = c_t1.text_input("Recipient Email Address", value=user.get("email", ""), key="test_email_recipient")
+        if c_t2.button("Send Test Email", type="primary", use_container_width=True, key="btn_send_test_email"):
+            if not test_email_target.strip():
+                st.error("Please enter a valid recipient email.")
+            else:
+                ok_test, msg_test = send_test_email(test_email_target.strip())
+                if ok_test:
+                    st.success(f"{msg_test}")
+                else:
+                    st.error(f"{msg_test}")
+
+    recent_logs = get_recent_email_logs(limit=15)
+    if recent_logs:
+        st.markdown("##### Recent Account Creation Emails")
+        df_logs = pd.DataFrame(recent_logs)[["to_email", "user_name", "role", "subject", "status", "created_at"]]
+        df_logs.columns = ["Recipient", "Name", "Role", "Subject", "Status", "Timestamp"]
+        st.dataframe(df_logs, use_container_width=True, hide_index=True)

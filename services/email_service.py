@@ -4,7 +4,7 @@ import smtplib
 import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, Any, List
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -13,17 +13,124 @@ load_dotenv(BASE_DIR / ".env")
 
 logger = logging.getLogger("talent_growth.email")
 
+def _get_setting(key: str, default: str = "") -> str:
+    """Reads setting from os.environ, falling back to Streamlit Cloud secrets if available."""
+    val = os.getenv(key)
+    if val is not None and str(val).strip():
+        return str(val).strip()
+    try:
+        import streamlit as st
+        # Direct key e.g. st.secrets["SMTP_HOST"]
+        if key in st.secrets and str(st.secrets[key]).strip():
+            return str(st.secrets[key]).strip()
+        # Lowercase key e.g. st.secrets["smtp_host"]
+        if key.lower() in st.secrets and str(st.secrets[key.lower()]).strip():
+            return str(st.secrets[key.lower()]).strip()
+        # Nested table e.g. st.secrets["smtp"]["host"]
+        sub_key = key.replace("SMTP_", "").lower()
+        if "smtp" in st.secrets and sub_key in st.secrets["smtp"] and str(st.secrets["smtp"][sub_key]).strip():
+            return str(st.secrets["smtp"][sub_key]).strip()
+    except Exception:
+        pass
+    return default
+
 def get_email_config() -> dict:
-    """Loads email settings strictly from environment variables without hardcoded secrets."""
+    """Loads email settings from environment variables and Streamlit Cloud secrets."""
+    load_dotenv(BASE_DIR / ".env")
+    host = _get_setting("SMTP_HOST", _get_setting("SMTP_SERVER", ""))
+    port_str = _get_setting("SMTP_PORT", "587")
+    try:
+        port = int(port_str)
+    except (ValueError, TypeError):
+        port = 587
+    user = _get_setting("SMTP_USER", _get_setting("SMTP_USERNAME", ""))
+    password = _get_setting("SMTP_PASSWORD", _get_setting("SMTP_PASS", ""))
+    sender = _get_setting("SMTP_FROM", _get_setting("SMTP_SENDER", "no-reply@talentgrowth.com"))
+    use_tls_str = _get_setting("SMTP_USE_TLS", "true").lower()
+    app_url = _get_setting("APP_URL", "https://talent-growth.vercel.app")
+
     return {
-        "smtp_host": os.getenv("SMTP_HOST", os.getenv("SMTP_SERVER", "")).strip(),
-        "smtp_port": int(os.getenv("SMTP_PORT", "587")),
-        "smtp_user": os.getenv("SMTP_USER", os.getenv("SMTP_USERNAME", "")).strip(),
-        "smtp_password": os.getenv("SMTP_PASSWORD", os.getenv("SMTP_PASS", "")).strip(),
-        "smtp_from": os.getenv("SMTP_FROM", os.getenv("SMTP_SENDER", "no-reply@talentgrowth.com")).strip(),
-        "smtp_use_tls": os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes"),
-        "app_url": os.getenv("APP_URL", "https://talent-growth.vercel.app").strip()
+        "smtp_host": host,
+        "smtp_port": port,
+        "smtp_user": user,
+        "smtp_password": password,
+        "smtp_from": sender,
+        "smtp_use_tls": use_tls_str in ("true", "1", "yes"),
+        "app_url": app_url
     }
+
+def log_email_dispatch(
+    to_email: str,
+    user_name: str,
+    role: str,
+    org_name: str,
+    subject: str,
+    status: str,
+    error_message: str = ""
+) -> None:
+    """Safely logs email delivery status to the SQLite database without throwing exceptions."""
+    try:
+        from services.core import get_connection
+        conn = get_connection()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS email_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    to_email TEXT NOT NULL,
+                    user_name TEXT DEFAULT '',
+                    role TEXT DEFAULT '',
+                    org_name TEXT DEFAULT '',
+                    subject TEXT DEFAULT '',
+                    status TEXT NOT NULL DEFAULT 'Sent',
+                    error_message TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                """
+            )
+            cursor.execute(
+                """
+                INSERT INTO email_logs (to_email, user_name, role, org_name, subject, status, error_message)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (to_email, user_name, role, org_name, subject, status, error_message)
+            )
+        conn.close()
+    except Exception as e:
+        logger.debug(f"Unable to write to email_logs table: {e}")
+
+def get_recent_email_logs(limit: int = 25) -> List[Dict[str, Any]]:
+    """Returns recent dispatched emails from email_logs table."""
+    try:
+        from services.core import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS email_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                to_email TEXT NOT NULL,
+                user_name TEXT DEFAULT '',
+                role TEXT DEFAULT '',
+                org_name TEXT DEFAULT '',
+                subject TEXT DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Sent',
+                error_message TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+        cursor.execute(
+            "SELECT id, to_email, user_name, role, org_name, subject, status, error_message, created_at FROM email_logs ORDER BY id DESC LIMIT ?",
+            (limit,)
+        )
+        rows = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return rows
+    except Exception as e:
+        logger.debug(f"Unable to query email_logs: {e}")
+        return []
 
 def build_welcome_email_content(
     user_name: str,
@@ -32,7 +139,14 @@ def build_welcome_email_content(
     app_url: str
 ) -> Tuple[str, str]:
     """Generates plain text and rich HTML email contents with professional Talent Growth branding."""
-    role_display = "HR Administrator" if role == "admin" else "Employee"
+    if role in ("admin", "HR Administrator"):
+        role_display = "HR Administrator"
+    elif role in ("Individual Professional", "individual", "Individual"):
+        role_display = "Individual Professional"
+    else:
+        role_display = "Employee"
+
+    org_display = org_name or ("Personal Career Hub" if role_display == "Individual Professional" else "Talent Growth")
 
     # Plain text version (strictly matching prompt guidelines)
     plain_text = f"""Subject: Welcome to Talent Growth!
@@ -41,7 +155,7 @@ Dear {user_name},
 
 Thank you for creating an account with Talent Growth.
 
-Your account has been successfully created. You can now sign in and access the features available for your role as {role_display} at {org_name}.
+Your account has been successfully created. You can now sign in and access the features available for your role as {role_display} at {org_display}.
 
 Sign in to your account here: {app_url}
 
@@ -84,7 +198,7 @@ Talent Growth Team
                 Dear <strong>{user_name}</strong>,
               </p>
               <p style="font-size: 15px; line-height: 1.6; color: #334155; margin: 0 0 20px 0;">
-                Thank you for creating an account with <strong>Talent Growth</strong>. Your account has been successfully created and configured for your organization.
+                Thank you for creating an account with <strong>Talent Growth</strong>. Your account has been successfully created and configured.
               </p>
 
               <!-- Account Summary Card -->
@@ -93,8 +207,8 @@ Talent Growth Team
                   <td style="padding: 18px 22px;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="4">
                       <tr>
-                        <td width="35%" style="font-size: 13px; color: #64748B; font-weight: 600;">Organization:</td>
-                        <td style="font-size: 14px; color: #0F172A; font-weight: 700;">{org_name}</td>
+                        <td width="35%" style="font-size: 13px; color: #64748B; font-weight: 600;">Organization / Hub:</td>
+                        <td style="font-size: 14px; color: #0F172A; font-weight: 700;">{org_display}</td>
                       </tr>
                       <tr>
                         <td style="font-size: 13px; color: #64748B; font-weight: 600;">Account Role:</td>
@@ -110,7 +224,7 @@ Talent Growth Team
               </table>
 
               <p style="font-size: 15px; line-height: 1.6; color: #334155; margin: 0 0 24px 0;">
-                You can now sign in to access your personal competency assessments, skill gap visualizations, career milestones, and executive dashboards.
+                You can now sign in to access your personal competency assessments, skill gap visualizations, career milestones, and professional analytics.
               </p>
 
               <!-- CTA Button -->
@@ -179,16 +293,27 @@ def send_welcome_email(
         app_url=final_app_url
     )
 
+    subject = "Welcome to Talent Growth!"
+
     # Check if SMTP host is configured
-    if not cfg["smtp_host"]:
+    if not cfg["smtp_host"] or not cfg["smtp_user"]:
         logger.info(
-            f"SMTP host not configured. Welcome email for '{to_email}' ({role}) logged locally."
+            f"SMTP host/user not configured. Welcome email for '{to_email}' ({role}) logged locally."
         )
-        return True, "Email service not configured; welcome notice logged successfully."
+        log_email_dispatch(
+            to_email=to_email,
+            user_name=user_name,
+            role=role,
+            org_name=org_name,
+            subject=subject,
+            status="Logged (SMTP Not Configured)",
+            error_message="SMTP credentials not provided in .env or secrets; email logged to database."
+        )
+        return True, "Email service logged locally. Configure SMTP credentials in .env to deliver real emails to inboxes."
 
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Welcome to Talent Growth!"
+        msg["Subject"] = subject
         msg["From"] = cfg["smtp_from"]
         msg["To"] = to_email
 
@@ -196,9 +321,12 @@ def send_welcome_email(
         msg.attach(MIMEText(plain_text, "plain", "utf-8"))
         msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-        server = smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"], timeout=15)
-        if cfg["smtp_use_tls"]:
-            server.starttls()
+        if cfg["smtp_port"] == 465:
+            server = smtplib.SMTP_SSL(cfg["smtp_host"], cfg["smtp_port"], timeout=15)
+        else:
+            server = smtplib.SMTP(cfg["smtp_host"], cfg["smtp_port"], timeout=15)
+            if cfg["smtp_use_tls"]:
+                server.starttls()
         
         if cfg["smtp_user"] and cfg["smtp_password"]:
             server.login(cfg["smtp_user"], cfg["smtp_password"])
@@ -206,8 +334,33 @@ def send_welcome_email(
         server.send_message(msg)
         server.quit()
         logger.info(f"Welcome email successfully sent to '{to_email}'.")
+        log_email_dispatch(
+            to_email=to_email,
+            user_name=user_name,
+            role=role,
+            org_name=org_name,
+            subject=subject,
+            status="Sent"
+        )
         return True, "Welcome email sent successfully."
     except Exception as e:
-        # Secure logging without revealing passwords
         logger.warning(f"Failed to deliver welcome email to '{to_email}': {e}")
+        log_email_dispatch(
+            to_email=to_email,
+            user_name=user_name,
+            role=role,
+            org_name=org_name,
+            subject=subject,
+            status="Failed",
+            error_message=str(e)
+        )
         return False, f"Email delivery notice: {e}"
+
+def send_test_email(to_email: str) -> Tuple[bool, str]:
+    """Helper to send a test welcome email for SMTP verification."""
+    return send_welcome_email(
+        to_email=to_email,
+        user_name="Test Recipient",
+        role="employee",
+        org_name="Talent Growth Diagnostics"
+    )

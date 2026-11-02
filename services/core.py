@@ -19,9 +19,9 @@ sys.path.insert(0, _BASE_STR)
 
 import pandas as pd
 try:
-    from services.email_service import send_welcome_email
+    from services.email_service import send_welcome_email, get_recent_email_logs, send_test_email, get_email_config
 except ImportError:
-    from .email_service import send_welcome_email
+    from .email_service import send_welcome_email, get_recent_email_logs, send_test_email, get_email_config
 
 LEVELS = {
     "Beginner": 1,
@@ -405,6 +405,18 @@ def init_db() -> None:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS email_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                to_email TEXT NOT NULL,
+                user_name TEXT DEFAULT '',
+                role TEXT DEFAULT '',
+                org_name TEXT DEFAULT '',
+                subject TEXT DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Sent',
+                error_message TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
 
@@ -1446,7 +1458,7 @@ def register_individual(
         except Exception:
             pass
 
-        return True, "Individual account registered successfully! You can now sign in to your personal career dashboard."
+        return True, f"Individual account registered successfully! A welcome email has been sent to {email}. You can now sign in to your personal career dashboard."
     except sqlite3.IntegrityError:
         return False, f"An account with email '{email}' already exists."
     except Exception as e:
@@ -1735,12 +1747,12 @@ def register(
             pass
 
         if registration_type == "join_org":
-            return True, f"Membership request submitted for {resolved_org_name}! Your account is pending HR administrator approval."
+            return True, f"Membership request submitted for {resolved_org_name}! A confirmation email has been sent to {email}. Your account is pending HR administrator approval."
         if registration_type == "new_org":
-            return True, f"Organization {resolved_org_name} registered successfully! You are now the HR Administrator."
+            return True, f"Organization {resolved_org_name} registered successfully! A welcome email has been sent to {email}. You are now the HR Administrator."
         if user_status == "Pending Approval":
-            return True, f"Account created for {resolved_org_name}! Your HR Administrator access is pending verification. Please sign in."
-        return True, f"Account created successfully for {resolved_org_name}! Please sign in."
+            return True, f"Account created for {resolved_org_name}! A confirmation email has been sent to {email}. Your HR Administrator access is pending verification. Please sign in."
+        return True, f"Account created successfully for {resolved_org_name}! A welcome email has been sent to {email}. Please sign in."
     except sqlite3.IntegrityError:
         return False, "An account with this email already exists."
     except Exception as e:
