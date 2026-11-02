@@ -27,6 +27,11 @@ from dotenv import load_dotenv
 from pypdf import PdfReader
 from docx import Document
 
+# Evict stale cached in-memory services modules during hot reload
+if "services.core" in sys.modules and not hasattr(sys.modules["services.core"], "register_individual"):
+    for _m in [k for k in list(sys.modules.keys()) if k.startswith("services")]:
+        sys.modules.pop(_m, None)
+
 try:
     from services.core import (
         BASE_DIR, ROLE_CATALOG, LEVELS, STANDARD_DEPARTMENTS, EMPLOYMENT_STATUSES,
@@ -48,11 +53,118 @@ try:
         generate_invitation_code, list_invitation_codes, revoke_invitation_code, validate_invitation_code,
         get_db_path, check_db_health,
         get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
-        validate_url, validate_date_range
+        validate_url, validate_date_range,
+        create_membership_request, get_membership_requests,
+        approve_membership_request, reject_membership_request, get_user_membership_request
     )
+    try:
+        from services.core import register_individual
+    except ImportError:
+        import services.core as _core_mod
+        import importlib
+        _core_mod = importlib.reload(_core_mod)
+        register_individual = getattr(_core_mod, "register_individual", None)
 except Exception as _core_err:
+    try:
+        for _m in [k for k in list(sys.modules.keys()) if k.startswith("services")]:
+            sys.modules.pop(_m, None)
+        import services.core as _core_mod
+        register_individual = getattr(_core_mod, "register_individual", None)
+        BASE_DIR = _core_mod.BASE_DIR
+        ROLE_CATALOG = _core_mod.ROLE_CATALOG
+        LEVELS = _core_mod.LEVELS
+        STANDARD_DEPARTMENTS = _core_mod.STANDARD_DEPARTMENTS
+        EMPLOYMENT_STATUSES = _core_mod.EMPLOYMENT_STATUSES
+        init_db = _core_mod.init_db
+        register = _core_mod.register
+        login = _core_mod.login
+        get_user_by_id = _core_mod.get_user_by_id
+        create_organization = _core_mod.create_organization
+        get_organization = _core_mod.get_organization
+        list_organizations = _core_mod.list_organizations
+        get_organization_by_name = _core_mod.get_organization_by_name
+        generate_unique_org_id = _core_mod.generate_unique_org_id
+        verify_and_activate_hr_admin = _core_mod.verify_and_activate_hr_admin
+        get_profile = _core_mod.get_profile
+        save_profile = _core_mod.save_profile
+        list_skills = _core_mod.list_skills
+        add_skill = _core_mod.add_skill
+        delete_skill = _core_mod.delete_skill
+        add_assessment = _core_mod.add_assessment
+        get_assessments = _core_mod.get_assessments
+        save_progress = _core_mod.save_progress
+        get_progress = _core_mod.get_progress
+        profile_completion = _core_mod.profile_completion
+        gap_analysis = _core_mod.gap_analysis
+        recommendations = _core_mod.recommendations
+        profile_analysis = _core_mod.profile_analysis
+        role_match = _core_mod.role_match
+        export_user_data = _core_mod.export_user_data
+        add_employee = _core_mod.add_employee
+        get_employees = _core_mod.get_employees
+        get_employee_by_id = _core_mod.get_employee_by_id
+        update_employee = _core_mod.update_employee
+        delete_employee = _core_mod.delete_employee
+        deactivate_employee = _core_mod.deactivate_employee
+        get_all_departments = _core_mod.get_all_departments
+        get_all_designations = _core_mod.get_all_designations
+        bulk_import_employees_df = _core_mod.bulk_import_employees_df
+        get_sample_employee_csv = _core_mod.get_sample_employee_csv
+        add_performance_review = _core_mod.add_performance_review
+        get_performance_reviews = _core_mod.get_performance_reviews
+        get_department_performance_summary = _core_mod.get_department_performance_summary
+        add_employee_skill = _core_mod.add_employee_skill
+        get_employee_skills = _core_mod.get_employee_skills
+        delete_employee_skill = _core_mod.delete_employee_skill
+        get_employee_skill_gaps = _core_mod.get_employee_skill_gaps
+        add_goal = _core_mod.add_goal
+        get_goals = _core_mod.get_goals
+        get_goal_by_id = _core_mod.get_goal_by_id
+        update_goal = _core_mod.update_goal
+        update_goal_progress = _core_mod.update_goal_progress
+        delete_goal = _core_mod.delete_goal
+        get_goal_stats = _core_mod.get_goal_stats
+        add_training_record = _core_mod.add_training_record
+        get_training_records = _core_mod.get_training_records
+        get_org_dashboard_stats = _core_mod.get_org_dashboard_stats
+        get_employee_dashboard_data = _core_mod.get_employee_dashboard_data
+        generate_invitation_code = _core_mod.generate_invitation_code
+        list_invitation_codes = _core_mod.list_invitation_codes
+        revoke_invitation_code = _core_mod.revoke_invitation_code
+        validate_invitation_code = _core_mod.validate_invitation_code
+        get_db_path = _core_mod.get_db_path
+        check_db_health = _core_mod.check_db_health
+        get_resume = _core_mod.get_resume
+        save_resume = _core_mod.save_resume
+        import_skills_to_resume = _core_mod.import_skills_to_resume
+        format_resume_as_text = _core_mod.format_resume_as_text
+        generate_resume_pdf = _core_mod.generate_resume_pdf
+        validate_url = _core_mod.validate_url
+        validate_date_range = _core_mod.validate_date_range
+        create_membership_request = _core_mod.create_membership_request
+        get_membership_requests = _core_mod.get_membership_requests
+        approve_membership_request = _core_mod.approve_membership_request
+        reject_membership_request = _core_mod.reject_membership_request
+        get_user_membership_request = _core_mod.get_user_membership_request
+    except Exception as _retry_err:
+        import traceback
+        st.error(f"### Critical Startup Error: Failed to load services.core\n\n**Error:** `{_retry_err}`")
+        st.code(traceback.format_exc(), language="python")
+        st.stop()
+
+try:
+    from services.individual_ui import (
+        render_individual_dashboard,
+        render_individual_skills,
+        render_individual_assessments,
+        render_individual_skill_gaps,
+        render_individual_career_goals,
+        render_individual_progress,
+        render_join_organization_card
+    )
+except Exception as _ind_err:
     import traceback
-    st.error(f"### Critical Startup Error: Failed to load services.core\n\n**Error:** `{_core_err}`")
+    st.error(f"### Startup Error: Failed to load services.individual_ui\n\n**Error:** `{_ind_err}`")
     st.code(traceback.format_exc(), language="python")
     st.stop()
 
@@ -1135,60 +1247,30 @@ def register_page():
                 """
             )
 
-            existing_orgs = list_organizations()
-            org_options = [f"{o['name']} ({o['org_id']})" for o in existing_orgs] + ["Register New Organization"]
-
             name = st.text_input("Full Legal Name *", placeholder="e.g. Jordan Miller", key="reg_name")
-            new_email = st.text_input("Corporate Email Address *", placeholder="jordan.miller@company.com", key="reg_email")
+            new_email = st.text_input("Email Address *", placeholder="jordan.miller@example.com", key="reg_email")
             new_password = st.text_input("Password (min 8 characters) *", type="password", placeholder="Set a secure password", key="reg_password")
 
-            c_r1, c_r2 = st.columns(2)
-            role = c_r1.selectbox(
-                "Account Type *",
-                ["employee", "admin"],
-                format_func=lambda x: "Employee (Self-Service)" if x == "employee" else "HR Administrator",
-                key="reg_role"
+            existing_orgs = list_organizations()
+            org_options = [f"{o['name']} ({o['org_id']})" for o in existing_orgs] + [
+                "Register New Organization",
+                "Individual Registration"
+            ]
+
+            # Organization Membership Selectbox matching user screenshot
+            st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 10px; margin-bottom: 4px;'>Organization Membership *</div>", unsafe_allow_html=True)
+            sel_org_choice = st.selectbox(
+                "Organization Membership *",
+                org_options,
+                index=0,
+                key="reg_org_membership",
+                label_visibility="collapsed"
             )
-            emp_code = c_r2.text_input("Employee ID (Optional - auto-assigned if empty)", placeholder="e.g. EMP208", key="reg_emp_code").strip().upper()
 
-            # Organization Mapping: Invitation Code for Employees / Org Setup for HR Admin
-            emp_invitation_code_val = ""
-            is_new_org = False
-            new_org_name_val = ""
-            official_email_val = ""
-            contact_number_val = ""
-            hr_auth_code_val = ""
-            sel_org_choice = ""
+            is_new_org = (sel_org_choice == "Register New Organization")
+            is_individual = (sel_org_choice == "Individual Registration")
 
-            if role == "employee":
-                # Employees select organization directly from dropdown
-                st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 8px; margin-bottom: 4px;'>Organization Membership *</div>", unsafe_allow_html=True)
-                emp_org_choice = st.selectbox(
-                    "Organization Membership *",
-                    [f"{o['name']} ({o['org_id']})" for o in existing_orgs],
-                    index=0,
-                    key="reg_emp_org_membership",
-                    label_visibility="collapsed"
-                )
-                for o in existing_orgs:
-                    if f"{o['name']} ({o['org_id']})" == emp_org_choice:
-                        sel_org_choice = emp_org_choice
-                        break
-                is_new_org = False
-            else:
-                # HR Administrator flow
-                st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 8px; margin-bottom: 4px;'>Organization Membership *</div>", unsafe_allow_html=True)
-                sel_org_choice = st.selectbox(
-                    "Organization Membership *",
-                    org_options,
-                    index=0,
-                    key="reg_org_membership",
-                    label_visibility="collapsed"
-                )
-
-                is_new_org = (sel_org_choice == "Register New Organization")
-
-            # Dynamically display Organization Name input field only when "Register New Organization" is selected
+            # Option 2: When "Register New Organization" is chosen: take HTML input field of ONLY Organization Name
             new_org_name_val = ""
             if is_new_org:
                 new_org_name_val = st.text_input(
@@ -1197,8 +1279,20 @@ def register_page():
                     key="reg_new_org_name"
                 )
 
-            # HR Administrator authorization (auto-approved on registration)
-            hr_auth_code_val = "HR2026"
+            # Option 3: When "Individual Registration" is chosen: no organization name, directly employee/personal details only
+            # For organization members: prompt for Account Type (Employee or HR Admin) and optional Employee ID
+            if not is_individual:
+                c_r1, c_r2 = st.columns(2)
+                role = c_r1.selectbox(
+                    "Account Type *",
+                    ["employee", "admin"],
+                    format_func=lambda x: "Employee (Self-Service)" if x == "employee" else "HR Administrator",
+                    key="reg_role"
+                )
+                emp_code = c_r2.text_input("Employee ID (Optional - auto-assigned if empty)", placeholder="e.g. EMP208", key="reg_emp_code").strip().upper()
+            else:
+                role = "employee"
+                emp_code = ""
 
             c_dep1, c_dep2 = st.columns(2)
             depts_list = [
@@ -1207,53 +1301,75 @@ def register_page():
                 "Design", "Sales & Customer Success"
             ]
             dept_val = c_dep1.selectbox("Department *", depts_list, key="reg_dept")
-            title_val = c_dep2.text_input("Job Title / Designation *", placeholder="e.g. Software Engineer / HRBP", key="reg_title")
+            title_val = c_dep2.text_input(
+                "Job Title / Designation *",
+                placeholder="e.g. Software Engineer / HRBP" if not is_individual else "e.g. Software Developer / Consultant",
+                key="reg_title"
+            )
 
             c_sk1, c_sk2 = st.columns([2, 1])
-            skills_val = c_sk1.text_input("Primary Skills (Comma-separated)", value="Python, SQL, Communication", placeholder="e.g. Python, SQL, React, Data Analysis", key="reg_skills")
+            skills_val = c_sk1.text_input("Primary Skills (Comma-separated)", value="Python, SQL, Communication", placeholder="e.g. Python, SQL, React", key="reg_skills")
             exp_val = c_sk2.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.0, step=0.5, key="reg_exp")
 
             terms = st.checkbox("I agree to the Enterprise Talent Governance Terms", value=True, key="reg_terms")
-            submit_reg = st.button("Create Account & Join Organization", type="primary", use_container_width=True, key="btn_submit_reg")
+            if is_individual:
+                btn_label = "Create Individual Account"
+            elif is_new_org:
+                btn_label = "Create Account & Register Organization"
+            else:
+                btn_label = "Create Account & Join Organization"
+            submit_reg = st.button(btn_label, type="primary", use_container_width=True, key="btn_submit_reg")
 
             if submit_reg:
                 clean_name = (name or "").strip()
-                clean_email = (new_email or "").strip()
+                clean_email = (new_email or "").strip().lower()
                 clean_pwd = new_password or ""
                 clean_org_name = (new_org_name_val or "").strip() if is_new_org else ""
-                clean_official_email = (official_email_val or "").strip()
-                clean_contact = (contact_number_val or "").strip()
 
                 if not clean_name:
                     st.error("Full Legal Name is required.")
                 elif not clean_email or "@" not in clean_email or "." not in clean_email:
-                    st.error("A valid corporate email address is required.")
+                    st.error("A valid email address is required.")
                 elif len(clean_pwd) < 8:
                     st.error("Password must be at least 8 characters long.")
                 elif is_new_org and not clean_org_name:
                     st.error("Organization Name is required when registering a new organization.")
-                elif is_new_org and not clean_official_email:
-                    st.error("Official Organization Email is required when registering a new organization.")
                 elif is_new_org and get_organization_by_name(clean_org_name):
                     existing = get_organization_by_name(clean_org_name)
-                    st.error(f"An organization named '{existing['name']}' already exists ({existing['org_id']}). Please select it from the existing organizations dropdown or choose a different name.")
+                    st.error(f"An organization named '{existing['name']}' already exists ({existing['org_id']}). Please select it from the dropdown or choose a different name.")
                 elif not terms:
                     st.error("Please agree to the enterprise governance terms to proceed.")
+                elif is_individual:
+                    # Individual registration: no organization name, directly user details
+                    ok, msg = register_individual(
+                        name=clean_name,
+                        email=clean_email,
+                        password=clean_pwd,
+                        primary_skills=skills_val.strip() or "Python, SQL, Communication",
+                        years_experience=exp_val,
+                        department=dept_val,
+                        job_title=title_val.strip() or "Independent Professional"
+                    )
+                    if ok:
+                        st.success(f"{msg} Welcome! Signing you in automatically...")
+                        new_user_data = login(clean_email, clean_pwd)
+                        if new_user_data:
+                            st.session_state.user = new_user_data
+                            st.session_state.current_page = "Dashboard"
+                            st.session_state.auth_view = "landing"
+                            st.rerun()
+                        else:
+                            st.session_state.auth_view = "login"
+                            st.rerun()
+                    else:
+                        st.error(msg)
                 else:
+                    # Organization registration (Join Existing or Register New)
+                    # When an employee registers with an organization, add the employee into the HR dashboard directly!
                     if is_new_org:
                         chosen_org_id = None
                         chosen_org_name = clean_org_name
-                    elif role == "admin":
-                        for o in existing_orgs:
-                            if f"{o['name']} ({o['org_id']})" == sel_org_choice:
-                                chosen_org_id = o["org_id"]
-                                chosen_org_name = o["name"]
-                                break
-                        else:
-                            chosen_org_id = "ORG-TALENT-01"
-                            chosen_org_name = "Talent Growth Technologies"
                     else:
-                        # Employee: resolve org from selected org choice
                         for o in existing_orgs:
                             if f"{o['name']} ({o['org_id']})" == sel_org_choice:
                                 chosen_org_id = o["org_id"]
@@ -1276,15 +1392,11 @@ def register_page():
                         primary_skills=skills_val.strip() or "Python, SQL, Communication",
                         years_experience=exp_val,
                         is_new_org=is_new_org,
-                        hr_verification_code=hr_auth_code_val if role == "admin" else None,
-                        require_hr_approval=True,
-                        invitation_code=emp_invitation_code_val if role == "employee" else None,
-                        official_email=clean_official_email if is_new_org else None,
-                        contact_number=clean_contact if is_new_org else None
+                        hr_verification_code="HR2026" if role == "admin" else None,
+                        require_hr_approval=False
                     )
                     if ok:
                         st.success(f"{msg} Signing you in automatically...")
-                        # Auto-login immediately after successful registration
                         new_user_data = login(clean_email, clean_pwd)
                         if new_user_data:
                             st.session_state.user = new_user_data
@@ -1322,11 +1434,13 @@ if not st.session_state.user:
 # ------------------------------------------------------------------------------
 user = st.session_state.get("user") or {}
 uid = user.get("id", 1)
-is_admin = (user.get("role") == "admin" and user.get("status") != "Pending Approval")
-is_pending_hr = (user.get("role") == "admin" and user.get("status") == "Pending Approval")
+is_individual = (user.get("account_type") == "Individual" or user.get("org_id") is None or user.get("role") == "individual")
+is_pending_member = (not is_individual and user.get("role") != "admin" and user.get("status") in ("Pending Approval", "Pending"))
+is_admin = (user.get("role") == "admin" and user.get("status") != "Pending Approval" and not is_individual)
+is_pending_hr = (user.get("role") == "admin" and user.get("status") == "Pending Approval" and not is_individual)
 emp_id = user.get("employee_id") or f"EMP{uid:03d}"
-org_id = user.get("org_id") or "ORG-TALENT-01"
-org_name = user.get("org_name") or "Talent Growth Technologies"
+org_id = user.get("org_id") or ("" if is_individual else "ORG-TALENT-01")
+org_name = user.get("org_name") or ("" if is_individual else "Talent Growth Technologies")
 profile = get_profile(uid)
 skills = list_skills(uid)
 
@@ -1336,14 +1450,16 @@ initials = (name_parts[0][0] + (name_parts[-1][0] if len(name_parts) > 1 else ""
 
 def navigate_to(target_page: str):
     alias_map = {
-        "Skills": "Skills & Assessment",
-        "Skills & Competency Matrix": "Skills & Assessment",
-        "Skills & Assessments": "Skills & Assessment",
-        "Career Goals": "Growth Progress" if not is_admin else "Career Goals",
-        "Career Direction & Gaps": "Career Direction",
+        "Skills": "My Skills" if is_individual else "Skills & Assessment",
+        "Skills & Competency Matrix": "My Skills" if is_individual else "Skills & Assessment",
+        "Skills & Assessments": "My Skills" if is_individual else "Skills & Assessment",
+        "Skill Assessments": "Skill Assessments",
+        "Career Goals": "Career Goals" if is_individual else ("Growth Progress" if not is_admin else "Career Goals"),
+        "Career Direction & Gaps": "Skill Gap Analysis" if is_individual else "Career Direction",
         "ATS Resume Studio": "Resume Studio",
         "Reports": "Career Report" if not is_admin else "Reports",
-        "AI Career Coach": "Career Coach"
+        "AI Career Coach": "Career Coach",
+        "Join an Organization": "Join an Organization"
     }
     st.session_state.page_to_navigate = alias_map.get(target_page, target_page)
     st.rerun()
@@ -1359,13 +1475,28 @@ def toggle_sidebar():
 
 is_expanded = st.session_state.get("sidebar_expanded", True)
 
-# Enforce backend role permissions (Employees cannot access HR Administrator sections)
-if not is_admin and st.session_state.get("current_page") in ["Employees", "Performance", "Reports", "Career Goals"]:
+# Enforce backend role permissions (RBAC)
+if is_individual and st.session_state.get("current_page") in ["Employees", "Performance", "Reports", "Resume Studio", "Career Direction", "Career Coach"]:
+    st.session_state.current_page = "Dashboard"
+    st.session_state.nav_radio = "Dashboard"
+elif not is_admin and not is_individual and st.session_state.get("current_page") in ["Employees", "Performance", "Reports", "Career Goals"]:
     st.session_state.current_page = "Dashboard"
     st.session_state.nav_radio = "Dashboard"
 
 # Role-specific navigation pages list
-if is_admin:
+if is_individual:
+    active_pages = [
+        "Dashboard",
+        "My Profile",
+        "My Skills",
+        "Skill Assessments",
+        "Skill Gap Analysis",
+        "Career Goals",
+        "My Progress",
+        "Settings",
+        "Join an Organization"
+    ]
+elif is_admin:
     active_pages = [
         "Dashboard",
         "Employees",
@@ -1773,16 +1904,26 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
 
             # 2. Signed-in User Info & Role Subtitle
             user_subtitle_color = "#94A3B8" if is_admin else "#5A7383"
-            role_title = "HR Administrator" if is_admin else "Employee"
+            role_title = "Individual Professional" if is_individual else ("HR Administrator" if is_admin else "Employee")
+            if is_individual:
+                org_pill_html = """
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 6px; padding: 3px 8px; margin-bottom: 1.15rem; font-size: 0.76rem; color: #10B981; font-weight: 700;">
+                    <span>Independent Professional Account</span>
+                </div>
+                """
+            else:
+                org_pill_html = f"""
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(37, 99, 235, 0.12); border: 1px solid rgba(37, 99, 235, 0.28); border-radius: 6px; padding: 3px 8px; margin-bottom: 1.15rem; font-size: 0.76rem; color: {user_subtitle_color};">
+                    <span style="font-weight: 700; color: #60A5FA;">{user.get('org_name', 'Talent Growth')}</span>
+                    <span style="opacity: 0.75; font-family: monospace;">({user.get('org_id', 'ORG-TALENT-01')})</span>
+                </div>
+                """
             st.markdown(
                 f"""
                 <div style="font-size: 0.83rem; color: {user_subtitle_color}; margin-top: 2px; margin-bottom: 4px; padding-left: 2px;">
                     Signed in as <strong>{user.get('name', 'User')}</strong> &bull; {role_title}
                 </div>
-                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(37, 99, 235, 0.12); border: 1px solid rgba(37, 99, 235, 0.28); border-radius: 6px; padding: 3px 8px; margin-bottom: 1.15rem; font-size: 0.76rem; color: {user_subtitle_color};">
-                    <span style="font-weight: 700; color: #60A5FA;">{user.get('org_name', 'Talent Growth')}</span>
-                    <span style="opacity: 0.75; font-family: monospace;">({user.get('org_id', 'ORG-TALENT-01')})</span>
-                </div>
+                {org_pill_html}
                 """,
                 unsafe_allow_html=True
             )
@@ -1863,15 +2004,16 @@ with col_top_home:
         navigate_to("Dashboard")
 
 with col_top_trail:
-    badge_color = "#2563EB" if is_admin else "#0284C7"
-    badge_bg = "#EFF6FF" if is_admin else "#E0F2FE"
-    badge_border = "#DBEAFE" if is_admin else "#BAE6FD"
+    badge_color = "#10B981" if is_individual else ("#2563EB" if is_admin else "#0284C7")
+    badge_bg = "#ECFDF5" if is_individual else ("#EFF6FF" if is_admin else "#E0F2FE")
+    badge_border = "#A7F3D0" if is_individual else ("#DBEAFE" if is_admin else "#BAE6FD")
+    role_label = "INDIVIDUAL" if is_individual else (user.get('role', 'employee').upper())
     render_html(
         f"""
         <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
             <span style="display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 3px 10px; border-radius: 9999px;">
                 {get_svg_icon("user", size=13, color="#475569")}
-                <strong>{user.get('name', 'User')}</strong> &bull; {user.get('role', 'employee').upper()}
+                <strong>{user.get('name', 'User')}</strong> &bull; {role_label}
             </span>
             <span style="color: #CBD5E1;">|</span>
             <span style="color: {badge_color}; font-weight: 700; background: {badge_bg}; border: 1px solid {badge_border}; padding: 3px 10px; border-radius: 9999px;">{page}</span>
@@ -1879,6 +2021,45 @@ with col_top_trail:
         """
     )
 st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
+
+if is_pending_member:
+    render_html(
+        f"""
+        <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 14px; padding: 1.5rem 1.8rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <div style="width: 42px; height: 42px; border-radius: 10px; background: #FEF3C7; display: flex; align-items: center; justify-content: center; color: #D97706;">
+                    {get_svg_icon("target", size=22, color="#D97706")}
+                </div>
+                <div>
+                    <h3 style="margin: 0; color: #92400E; font-size: 1.25rem; font-weight: 800;">Organization Membership Pending Approval</h3>
+                    <div style="color: #B45309; font-size: 0.88rem;">Your request to join <strong>{org_name}</strong> ({org_id}) is currently awaiting review by an HR Administrator.</div>
+                </div>
+            </div>
+            <p style="color: #78350F; font-size: 0.86rem; margin: 8px 0 12px 0;">
+                Once an administrator from {org_name} approves your request, your account will be activated and associated with the organization workforce directory.
+            </p>
+        </div>
+        """
+    )
+    c_p1, c_p2 = st.columns([2, 1])
+    with c_p1:
+        if st.button("Refresh Approval Status", key="btn_refresh_member_approval", type="primary", use_container_width=True):
+            fresh_user = get_user_by_id(uid)
+            if fresh_user and fresh_user.get("status") == "Active":
+                st.session_state.user = fresh_user
+                st.success("Your membership has been approved! Redirecting to Dashboard...")
+                st.rerun()
+            elif fresh_user and fresh_user.get("status") == "Rejected":
+                st.error("Your membership request was rejected by the organization administrator.")
+            else:
+                st.info("Your request is still pending approval. Please check back shortly.")
+    with c_p2:
+        if st.button("Sign Out", key="btn_pending_member_signout", type="secondary", use_container_width=True):
+            st.session_state.user = None
+            st.session_state.auth_view = "landing"
+            st.session_state.current_page = "Dashboard"
+            st.rerun()
+    st.stop()
 
 if is_pending_hr:
     st.warning("Your account is registered as an HR Administrator but is currently pending verification approval. Administrative control panels will be unlocked once approved.")
@@ -1893,6 +2074,32 @@ if is_pending_hr:
                 st.rerun()
             else:
                 st.error(msg_act)
+
+# ==============================================================================
+# INDIVIDUAL PROFESSIONAL EXPERIENCE ROUTER
+# ==============================================================================
+if is_individual:
+    if page in ["Dashboard", "My Career Dashboard"]:
+        render_individual_dashboard(user, profile, skills, navigate_to)
+        st.stop()
+    elif page == "My Skills":
+        render_individual_skills(user, skills, navigate_to)
+        st.stop()
+    elif page == "Skill Assessments":
+        render_individual_assessments(user, skills)
+        st.stop()
+    elif page == "Skill Gap Analysis":
+        render_individual_skill_gaps(user, skills)
+        st.stop()
+    elif page == "Career Goals":
+        render_individual_career_goals(user, navigate_to)
+        st.stop()
+    elif page == "My Progress":
+        render_individual_progress(user)
+        st.stop()
+    elif page == "Join an Organization":
+        render_join_organization_card(user)
+        st.stop()
 
 # ==============================================================================
 # 1. ADMIN: EXECUTIVE DASHBOARD
@@ -2628,12 +2835,13 @@ elif page in ["Employees", "Employee Management"]:
         """
     )
 
-    tab_dir, tab_add, tab_bulk, tab_edit, tab_invite = st.tabs([
+    tab_dir, tab_add, tab_bulk, tab_edit, tab_invite, tab_requests = st.tabs([
         "Workforce Directory",
         "Add New Employee",
         "Bulk Dataset Upload (CSV/Excel)",
         "Manage Records (Edit / Delete / Deactivate)",
-        "Organization Invitation Codes"
+        "Organization Invitation Codes",
+        "Membership Requests"
     ])
 
     # --- TAB 1: WORKFORCE DIRECTORY (PRIMARY VIEW) ---
@@ -3079,6 +3287,66 @@ elif page in ["Employees", "Employee Management"]:
                                     else:
                                         st.error(msg_rev)
                         st.markdown("<div style='border-bottom: 1px solid #F1F5F9; margin: 8px 0;'></div>", unsafe_allow_html=True)
+
+    # --- TAB 6: ORGANIZATION MEMBERSHIP REQUESTS ---
+    with tab_requests:
+        st.markdown("#### Organization Membership Requests")
+        st.caption("Review, approve, or reject employee registration requests seeking to join this organization.")
+
+        req_filter = st.selectbox(
+            "Filter Requests by Status",
+            ["Pending", "All Statuses", "Approved", "Rejected"],
+            key="membership_req_filter"
+        )
+        requests_list = get_membership_requests(org_id=org_id, status_filter=req_filter)
+
+        if not requests_list:
+            st.info(f"No {req_filter.lower()} membership requests found for {org_name}.")
+        else:
+            for req in requests_list:
+                status_color = "#F59E0B" if req["status"] == "Pending" else ("#10B981" if req["status"] == "Approved" else "#EF4444")
+                with st.container(border=True):
+                    col_info, col_acts = st.columns([3, 1.2])
+                    with col_info:
+                        st.markdown(
+                            f"""
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <strong style="font-size: 1.05rem; color: #0F172A;">{req['user_name']}</strong>
+                                <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: {status_color}22; color: {status_color}; font-weight: 700; text-transform: uppercase;">
+                                    {req['status']}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #64748B; margin-top: 4px;">
+                                <strong>Email:</strong> {req['user_email']} &bull;
+                                <strong>Department:</strong> {req.get('department') or 'General'} &bull;
+                                <strong>Designation:</strong> {req.get('designation') or 'Employee'}
+                            </div>
+                            <div style="font-size: 0.78rem; color: #94A3B8; margin-top: 2px;">
+                                Requested at: {req.get('created_at', '')}
+                                {f" &bull; Reviewed by: {req.get('reviewer_name') or 'HR Admin'}" if req.get('reviewed_by') else ""}
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    with col_acts:
+                        if req["status"] == "Pending":
+                            c_appr, c_rej = st.columns(2)
+                            with c_appr:
+                                if st.button("Approve", key=f"btn_appr_req_{req['id']}", type="primary", use_container_width=True):
+                                    ok_appr, msg_appr = approve_membership_request(req["id"], reviewer_id=uid)
+                                    if ok_appr:
+                                        st.success(msg_appr)
+                                        st.rerun()
+                                    else:
+                                        st.error(msg_appr)
+                            with c_rej:
+                                if st.button("Reject", key=f"btn_rej_req_{req['id']}", type="secondary", use_container_width=True):
+                                    ok_rej, msg_rej = reject_membership_request(req["id"], reviewer_id=uid)
+                                    if ok_rej:
+                                        st.warning(msg_rej)
+                                        st.rerun()
+                                    else:
+                                        st.error(msg_rej)
 
 # ==============================================================================
 # 4. PERFORMANCE REVIEWS & EVALUATIONS

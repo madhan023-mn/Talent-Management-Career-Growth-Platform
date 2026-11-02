@@ -199,6 +199,22 @@ def init_db() -> None:
                 FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS membership_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                org_id TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                user_email TEXT NOT NULL,
+                department TEXT DEFAULT '',
+                designation TEXT DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Pending' CHECK(status IN ('Pending', 'Approved', 'Rejected')),
+                reviewed_by INTEGER,
+                reviewed_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
+            );
+
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -207,7 +223,8 @@ def init_db() -> None:
                 salt TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'employee',
                 employee_id TEXT,
-                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
+                org_id TEXT,
+                account_type TEXT NOT NULL DEFAULT 'Organization',
                 department TEXT DEFAULT '',
                 job_title TEXT DEFAULT '',
                 status TEXT DEFAULT 'Active',
@@ -331,6 +348,7 @@ def init_db() -> None:
                 category TEXT NOT NULL,
                 proficiency TEXT NOT NULL,
                 years REAL DEFAULT 0.0,
+                description TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             );
@@ -496,6 +514,15 @@ def init_db() -> None:
         # Migrate users table
         cursor.execute("PRAGMA table_info(users)")
         user_cols = {row["name"] for row in cursor.fetchall()}
+        if "account_type" not in user_cols:
+            cursor.execute("ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT 'Organization'")
+        cursor.execute("UPDATE users SET account_type = 'Organization' WHERE account_type IS NULL OR account_type = ''")
+
+        # Migrate skills table
+        cursor.execute("PRAGMA table_info(skills)")
+        skill_cols = {row["name"] for row in cursor.fetchall()}
+        if "description" not in skill_cols:
+            cursor.execute("ALTER TABLE skills ADD COLUMN description TEXT DEFAULT ''")
         if "role" not in user_cols:
             cursor.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'employee'")
         if "employee_id" not in user_cols:
@@ -1306,6 +1333,127 @@ def verify_password(password: str, stored_hash: str, salt: str) -> bool:
     hashed, _ = hash_password(password, salt)
     return secrets.compare_digest(hashed, stored_hash)
 
+def register_individual(
+    name: str,
+    email: str,
+    password: str,
+    confirm_password: Optional[str] = None,
+    phone: Optional[str] = "",
+    educational_qualification: Optional[str] = "",
+    professional_interests: Optional[str] = "",
+    primary_skills: Optional[str] = "Python, SQL, Communication",
+    years_experience: float = 1.0,
+    app_url: Optional[str] = None,
+    education: Optional[str] = None,
+    interests: Optional[str] = None
+) -> Tuple[bool, str]:
+    """
+    Registers an independent professional account without organization affiliation.
+    Automatically assigns:
+      - account_type = 'Individual'
+      - org_id = None
+      - role = 'employee'
+      - employee_id = None
+    Creates base user and profile records, initializes personal skills, and triggers welcome notification.
+    """
+    name = (name or "").strip()
+    email = (email or "").strip().lower()
+    password = password or ""
+    phone = (phone or "").strip()
+    educational_qualification = (education or educational_qualification or "").strip()
+    professional_interests = (interests or professional_interests or "").strip()
+    primary_skills = (primary_skills or "Python, SQL, Communication").strip()
+
+    if not name:
+        return False, "Full Name is required."
+    if not email or "@" not in email or "." not in email:
+        return False, "A valid email address is required."
+    if len(password) < 6:
+        return False, "Password must be at least 6 characters long."
+    if confirm_password is not None and confirm_password != password:
+        return False, "Passwords do not match. Please verify your password confirmation."
+
+    try:
+        years_experience = float(years_experience)
+        if years_experience < 0:
+            years_experience = 0.0
+    except (ValueError, TypeError):
+        years_experience = 1.0
+
+    pwd_hash, salt = hash_password(password)
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM users WHERE LOWER(email) = ?", (email,))
+            if cursor.fetchone():
+                return False, f"An account with email '{email}' already exists. Please sign in instead."
+
+            # Automatically assign account_type='Individual', org_id=None, role='employee'
+            cursor.execute(
+                """
+                INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
+                VALUES (?, ?, ?, ?, 'employee', NULL, NULL, 'Individual', ?, ?, 'Active', ?)
+                """,
+                (
+                    name,
+                    email,
+                    pwd_hash,
+                    salt,
+                    educational_qualification or "Independent Professional",
+                    professional_interests or "Independent Professional",
+                    date.today().isoformat()
+                )
+            )
+            user_id = cursor.lastrowid
+
+            # Insert Base Profile
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO profiles (user_id, phone, education, summary, target_role, job_title, company, department, years_experience)
+                VALUES (?, ?, ?, ?, ?, ?, '', '', ?)
+                """,
+                (
+                    user_id,
+                    phone,
+                    educational_qualification,
+                    f"Interests: {professional_interests}" if professional_interests else "",
+                    professional_interests or "Junior Python Developer",
+                    "Independent Professional",
+                    years_experience
+                )
+            )
+
+            # Insert initial skills catalog for individual user
+            skill_tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
+            for sk in skill_tokens:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO skills (user_id, name, category, proficiency, years)
+                    VALUES (?, ?, 'Technical', 'Intermediate', ?)
+                    """,
+                    (user_id, sk, years_experience)
+                )
+
+        try:
+            send_welcome_email(
+                to_email=email,
+                user_name=name,
+                role="Individual Professional",
+                org_name="TalentSphere Personal Hub",
+                app_url=app_url
+            )
+        except Exception:
+            pass
+
+        return True, "Individual account registered successfully! You can now sign in to your personal career dashboard."
+    except sqlite3.IntegrityError:
+        return False, f"An account with email '{email}' already exists."
+    except Exception as e:
+        return False, f"Database error during individual registration: {e}"
+    finally:
+        conn.close()
+
 def register(
     name: str,
     email: str,
@@ -1324,8 +1472,34 @@ def register(
     require_hr_approval: bool = False,
     invitation_code: Optional[str] = None,
     official_email: Optional[str] = None,
-    contact_number: Optional[str] = None
+    contact_number: Optional[str] = None,
+    registration_type: Optional[str] = None,
+    education: Optional[str] = None,
+    interests: Optional[str] = None
 ) -> Tuple[bool, str]:
+    # Route Option 3: Individual Registration
+    if registration_type == "individual" or role == "individual":
+        return register_individual(
+            name=name,
+            email=email,
+            password=password,
+            phone=contact_number,
+            educational_qualification=education,
+            professional_interests=interests,
+            primary_skills=primary_skills,
+            years_experience=years_experience,
+            app_url=app_url
+        )
+
+    # Route Option 2: Register New Organization
+    if registration_type == "new_org":
+        is_new_org = True
+        role = "admin"
+
+    # Route Option 1: Join Existing Organization
+    if registration_type == "join_org":
+        role = "employee"
+
     name = (name or "").strip()
     email = (email or "").strip().lower()
     password = password or ""
@@ -1413,6 +1587,19 @@ def register(
                 )
                 resolved_org_id = final_org_id
                 resolved_org_name = clean_org_name
+            elif registration_type == "join_org":
+                clean_join_org = (org_name or org_id or "").strip()
+                if not clean_join_org:
+                    return False, "Organization Name is required to join an existing organization."
+                cursor.execute(
+                    "SELECT id, org_id, name FROM organizations WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) OR UPPER(org_id) = UPPER(?)",
+                    (clean_join_org, clean_join_org)
+                )
+                org_row = cursor.fetchone()
+                if not org_row:
+                    return False, f"Organization '{clean_join_org}' not found. Please verify the organization name or select 'Register New Organization'."
+                resolved_org_id = org_row["org_id"]
+                resolved_org_name = org_row["name"]
             else:
                 resolved_org_id = (org_id or "ORG-TALENT-01").strip().upper()
                 cursor.execute("SELECT id, name FROM organizations WHERE org_id = ?", (resolved_org_id,))
@@ -1432,8 +1619,10 @@ def register(
 
             # Role Authorization & HR Approval Verification (Requirement 9)
             user_status = "Active"
-            if role == "admin":
-                if require_hr_approval:
+            if registration_type == "join_org":
+                user_status = "Pending Approval"
+            elif role == "admin":
+                if require_hr_approval and not is_new_org:
                     valid_keys = ["HR2026", "TALENT-HR", "HR-AUTH-2026", "ADMIN2026", "ADMIN-2026"]
                     env_key = os.getenv("HR_ADMIN_KEY", "").strip()
                     if env_key:
@@ -1522,6 +1711,16 @@ def register(
                     (user_id, sk, years_experience)
                 )
 
+            # Record membership request if joining existing organization
+            if registration_type == "join_org":
+                cursor.execute(
+                    """
+                    INSERT INTO membership_requests (user_id, org_id, user_name, user_email, department, designation, status)
+                    VALUES (?, ?, ?, ?, ?, ?, 'Pending')
+                    """,
+                    (user_id, resolved_org_id, name, email, department, job_title)
+                )
+
         # Trigger welcome email safely outside the database write transaction
         try:
             send_welcome_email(
@@ -1535,6 +1734,10 @@ def register(
             # Gracefully ignore email transport failures to avoid corrupting account creation
             pass
 
+        if registration_type == "join_org":
+            return True, f"Membership request submitted for {resolved_org_name}! Your account is pending HR administrator approval."
+        if registration_type == "new_org":
+            return True, f"Organization {resolved_org_name} registered successfully! You are now the HR Administrator."
         if user_status == "Pending Approval":
             return True, f"Account created for {resolved_org_name}! Your HR Administrator access is pending verification. Please sign in."
         return True, f"Account created successfully for {resolved_org_name}! Please sign in."
@@ -1556,7 +1759,7 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
         cursor.execute(
             """
             SELECT u.id, u.name, u.email, u.password_hash, u.salt, u.role, u.employee_id,
-                   u.org_id, u.department, u.job_title, u.status, u.date_joined,
+                   u.org_id, u.account_type, u.department, u.job_title, u.status, u.date_joined,
                    COALESCE(o.name, 'Talent Growth Technologies') as org_name
             FROM users u
             LEFT JOIN organizations o ON u.org_id = o.org_id
@@ -1570,7 +1773,7 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
             cursor.execute(
                 """
                 SELECT u.id, u.name, u.email, u.password_hash, u.salt, u.role, u.employee_id,
-                       u.org_id, u.department, u.job_title, u.status, u.date_joined,
+                       u.org_id, u.account_type, u.department, u.job_title, u.status, u.date_joined,
                        COALESCE(o.name, 'Talent Growth Technologies') as org_name
                 FROM users u
                 LEFT JOIN organizations o ON u.org_id = o.org_id
@@ -1582,14 +1785,19 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
         if not row:
             return None
         if verify_password(password, row["password_hash"], row["salt"]):
+            account_type = row["account_type"] if "account_type" in row.keys() and row["account_type"] else ("Individual" if row["org_id"] is None else "Organization")
+            is_ind = (account_type == "Individual" or row["org_id"] is None)
+            resolved_org_id = None if is_ind else (row["org_id"] or "ORG-TALENT-01")
+            resolved_org_name = None if is_ind else (row["org_name"] or "Talent Growth Technologies")
             return {
                 "id": row["id"],
                 "name": row["name"],
                 "email": row["email"],
                 "role": row["role"],
+                "account_type": account_type,
                 "employee_id": row["employee_id"],
-                "org_id": row["org_id"] or "ORG-TALENT-01",
-                "org_name": row["org_name"] or "Talent Growth Technologies",
+                "org_id": resolved_org_id,
+                "org_name": resolved_org_name,
                 "department": row["department"] or "",
                 "job_title": row["job_title"] or "",
                 "status": row["status"] or "Active",
@@ -1605,9 +1813,9 @@ def get_user_by_id(uid: int) -> Optional[Dict[str, Any]]:
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT u.id, u.name, u.email, u.role, u.employee_id, u.org_id,
+            SELECT u.id, u.name, u.email, u.role, u.employee_id, u.org_id, u.account_type,
                    u.department, u.job_title, u.status, u.date_joined, u.created_at,
-                   COALESCE(o.name, 'Talent Growth Technologies') as org_name
+                   o.name as org_name
             FROM users u
             LEFT JOIN organizations o ON u.org_id = o.org_id
             WHERE u.id = ?
@@ -1615,7 +1823,18 @@ def get_user_by_id(uid: int) -> Optional[Dict[str, Any]]:
             (uid,)
         )
         row = cursor.fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        res = dict(row)
+        account_type = res.get("account_type") or ("Individual" if res.get("org_id") is None else "Organization")
+        res["account_type"] = account_type
+        if account_type == "Individual" or res.get("org_id") is None:
+            res["org_id"] = None
+            res["org_name"] = None
+        else:
+            res["org_id"] = res.get("org_id") or "ORG-TALENT-01"
+            res["org_name"] = res.get("org_name") or "Talent Growth Technologies"
+        return res
     finally:
         conn.close()
 
@@ -2648,13 +2867,15 @@ def list_skills(uid: int) -> List[Dict[str, Any]]:
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name, category, proficiency, years, created_at FROM skills WHERE user_id = ? ORDER BY id DESC", (uid,))
+        cursor.execute("SELECT id, name, category, proficiency, years, COALESCE(description, '') as description, created_at FROM skills WHERE user_id = ? ORDER BY id DESC", (uid,))
         return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
 
-def add_skill(uid: int, name: str, category: str, proficiency: str, years: float) -> Tuple[bool, str]:
+def add_skill(uid: int, name: str, category: str, proficiency: str, years: float, description: str = "") -> Tuple[bool, str]:
     name = (name or "").strip()
+    category = (category or "Technical").strip()
+    description = (description or "").strip()
     if not name:
         return False, "Skill name cannot be empty."
     if proficiency not in LEVELS:
@@ -2674,12 +2895,45 @@ def add_skill(uid: int, name: str, category: str, proficiency: str, years: float
             if cursor.fetchone():
                 return False, f"Skill '{name}' is already in your profile."
             cursor.execute(
-                "INSERT INTO skills (user_id, name, category, proficiency, years) VALUES (?, ?, ?, ?, ?)",
-                (uid, name, category, proficiency, years)
+                "INSERT INTO skills (user_id, name, category, proficiency, years, description) VALUES (?, ?, ?, ?, ?, ?)",
+                (uid, name, category, proficiency, years, description)
             )
         return True, f"Skill '{name}' added successfully."
     except Exception as e:
         return False, f"Error saving skill: {e}"
+    finally:
+        conn.close()
+
+def update_skill(uid: int, skill_id: int, proficiency: str, years: float, category: Optional[str] = None, description: Optional[str] = None) -> Tuple[bool, str]:
+    if proficiency not in LEVELS:
+        return False, f"Invalid proficiency. Choose from: {', '.join(LEVELS.keys())}."
+    try:
+        years = float(years)
+        if years < 0:
+            return False, "Years of experience cannot be negative."
+    except (ValueError, TypeError):
+        return False, "Years must be a valid number."
+
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            fields = ["proficiency = ?", "years = ?"]
+            vals = [proficiency, years]
+            if category:
+                fields.append("category = ?")
+                vals.append(category.strip())
+            if description is not None:
+                fields.append("description = ?")
+                vals.append(description.strip())
+            vals.extend([skill_id, uid])
+            query = f"UPDATE skills SET {', '.join(fields)} WHERE id = ? AND user_id = ?"
+            cursor.execute(query, vals)
+            if cursor.rowcount == 0:
+                return False, "Skill not found or access denied."
+        return True, "Skill updated successfully."
+    except Exception as e:
+        return False, f"Error updating skill: {e}"
     finally:
         conn.close()
 
@@ -4122,5 +4376,812 @@ def generate_resume_pdf(resume_data: Dict[str, Any], user_info: Dict[str, Any]) 
 
     doc.build(story)
     return buffer.getvalue()
+
+
+
+
+
+
+# ----------------- Organization Membership Requests -----------------
+
+def create_membership_request(
+    user_id: int,
+    org_id: str,
+    user_name: str,
+    user_email: str,
+    department: str = "",
+    designation: str = ""
+) -> Tuple[bool, str, Optional[int]]:
+    """Creates a pending membership request when an employee joins an existing organization."""
+    org_id = (org_id or "").strip().upper()
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            # Check if pending request already exists
+            cursor.execute(
+                "SELECT id, status FROM membership_requests WHERE user_id = ? AND org_id = ? AND status = 'Pending'",
+                (user_id, org_id)
+            )
+            existing = cursor.fetchone()
+            if existing:
+                return True, "A pending membership request already exists for this organization.", existing["id"]
+
+            cursor.execute(
+                """
+                INSERT INTO membership_requests (user_id, org_id, user_name, user_email, department, designation, status)
+                VALUES (?, ?, ?, ?, ?, ?, 'Pending')
+                """,
+                (user_id, org_id, user_name, user_email, department, designation)
+            )
+            req_id = cursor.lastrowid
+        return True, "Membership request created successfully.", req_id
+    except Exception as e:
+        return False, f"Database error creating membership request: {e}", None
+    finally:
+        conn.close()
+
+def get_membership_requests(org_id: str, status_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Returns all membership requests for an organization, optionally filtered by status."""
+    org_id = (org_id or "").strip().upper()
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        query = """
+            SELECT mr.*, o.name as org_name, u.name as reviewer_name
+            FROM membership_requests mr
+            JOIN organizations o ON mr.org_id = o.org_id
+            LEFT JOIN users u ON mr.reviewed_by = u.id
+            WHERE mr.org_id = ?
+        """
+        params = [org_id]
+        if status_filter and status_filter != "All Statuses":
+            query += " AND mr.status = ?"
+            params.append(status_filter)
+        query += " ORDER BY mr.created_at DESC"
+        cursor.execute(query, params)
+        return [dict(r) for r in cursor.fetchall()]
+    finally:
+        conn.close()
+
+def approve_membership_request(request_id: int, reviewer_id: Optional[int] = None) -> Tuple[bool, str]:
+    """Approves a membership request, activating the user and employee records in the organization."""
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM membership_requests WHERE id = ?", (request_id,))
+            req = cursor.fetchone()
+            if not req:
+                return False, "Membership request not found."
+            if req["status"] == "Approved":
+                return True, "Membership request is already approved."
+
+            user_id = req["user_id"]
+            org_id = req["org_id"]
+            now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+            # Update request
+            cursor.execute(
+                "UPDATE membership_requests SET status = 'Approved', reviewed_by = ?, reviewed_at = ? WHERE id = ?",
+                (reviewer_id, now_str, request_id)
+            )
+
+            # Activate user
+            cursor.execute(
+                "UPDATE users SET status = 'Active', org_id = ?, account_type = 'Organization' WHERE id = ?",
+                (org_id, user_id)
+            )
+
+            # Activate employee record
+            cursor.execute(
+                "UPDATE employees SET account_status = 'Active', org_id = ? WHERE user_id = ?",
+                (org_id, user_id)
+            )
+
+        return True, f"Membership request approved! {req['user_name']} is now an active employee of {org_id}."
+    except Exception as e:
+        return False, f"Error approving membership request: {e}"
+    finally:
+        conn.close()
+
+def reject_membership_request(request_id: int, reviewer_id: Optional[int] = None) -> Tuple[bool, str]:
+    """Rejects a membership request, updating status to Rejected."""
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM membership_requests WHERE id = ?", (request_id,))
+            req = cursor.fetchone()
+            if not req:
+                return False, "Membership request not found."
+
+            user_id = req["user_id"]
+            now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+            cursor.execute(
+                "UPDATE membership_requests SET status = 'Rejected', reviewed_by = ?, reviewed_at = ? WHERE id = ?",
+                (reviewer_id, now_str, request_id)
+            )
+            cursor.execute(
+                "UPDATE users SET status = 'Rejected' WHERE id = ?",
+                (user_id,)
+            )
+            cursor.execute(
+                "UPDATE employees SET account_status = 'Rejected' WHERE user_id = ?",
+                (user_id,)
+            )
+
+        return True, f"Membership request for {req['user_name']} has been rejected."
+    except Exception as e:
+        return False, f"Error rejecting membership request: {e}"
+    finally:
+        conn.close()
+
+def get_user_membership_request(user_id: int) -> Optional[Dict[str, Any]]:
+    """Returns the most recent membership request for a user."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT mr.*, o.name as org_name
+            FROM membership_requests mr
+            JOIN organizations o ON mr.org_id = o.org_id
+            WHERE mr.user_id = ?
+            ORDER BY mr.created_at DESC LIMIT 1
+            """,
+            (user_id,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+
+SKILL_ASSESSMENT_BANK: Dict[str, List[Dict[str, Any]]] = {
+    "Python": [
+        {
+            "id": "py_1",
+            "question": "What is the primary difference between a list and a tuple in Python?",
+            "options": [
+                "Lists are mutable; tuples are immutable",
+                "Lists are immutable; tuples are mutable",
+                "Lists cannot contain mixed data types",
+                "Tuples have faster append operations"
+            ],
+            "answer": "Lists are mutable; tuples are immutable",
+            "explanation": "In Python, lists can be modified after creation (mutable), whereas tuples cannot be altered once instantiated (immutable)."
+        },
+        {
+            "id": "py_2",
+            "question": "Which keyword turns a standard function into a generator in Python?",
+            "options": ["yield", "return", "generator", "async"],
+            "answer": "yield",
+            "explanation": "The 'yield' statement suspends function execution and emits a value to the caller, turning the function into an iterable generator."
+        },
+        {
+            "id": "py_3",
+            "question": "What is the average time complexity of a key lookup in a Python dictionary?",
+            "options": ["O(1)", "O(n)", "O(log n)", "O(n log n)"],
+            "answer": "O(1)",
+            "explanation": "Python dictionaries are built using hash tables, which provide amortized O(1) average time complexity for key lookups."
+        },
+        {
+            "id": "py_4",
+            "question": "What does the Global Interpreter Lock (GIL) in CPython enforce?",
+            "options": [
+                "Only one native thread can execute Python bytecode at a time",
+                "Memory leaks are automatically prevented across processes",
+                "Garbage collection is disabled during file operations",
+                "Multi-threaded code always runs faster than single-threaded code"
+            ],
+            "answer": "Only one native thread can execute Python bytecode at a time",
+            "explanation": "CPython's GIL is a mutex that prevents multiple native threads from executing Python bytecodes concurrently."
+        },
+        {
+            "id": "py_5",
+            "question": "What will bool([]) evaluate to in Python?",
+            "options": ["False", "True", "None", "TypeError"],
+            "answer": "False",
+            "explanation": "Empty collections (lists, tuples, dicts, sets) evaluate to False in Python boolean truth value testing."
+        },
+        {
+            "id": "py_6",
+            "question": "Which decorator defines a method that receives the class rather than the instance as its first argument?",
+            "options": ["@classmethod", "@staticmethod", "@property", "@abstractmethod"],
+            "answer": "@classmethod",
+            "explanation": "@classmethod passes the class 'cls' as the first parameter, whereas normal methods receive the instance 'self'."
+        },
+        {
+            "id": "py_7",
+            "question": "What is the output of `[x * 2 for x in range(3)]`?",
+            "options": ["[0, 2, 4]", "[2, 4, 6]", "[0, 1, 2]", "[1, 2, 3]"],
+            "answer": "[0, 2, 4]",
+            "explanation": "range(3) produces 0, 1, 2. Multiplying each element by 2 yields [0, 2, 4]."
+        },
+        {
+            "id": "py_8",
+            "question": "Which built-in function pairs elements from two iterables into tuples?",
+            "options": ["zip()", "enumerate()", "map()", "filter()"],
+            "answer": "zip()",
+            "explanation": "zip() aggregates elements from each of the iterables and returns an iterator of tuples."
+        }
+    ],
+    "SQL": [
+        {
+            "id": "sql_1",
+            "question": "What is the key difference between WHERE and HAVING clauses in SQL?",
+            "options": [
+                "WHERE filters before grouping; HAVING filters aggregated groups",
+                "HAVING filters before grouping; WHERE filters aggregated groups",
+                "WHERE only operates on primary key columns",
+                "HAVING cannot be used alongside GROUP BY"
+            ],
+            "answer": "WHERE filters before grouping; HAVING filters aggregated groups",
+            "explanation": "WHERE filters individual rows prior to GROUP BY aggregation; HAVING applies conditions to aggregated grouped results."
+        },
+        {
+            "id": "sql_2",
+            "question": "Which JOIN returns all records from Table A and matched records from Table B?",
+            "options": ["LEFT JOIN", "INNER JOIN", "RIGHT JOIN", "CROSS JOIN"],
+            "answer": "LEFT JOIN",
+            "explanation": "LEFT OUTER JOIN preserves every row from the left table regardless of whether a matching row exists in the right table."
+        },
+        {
+            "id": "sql_3",
+            "question": "What does the ACID acronym guarantee in relational database transactions?",
+            "options": [
+                "Atomicity, Consistency, Isolation, Durability",
+                "Access, Concurrency, Integrity, Distribution",
+                "Authentication, Consistency, Indexing, Decoupling",
+                "Availability, Coherence, Immutability, Durability"
+            ],
+            "answer": "Atomicity, Consistency, Isolation, Durability",
+            "explanation": "ACID represents the foundational transaction properties ensuring database validity and fault tolerance."
+        },
+        {
+            "id": "sql_4",
+            "question": "What constraint uniquely identifies each row and strictly disallows NULL values?",
+            "options": ["PRIMARY KEY", "UNIQUE", "FOREIGN KEY", "CHECK"],
+            "answer": "PRIMARY KEY",
+            "explanation": "A PRIMARY KEY uniquely identifies records and strictly forbids NULL values."
+        },
+        {
+            "id": "sql_5",
+            "question": "What aggregate function counts the total number of non-NULL values in a column?",
+            "options": ["COUNT(column)", "SUM(column)", "TOTAL(column)", "DISTINCT(column)"],
+            "answer": "COUNT(column)",
+            "explanation": "COUNT(column) counts non-NULL entries in the specified column."
+        },
+        {
+            "id": "sql_6",
+            "question": "What is the primary trade-off of adding multiple indexes to a database table?",
+            "options": [
+                "Faster SELECT queries but slower INSERT/UPDATE write performance",
+                "Faster writes but slower query read performance",
+                "Increased CPU usage without disk storage impact",
+                "Inability to perform foreign key validation"
+            ],
+            "answer": "Faster SELECT queries but slower INSERT/UPDATE write performance",
+            "explanation": "Indexes accelerate search queries but add overhead to write operations because indexes must be updated on modification."
+        }
+    ],
+    "React": [
+        {
+            "id": "react_1",
+            "question": "What is the primary performance benefit of React's Virtual DOM?",
+            "options": [
+                "Minimizes expensive direct manipulations of the browser DOM via reconciliation diffing",
+                "Replaces HTML rendering with WebGL graphics",
+                "Eliminates the need for CSS style recalculations",
+                "Provides native database connectivity directly from the browser"
+            ],
+            "answer": "Minimizes expensive direct manipulations of the browser DOM via reconciliation diffing",
+            "explanation": "React diffs Virtual DOM trees in memory and applies only the minimum necessary mutations to the real browser DOM."
+        },
+        {
+            "id": "react_2",
+            "question": "When does the cleanup function in a useEffect hook execute?",
+            "options": [
+                "Before re-executing the effect and upon component unmounting",
+                "Only when the entire application is closed",
+                "Synchronously before the initial render cycle",
+                "Every time a child component re-renders"
+            ],
+            "answer": "Before re-executing the effect and upon component unmounting",
+            "explanation": "React runs the returned cleanup function before applying the effect again and when the component is unmounted."
+        },
+        {
+            "id": "react_3",
+            "question": "Why should dynamic lists rendered in React include a unique 'key' prop?",
+            "options": [
+                "To give elements stable identities so React can efficiently reorder, add, or remove items",
+                "To automatically attach click event handlers",
+                "To bind state to browser sessionStorage",
+                "To enforce TypeScript type checking"
+            ],
+            "answer": "To give elements stable identities so React can efficiently reorder, add, or remove items",
+            "explanation": "Keys help React recognize which list elements have changed, been added, or removed during reconciliation."
+        },
+        {
+            "id": "react_4",
+            "question": "Which React hook is used to memoize expensive computed values across re-renders?",
+            "options": ["useMemo", "useCallback", "useRef", "useEffect"],
+            "answer": "useMemo",
+            "explanation": "useMemo caches calculation results and recomputes only when one of its specified dependencies changes."
+        }
+    ],
+    "JavaScript": [
+        {
+            "id": "js_1",
+            "question": "What is a closure in JavaScript?",
+            "options": [
+                "A function that retains access to variables from its outer lexical scope even after that scope has finished executing",
+                "A method for instantly terminating an asynchronous loop",
+                "An object that cannot be modified or frozen",
+                "A syntax error in strict mode"
+            ],
+            "answer": "A function that retains access to variables from its outer lexical scope even after that scope has finished executing",
+            "explanation": "A closure bundles a function together with references to its surrounding lexical environment."
+        },
+        {
+            "id": "js_2",
+            "question": "What is the difference between '==' and '===' in JavaScript?",
+            "options": [
+                "'===' checks both value and type without coercion; '==' performs type coercion",
+                "'==' checks both value and type without coercion; '===' performs type coercion",
+                "'===' can only be used with numeric operands",
+                "There is no difference in modern ECMAScript"
+            ],
+            "answer": "'===' checks both value and type without coercion; '==' performs type coercion",
+            "explanation": "Strict equality (===) compares operands without type conversion, whereas abstract equality (==) coerces types before comparing."
+        },
+        {
+            "id": "js_3",
+            "question": "What is the output of `typeof null` in JavaScript?",
+            "options": ["'object'", "'null'", "'undefined'", "'boolean'"],
+            "answer": "'object'",
+            "explanation": "In JavaScript, `typeof null` returning 'object' is a legacy quirk dating back to the language's initial release in 1995."
+        }
+    ],
+    "Git": [
+        {
+            "id": "git_1",
+            "question": "What is the primary difference between `git merge` and `git rebase`?",
+            "options": [
+                "Merge creates a commit preserving branch topology; rebase reapplies commits linearly on top of the base",
+                "Merge deletes old commits; rebase keeps all branches intact",
+                "Rebase cannot handle conflicts between files",
+                "Merge modifies commit timestamps of prior work"
+            ],
+            "answer": "Merge creates a commit preserving branch topology; rebase reapplies commits linearly on top of the base",
+            "explanation": "Rebase rewrites project history by creating brand new commits for each commit in the original branch."
+        },
+        {
+            "id": "git_2",
+            "question": "What command undoes local uncommitted changes to a working file in modern Git?",
+            "options": ["git restore <file>", "git clean -f", "git revert HEAD", "git commit --amend"],
+            "answer": "git restore <file>",
+            "explanation": "`git restore <file>` discards working directory changes and restores the file to the index/commit state."
+        }
+    ],
+    "Docker": [
+        {
+            "id": "docker_1",
+            "question": "What is the primary difference between a Docker container and a Virtual Machine?",
+            "options": [
+                "Containers share the host OS kernel; VMs run a dedicated guest operating system",
+                "Containers require dedicated hypervisor software for hardware emulation",
+                "VMs start up in milliseconds compared to minutes for containers",
+                "Containers cannot run Linux applications on Windows"
+            ],
+            "answer": "Containers share the host OS kernel; VMs run a dedicated guest operating system",
+            "explanation": "Docker containers virtualize the operating system and share the host kernel, making them lightweight and fast."
+        },
+        {
+            "id": "docker_2",
+            "question": "Which Dockerfile instruction sets the default executable and arguments for a running container?",
+            "options": ["CMD", "RUN", "FROM", "EXPOSE"],
+            "answer": "CMD",
+            "explanation": "CMD specifies default arguments and commands to execute when a container is run."
+        }
+    ],
+    "Machine Learning": [
+        {
+            "id": "ml_1",
+            "question": "What is a hallmark symptom of model overfitting?",
+            "options": [
+                "Near-zero training error but high test error on unseen data",
+                "High training error and high test error",
+                "Underperforming on training data due to high bias",
+                "Extreme sensitivity to missing input features"
+            ],
+            "answer": "Near-zero training error but high test error on unseen data",
+            "explanation": "Overfitting happens when a model learns noise in the training set rather than the underlying pattern, impairing generalization."
+        },
+        {
+            "id": "ml_2",
+            "question": "Which evaluation metric is most dependable for evaluating a classifier on an imbalanced dataset?",
+            "options": ["F1-Score / PR-AUC", "Accuracy", "Mean Squared Error", "R-squared"],
+            "answer": "F1-Score / PR-AUC",
+            "explanation": "Accuracy can be deceptively high by always predicting the majority class; F1-score balances precision and recall."
+        }
+    ],
+    "Data Structures": [
+        {
+            "id": "ds_1",
+            "question": "What ordering principle characterizes a Stack data structure?",
+            "options": ["Last-In, First-Out (LIFO)", "First-In, First-Out (FIFO)", "Priority-Ordered", "Random Access"],
+            "answer": "Last-In, First-Out (LIFO)",
+            "explanation": "A stack operates on LIFO order: elements pushed last are popped first."
+        },
+        {
+            "id": "ds_2",
+            "question": "What is the average time complexity of searching a balanced Binary Search Tree?",
+            "options": ["O(log n)", "O(1)", "O(n)", "O(n^2)"],
+            "answer": "O(log n)",
+            "explanation": "In a balanced BST, each step halves the remaining elements, yielding O(log n) search time."
+        }
+    ],
+    "Communication": [
+        {
+            "id": "comm_1",
+            "question": "What is the cornerstone of active listening in collaborative technical discussions?",
+            "options": [
+                "Paraphrasing and confirming understanding before formulating a counter-argument",
+                "Interrupting immediately when an inaccurate term is mentioned",
+                "Rehearsing your rebuttal while the other party is speaking",
+                "Documenting minutes instead of engaging in the dialogue"
+            ],
+            "answer": "Paraphrasing and confirming understanding before formulating a counter-argument",
+            "explanation": "Active listening requires validating and summarizing the speaker's thoughts to establish mutual understanding."
+        }
+    ],
+    "System Design": [
+        {
+            "id": "sd_1",
+            "question": "What does horizontal scaling (scaling out) mean in distributed systems?",
+            "options": [
+                "Adding more server instances to distribute load across a pool",
+                "Upgrading CPU and RAM capacity on a single master machine",
+                "Migrating all tables to an in-memory cache",
+                "Partitioning network subnets across continents"
+            ],
+            "answer": "Adding more server instances to distribute load across a pool",
+            "explanation": "Horizontal scaling distributes traffic across multiple server nodes rather than relying on a single increasingly powerful machine."
+        }
+    ]
+}
+
+def get_available_assessments() -> List[Dict[str, Any]]:
+    """Returns a list of all available skill assessments with question counts and categories."""
+    items = []
+    for skill, qlist in SKILL_ASSESSMENT_BANK.items():
+        cat = "Soft Skill" if skill == "Communication" else "Technical"
+        items.append({
+            "skill_name": skill,
+            "category": cat,
+            "total_questions": len(qlist),
+            "estimated_minutes": max(3, len(qlist) * 2),
+            "passing_score": 70
+        })
+    return items
+
+def get_assessment_questions(skill_name: str) -> List[Dict[str, Any]]:
+    """Returns questions for a skill without revealing correct answers."""
+    questions = SKILL_ASSESSMENT_BANK.get(skill_name, [])
+    return [
+        {
+            "id": q["id"],
+            "question": q["question"],
+            "options": list(q["options"])
+        }
+        for q in questions
+    ]
+
+def evaluate_assessment(
+    uid: int,
+    skill_name: str,
+    submitted_answers: Dict[str, str],
+    employee_id: Optional[str] = None,
+    org_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Evaluates submitted answers for a technical assessment.
+    Calculates correct/incorrect scores, displays correct answers and explanations,
+    and stores the verified assessment result in the database.
+    """
+    questions = SKILL_ASSESSMENT_BANK.get(skill_name, [])
+    if not questions:
+        return {"error": f"No assessment questions found for skill '{skill_name}'."}
+
+    total_questions = len(questions)
+    correct_count = 0
+    breakdown = []
+
+    for q in questions:
+        user_ans = (submitted_answers.get(q["id"]) or "").strip()
+        is_correct = (user_ans == q["answer"])
+        if is_correct:
+            correct_count += 1
+        breakdown.append({
+            "id": q["id"],
+            "question": q["question"],
+            "user_answer": user_ans,
+            "correct_answer": q["answer"],
+            "is_correct": is_correct,
+            "explanation": q.get("explanation", "")
+        })
+
+    score_pct = round((correct_count / total_questions) * 100, 1)
+    passed = (score_pct >= 70.0)
+
+    if score_pct >= 85:
+        feedback = f"Outstanding technical proficiency! You scored {score_pct}% ({correct_count}/{total_questions} correct). Excellent command of {skill_name} principles."
+    elif passed:
+        feedback = f"Solid proficiency demonstrated! You scored {score_pct}% ({correct_count}/{total_questions} correct). You have verified competency in {skill_name}."
+    else:
+        feedback = f"Needs improvement. You scored {score_pct}% ({correct_count}/{total_questions} correct). Review the explanations below and attempt this assessment again to boost your verified score."
+
+    notes = f"Technical MCQ Assessment: {correct_count}/{total_questions} correct ({score_pct}%). {'Passed' if passed else 'Needs Review'}."
+    add_assessment(
+        uid=uid,
+        category="Technical" if skill_name != "Communication" else "Soft Skill",
+        score=score_pct,
+        employee_id=employee_id,
+        org_id=org_id,
+        skill_name=skill_name,
+        notes=notes
+    )
+
+    return {
+        "skill_name": skill_name,
+        "total_questions": total_questions,
+        "correct_answers": correct_count,
+        "score_percentage": score_pct,
+        "passed": passed,
+        "feedback": feedback,
+        "breakdown": breakdown
+    }
+
+def get_skill_assessment_history(uid: int, skill_name: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Retrieves full assessment attempt history for a user, tracking score changes across attempts.
+    """
+    all_ass = get_assessments(uid=uid)
+    if skill_name:
+        all_ass = [a for a in all_ass if (a.get("skill_name") or a.get("category", "")).lower() == skill_name.lower()]
+
+    all_ass.sort(key=lambda x: x.get("created_at", ""))
+    history = []
+    prev_score: Optional[float] = None
+    for i, a in enumerate(all_ass, 1):
+        score = float(a.get("score") or 0.0)
+        delta = round(score - prev_score, 1) if prev_score is not None else 0.0
+        history.append({
+            "attempt": i,
+            "id": a.get("id"),
+            "skill_name": a.get("skill_name") or a.get("category"),
+            "score": score,
+            "delta": delta,
+            "created_at": a.get("created_at", ""),
+            "notes": a.get("notes", "")
+        })
+        prev_score = score
+
+    history.reverse()
+    return history
+
+def join_organization(user_id: int, invitation_code: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+    """
+    Transitions an Individual user account to an Organization employee account using an invitation code.
+    Preserves all existing personal profiles, skills, assessment history, and career goals.
+    Creates an organization employee directory entry and links all records to the target organization.
+    """
+    clean_code = (invitation_code or "").strip().upper()
+    if not clean_code:
+        return False, "Invitation code is required.", None
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        user_row = cursor.fetchone()
+        if not user_row:
+            return False, "User account not found.", None
+
+        user_dict = dict(user_row)
+        if user_dict.get("account_type") == "Organization" and user_dict.get("org_id"):
+            return False, f"Account is already associated with organization '{user_dict['org_id']}'.", None
+
+        # Validate invitation code against organization codes
+        is_valid, inv_info = validate_invitation_code(clean_code)
+        if not is_valid:
+            return False, inv_info.get("error", "Invalid or expired invitation code."), None
+
+        org_id = inv_info["org_id"]
+        org_name = inv_info["org_name"]
+
+        with conn:
+            # Increment invitation code use
+            use_invitation_code(clean_code, conn=conn)
+
+            # Generate unique employee ID for the organization
+            cursor.execute("SELECT COUNT(*) FROM employees WHERE org_id = ?", (org_id,))
+            cnt = cursor.fetchone()[0] + 1
+            cand = f"EMP{cnt:03d}"
+            cursor.execute("SELECT id FROM employees WHERE employee_id = ? AND org_id = ?", (cand, org_id))
+            while cursor.fetchone():
+                cnt += 1
+                cand = f"EMP{cnt:03d}"
+                cursor.execute("SELECT id FROM employees WHERE employee_id = ? AND org_id = ?", (cand, org_id))
+            final_emp_id = cand
+
+            # Fetch profile to extract department, title, exp
+            cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (user_id,))
+            prof_row = cursor.fetchone()
+            prof_dict = dict(prof_row) if prof_row else {}
+
+            dep = prof_dict.get("department") or "Engineering"
+            desig = prof_dict.get("job_title") or prof_dict.get("target_role") or "Software Engineer"
+            exp = float(prof_dict.get("years_experience") or 1.0)
+            phone = prof_dict.get("phone") or ""
+
+            # Update User record to Organization account
+            cursor.execute(
+                """
+                UPDATE users
+                SET account_type = 'Organization', org_id = ?, employee_id = ?, department = ?, job_title = ?
+                WHERE id = ?
+                """,
+                (org_id, final_emp_id, dep, desig, user_id)
+            )
+
+            # Fetch user skills for primary_skills
+            cursor.execute("SELECT name FROM skills WHERE user_id = ?", (user_id,))
+            u_skill_rows = cursor.fetchall()
+            prim_skills = ", ".join(r["name"] for r in u_skill_rows) if u_skill_rows else "Python, SQL, Communication"
+
+            # Insert into employees directory
+            cursor.execute(
+                """
+                INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, 'Active', ?)
+                """,
+                (final_emp_id, org_id, user_id, user_dict["name"], user_dict["email"], phone, dep, desig, date.today().isoformat(), exp, prim_skills, user_id)
+            )
+
+            # Retain and migrate existing personal skills to employee_skills
+            cursor.execute("SELECT name, category, proficiency, years FROM skills WHERE user_id = ?", (user_id,))
+            user_skills = cursor.fetchall()
+            for s in user_skills:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (final_emp_id, org_id, user_id, s["name"], s["category"], s["proficiency"], s["years"])
+                )
+
+            # Update assessments with new org_id and employee_id
+            cursor.execute(
+                """
+                UPDATE assessments
+                SET org_id = ?, employee_id = ?
+                WHERE user_id = ? AND (org_id IS NULL OR org_id = '')
+                """,
+                (org_id, final_emp_id, user_id)
+            )
+
+            # Update career goals with new org_id and employee_id
+            cursor.execute(
+                """
+                UPDATE career_goals
+                SET org_id = ?, employee_id = ?
+                WHERE user_id = ? AND (org_id IS NULL OR org_id = '')
+                """,
+                (org_id, final_emp_id, user_id)
+            )
+
+            # Update profile company
+            cursor.execute("UPDATE profiles SET company = ? WHERE user_id = ?", (org_name, user_id))
+
+        updated_user = get_user_by_id(user_id)
+        return True, f"Successfully joined {org_name}! Your account has been upgraded to an organization employee account, and all personal skills, assessments, and goals have been preserved.", updated_user
+    except Exception as e:
+        return False, f"Error joining organization: {e}", None
+    finally:
+        conn.close()
+
+def get_individual_dashboard_stats(user_id: int) -> Dict[str, Any]:
+    """
+    Returns aggregated personal statistics for an Individual user's dashboard.
+    Includes:
+    - Welcome details
+    - Total skills added
+    - Completed assessments
+    - Average assessment score
+    - Current skill proficiency breakdown
+    - Career development progress & goals
+    - Skill gap analysis vs target role
+    - Recent activities timeline
+    """
+    user = get_user_by_id(user_id)
+    skills = list_skills(user_id)
+    assessments = get_assessments(uid=user_id)
+    goals = get_goals(user_id=user_id)
+    profile = get_profile(user_id)
+
+    total_skills = len(skills)
+    completed_assessments = len(assessments)
+    avg_score = round(sum(float(a.get("score") or 0.0) for a in assessments) / len(assessments), 1) if assessments else 0.0
+
+    proficiency_counts = {"Beginner": 0, "Intermediate": 0, "Advanced": 0, "Expert": 0}
+    for s in skills:
+        p = s.get("proficiency", "Intermediate")
+        if p in proficiency_counts:
+            proficiency_counts[p] += 1
+        else:
+            proficiency_counts["Intermediate"] += 1
+
+    completed_goals = sum(1 for g in goals if g.get("status") == "Completed" or g.get("progress") == 100)
+    total_goals = len(goals)
+    growth_progress = round((completed_goals / total_goals) * 100) if total_goals > 0 else 0
+
+    target_role = profile.get("target_role") or "Junior Python Developer"
+    years = float(profile.get("years_experience") or 0)
+    role_readiness = role_match(target_role, skills, years)
+    gaps = gap_analysis(target_role, skills)
+
+    skills_acquired = [g["skill"] for g in gaps if g["priority"] == "Met"]
+    skills_improving = [g["skill"] for g in gaps if g["priority"] == "Medium"]
+    skills_missing = [g["skill"] for g in gaps if g["priority"] == "High"]
+
+    activities = []
+    for a in assessments[:5]:
+        activities.append({
+            "type": "assessment",
+            "title": f"Completed {a.get('skill_name') or a.get('category')} Assessment",
+            "subtitle": f"Score: {a.get('score')}%",
+            "date": a.get("created_at", "")
+        })
+    for g in goals[:5]:
+        activities.append({
+            "type": "goal",
+            "title": f"Career Goal: {g.get('title')}",
+            "subtitle": f"Progress: {g.get('progress')}% &bull; Status: {g.get('status')}",
+            "date": g.get("updated_at") or g.get("created_at", "")
+        })
+    for s in skills[:5]:
+        activities.append({
+            "type": "skill",
+            "title": f"Added Skill: {s.get('name')}",
+            "subtitle": f"Proficiency: {s.get('proficiency')} &bull; Experience: {s.get('years')} yrs",
+            "date": s.get("created_at", "")
+        })
+
+    activities.sort(key=lambda x: x.get("date", ""), reverse=True)
+
+    return {
+        "user_name": user.get("name") if user else "Professional",
+        "email": user.get("email") if user else "",
+        "account_type": "Individual",
+        "total_skills": total_skills,
+        "completed_assessments": completed_assessments,
+        "average_assessment_score": avg_score,
+        "proficiency_distribution": proficiency_counts,
+        "career_growth_progress": growth_progress,
+        "completed_goals": completed_goals,
+        "total_goals": total_goals,
+        "target_role": target_role,
+        "role_readiness": role_readiness,
+        "skills_acquired": skills_acquired,
+        "skills_improving": skills_improving,
+        "skills_missing": skills_missing,
+        "recent_activities": activities[:8]
+    }
+
 
 
