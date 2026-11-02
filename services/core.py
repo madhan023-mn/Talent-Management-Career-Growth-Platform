@@ -171,6 +171,16 @@ def get_connection() -> sqlite3.Connection:
     conn.execute("PRAGMA busy_timeout = 30000")
     return conn
 
+def _safe_add_column(cursor: sqlite3.Cursor, table_name: str, col_name: str, col_def: str) -> None:
+    """Safely adds a column to an existing table if it does not already exist."""
+    try:
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        existing = {row["name"] for row in cursor.fetchall()}
+        if col_name not in existing and existing:
+            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_def}")
+    except Exception:
+        pass
+
 def init_db() -> None:
     conn = get_connection()
     with conn:
@@ -424,27 +434,58 @@ def init_db() -> None:
         # Auto-migrate existing database tables if columns are missing
         cursor = conn.cursor()
 
-        # Seed default organizations
-        cursor.execute("SELECT id FROM organizations WHERE org_id = 'ORG-TALENT-01'")
-        if not cursor.fetchone():
-            cursor.execute("INSERT OR IGNORE INTO organizations (org_id, name) VALUES (?, ?)",
-                           ('ORG-TALENT-01', 'Talent Growth Technologies'))
-        cursor.execute("SELECT id FROM organizations WHERE org_id = 'ORG-TECHCORP-02'")
-        if not cursor.fetchone():
-            cursor.execute("INSERT OR IGNORE INTO organizations (org_id, name, official_email, contact_number, status) VALUES (?, ?, ?, ?, ?)",
-                           ('ORG-TECHCORP-02', 'TechCorp Solutions', 'contact@techcorp.com', '+1-555-0900', 'Active'))
+        # 1. Migrate organizations table FIRST before any inserts
+        _safe_add_column(cursor, "organizations", "official_email", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "organizations", "contact_number", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "organizations", "status", "TEXT NOT NULL DEFAULT 'Active'")
 
-        # Migrate organizations table
-        cursor.execute("PRAGMA table_info(organizations)")
-        org_cols = {row["name"] for row in cursor.fetchall()}
-        if "official_email" not in org_cols:
-            cursor.execute("ALTER TABLE organizations ADD COLUMN official_email TEXT DEFAULT ''")
-        if "contact_number" not in org_cols:
-            cursor.execute("ALTER TABLE organizations ADD COLUMN contact_number TEXT DEFAULT ''")
-        if "status" not in org_cols:
-            cursor.execute("ALTER TABLE organizations ADD COLUMN status TEXT NOT NULL DEFAULT 'Active'")
+        # 2. Migrate users table
+        _safe_add_column(cursor, "users", "account_type", "TEXT NOT NULL DEFAULT 'Organization'")
+        _safe_add_column(cursor, "users", "role", "TEXT NOT NULL DEFAULT 'employee'")
+        _safe_add_column(cursor, "users", "employee_id", "TEXT")
+        _safe_add_column(cursor, "users", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+        _safe_add_column(cursor, "users", "department", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "users", "job_title", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "users", "status", "TEXT DEFAULT 'Active'")
+        _safe_add_column(cursor, "users", "date_joined", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "users", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 
-        # Migrate invitation_codes table if legacy schema exists or columns are missing
+        # 3. Migrate employees table
+        _safe_add_column(cursor, "employees", "email", "TEXT")
+        _safe_add_column(cursor, "employees", "phone", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "employees", "joining_date", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "employees", "employment_status", "TEXT NOT NULL DEFAULT 'Active'")
+        _safe_add_column(cursor, "employees", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+        _safe_add_column(cursor, "employees", "user_id", "INTEGER")
+        _safe_add_column(cursor, "employees", "account_status", "TEXT NOT NULL DEFAULT 'Active'")
+
+        # 4. Migrate employee_skills table
+        _safe_add_column(cursor, "employee_skills", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+        _safe_add_column(cursor, "employee_skills", "user_id", "INTEGER")
+
+        # 5. Migrate skills table
+        _safe_add_column(cursor, "skills", "description", "TEXT DEFAULT ''")
+
+        # 6. Migrate assessments table
+        _safe_add_column(cursor, "assessments", "employee_id", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "assessments", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+        _safe_add_column(cursor, "assessments", "skill_name", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "assessments", "notes", "TEXT DEFAULT ''")
+
+        # 7. Migrate performance_reviews table
+        _safe_add_column(cursor, "performance_reviews", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+
+        # 8. Migrate career_goals table
+        _safe_add_column(cursor, "career_goals", "target_designation", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "career_goals", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+
+        # 9. Migrate training_records table
+        _safe_add_column(cursor, "training_records", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+
+        # 10. Migrate resumes table
+        _safe_add_column(cursor, "resumes", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+
+        # 11. Migrate invitation_codes table if legacy schema exists or columns are missing
         try:
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='invitation_codes'")
             if cursor.fetchone():
@@ -452,7 +493,7 @@ def init_db() -> None:
                 inv_cols = {row["name"]: row for row in cursor.fetchall()}
                 if "code_hash" not in inv_cols:
                     # Legacy schema with plaintext code - safely migrate to hashed schema
-                    cursor.execute("""
+                    cursor.execute('''
                         CREATE TABLE IF NOT EXISTS invitation_codes_v2 (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             org_id TEXT NOT NULL,
@@ -466,7 +507,7 @@ def init_db() -> None:
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
                         )
-                    """)
+                    ''')
                     cursor.execute("SELECT * FROM invitation_codes")
                     for row in cursor.fetchall():
                         r = dict(row)
@@ -481,155 +522,62 @@ def init_db() -> None:
                             c_stat = "Active"
                         c_by = str(r.get("created_by") or "")
                         c_at = r.get("created_at") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-                        cursor.execute("""
+                        cursor.execute('''
                             INSERT OR IGNORE INTO invitation_codes_v2
                             (id, org_id, code_hash, code_prefix, expires_at, max_uses, used_count, status, created_by, created_at)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (r.get("id"), r.get("org_id", "ORG-TALENT-01"), c_hash, c_prefix, c_exp, c_max, c_used, c_stat, c_by, c_at))
+                        ''', (r.get("id"), r.get("org_id", "ORG-TALENT-01"), c_hash, c_prefix, c_exp, c_max, c_used, c_stat, c_by, c_at))
                     cursor.execute("DROP TABLE invitation_codes")
                     cursor.execute("ALTER TABLE invitation_codes_v2 RENAME TO invitation_codes")
                 else:
-                    # Table exists with code_hash, verify all other columns exist
-                    if "code_prefix" not in inv_cols:
-                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN code_prefix TEXT NOT NULL DEFAULT 'INV-0000'")
-                    if "expires_at" not in inv_cols:
-                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN expires_at TIMESTAMP NOT NULL DEFAULT '2099-12-31 23:59:59'")
-                    if "max_uses" not in inv_cols:
-                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN max_uses INTEGER NOT NULL DEFAULT 1")
-                    if "used_count" not in inv_cols:
-                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN used_count INTEGER NOT NULL DEFAULT 0")
-                    if "status" not in inv_cols:
-                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN status TEXT NOT NULL DEFAULT 'Active'")
-                    if "created_by" not in inv_cols:
-                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN created_by TEXT DEFAULT ''")
-                    if "created_at" not in inv_cols:
-                        cursor.execute("ALTER TABLE invitation_codes ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-            else:
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS invitation_codes (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        org_id TEXT NOT NULL,
-                        code_hash TEXT UNIQUE NOT NULL,
-                        code_prefix TEXT NOT NULL,
-                        expires_at TIMESTAMP NOT NULL,
-                        max_uses INTEGER NOT NULL DEFAULT 1,
-                        used_count INTEGER NOT NULL DEFAULT 0,
-                        status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Revoked', 'Expired', 'Depleted')),
-                        created_by TEXT DEFAULT '',
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
-                    )
-                """)
+                    _safe_add_column(cursor, "invitation_codes", "code_prefix", "TEXT NOT NULL DEFAULT 'INV-0000'")
+                    _safe_add_column(cursor, "invitation_codes", "expires_at", "TIMESTAMP NOT NULL DEFAULT '2099-12-31 23:59:59'")
+                    _safe_add_column(cursor, "invitation_codes", "max_uses", "INTEGER NOT NULL DEFAULT 1")
+                    _safe_add_column(cursor, "invitation_codes", "used_count", "INTEGER NOT NULL DEFAULT 0")
+                    _safe_add_column(cursor, "invitation_codes", "status", "TEXT NOT NULL DEFAULT 'Active'")
+                    _safe_add_column(cursor, "invitation_codes", "created_by", "TEXT DEFAULT ''")
+                    _safe_add_column(cursor, "invitation_codes", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
         except Exception:
             pass
 
-        # Migrate users table
-        cursor.execute("PRAGMA table_info(users)")
-        user_cols = {row["name"] for row in cursor.fetchall()}
-        if "account_type" not in user_cols:
-            cursor.execute("ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT 'Organization'")
-        cursor.execute("UPDATE users SET account_type = 'Organization' WHERE account_type IS NULL OR account_type = ''")
+        # Seed default organizations (now guaranteed to have official_email, contact_number, status)
+        try:
+            cursor.execute("SELECT id FROM organizations WHERE org_id = 'ORG-TALENT-01'")
+            if not cursor.fetchone():
+                cursor.execute("INSERT OR IGNORE INTO organizations (org_id, name, official_email, contact_number, status) VALUES (?, ?, ?, ?, ?)",
+                               ('ORG-TALENT-01', 'Talent Growth Technologies', 'contact@talentgrowth.com', '+1-555-0100', 'Active'))
+            cursor.execute("SELECT id FROM organizations WHERE org_id = 'ORG-TECHCORP-02'")
+            if not cursor.fetchone():
+                cursor.execute("INSERT OR IGNORE INTO organizations (org_id, name, official_email, contact_number, status) VALUES (?, ?, ?, ?, ?)",
+                               ('ORG-TECHCORP-02', 'TechCorp Solutions', 'contact@techcorp.com', '+1-555-0900', 'Active'))
+        except Exception:
+            pass
 
-        # Migrate skills table
-        cursor.execute("PRAGMA table_info(skills)")
-        skill_cols = {row["name"] for row in cursor.fetchall()}
-        if "description" not in skill_cols:
-            cursor.execute("ALTER TABLE skills ADD COLUMN description TEXT DEFAULT ''")
-        if "role" not in user_cols:
-            cursor.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'employee'")
-        if "employee_id" not in user_cols:
-            cursor.execute("ALTER TABLE users ADD COLUMN employee_id TEXT")
-        if "org_id" not in user_cols:
-            cursor.execute("ALTER TABLE users ADD COLUMN org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-        if "department" not in user_cols:
-            cursor.execute("ALTER TABLE users ADD COLUMN department TEXT DEFAULT ''")
-        if "job_title" not in user_cols:
-            cursor.execute("ALTER TABLE users ADD COLUMN job_title TEXT DEFAULT ''")
-        if "status" not in user_cols:
-            cursor.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'Active'")
-        if "date_joined" not in user_cols:
-            cursor.execute("ALTER TABLE users ADD COLUMN date_joined TEXT DEFAULT ''")
-
-        # Migrate employees table
-        cursor.execute("PRAGMA table_info(employees)")
-        emp_cols = {row["name"] for row in cursor.fetchall()}
-        if "email" not in emp_cols:
-            cursor.execute("ALTER TABLE employees ADD COLUMN email TEXT")
-        if "phone" not in emp_cols:
-            cursor.execute("ALTER TABLE employees ADD COLUMN phone TEXT DEFAULT ''")
-        if "joining_date" not in emp_cols:
-            cursor.execute("ALTER TABLE employees ADD COLUMN joining_date TEXT DEFAULT ''")
-        if "employment_status" not in emp_cols:
-            cursor.execute("ALTER TABLE employees ADD COLUMN employment_status TEXT NOT NULL DEFAULT 'Active'")
-        if "org_id" not in emp_cols:
-            cursor.execute("ALTER TABLE employees ADD COLUMN org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-        if "user_id" not in emp_cols:
-            cursor.execute("ALTER TABLE employees ADD COLUMN user_id INTEGER")
-        if "account_status" not in emp_cols:
-            cursor.execute("ALTER TABLE employees ADD COLUMN account_status TEXT NOT NULL DEFAULT 'Active'")
-
-        # Migrate employee_skills table
-        cursor.execute("PRAGMA table_info(employee_skills)")
-        es_cols = {row["name"] for row in cursor.fetchall()}
-        if "org_id" not in es_cols:
-            cursor.execute("ALTER TABLE employee_skills ADD COLUMN org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-        if "user_id" not in es_cols:
-            cursor.execute("ALTER TABLE employee_skills ADD COLUMN user_id INTEGER")
-
-        # Migrate assessments table
-        cursor.execute("PRAGMA table_info(assessments)")
-        as_cols = {row["name"] for row in cursor.fetchall()}
-        if "employee_id" not in as_cols:
-            cursor.execute("ALTER TABLE assessments ADD COLUMN employee_id TEXT DEFAULT ''")
-        if "org_id" not in as_cols:
-            cursor.execute("ALTER TABLE assessments ADD COLUMN org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-        if "skill_name" not in as_cols:
-            cursor.execute("ALTER TABLE assessments ADD COLUMN skill_name TEXT DEFAULT ''")
-        if "notes" not in as_cols:
-            cursor.execute("ALTER TABLE assessments ADD COLUMN notes TEXT DEFAULT ''")
-
-        # Migrate performance_reviews table
-        cursor.execute("PRAGMA table_info(performance_reviews)")
-        pr_cols = {row["name"] for row in cursor.fetchall()}
-        if "org_id" not in pr_cols:
-            cursor.execute("ALTER TABLE performance_reviews ADD COLUMN org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-
-        # Migrate career_goals table
-        cursor.execute("PRAGMA table_info(career_goals)")
-        cg_cols = {row["name"] for row in cursor.fetchall()}
-        if "target_designation" not in cg_cols:
-            cursor.execute("ALTER TABLE career_goals ADD COLUMN target_designation TEXT DEFAULT ''")
-        if "org_id" not in cg_cols:
-            cursor.execute("ALTER TABLE career_goals ADD COLUMN org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-
-        # Migrate training_records table
-        cursor.execute("PRAGMA table_info(training_records)")
-        tr_cols = {row["name"] for row in cursor.fetchall()}
-        if "org_id" not in tr_cols:
-            cursor.execute("ALTER TABLE training_records ADD COLUMN org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-
-        # Migrate resumes table
-        cursor.execute("PRAGMA table_info(resumes)")
-        res_cols = {row["name"] for row in cursor.fetchall()}
-        if "org_id" not in res_cols and res_cols:
-            cursor.execute("ALTER TABLE resumes ADD COLUMN org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-
-        # Backfill existing legacy records
-        cursor.execute("UPDATE users SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
-        cursor.execute("UPDATE employees SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
-        cursor.execute("UPDATE performance_reviews SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
-        cursor.execute("UPDATE employee_skills SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
-        cursor.execute("UPDATE career_goals SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
-        cursor.execute("UPDATE training_records SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
-        cursor.execute("UPDATE assessments SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
-        cursor.execute("UPDATE users SET employee_id = 'EMP101' WHERE email = 'alex@company.com' AND (employee_id IS NULL OR employee_id = '')")
-        cursor.execute("UPDATE employees SET user_id = (SELECT id FROM users WHERE users.email = employees.email) WHERE user_id IS NULL AND email IS NOT NULL")
+        # Backfill account_type and org_id safely
+        try:
+            cursor.execute("UPDATE users SET account_type = 'Individual' WHERE (account_type IS NULL OR account_type = '') AND org_id IS NULL")
+            cursor.execute("UPDATE users SET account_type = 'Organization' WHERE (account_type IS NULL OR account_type = '') AND org_id IS NOT NULL")
+            cursor.execute("UPDATE users SET account_type = 'Organization' WHERE account_type IS NULL OR account_type = ''")
+            cursor.execute("UPDATE users SET org_id = 'ORG-TALENT-01' WHERE (org_id IS NULL OR org_id = '') AND account_type != 'Individual'")
+            cursor.execute("UPDATE employees SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
+            cursor.execute("UPDATE performance_reviews SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
+            cursor.execute("UPDATE employee_skills SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
+            cursor.execute("UPDATE career_goals SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
+            cursor.execute("UPDATE training_records SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
+            cursor.execute("UPDATE assessments SET org_id = 'ORG-TALENT-01' WHERE org_id IS NULL OR org_id = ''")
+            cursor.execute("UPDATE users SET employee_id = 'EMP101' WHERE email = 'alex@company.com' AND (employee_id IS NULL OR employee_id = '')")
+            cursor.execute("UPDATE employees SET user_id = (SELECT id FROM users WHERE users.email = employees.email) WHERE user_id IS NULL AND email IS NOT NULL")
+        except Exception:
+            pass
 
         # Database Indexes for Organization-Level Data Isolation and Performance
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_invitation_codes_org ON invitation_codes(org_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_invitation_codes_hash ON invitation_codes(code_hash)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_employees_org ON employees(org_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id)")
+        try:
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_invitation_codes_org ON invitation_codes(org_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_invitation_codes_hash ON invitation_codes(code_hash)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_employees_org ON employees(org_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id)")
+        except Exception:
+            pass
 
         # Seed initial admin user if none exists (supporting admin@talentgrowth.com)
         cursor.execute("SELECT id FROM users WHERE email IN ('admin@talentgrowth.com', 'admin@talentsphere.com')")
@@ -1768,10 +1716,23 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
     conn = get_connection()
     try:
         cursor = conn.cursor()
+        # Safe self-healing check for account_type column
+        try:
+            cursor.execute("PRAGMA table_info(users)")
+            user_cols = {row["name"] for row in cursor.fetchall()}
+            if "account_type" not in user_cols and user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT 'Organization'")
+                conn.commit()
+                user_cols.add("account_type")
+        except Exception:
+            user_cols = set()
+
+        acc_col_sql = "u.account_type," if "account_type" in user_cols else "'Organization' as account_type,"
+
         cursor.execute(
-            """
+            f"""
             SELECT u.id, u.name, u.email, u.password_hash, u.salt, u.role, u.employee_id,
-                   u.org_id, u.account_type, u.department, u.job_title, u.status, u.date_joined,
+                   u.org_id, {acc_col_sql} u.department, u.job_title, u.status, u.date_joined,
                    COALESCE(o.name, 'Talent Growth Technologies') as org_name
             FROM users u
             LEFT JOIN organizations o ON u.org_id = o.org_id
@@ -1783,9 +1744,9 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
         if not row and email in ["admin@talentgrowth.com", "admin@talentsphere.com"]:
             alt = "admin@talentsphere.com" if email == "admin@talentgrowth.com" else "admin@talentgrowth.com"
             cursor.execute(
-                """
+                f"""
                 SELECT u.id, u.name, u.email, u.password_hash, u.salt, u.role, u.employee_id,
-                       u.org_id, u.account_type, u.department, u.job_title, u.status, u.date_joined,
+                       u.org_id, {acc_col_sql} u.department, u.job_title, u.status, u.date_joined,
                        COALESCE(o.name, 'Talent Growth Technologies') as org_name
                 FROM users u
                 LEFT JOIN organizations o ON u.org_id = o.org_id
@@ -1797,7 +1758,8 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
         if not row:
             return None
         if verify_password(password, row["password_hash"], row["salt"]):
-            account_type = row["account_type"] if "account_type" in row.keys() and row["account_type"] else ("Individual" if row["org_id"] is None else "Organization")
+            row_keys = row.keys() if hasattr(row, "keys") else []
+            account_type = row["account_type"] if "account_type" in row_keys and row["account_type"] else ("Individual" if row["org_id"] is None else "Organization")
             is_ind = (account_type == "Individual" or row["org_id"] is None)
             resolved_org_id = None if is_ind else (row["org_id"] or "ORG-TALENT-01")
             resolved_org_name = None if is_ind else (row["org_name"] or "Talent Growth Technologies")
@@ -1823,10 +1785,23 @@ def get_user_by_id(uid: int) -> Optional[Dict[str, Any]]:
     conn = get_connection()
     try:
         cursor = conn.cursor()
+        try:
+            cursor.execute("PRAGMA table_info(users)")
+            user_cols = {row["name"] for row in cursor.fetchall()}
+            if "account_type" not in user_cols and user_cols:
+                cursor.execute("ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT 'Organization'")
+                conn.commit()
+                user_cols.add("account_type")
+        except Exception:
+            user_cols = set()
+
+        acc_col_sql = "u.account_type," if "account_type" in user_cols else "'Organization' as account_type,"
+        created_at_col = "u.created_at," if "created_at" in user_cols else "CURRENT_TIMESTAMP as created_at,"
+
         cursor.execute(
-            """
-            SELECT u.id, u.name, u.email, u.role, u.employee_id, u.org_id, u.account_type,
-                   u.department, u.job_title, u.status, u.date_joined, u.created_at,
+            f"""
+            SELECT u.id, u.name, u.email, u.role, u.employee_id, u.org_id, {acc_col_sql}
+                   u.department, u.job_title, u.status, u.date_joined, {created_at_col}
                    o.name as org_name
             FROM users u
             LEFT JOIN organizations o ON u.org_id = o.org_id
@@ -3295,16 +3270,25 @@ def get_org_dashboard_stats(org_id: str) -> Dict[str, Any]:
         cursor = conn.cursor()
 
         # Total employees
-        cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ?", (org_id,))
-        total_employees = cursor.fetchone()["cnt"]
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ?", (org_id,))
+            total_employees = cursor.fetchone()["cnt"]
+        except Exception:
+            total_employees = 0
 
         # Active employees
-        cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ? AND employment_status = 'Active' AND account_status = 'Active'", (org_id,))
-        active_employees = cursor.fetchone()["cnt"]
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ? AND employment_status = 'Active' AND account_status = 'Active'", (org_id,))
+            active_employees = cursor.fetchone()["cnt"]
+        except Exception:
+            active_employees = 0
 
         # Pending / On leave employees
-        cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ? AND (account_status IN ('Pending', 'Pending Approval') OR employment_status = 'On Leave')", (org_id,))
-        pending_employees = cursor.fetchone()["cnt"]
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ? AND (account_status IN ('Pending', 'Pending Approval') OR employment_status = 'On Leave')", (org_id,))
+            pending_employees = cursor.fetchone()["cnt"]
+        except Exception:
+            pending_employees = 0
 
         # Active invitations
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
@@ -3315,106 +3299,139 @@ def get_org_dashboard_stats(org_id: str) -> Dict[str, Any]:
             active_invitations = 0
 
         # Total departments
-        cursor.execute(
-            "SELECT COUNT(DISTINCT department) as cnt FROM employees WHERE org_id = ? AND department IS NOT NULL AND department != ''",
-            (org_id,)
-        )
-        total_departments = cursor.fetchone()["cnt"]
+        try:
+            cursor.execute(
+                "SELECT COUNT(DISTINCT department) as cnt FROM employees WHERE org_id = ? AND department IS NOT NULL AND department != ''",
+                (org_id,)
+            )
+            total_departments = cursor.fetchone()["cnt"]
+        except Exception:
+            total_departments = 0
 
         # Average performance score
-        cursor.execute(
-            """
-            SELECT ROUND(AVG(pr.performance_score), 2) as avg_score
-            FROM performance_reviews pr
-            JOIN employees e ON pr.employee_id = e.employee_id
-            WHERE e.org_id = ?
-            """,
-            (org_id,)
-        )
-        avg_score_row = cursor.fetchone()
-        avg_performance = avg_score_row["avg_score"] if (avg_score_row and avg_score_row["avg_score"] is not None) else 0.0
+        try:
+            cursor.execute(
+                """
+                SELECT ROUND(AVG(pr.performance_score), 2) as avg_score
+                FROM performance_reviews pr
+                JOIN employees e ON pr.employee_id = e.employee_id
+                WHERE e.org_id = ?
+                """,
+                (org_id,)
+            )
+            avg_score_row = cursor.fetchone()
+            avg_performance = avg_score_row["avg_score"] if (avg_score_row and avg_score_row["avg_score"] is not None) else 0.0
+        except Exception:
+            avg_performance = 0.0
 
         # Assessments completed
-        cursor.execute("SELECT COUNT(*) as cnt FROM assessments WHERE org_id = ?", (org_id,))
-        total_assessments = cursor.fetchone()["cnt"]
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM assessments WHERE org_id = ?", (org_id,))
+            total_assessments = cursor.fetchone()["cnt"]
+        except Exception:
+            total_assessments = 0
 
         # Employees assessed percentage
-        cursor.execute("SELECT COUNT(DISTINCT employee_id) as cnt FROM assessments WHERE org_id = ?", (org_id,))
-        assessed_employees = cursor.fetchone()["cnt"]
-        assessment_completion_rate = round((assessed_employees / max(1, total_employees)) * 100) if total_employees else 0
+        try:
+            cursor.execute("SELECT COUNT(DISTINCT employee_id) as cnt FROM assessments WHERE org_id = ?", (org_id,))
+            assessed_employees = cursor.fetchone()["cnt"]
+            assessment_completion_rate = round((assessed_employees / max(1, total_employees)) * 100) if total_employees else 0
+        except Exception:
+            assessment_completion_rate = 0
 
         # Career goals completion rate
-        cursor.execute("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed FROM career_goals WHERE org_id = ?", (org_id,))
-        goal_row = cursor.fetchone()
-        total_goals = goal_row["total"] if goal_row else 0
-        completed_goals = (goal_row["completed"] or 0) if goal_row else 0
-        goal_completion_rate = round((completed_goals / max(1, total_goals)) * 100) if total_goals else 0
+        try:
+            cursor.execute("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed FROM career_goals WHERE org_id = ?", (org_id,))
+            goal_row = cursor.fetchone()
+            total_goals = goal_row["total"] if goal_row else 0
+            completed_goals = (goal_row["completed"] or 0) if goal_row else 0
+            goal_completion_rate = round((completed_goals / max(1, total_goals)) * 100) if total_goals else 0
+        except Exception:
+            total_goals = 0
+            goal_completion_rate = 0
 
         # Department distribution
-        cursor.execute(
-            """
-            SELECT department, COUNT(*) as count
-            FROM employees
-            WHERE org_id = ? AND department IS NOT NULL AND department != ''
-            GROUP BY department
-            ORDER BY count DESC
-            """,
-            (org_id,)
-        )
-        department_distribution = [dict(r) for r in cursor.fetchall()]
+        try:
+            cursor.execute(
+                """
+                SELECT department, COUNT(*) as count
+                FROM employees
+                WHERE org_id = ? AND department IS NOT NULL AND department != ''
+                GROUP BY department
+                ORDER BY count DESC
+                """,
+                (org_id,)
+            )
+            department_distribution = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            department_distribution = []
 
         # Recent joiners
-        cursor.execute(
-            """
-            SELECT employee_id, name, email, department, designation, joining_date, employment_status, account_status
-            FROM employees
-            WHERE org_id = ?
-            ORDER BY joining_date DESC, id DESC
-            LIMIT 5
-            """,
-            (org_id,)
-        )
-        recent_joiners = [dict(r) for r in cursor.fetchall()]
+        try:
+            cursor.execute(
+                """
+                SELECT employee_id, name, email, department, designation, joining_date, employment_status, account_status
+                FROM employees
+                WHERE org_id = ?
+                ORDER BY joining_date DESC, id DESC
+                LIMIT 5
+                """,
+                (org_id,)
+            )
+            recent_joiners = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            recent_joiners = []
 
         # Performance score distribution
-        cursor.execute(
-            """
-            SELECT
-                SUM(CASE WHEN pr.performance_score >= 4.5 THEN 1 ELSE 0 END) as exceptional,
-                SUM(CASE WHEN pr.performance_score >= 3.5 AND pr.performance_score < 4.5 THEN 1 ELSE 0 END) as exceeds,
-                SUM(CASE WHEN pr.performance_score >= 3.0 AND pr.performance_score < 3.5 THEN 1 ELSE 0 END) as meets,
-                SUM(CASE WHEN pr.performance_score < 3.0 THEN 1 ELSE 0 END) as needs_improvement
-            FROM performance_reviews pr
-            JOIN employees e ON pr.employee_id = e.employee_id
-            WHERE e.org_id = ?
-            """,
-            (org_id,)
-        )
-        perf_row = cursor.fetchone()
-        performance_distribution = {
-            "Exceptional (4.5-5.0)": perf_row["exceptional"] or 0 if perf_row else 0,
-            "Exceeds Expectations (3.5-4.4)": perf_row["exceeds"] or 0 if perf_row else 0,
-            "Meets Expectations (3.0-3.4)": perf_row["meets"] or 0 if perf_row else 0,
-            "Needs Improvement (<3.0)": perf_row["needs_improvement"] or 0 if perf_row else 0,
-        }
+        try:
+            cursor.execute(
+                """
+                SELECT
+                    SUM(CASE WHEN pr.performance_score >= 4.5 THEN 1 ELSE 0 END) as exceptional,
+                    SUM(CASE WHEN pr.performance_score >= 3.5 AND pr.performance_score < 4.5 THEN 1 ELSE 0 END) as exceeds,
+                    SUM(CASE WHEN pr.performance_score >= 3.0 AND pr.performance_score < 3.5 THEN 1 ELSE 0 END) as meets,
+                    SUM(CASE WHEN pr.performance_score < 3.0 THEN 1 ELSE 0 END) as needs_improvement
+                FROM performance_reviews pr
+                JOIN employees e ON pr.employee_id = e.employee_id
+                WHERE e.org_id = ?
+                """,
+                (org_id,)
+            )
+            perf_row = cursor.fetchone()
+            performance_distribution = {
+                "Exceptional (4.5-5.0)": perf_row["exceptional"] or 0 if perf_row else 0,
+                "Exceeds Expectations (3.5-4.4)": perf_row["exceeds"] or 0 if perf_row else 0,
+                "Meets Expectations (3.0-3.4)": perf_row["meets"] or 0 if perf_row else 0,
+                "Needs Improvement (<3.0)": perf_row["needs_improvement"] or 0 if perf_row else 0,
+            }
+        except Exception:
+            performance_distribution = {
+                "Exceptional (4.5-5.0)": 0,
+                "Exceeds Expectations (3.5-4.4)": 0,
+                "Meets Expectations (3.0-3.4)": 0,
+                "Needs Improvement (<3.0)": 0,
+            }
 
         # Organization skill distribution / gap highlights
-        cursor.execute(
-            """
-            SELECT skill_name, COUNT(*) as count, ROUND(AVG(CASE
-                WHEN proficiency_level = 'Expert' THEN 4
-                WHEN proficiency_level = 'Advanced' THEN 3
-                WHEN proficiency_level = 'Intermediate' THEN 2
-                ELSE 1 END), 1) as avg_level
-            FROM employee_skills
-            WHERE org_id = ?
-            GROUP BY skill_name
-            ORDER BY count DESC
-            LIMIT 6
-            """,
-            (org_id,)
-        )
-        skill_distribution = [dict(r) for r in cursor.fetchall()]
+        try:
+            cursor.execute(
+                """
+                SELECT skill_name, COUNT(*) as count, ROUND(AVG(CASE
+                    WHEN proficiency_level = 'Expert' THEN 4
+                    WHEN proficiency_level = 'Advanced' THEN 3
+                    WHEN proficiency_level = 'Intermediate' THEN 2
+                    ELSE 1 END), 1) as avg_level
+                FROM employee_skills
+                WHERE org_id = ?
+                GROUP BY skill_name
+                ORDER BY count DESC
+                LIMIT 6
+                """,
+                (org_id,)
+            )
+            skill_distribution = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            skill_distribution = []
 
         return {
             "org_id": org_id,
@@ -3433,6 +3450,25 @@ def get_org_dashboard_stats(org_id: str) -> Dict[str, Any]:
             "recent_joiners": recent_joiners,
             "performance_distribution": performance_distribution,
             "skill_distribution": skill_distribution
+        }
+    except Exception:
+        return {
+            "org_id": org_id,
+            "total_employees": 0,
+            "active_employees": 0,
+            "pending_employees": 0,
+            "active_invitations": 0,
+            "total_departments": 0,
+            "avg_performance": 0.0,
+            "total_assessments": 0,
+            "assessment_completion_rate": 0,
+            "total_goals": 0,
+            "goal_completion_rate": 0,
+            "department_distribution": [],
+            "dept_counts": {},
+            "recent_joiners": [],
+            "performance_distribution": {},
+            "skill_distribution": []
         }
     finally:
         conn.close()

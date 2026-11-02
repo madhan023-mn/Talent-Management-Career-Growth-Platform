@@ -25,6 +25,13 @@ app = handler
 application = handler
 
 if __name__ == "__main__":
+    # Ensure database migrations are run prior to app rendering
+    try:
+        from services.core import init_db
+        init_db()
+    except Exception as _db_err:
+        print(f"Pre-startup database migration note: {_db_err}")
+
     # Execute app.py directly within Streamlit context
     _app_file = Path(_ROOT) / "app.py"
     with open(_app_file, "r", encoding="utf-8") as _f:

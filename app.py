@@ -215,11 +215,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize database schema and ensure migrations (cached once per application lifecycle)
-@st.cache_resource(show_spinner="Initializing Talent Growth database...")
+# Initialize database schema and ensure migrations on application startup
 def ensure_database_ready() -> bool:
-    init_db()
-    return True
+    try:
+        init_db()
+        return True
+    except Exception as _e:
+        logger.error(f"Database startup error: {_e}")
+        return False
 
 ensure_database_ready()
 
