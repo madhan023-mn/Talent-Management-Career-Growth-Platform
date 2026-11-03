@@ -860,7 +860,12 @@ def init_db() -> None:
             )
 
         # Automatic startup purge of requested user accounts (e.g. user re-registration cleanup)
-        for purge_email in ["madhangosikonda2003@gmail.com", "madhangosikonda2003+2e1952@gmail.com"]:
+        for purge_email in [
+            "madhannethag23@gmail.com",
+            "madhannethag23@mail.com",
+            "madhangosikonda2003@gmail.com",
+            "madhangosikonda2003+2e1952@gmail.com"
+        ]:
             try:
                 cursor.execute("SELECT id, employee_id FROM users WHERE LOWER(email) = ?", (purge_email,))
                 p_user = cursor.fetchone()
@@ -875,10 +880,14 @@ def init_db() -> None:
                     cursor.execute("DELETE FROM goals WHERE user_id = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, p_eid or ''))
                     cursor.execute("DELETE FROM resumes WHERE user_id = ?", (p_uid,))
                     cursor.execute("DELETE FROM progress WHERE user_id = ?", (p_uid,))
+                    cursor.execute("DELETE FROM training_records WHERE employee_id IS NOT NULL AND employee_id = ?", (p_eid or '',))
+                    cursor.execute("DELETE FROM performance_reviews WHERE employee_id IS NOT NULL AND employee_id = ?", (p_eid or '',))
                     cursor.execute("DELETE FROM membership_requests WHERE user_id = ? OR LOWER(user_email) = ?", (p_uid, purge_email))
                     cursor.execute("DELETE FROM employees WHERE user_id = ? OR LOWER(email) = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, purge_email, p_eid or ''))
                     cursor.execute("DELETE FROM email_logs WHERE LOWER(to_email) = ?", (purge_email,))
                     cursor.execute("DELETE FROM users WHERE id = ?", (p_uid,))
+                cursor.execute("DELETE FROM employees WHERE LOWER(email) = ?", (purge_email,))
+                cursor.execute("DELETE FROM users WHERE LOWER(email) = ?", (purge_email,))
             except Exception:
                 pass
     conn.close()
