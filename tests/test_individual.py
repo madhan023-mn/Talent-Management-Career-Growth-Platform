@@ -19,7 +19,7 @@ from services.core import (
     list_skills, add_skill, update_skill, delete_skill,
     get_available_assessments, get_assessment_questions, evaluate_assessment, get_skill_assessment_history,
     SKILL_ASSESSMENT_BANK,
-    add_goal, get_goals, update_goal, update_goal_progress, delete_goal,
+    add_goal, get_goals, update_goal, update_goal_progress, delete_goal, get_goal_stats,
     get_individual_dashboard_stats, join_organization,
     get_employees, get_employee_by_id, get_assessments,
     create_organization, generate_invitation_code, revoke_invitation_code,
@@ -27,7 +27,8 @@ from services.core import (
     get_membership_requests, approve_membership_request, reject_membership_request,
     get_organization_by_name,
     get_org_dashboard_stats,
-    get_recent_email_logs, send_test_email
+    get_recent_email_logs, send_test_email,
+    get_resume, save_resume, get_employee_skills, get_employee_skill_gaps
 )
 
 @pytest.fixture(autouse=True)
@@ -677,3 +678,44 @@ def test_welcome_email_dispatch_and_logging_on_registration():
     # Test send_test_email helper
     ok_test, msg_test = send_test_email("tester@company.com")
     assert ok_test is True
+
+
+def test_individual_full_employee_suite_support():
+    """Verify that individual users can access Resume Studio, Skills, Role Gaps, and Goals."""
+    email = "suite.user@example.com"
+    ok, _ = register_individual(
+        name="Suite Test Professional",
+        email=email,
+        password="SuitePass2026!",
+        job_title="Full Stack Developer",
+        skills="Python, SQL, React"
+    )
+    assert ok is True
+    user = login(email, "SuitePass2026!")
+    uid = user["id"]
+    emp_code = f"EMP{uid:03d}"
+
+    # 1. Resume Studio support for Individual
+    resume = get_resume(uid)
+    assert resume is not None
+    assert resume["user_id"] == uid
+    assert isinstance(resume.get("skills"), list)
+    resume["summary"] = "Experienced full stack software engineer."
+    ok_res, msg_res = save_resume(uid, resume)
+    assert ok_res is True
+
+    # 2. Competencies & Skills retrieval for Individual
+    emp_skills = get_employee_skills(emp_code, user_id=uid)
+    assert len(emp_skills) >= 1
+
+    # 3. Role Gap Analysis for Individual
+    gap_res = get_employee_skill_gaps(emp_code, "Full Stack Engineer")
+    assert "gaps" in gap_res
+    assert "match_percentage" in gap_res
+
+    # 4. Career Goals & Stats for Individual
+    ok_g, _ = add_goal(user_id=uid, title="Attain AWS Solutions Architect", description="Pass the certification exam", target_date="2026-12-31", progress=50)
+    assert ok_g is True
+    stats = get_goal_stats(user_id=uid)
+    assert stats["total"] >= 1
+    assert stats["in_progress"] >= 1

@@ -175,9 +175,9 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
                 )
                 st.plotly_chart(fig_dist, use_container_width=True)
             else:
-                st.info("No skills recorded yet. Add your competencies in the My Skills module.")
+                st.info("No skills recorded yet. Add your competencies in the Skills & Assessment module.")
                 if st.button("Add Your First Skill", key="btn_dash_add_skill", type="primary"):
-                    navigate_to("My Skills")
+                    navigate_to("Skills & Assessment")
 
     with col_chart_right:
         with st.container(border=True):
@@ -210,7 +210,7 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
             else:
                 st.info("No technical assessments completed yet. Take an assessment to evaluate your knowledge.")
                 if st.button("Start a Technical Assessment", key="btn_dash_take_eval", type="primary"):
-                    navigate_to("Skill Assessments")
+                    navigate_to("Skills & Assessment")
 
     # 4. Target Role Skill Gap Snapshot & Career Roadmap
     col_gap, col_act = st.columns([1.3, 1.0], gap="medium")
@@ -263,6 +263,7 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
                 )
                 st.markdown("<div style='margin-top: 0.75rem;'></div>", unsafe_allow_html=True)
                 if st.button("Open Full Skill Gap Analysis", key="btn_dash_open_gap"):
+                    navigate_to("Role Match & Gaps")
                     navigate_to("Skill Gap Analysis")
             else:
                 st.info("Select a target role in your profile to run a personalized skill gap analysis.")

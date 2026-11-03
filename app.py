@@ -1500,11 +1500,13 @@ if is_individual:
     active_pages = [
         "Dashboard",
         "My Profile",
-        "My Skills",
-        "Skill Assessments",
-        "Skill Gap Analysis",
-        "Career Goals",
-        "My Progress",
+        "Resume Studio",
+        "Skills & Assessment",
+        "Career Direction",
+        "Role Match & Gaps",
+        "Career Coach",
+        "Growth Progress",
+        "Career Report",
         "Settings",
         "Join an Organization"
     ]
@@ -2094,24 +2096,15 @@ if is_individual:
     if page in ["Dashboard", "My Career Dashboard"]:
         render_individual_dashboard(user, profile, skills, navigate_to)
         st.stop()
-    elif page == "My Skills":
-        render_individual_skills(user, skills, navigate_to)
-        st.stop()
-    elif page == "Skill Assessments":
-        render_individual_assessments(user, skills)
-        st.stop()
-    elif page == "Skill Gap Analysis":
-        render_individual_skill_gaps(user, skills)
-        st.stop()
-    elif page == "Career Goals":
-        render_individual_career_goals(user, navigate_to)
-        st.stop()
-    elif page == "My Progress":
-        render_individual_progress(user)
-        st.stop()
-    elif page == "Join an Organization":
+    elif page in ["Join an Organization"]:
         render_join_organization_card(user)
         st.stop()
+    elif page in ["My Skills", "Skill Assessments"]:
+        page = "Skills & Assessment"
+    elif page in ["Skill Gap Analysis"]:
+        page = "Role Match & Gaps"
+    elif page in ["Career Goals", "My Progress"]:
+        page = "Growth Progress"
 
 # ==============================================================================
 # 1. ADMIN: EXECUTIVE DASHBOARD
@@ -3590,16 +3583,17 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                     </div>
                 </div>
                 <div>
-                    <span class="badge-status badge-active">{emp_id} &middot; {org_name}</span>
+                    <span class="badge-status badge-active">{'Independent Professional' if is_individual else f'{emp_id} &middot; {org_name}'}</span>
                 </div>
             </div>
             """,
             unsafe_allow_html=True
         )
 
-        tab_emp_skills, tab_emp_assessments, tab_emp_gaps = st.tabs([
+        tab_emp_skills, tab_emp_assessments, tab_emp_mcq, tab_emp_gaps = st.tabs([
             "My Competencies & Skills",
-            "Skill Assessments & History",
+            "Self-Evaluation & Evidence",
+            "Technical MCQ Assessments",
             "My Skill-Gap Analysis"
         ])
 
@@ -3759,6 +3753,9 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                         "Evaluation Date": st.column_config.DateColumn("Recorded On", format="YYYY-MM-DD")
                     }
                 )
+
+        with tab_emp_mcq:
+            render_individual_assessments(user, skills)
 
         with tab_emp_gaps:
             st.markdown("#### Individual Skill-Gap Analysis & Benchmark Readiness")
@@ -4675,37 +4672,75 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
     tab_rep_overview, tab_rep_csv, tab_rep_pdf = st.tabs(["Analytics Overview", "Download CSV Data Reports", "Generate PDF Dossier"])
 
     with tab_rep_overview:
-        render_html(
-            f"""
-            <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 0.5rem 0 0.85rem 0;">
-                {get_svg_icon("briefcase", size=20, color="#2563EB")} Department Workforce & Performance Breakdown
-            </div>
-            """
-        )
-        if dept_summary:
-            render_html(render_colored_dept_summary_table(dept_summary))
-
-        if employees:
-            df_status = pd.DataFrame(employees)["employment_status"].value_counts().reset_index()
-            df_status.columns = ["Status", "Count"]
-            c_p1, c_p2 = st.columns(2)
-            with c_p1:
-                fig_st = px.pie(
-                    df_status, values="Count", names="Status", title="Employment Status Distribution",
-                    hole=0.35, color_discrete_sequence=['#10B981', '#F59E0B', '#64748B']
-                )
-                fig_st.update_layout(margin=dict(l=10, r=10, t=35, b=10), height=300)
-                st.plotly_chart(fig_st, use_container_width=True)
-            with c_p2:
-                if reviews:
-                    fig_scat = px.scatter(
-                        pd.DataFrame(reviews), x="performance_score", y="department", color="review_period",
-                        title="Performance Ratings across Departments",
-                        labels={"performance_score": "Rating (1-5)", "department": "Department"},
-                        color_discrete_sequence=['#2563EB', '#10B981', '#F59E0B']
+        if is_individual:
+            ind_stats = get_individual_dashboard_stats(uid)
+            render_html(
+                f"""
+                <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 0.5rem 0 0.85rem 0;">
+                    {get_svg_icon("sparkles", size=20, color="#10B981")} Personal Career & Competency Analytics
+                </div>
+                """
+            )
+            col_ind1, col_ind2 = st.columns(2)
+            with col_ind1:
+                dist = ind_stats.get("proficiency_distribution", {})
+                if any(dist.values()):
+                    dist_df = pd.DataFrame([{"Proficiency": k, "Count": v} for k, v in dist.items()])
+                    fig_ind_dist = px.bar(
+                        dist_df, x="Proficiency", y="Count", color="Proficiency",
+                        title="Skill Portfolio by Proficiency Level",
+                        color_discrete_map={"Beginner": "#93C5FD", "Intermediate": "#3B82F6", "Advanced": "#1D4ED8", "Expert": "#1E3A8A"}
                     )
-                    fig_scat.update_layout(margin=dict(l=10, r=10, t=35, b=10), height=300)
-                    st.plotly_chart(fig_scat, use_container_width=True)
+                    fig_ind_dist.update_layout(height=280, margin=dict(l=10, r=10, t=35, b=10), showlegend=False)
+                    st.plotly_chart(fig_ind_dist, use_container_width=True)
+                else:
+                    st.info("Add your skills to see proficiency distribution charts.")
+            with col_ind2:
+                user_goals = get_goals(user_id=uid)
+                if user_goals:
+                    df_goals = pd.DataFrame(user_goals)
+                    g_counts = df_goals["status"].value_counts().reset_index()
+                    g_counts.columns = ["Status", "Count"]
+                    fig_g = px.pie(
+                        g_counts, values="Count", names="Status", title="Career Goals Completion Status",
+                        hole=0.35, color_discrete_sequence=['#10B981', '#F59E0B', '#EF4444', '#64748B']
+                    )
+                    fig_g.update_layout(height=280, margin=dict(l=10, r=10, t=35, b=10))
+                    st.plotly_chart(fig_g, use_container_width=True)
+                else:
+                    st.info("Set your first career goal to visualize milestone tracking.")
+        else:
+            render_html(
+                f"""
+                <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 0.5rem 0 0.85rem 0;">
+                    {get_svg_icon("briefcase", size=20, color="#2563EB")} Department Workforce & Performance Breakdown
+                </div>
+                """
+            )
+            if dept_summary:
+                render_html(render_colored_dept_summary_table(dept_summary))
+
+            if employees:
+                df_status = pd.DataFrame(employees)["employment_status"].value_counts().reset_index()
+                df_status.columns = ["Status", "Count"]
+                c_p1, c_p2 = st.columns(2)
+                with c_p1:
+                    fig_st = px.pie(
+                        df_status, values="Count", names="Status", title="Employment Status Distribution",
+                        hole=0.35, color_discrete_sequence=['#10B981', '#F59E0B', '#64748B']
+                    )
+                    fig_st.update_layout(margin=dict(l=10, r=10, t=35, b=10), height=300)
+                    st.plotly_chart(fig_st, use_container_width=True)
+                with c_p2:
+                    if reviews:
+                        fig_scat = px.scatter(
+                            pd.DataFrame(reviews), x="performance_score", y="department", color="review_period",
+                            title="Performance Ratings across Departments",
+                            labels={"performance_score": "Rating (1-5)", "department": "Department"},
+                            color_discrete_sequence=['#2563EB', '#10B981', '#F59E0B']
+                        )
+                        fig_scat.update_layout(margin=dict(l=10, r=10, t=35, b=10), height=300)
+                        st.plotly_chart(fig_scat, use_container_width=True)
 
     with tab_rep_csv:
         st.markdown("#### Download Structured CSV Data Reports")
@@ -4764,17 +4799,21 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
 elif page == "My Profile":
     st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.85rem;'>My professional profile</h1>", unsafe_allow_html=True)
 
-    org_display_name = user.get("org_name") or profile.get("company") or "Talent Growth Technologies"
-    org_display_id = user.get("org_id", "ORG-TALENT-01")
+    if is_individual:
+        org_display_name = "Independent Professional"
+        org_display_id = "INDIVIDUAL"
+    else:
+        org_display_name = user.get("org_name") or profile.get("company") or "Talent Growth Technologies"
+        org_display_id = user.get("org_id", "ORG-TALENT-01")
     render_html(
         f"""
         <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 18px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="width: 38px; height: 38px; border-radius: 10px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1);">
-                    {get_svg_icon("building", size=20, color="#2563EB")}
+                    {get_svg_icon("building" if not is_individual else "user", size=20, color="#2563EB")}
                 </div>
                 <div>
-                    <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Organization Membership</div>
+                    <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">{'Career Membership Status' if is_individual else 'Organization Membership'}</div>
                     <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A;">{org_display_name}</div>
                 </div>
             </div>

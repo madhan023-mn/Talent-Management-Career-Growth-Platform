@@ -2636,26 +2636,49 @@ def add_employee_skill(
     finally:
         conn.close()
 
-def get_employee_skills(employee_id: str, org_id: Optional[str] = None) -> List[Dict[str, Any]]:
+def get_employee_skills(employee_id: Optional[str] = None, org_id: Optional[str] = None, user_id: Optional[int] = None) -> List[Dict[str, Any]]:
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        emp_id_clean = employee_id.strip().upper()
-        if org_id:
+        emp_id_clean = (employee_id or "").strip().upper()
+        if org_id and emp_id_clean:
             cursor.execute("SELECT org_id FROM employees WHERE employee_id = ?", (emp_id_clean,))
             emp = cursor.fetchone()
             if not emp or emp["org_id"].upper() != org_id.strip().upper():
                 return []
-        cursor.execute(
-            """
-            SELECT id, employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp, last_updated
-            FROM employee_skills
-            WHERE employee_id = ?
-            ORDER BY id DESC
-            """,
-            (emp_id_clean,)
-        )
-        return [dict(row) for row in cursor.fetchall()]
+
+        rows = []
+        if emp_id_clean:
+            cursor.execute(
+                """
+                SELECT id, employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp, last_updated
+                FROM employee_skills
+                WHERE employee_id = ?
+                ORDER BY id DESC
+                """,
+                (emp_id_clean,)
+            )
+            rows = [dict(row) for row in cursor.fetchall()]
+
+        if not rows:
+            # Fallback to skills table for individual users or users with skills table entries
+            target_uid = user_id
+            if not target_uid and emp_id_clean:
+                cursor.execute(
+                    "SELECT id FROM users WHERE employee_id = ? OR ('EMP' || printf('%03d', id)) = ? OR ('EMP-' || id) = ?",
+                    (emp_id_clean, emp_id_clean, emp_id_clean)
+                )
+                u_match = cursor.fetchone()
+                if u_match:
+                    target_uid = u_match["id"]
+
+            if target_uid:
+                cursor.execute(
+                    "SELECT id, user_id, name as skill_name, category, proficiency as proficiency_level, years as years_exp, created_at as last_updated FROM skills WHERE user_id = ? ORDER BY id DESC",
+                    (target_uid,)
+                )
+                rows = [dict(r) for r in cursor.fetchall()]
+        return rows
     finally:
         conn.close()
 
@@ -3892,7 +3915,7 @@ def get_resume(user_id: int, org_id: Optional[str] = None) -> Optional[Dict[str,
         # Initialize from existing profile and legacy skills without losing data
         profile = get_profile(user_id)
         legacy_skills = list_skills(user_id)
-        emp_skills = get_employee_skills(user.get("employee_id"), org_id=user.get("org_id"))
+        emp_skills = get_employee_skills(user.get("employee_id"), org_id=user.get("org_id"), user_id=user_id)
 
         # Build initial skills list
         initial_skills = []
@@ -4012,7 +4035,7 @@ def get_resume(user_id: int, org_id: Optional[str] = None) -> Optional[Dict[str,
         if profile.get("portfolio"):
             initial_links.append({"id": "link_3", "label": "Portfolio", "url": profile.get("portfolio")})
 
-        user_org = user.get("org_id", "ORG-TALENT-01")
+        user_org = user.get("org_id") or "INDIVIDUAL"
 
         with conn:
             cursor.execute(
@@ -4188,7 +4211,7 @@ def save_resume(user_id: int, resume_data: Dict[str, Any], org_id: Optional[str]
             "url": lurl
         })
 
-    user_org = user.get("org_id", "ORG-TALENT-01")
+    user_org = user.get("org_id") or "INDIVIDUAL"
 
     conn = get_connection()
     try:
