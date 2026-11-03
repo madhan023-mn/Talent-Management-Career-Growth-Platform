@@ -17,6 +17,12 @@ while _BASE_STR in sys.path:
     sys.path.remove(_BASE_STR)
 sys.path.insert(0, _BASE_STR)
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(BASE_DIR / ".env")
+except Exception:
+    pass
+
 import pandas as pd
 try:
     from services.email_service import send_welcome_email, get_recent_email_logs, send_test_email, get_email_config
@@ -169,7 +175,116 @@ def get_connection() -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA synchronous = NORMAL")
     conn.execute("PRAGMA busy_timeout = 30000")
+    conn.execute("PRAGMA wal_autocheckpoint = 1")
     return conn
+
+def checkpoint_db(conn: Optional[sqlite3.Connection] = None) -> Tuple[int, int, int]:
+    """
+    Forces SQLite WAL to immediately transfer all committed pages back into the main database file
+    and truncate the WAL file, guaranteeing external tools and SQLite viewers see changes instantaneously.
+    """
+    should_close = False
+    if conn is None:
+        conn = get_connection()
+        should_close = True
+    try:
+        cur = conn.cursor()
+        cur.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        res = cur.fetchone()
+        return (res[0], res[1], res[2]) if res else (0, 0, 0)
+    except Exception:
+        return (-1, -1, -1)
+    finally:
+        if should_close:
+            conn.close()
+
+def get_database_diagnostics() -> Dict[str, Any]:
+    """
+    Returns sanitized diagnostic metrics regarding the active SQLite database:
+    filename, absolute path, file size, connection integrity status,
+    record counts, and recently created accounts (without sensitive credentials).
+    """
+    path = get_db_path()
+    diag: Dict[str, Any] = {
+        "connected": False,
+        "filename": path.name,
+        "absolute_path": str(path.resolve()),
+        "size_kb": 0.0,
+        "integrity": "Unknown",
+        "total_users": 0,
+        "total_employees": 0,
+        "total_organizations": 0,
+        "recent_users": []
+    }
+    if not path.is_file():
+        diag["error"] = "Database file does not exist on disk"
+        return diag
+
+    try:
+        diag["size_kb"] = round(path.stat().st_size / 1024, 1)
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("PRAGMA integrity_check")
+            row = cur.fetchone()
+            diag["integrity"] = row[0] if row else "ok"
+            diag["connected"] = (diag["integrity"].lower() == "ok")
+
+            cur.execute("SELECT COUNT(*) FROM users")
+            diag["total_users"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(*) FROM employees")
+            diag["total_employees"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(*) FROM organizations")
+            diag["total_organizations"] = cur.fetchone()[0]
+
+            cur.execute(
+                """
+                SELECT id, name, email, role, account_type, org_id, status, date_joined
+                FROM users
+                ORDER BY id DESC
+                LIMIT 5
+                """
+            )
+            diag["recent_users"] = [dict(r) for r in cur.fetchall()]
+        finally:
+            conn.close()
+    except Exception as e:
+        diag["error"] = str(e)
+
+    return diag
+
+def verify_user_in_db(user_id_or_email: Union[int, str]) -> Optional[Dict[str, Any]]:
+    """
+    Confirms whether a specific newly created or existing user exists in the active database.
+    Returns public non-sensitive user metadata or None if not found.
+    """
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        if isinstance(user_id_or_email, int) or str(user_id_or_email).isdigit():
+            cur.execute(
+                """
+                SELECT id, name, email, role, employee_id, org_id, account_type, department, job_title, status, date_joined
+                FROM users
+                WHERE id = ?
+                """,
+                (int(user_id_or_email),)
+            )
+        else:
+            cur.execute(
+                """
+                SELECT id, name, email, role, employee_id, org_id, account_type, department, job_title, status, date_joined
+                FROM users
+                WHERE LOWER(TRIM(email)) = ?
+                """,
+                (str(user_id_or_email).strip().lower(),)
+            )
+        row = cur.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
 
 def _safe_add_column(cursor: sqlite3.Cursor, table_name: str, col_name: str, col_def: str) -> None:
     """Safely adds a column to an existing table if it does not already exist."""
@@ -897,61 +1012,8 @@ def init_db() -> None:
                 (tc_jane_uid, "TC101", "ORG-TECHCORP-02", "Master Apache Spark & Streaming", "Senior Data Scientist", "Complete internal big data track", "2026-11-30", 50, "In Progress")
             )
 
-        # Automatic startup purge of requested user accounts (e.g. user re-registration cleanup)
-        for purge_email in [
-            "madhannetha0223@gmaill.com",
-            "madhannetha0223@gmail.com",
-            "vibifess6813@en2ch.com",
-            "vibifes6813@en2ch.com",
-            "madhannethag23@gmail.com",
-            "madhannethag23@mail.com",
-            "madhangosikonda2003@gmail.com",
-            "madhangosikonda2003+2e1952@gmail.com"
-        ]:
-            try:
-                cursor.execute("SELECT id, employee_id FROM users WHERE LOWER(email) = ?", (purge_email,))
-                p_user = cursor.fetchone()
-                if p_user:
-                    p_uid = p_user["id"]
-                    p_eid = p_user["employee_id"]
-                    cursor.execute("DELETE FROM profiles WHERE user_id = ?", (p_uid,))
-                    cursor.execute("DELETE FROM skills WHERE user_id = ?", (p_uid,))
-                    cursor.execute("DELETE FROM employee_skills WHERE user_id = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, p_eid or ''))
-                    cursor.execute("DELETE FROM assessments WHERE user_id = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, p_eid or ''))
-                    cursor.execute("DELETE FROM career_goals WHERE user_id = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, p_eid or ''))
-                    cursor.execute("DELETE FROM goals WHERE user_id = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, p_eid or ''))
-                    cursor.execute("DELETE FROM resumes WHERE user_id = ?", (p_uid,))
-                    cursor.execute("DELETE FROM progress WHERE user_id = ?", (p_uid,))
-                    cursor.execute("DELETE FROM training_records WHERE employee_id IS NOT NULL AND employee_id = ?", (p_eid or '',))
-                    cursor.execute("DELETE FROM performance_reviews WHERE employee_id IS NOT NULL AND employee_id = ?", (p_eid or '',))
-                    cursor.execute("DELETE FROM membership_requests WHERE user_id = ? OR LOWER(user_email) = ?", (p_uid, purge_email))
-                    cursor.execute("DELETE FROM employees WHERE user_id = ? OR LOWER(email) = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, purge_email, p_eid or ''))
-                    cursor.execute("DELETE FROM email_logs WHERE LOWER(to_email) = ?", (purge_email,))
-                    cursor.execute("DELETE FROM users WHERE id = ?", (p_uid,))
-                cursor.execute("DELETE FROM employees WHERE LOWER(email) = ?", (purge_email,))
-                cursor.execute("DELETE FROM users WHERE LOWER(email) = ?", (purge_email,))
-            except Exception:
-                pass
-
-        # Also purge any disposable test accounts from en2ch.com domain
-        try:
-            cursor.execute("SELECT email FROM users WHERE LOWER(email) LIKE '%@en2ch.com'")
-            for r in cursor.fetchall():
-                e = r["email"].lower()
-                cursor.execute("DELETE FROM profiles WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
-                cursor.execute("DELETE FROM skills WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
-                cursor.execute("DELETE FROM employee_skills WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
-                cursor.execute("DELETE FROM assessments WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
-                cursor.execute("DELETE FROM career_goals WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
-                cursor.execute("DELETE FROM goals WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
-                cursor.execute("DELETE FROM resumes WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
-                cursor.execute("DELETE FROM progress WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
-                cursor.execute("DELETE FROM membership_requests WHERE LOWER(user_email) = ?", (e,))
-                cursor.execute("DELETE FROM employees WHERE LOWER(email) = ?", (e,))
-                cursor.execute("DELETE FROM email_logs WHERE LOWER(to_email) = ?", (e,))
-                cursor.execute("DELETE FROM users WHERE LOWER(email) = ?", (e,))
-        except Exception:
-            pass
+        # Ensure all initial and migration data is checkpointed to disk
+        checkpoint_db(conn)
     conn.close()
 
 # ----------------- Organization Management -----------------
@@ -1523,6 +1585,22 @@ def register_individual(
                     (user_id, sk, years_experience)
                 )
 
+            # Explicit verification query within database connection
+            cursor.execute(
+                """
+                SELECT id, name, email, role, employee_id, org_id, account_type, department, job_title, status, date_joined
+                FROM users
+                WHERE id = ?
+                """,
+                (user_id,)
+            )
+            v_user = cursor.fetchone()
+            if not v_user:
+                return False, "Registration transaction failed: User could not be verified in the database after insert."
+
+        # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
+        checkpoint_db(conn)
+
         try:
             send_welcome_email(
                 to_email=email,
@@ -1638,6 +1716,11 @@ def register(
         with conn:
             cursor = conn.cursor()
 
+            # Prevent duplicate email registrations upfront
+            cursor.execute("SELECT id FROM users WHERE LOWER(TRIM(email)) = ?", (email,))
+            if cursor.fetchone():
+                return False, f"An account with email '{email}' already exists. Please sign in instead."
+
             # Handle Organization Registration, Invitation Code Mapping, or Selection
             if invitation_info:
                 # Employee joined via invitation code - strictly bound to invitation's org_id
@@ -1751,13 +1834,14 @@ def register(
                     cursor.execute("SELECT id FROM employees WHERE employee_id = ?", (cand,))
                 final_emp_id = cand
 
-            # Insert User record
+            # Insert User record with explicit account_type
+            account_type_val = "Individual" if role == "individual" else "Organization"
             cursor.execute(
                 """
-                INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, department, job_title, status, date_joined)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (name, email, pwd_hash, salt, role, final_emp_id, resolved_org_id, department, job_title, user_status, date.today().isoformat())
+                (name, email, pwd_hash, salt, role, final_emp_id, resolved_org_id, account_type_val, department, job_title, user_status, date.today().isoformat())
             )
             user_id = cursor.lastrowid
 
@@ -1820,6 +1904,22 @@ def register(
                     """,
                     (user_id, resolved_org_id, name, email, department, job_title)
                 )
+
+            # Explicit verification query within database connection
+            cursor.execute(
+                """
+                SELECT id, name, email, role, employee_id, org_id, account_type, department, job_title, status, date_joined
+                FROM users
+                WHERE id = ?
+                """,
+                (user_id,)
+            )
+            v_user = cursor.fetchone()
+            if not v_user:
+                return False, "Registration transaction failed: User could not be verified in the database after insert."
+
+        # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
+        checkpoint_db(conn)
 
         # Trigger welcome email safely outside the database write transaction
         try:
@@ -1893,7 +1993,7 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
                    COALESCE(o.name, 'Talent Growth Technologies') as org_name
             FROM users u
             LEFT JOIN organizations o ON u.org_id = o.org_id
-            WHERE u.email = ?
+            WHERE LOWER(TRIM(u.email)) = ?
             """,
             (email,)
         )
@@ -1907,7 +2007,7 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
                        COALESCE(o.name, 'Talent Growth Technologies') as org_name
                 FROM users u
                 LEFT JOIN organizations o ON u.org_id = o.org_id
-                WHERE u.email = ?
+                WHERE LOWER(TRIM(u.email)) = ?
                 """,
                 (alt,)
             )

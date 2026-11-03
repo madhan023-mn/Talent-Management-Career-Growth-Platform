@@ -51,7 +51,7 @@ try:
         add_training_record, get_training_records,
         get_org_dashboard_stats, get_employee_dashboard_data, get_individual_dashboard_stats,
         generate_invitation_code, list_invitation_codes, revoke_invitation_code, validate_invitation_code,
-        get_db_path, check_db_health,
+        get_db_path, check_db_health, get_database_diagnostics, verify_user_in_db, checkpoint_db,
         get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
         validate_url, validate_date_range,
         create_membership_request, get_membership_requests,
@@ -149,6 +149,9 @@ except Exception as _core_err:
         reject_membership_request = _core_mod.reject_membership_request
         get_user_membership_request = _core_mod.get_user_membership_request
         delete_user_by_email = getattr(_core_mod, 'delete_user_by_email', lambda e: (False, 'Not available'))
+        get_database_diagnostics = getattr(_core_mod, 'get_database_diagnostics', lambda: {})
+        verify_user_in_db = getattr(_core_mod, 'verify_user_in_db', lambda u: None)
+        checkpoint_db = getattr(_core_mod, 'checkpoint_db', lambda c=None: (0, 0, 0))
     except Exception as _retry_err:
         import traceback
         st.error(f"### Critical Startup Error: Failed to load services.core\n\n**Error:** `{_retry_err}`")
@@ -1149,6 +1152,55 @@ def landing_webpage():
 
 
 # ------------------------------------------------------------------------------
+# DATABASE DIAGNOSTICS & STORAGE INSPECTOR
+# ------------------------------------------------------------------------------
+def render_database_diagnostics_panel(key_suffix: str = ""):
+    """Renders active SQLite database diagnostics and verification data without exposing credentials."""
+    diag = get_database_diagnostics()
+    with st.expander("🛠️ Active Database Diagnostics & Storage Inspector", expanded=False):
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.metric("Active Database", diag.get("filename", "talentsphere.db"))
+            st.caption(f"**Path**: `{diag.get('absolute_path', '')}`")
+        with c2:
+            is_conn = diag.get("connected", False)
+            st.metric("Connection Status", "🟢 Connected (OK)" if is_conn else "🔴 Disconnected")
+            st.caption(f"**Integrity**: {diag.get('integrity', 'ok')} | **Size**: {diag.get('size_kb', 0)} KB")
+        with c3:
+            st.metric("Total Users", diag.get("total_users", 0))
+            st.caption(f"**Total Employees**: {diag.get('total_employees', 0)} | **Organizations**: {diag.get('total_organizations', 0)}")
+
+        last_v = st.session_state.get("last_registered_verification")
+        if last_v:
+            st.markdown(
+                f"""
+                <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 12px; margin: 10px 0;">
+                    <div style="font-weight: 700; color: #15803D; font-size: 0.92rem; margin-bottom: 4px;">
+                        ✅ Verified User in Active Database:
+                    </div>
+                    <div style="font-size: 0.85rem; color: #1E293B; line-height: 1.5;">
+                        <strong>User ID:</strong> {last_v.get('id')} &nbsp;|&nbsp;
+                        <strong>Name:</strong> {last_v.get('name')} &nbsp;|&nbsp;
+                        <strong>Email:</strong> {last_v.get('email')}<br/>
+                        <strong>Role:</strong> {last_v.get('role')} &nbsp;|&nbsp;
+                        <strong>Account Type:</strong> {last_v.get('account_type')} &nbsp;|&nbsp;
+                        <strong>Status:</strong> {last_v.get('status')} &nbsp;|&nbsp;
+                        <strong>Date Joined:</strong> {last_v.get('date_joined')}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        recent = diag.get("recent_users", [])
+        if recent:
+            st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #334155; margin-top: 10px; margin-bottom: 4px;'>Recent Users in Active Database:</div>", unsafe_allow_html=True)
+            df_recent = pd.DataFrame(recent)
+            cols_show = [c for c in ["id", "name", "email", "role", "account_type", "status", "date_joined"] if c in df_recent.columns]
+            st.dataframe(df_recent[cols_show], use_container_width=True, hide_index=True)
+
+
+# ------------------------------------------------------------------------------
 # 2. DEDICATED SIGN IN PAGE (WITH TOP-LEFT BACK BUTTON)
 # ------------------------------------------------------------------------------
 def login_page():
@@ -1221,6 +1273,8 @@ def login_page():
             if st.button("Try 1-Click Demo on Home Page", key="btn_login_to_demo", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "landing"
                 st.rerun()
+
+            render_database_diagnostics_panel("login")
 
 
 # ------------------------------------------------------------------------------
@@ -1364,16 +1418,21 @@ def register_page():
                         job_title=title_val.strip() or "Independent Professional"
                     )
                     if ok:
-                        st.success(f"{msg} A welcome confirmation email has been dispatched to **{clean_email}**. Signing you in automatically...")
-                        new_user_data = login(clean_email, clean_pwd)
-                        if new_user_data:
-                            st.session_state.user = new_user_data
-                            st.session_state.current_page = "Dashboard"
-                            st.session_state.auth_view = "landing"
-                            st.rerun()
+                        verified = verify_user_in_db(clean_email)
+                        if not verified:
+                            st.error("Registration error: User record could not be confirmed in the active SQLite database.")
                         else:
-                            st.session_state.auth_view = "login"
-                            st.rerun()
+                            st.session_state["last_registered_verification"] = verified
+                            st.success(f"{msg} (User ID #{verified['id']} verified in active database {get_db_path().name})")
+                            new_user_data = login(clean_email, clean_pwd)
+                            if new_user_data:
+                                st.session_state.user = new_user_data
+                                st.session_state.current_page = "Dashboard"
+                                st.session_state.auth_view = "landing"
+                                st.rerun()
+                            else:
+                                st.session_state.auth_view = "login"
+                                st.rerun()
                     else:
                         st.error(msg)
                 else:
@@ -1409,16 +1468,21 @@ def register_page():
                         require_hr_approval=False
                     )
                     if ok:
-                        st.success(f"{msg} A welcome confirmation email has been dispatched to **{clean_email}**. Signing you in automatically...")
-                        new_user_data = login(clean_email, clean_pwd)
-                        if new_user_data:
-                            st.session_state.user = new_user_data
-                            st.session_state.current_page = "Dashboard"
-                            st.session_state.auth_view = "landing"
-                            st.rerun()
+                        verified = verify_user_in_db(clean_email)
+                        if not verified:
+                            st.error("Registration error: User record could not be confirmed in the active SQLite database.")
                         else:
-                            st.session_state.auth_view = "login"
-                            st.rerun()
+                            st.session_state["last_registered_verification"] = verified
+                            st.success(f"{msg} (User ID #{verified['id']} verified in active database {get_db_path().name})")
+                            new_user_data = login(clean_email, clean_pwd)
+                            if new_user_data:
+                                st.session_state.user = new_user_data
+                                st.session_state.current_page = "Dashboard"
+                                st.session_state.auth_view = "landing"
+                                st.rerun()
+                            else:
+                                st.session_state.auth_view = "login"
+                                st.rerun()
                     else:
                         st.error(msg)
 
@@ -1427,6 +1491,8 @@ def register_page():
             if st.button("Sign In to Existing Account", key="btn_reg_to_login", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "login"
                 st.rerun()
+
+            render_database_diagnostics_panel("reg")
 
 
 # ------------------------------------------------------------------------------
