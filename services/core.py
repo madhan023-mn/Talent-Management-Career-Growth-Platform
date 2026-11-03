@@ -1305,7 +1305,10 @@ def register_individual(
     years_experience: float = 1.0,
     app_url: Optional[str] = None,
     education: Optional[str] = None,
-    interests: Optional[str] = None
+    interests: Optional[str] = None,
+    department: Optional[str] = None,
+    job_title: Optional[str] = None,
+    **kwargs: Any
 ) -> Tuple[bool, str]:
     """
     Registers an independent professional account without organization affiliation.
@@ -1323,6 +1326,9 @@ def register_individual(
     educational_qualification = (education or educational_qualification or "").strip()
     professional_interests = (interests or professional_interests or "").strip()
     primary_skills = (primary_skills or "Python, SQL, Communication").strip()
+    clean_dept = (department or educational_qualification or "Independent Professional").strip()
+    clean_title = (job_title or professional_interests or "Independent Professional").strip()
+    target_role_val = (professional_interests or interests or clean_title or "Junior Python Developer").strip()
 
     if not name:
         return False, "Full Name is required."
@@ -1360,8 +1366,8 @@ def register_individual(
                     email,
                     pwd_hash,
                     salt,
-                    educational_qualification or "Independent Professional",
-                    professional_interests or "Independent Professional",
+                    clean_dept,
+                    clean_title,
                     date.today().isoformat()
                 )
             )
@@ -1371,15 +1377,16 @@ def register_individual(
             cursor.execute(
                 """
                 INSERT OR REPLACE INTO profiles (user_id, phone, education, summary, target_role, job_title, company, department, years_experience)
-                VALUES (?, ?, ?, ?, ?, ?, '', '', ?)
+                VALUES (?, ?, ?, ?, ?, ?, '', ?, ?)
                 """,
                 (
                     user_id,
                     phone,
                     educational_qualification,
                     f"Interests: {professional_interests}" if professional_interests else "",
-                    professional_interests or "Junior Python Developer",
-                    "Independent Professional",
+                    target_role_val,
+                    clean_title,
+                    clean_dept,
                     years_experience
                 )
             )
@@ -1435,10 +1442,14 @@ def register(
     contact_number: Optional[str] = None,
     registration_type: Optional[str] = None,
     education: Optional[str] = None,
-    interests: Optional[str] = None
+    interests: Optional[str] = None,
+    **kwargs: Any
 ) -> Tuple[bool, str]:
     # Route Option 3: Individual Registration
     if registration_type == "individual" or role == "individual":
+        # Only override department/title if not default or if no interests provided
+        pass_dept = department if (department != "Engineering" or not (education or interests)) else None
+        pass_title = job_title if (job_title != "Software Engineer" or not (education or interests)) else None
         return register_individual(
             name=name,
             email=email,
@@ -1448,7 +1459,10 @@ def register(
             professional_interests=interests,
             primary_skills=primary_skills,
             years_experience=years_experience,
-            app_url=app_url
+            department=pass_dept,
+            job_title=pass_title,
+            app_url=app_url,
+            **kwargs
         )
 
     # Route Option 2: Register New Organization
