@@ -443,12 +443,50 @@ def init_db() -> None:
         _safe_add_column(cursor, "users", "account_type", "TEXT NOT NULL DEFAULT 'Organization'")
         _safe_add_column(cursor, "users", "role", "TEXT NOT NULL DEFAULT 'employee'")
         _safe_add_column(cursor, "users", "employee_id", "TEXT")
-        _safe_add_column(cursor, "users", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+        _safe_add_column(cursor, "users", "org_id", "TEXT DEFAULT NULL")
         _safe_add_column(cursor, "users", "department", "TEXT DEFAULT ''")
         _safe_add_column(cursor, "users", "job_title", "TEXT DEFAULT ''")
         _safe_add_column(cursor, "users", "status", "TEXT DEFAULT 'Active'")
         _safe_add_column(cursor, "users", "date_joined", "TEXT DEFAULT ''")
         _safe_add_column(cursor, "users", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+
+        # Ensure users.org_id is nullable in existing databases to support Individual accounts
+        try:
+            cursor.execute("PRAGMA table_info(users)")
+            u_info = {row["name"]: dict(row) for row in cursor.fetchall()}
+            if u_info.get("org_id", {}).get("notnull") == 1 or u_info.get("employee_id", {}).get("notnull") == 1:
+                cursor.execute("PRAGMA foreign_keys = OFF")
+                cursor.execute('''
+                    CREATE TABLE users_migrated (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        email TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        salt TEXT NOT NULL,
+                        role TEXT NOT NULL DEFAULT 'employee',
+                        employee_id TEXT,
+                        org_id TEXT,
+                        account_type TEXT NOT NULL DEFAULT 'Organization',
+                        department TEXT DEFAULT '',
+                        job_title TEXT DEFAULT '',
+                        status TEXT DEFAULT 'Active',
+                        date_joined TEXT DEFAULT '',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                cursor.execute('''
+                    INSERT INTO users_migrated (id, name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined, created_at)
+                    SELECT id, name, email, password_hash, salt, role, employee_id, 
+                           CASE WHEN org_id = '' OR account_type = 'Individual' THEN NULL ELSE org_id END,
+                           COALESCE(account_type, 'Organization'), COALESCE(department, ''), COALESCE(job_title, ''), 
+                           COALESCE(status, 'Active'), COALESCE(date_joined, ''), COALESCE(created_at, CURRENT_TIMESTAMP)
+                    FROM users
+                ''')
+                cursor.execute("DROP TABLE users")
+                cursor.execute("ALTER TABLE users_migrated RENAME TO users")
+                cursor.execute("PRAGMA foreign_keys = ON")
+        except Exception:
+            pass
 
         # 3. Migrate employees table
         _safe_add_column(cursor, "employees", "email", "TEXT")
@@ -861,6 +899,8 @@ def init_db() -> None:
 
         # Automatic startup purge of requested user accounts (e.g. user re-registration cleanup)
         for purge_email in [
+            "madhannetha0223@gmaill.com",
+            "madhannetha0223@gmail.com",
             "vibifess6813@en2ch.com",
             "vibifes6813@en2ch.com",
             "madhannethag23@gmail.com",
@@ -1416,21 +1456,42 @@ def register_individual(
                 return False, f"An account with email '{email}' already exists. Please sign in instead."
 
             # Automatically assign account_type='Individual', org_id=None, role='employee'
-            cursor.execute(
-                """
-                INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
-                VALUES (?, ?, ?, ?, 'employee', NULL, NULL, 'Individual', ?, ?, 'Active', ?)
-                """,
-                (
-                    name,
-                    email,
-                    pwd_hash,
-                    salt,
-                    clean_dept,
-                    clean_title,
-                    date.today().isoformat()
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
+                    VALUES (?, ?, ?, ?, 'employee', NULL, NULL, 'Individual', ?, ?, 'Active', ?)
+                    """,
+                    (
+                        name,
+                        email,
+                        pwd_hash,
+                        salt,
+                        clean_dept,
+                        clean_title,
+                        date.today().isoformat()
+                    )
                 )
-            )
+            except sqlite3.IntegrityError as ie:
+                if "not null" in str(ie).lower():
+                    # Fallback for legacy database with NOT NULL on org_id or employee_id
+                    cursor.execute(
+                        """
+                        INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
+                        VALUES (?, ?, ?, ?, 'employee', NULL, '', 'Individual', ?, ?, 'Active', ?)
+                        """,
+                        (
+                            name,
+                            email,
+                            pwd_hash,
+                            salt,
+                            clean_dept,
+                            clean_title,
+                            date.today().isoformat()
+                        )
+                    )
+                else:
+                    raise
             user_id = cursor.lastrowid
 
             # Insert Base Profile
@@ -1474,8 +1535,13 @@ def register_individual(
             pass
 
         return True, f"Individual account registered successfully! A welcome email has been sent to {email}. You can now sign in to your personal career dashboard."
-    except sqlite3.IntegrityError:
-        return False, f"An account with email '{email}' already exists."
+    except sqlite3.IntegrityError as ie:
+        err_str = str(ie).lower()
+        if "unique" in err_str and "email" in err_str:
+            return False, f"An account with email '{email}' already exists. Please sign in instead."
+        if "not null" in err_str:
+            return False, f"Database registration error: Missing required column ({ie})."
+        return False, f"Database integrity error: {ie}"
     except Exception as e:
         return False, f"Database error during individual registration: {e}"
     finally:
@@ -1787,8 +1853,13 @@ def register(
         if user_status == "Pending Approval":
             return True, f"Account created for {resolved_org_name}! A confirmation email has been sent to {email}. Your HR Administrator access is pending verification. Please sign in."
         return True, f"Account created successfully for {resolved_org_name}! A welcome email has been sent to {email}. Please sign in."
-    except sqlite3.IntegrityError:
-        return False, "An account with this email already exists."
+    except sqlite3.IntegrityError as ie:
+        err_str = str(ie).lower()
+        if "unique" in err_str and "email" in err_str:
+            return False, f"An account with email '{email}' already exists. Please sign in instead."
+        if "unique" in err_str and "employee_id" in err_str:
+            return False, "This Employee ID is already registered in the system."
+        return False, f"Database integrity error: {ie}"
     except Exception as e:
         return False, f"Database error during registration: {e}"
     finally:
