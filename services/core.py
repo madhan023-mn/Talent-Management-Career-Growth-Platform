@@ -529,14 +529,20 @@ def init_db() -> None:
                         ''', (r.get("id"), r.get("org_id", "ORG-TALENT-01"), c_hash, c_prefix, c_exp, c_max, c_used, c_stat, c_by, c_at))
                     cursor.execute("DROP TABLE invitation_codes")
                     cursor.execute("ALTER TABLE invitation_codes_v2 RENAME TO invitation_codes")
-                else:
-                    _safe_add_column(cursor, "invitation_codes", "code_prefix", "TEXT NOT NULL DEFAULT 'INV-0000'")
-                    _safe_add_column(cursor, "invitation_codes", "expires_at", "TIMESTAMP NOT NULL DEFAULT '2099-12-31 23:59:59'")
-                    _safe_add_column(cursor, "invitation_codes", "max_uses", "INTEGER NOT NULL DEFAULT 1")
-                    _safe_add_column(cursor, "invitation_codes", "used_count", "INTEGER NOT NULL DEFAULT 0")
-                    _safe_add_column(cursor, "invitation_codes", "status", "TEXT NOT NULL DEFAULT 'Active'")
-                    _safe_add_column(cursor, "invitation_codes", "created_by", "TEXT DEFAULT ''")
-                    _safe_add_column(cursor, "invitation_codes", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+        except Exception:
+            pass
+
+        # Guarantee all columns exist in invitation_codes even for legacy databases
+        try:
+            _safe_add_column(cursor, "invitation_codes", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+            _safe_add_column(cursor, "invitation_codes", "code_hash", "TEXT DEFAULT ''")
+            _safe_add_column(cursor, "invitation_codes", "code_prefix", "TEXT NOT NULL DEFAULT 'INV-0000'")
+            _safe_add_column(cursor, "invitation_codes", "expires_at", "TIMESTAMP NOT NULL DEFAULT '2099-12-31 23:59:59'")
+            _safe_add_column(cursor, "invitation_codes", "max_uses", "INTEGER NOT NULL DEFAULT 1")
+            _safe_add_column(cursor, "invitation_codes", "used_count", "INTEGER NOT NULL DEFAULT 0")
+            _safe_add_column(cursor, "invitation_codes", "status", "TEXT NOT NULL DEFAULT 'Active'")
+            _safe_add_column(cursor, "invitation_codes", "created_by", "TEXT DEFAULT ''")
+            _safe_add_column(cursor, "invitation_codes", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
         except Exception:
             pass
 
@@ -852,6 +858,29 @@ def init_db() -> None:
                 """,
                 (tc_jane_uid, "TC101", "ORG-TECHCORP-02", "Master Apache Spark & Streaming", "Senior Data Scientist", "Complete internal big data track", "2026-11-30", 50, "In Progress")
             )
+
+        # Automatic startup purge of requested user accounts (e.g. user re-registration cleanup)
+        for purge_email in ["madhangosikonda2003@gmail.com", "madhangosikonda2003+2e1952@gmail.com"]:
+            try:
+                cursor.execute("SELECT id, employee_id FROM users WHERE LOWER(email) = ?", (purge_email,))
+                p_user = cursor.fetchone()
+                if p_user:
+                    p_uid = p_user["id"]
+                    p_eid = p_user["employee_id"]
+                    cursor.execute("DELETE FROM profiles WHERE user_id = ?", (p_uid,))
+                    cursor.execute("DELETE FROM skills WHERE user_id = ?", (p_uid,))
+                    cursor.execute("DELETE FROM employee_skills WHERE user_id = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, p_eid or ''))
+                    cursor.execute("DELETE FROM assessments WHERE user_id = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, p_eid or ''))
+                    cursor.execute("DELETE FROM career_goals WHERE user_id = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, p_eid or ''))
+                    cursor.execute("DELETE FROM goals WHERE user_id = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, p_eid or ''))
+                    cursor.execute("DELETE FROM resumes WHERE user_id = ?", (p_uid,))
+                    cursor.execute("DELETE FROM progress WHERE user_id = ?", (p_uid,))
+                    cursor.execute("DELETE FROM membership_requests WHERE user_id = ? OR LOWER(user_email) = ?", (p_uid, purge_email))
+                    cursor.execute("DELETE FROM employees WHERE user_id = ? OR LOWER(email) = ? OR (employee_id IS NOT NULL AND employee_id = ?)", (p_uid, purge_email, p_eid or ''))
+                    cursor.execute("DELETE FROM email_logs WHERE LOWER(to_email) = ?", (purge_email,))
+                    cursor.execute("DELETE FROM users WHERE id = ?", (p_uid,))
+            except Exception:
+                pass
     conn.close()
 
 # ----------------- Organization Management -----------------
@@ -1851,6 +1880,86 @@ def get_user_by_id(uid: int) -> Optional[Dict[str, Any]]:
     finally:
         conn.close()
 
+def delete_user_by_email(email: str) -> Tuple[bool, str]:
+    """
+    Permanently deletes a user account and all associated records across the database
+    (profiles, skills, employee_skills, assessments, career_goals, goals, resumes,
+    progress, training_records, performance_reviews, membership_requests, employees, and email_logs).
+    Protects critical system seed accounts from accidental deletion.
+    """
+    clean_email = (email or "").strip().lower()
+    if not clean_email:
+        return False, "Email address is required."
+
+    protected = {
+        "admin@talentgrowth.com",
+        "admin@talentsphere.com",
+        "alex@company.com",
+        "ravi@company.com",
+        "admin@techcorp.com",
+        "jane@techcorp.com",
+    }
+    if clean_email in protected:
+        return False, f"Account '{clean_email}' is a protected system seed account and cannot be deleted."
+
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, employee_id, org_id, name FROM users WHERE LOWER(email) = ?", (clean_email,))
+            user_rows = cursor.fetchall()
+
+            cursor.execute("SELECT id, employee_id, org_id, name FROM employees WHERE LOWER(email) = ?", (clean_email,))
+            emp_rows = cursor.fetchall()
+
+            if not user_rows and not emp_rows:
+                return False, f"No user account found matching '{clean_email}'."
+
+            user_ids = [r["id"] for r in user_rows]
+            emp_ids = [r["employee_id"] for r in user_rows if r["employee_id"]]
+            for r in emp_rows:
+                if r["employee_id"] and r["employee_id"] not in emp_ids:
+                    emp_ids.append(r["employee_id"])
+
+            if user_ids:
+                placeholders = ','.join('?' for _ in user_ids)
+                cursor.execute(f"SELECT employee_id FROM employees WHERE user_id IN ({placeholders})", user_ids)
+                for er in cursor.fetchall():
+                    if er["employee_id"] and er["employee_id"] not in emp_ids:
+                        emp_ids.append(er["employee_id"])
+
+                for uid in user_ids:
+                    cursor.execute("DELETE FROM profiles WHERE user_id = ?", (uid,))
+                    cursor.execute("DELETE FROM skills WHERE user_id = ?", (uid,))
+                    cursor.execute("DELETE FROM employee_skills WHERE user_id = ?", (uid,))
+                    cursor.execute("DELETE FROM assessments WHERE user_id = ?", (uid,))
+                    cursor.execute("DELETE FROM career_goals WHERE user_id = ?", (uid,))
+                    cursor.execute("DELETE FROM goals WHERE user_id = ?", (uid,))
+                    cursor.execute("DELETE FROM resumes WHERE user_id = ?", (uid,))
+                    cursor.execute("DELETE FROM progress WHERE user_id = ?", (uid,))
+                    cursor.execute("DELETE FROM membership_requests WHERE user_id = ?", (uid,))
+                    cursor.execute("DELETE FROM employees WHERE user_id = ?", (uid,))
+
+            for eid in emp_ids:
+                cursor.execute("DELETE FROM employee_skills WHERE employee_id = ?", (eid,))
+                cursor.execute("DELETE FROM assessments WHERE employee_id = ?", (eid,))
+                cursor.execute("DELETE FROM career_goals WHERE employee_id = ?", (eid,))
+                cursor.execute("DELETE FROM goals WHERE employee_id = ?", (eid,))
+                cursor.execute("DELETE FROM training_records WHERE employee_id = ?", (eid,))
+                cursor.execute("DELETE FROM performance_reviews WHERE employee_id = ?", (eid,))
+                cursor.execute("DELETE FROM employees WHERE employee_id = ?", (eid,))
+
+            cursor.execute("DELETE FROM employees WHERE LOWER(email) = ?", (clean_email,))
+            cursor.execute("DELETE FROM membership_requests WHERE LOWER(user_email) = ?", (clean_email,))
+            cursor.execute("DELETE FROM email_logs WHERE LOWER(to_email) = ?", (clean_email,))
+            cursor.execute("DELETE FROM users WHERE LOWER(email) = ?", (clean_email,))
+
+            return True, f"Account '{clean_email}' and all associated records have been successfully purged."
+    except Exception as e:
+        return False, f"Failed to delete account '{clean_email}': {e}"
+    finally:
+        conn.close()
+
 # ----------------- Employee Management (CRUD & Search) -----------------
 
 def add_employee(
@@ -2104,6 +2213,8 @@ def get_employees(
         query += " GROUP BY e.id ORDER BY e.id DESC"
         cursor.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
+    except Exception:
+        return []
     finally:
         conn.close()
 
@@ -2131,6 +2242,8 @@ def get_employee_by_id(employee_id: Any, org_id: Optional[str] = None) -> Option
         cursor.execute(query, params)
         row = cursor.fetchone()
         return dict(row) if row else None
+    except Exception:
+        return None
     finally:
         conn.close()
 
@@ -2311,6 +2424,8 @@ def get_performance_reviews(employee_id: Optional[str] = None, org_id: Optional[
         query += " ORDER BY pr.created_at DESC"
         cursor.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
+    except Exception:
+        return []
     finally:
         conn.close()
 
@@ -2331,9 +2446,11 @@ def get_department_performance_summary(org_id: Optional[str] = None) -> List[Dic
         if org_id:
             query += " AND e.org_id = ?"
             params.append(org_id.strip().upper())
-        query += " GROUP BY e.department ORDER BY avg_score DESC NULLS LAST"
+        query += " GROUP BY e.department ORDER BY avg_score DESC"
         cursor.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
+    except Exception:
+        return []
     finally:
         conn.close()
 
@@ -3493,7 +3610,12 @@ def get_org_dashboard_stats(org_id: str) -> Dict[str, Any]:
             "department_distribution": [],
             "dept_counts": {},
             "recent_joiners": [],
-            "performance_distribution": {},
+            "performance_distribution": {
+                "Exceptional (4.5-5.0)": 0,
+                "Exceeds Expectations (3.5-4.4)": 0,
+                "Meets Expectations (3.0-3.4)": 0,
+                "Needs Improvement (<3.0)": 0,
+            },
             "skill_distribution": []
         }
     finally:

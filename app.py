@@ -55,7 +55,8 @@ try:
         get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
         validate_url, validate_date_range,
         create_membership_request, get_membership_requests,
-        approve_membership_request, reject_membership_request, get_user_membership_request
+        approve_membership_request, reject_membership_request, get_user_membership_request,
+        delete_user_by_email
     )
     try:
         from services.core import register_individual
@@ -146,6 +147,7 @@ except Exception as _core_err:
         approve_membership_request = _core_mod.approve_membership_request
         reject_membership_request = _core_mod.reject_membership_request
         get_user_membership_request = _core_mod.get_user_membership_request
+        delete_user_by_email = getattr(_core_mod, 'delete_user_by_email', lambda e: (False, 'Not available'))
     except Exception as _retry_err:
         import traceback
         st.error(f"### Critical Startup Error: Failed to load services.core\n\n**Error:** `{_retry_err}`")
