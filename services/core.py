@@ -2590,7 +2590,7 @@ def add_employee_skill(
             cursor = conn.cursor()
             cursor.execute("SELECT id, org_id, user_id FROM employees WHERE employee_id = ?", (employee_id,))
             emp = cursor.fetchone()
-            resolved_org = (org_id or (emp["org_id"] if emp else "ORG-TALENT-01")).strip().upper()
+            resolved_org = (org_id or (emp["org_id"] if emp else "INDIVIDUAL")).strip().upper()
             resolved_uid = user_id or (emp["user_id"] if emp else None)
 
             cursor.execute(
@@ -2700,8 +2700,8 @@ def delete_employee_skill(skill_id: int, employee_id: Optional[str] = None, org_
     finally:
         conn.close()
 
-def get_employee_skill_gaps(employee_id: str, target_role: str, org_id: Optional[str] = None) -> Dict[str, Any]:
-    skills = get_employee_skills(employee_id, org_id=org_id)
+def get_employee_skill_gaps(employee_id: str, target_role: str, org_id: Optional[str] = None, user_id: Optional[int] = None) -> Dict[str, Any]:
+    skills = get_employee_skills(employee_id, org_id=org_id, user_id=user_id)
     emp_skills_map = {s["skill_name"].strip().lower(): LEVELS.get(s["proficiency_level"], 1) for s in skills}
 
     if not target_role or target_role not in ROLE_CATALOG:

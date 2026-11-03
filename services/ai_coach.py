@@ -139,8 +139,8 @@ def generate_ai_coaching_guidance(
     key = get_gemini_api_key(api_key)
     
     # Format skills summary
-    skills_summary = ", ".join(f"{s['name']} ({s.get('proficiency', 'Intermediate')})" for s in skills) if skills else "No skills recorded yet"
-    gaps_summary = ", ".join(f"{g['skill']} (Gap: -{g['gap']}, Priority: {g['priority']})" for g in gap_data) if gap_data else "No critical gaps identified"
+    skills_summary = ", ".join(f"{s.get('name') or s.get('skill_name') or 'Skill'} ({s.get('proficiency') or s.get('proficiency_level') or 'Intermediate'})" for s in skills) if skills else "No skills recorded yet"
+    gaps_summary = ", ".join(f"{g.get('skill', 'Skill')} (Gap: -{g.get('gap', 0)}, Priority: {g.get('priority', 'Medium')})" for g in gap_data) if gap_data else "No critical gaps identified"
     
     system_prompt = (
         "You are an Elite Executive Career Strategist and Chief People Officer mentor at a top tech enterprise. "
@@ -295,8 +295,8 @@ def _build_rule_based_coaching(
     target_role: str,
     gap_data: List[Dict[str, Any]]
 ) -> str:
-    top_skills = [s['name'] for s in skills[:3]] if skills else ["Core Software Development"]
-    gaps_list = [f"{g['skill']} (priority: {g['priority']})" for g in gap_data[:4]] if gap_data else ["Continuous Integration", "System Architecture"]
+    top_skills = [s.get('name') or s.get('skill_name') or 'Skill' for s in skills[:3]] if skills else ["Core Software Development"]
+    gaps_list = [f"{g.get('skill', 'Skill')} (priority: {g.get('priority', 'Medium')})" for g in gap_data[:4]] if gap_data else ["Continuous Integration", "System Architecture"]
     
     return f"""### Strategic Career Blueprint: {user_name}
 **Inquiry Focus:** *"{question}"*

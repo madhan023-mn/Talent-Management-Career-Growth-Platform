@@ -264,7 +264,6 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
                 st.markdown("<div style='margin-top: 0.75rem;'></div>", unsafe_allow_html=True)
                 if st.button("Open Full Skill Gap Analysis", key="btn_dash_open_gap"):
                     navigate_to("Role Match & Gaps")
-                    navigate_to("Skill Gap Analysis")
             else:
                 st.info("Select a target role in your profile to run a personalized skill gap analysis.")
 
@@ -294,6 +293,34 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
                 _render_html(f"<div>{''.join(act_items)}</div>")
             else:
                 st.write("No recent activities recorded. Start by adding skills or attempting assessments.")
+
+    # 4. Career Development & Acceleration Launchpad
+    _render_html(
+        f"""
+        <div style="margin-top: 1.5rem; margin-bottom: 0.6rem; font-size: 1.15rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px;">
+            {_get_svg_icon("sparkles", size=20, color="#2563EB")} Career Growth &amp; AI Acceleration Tools
+        </div>
+        """
+    )
+    col_tl1, col_tl2, col_tl3 = st.columns(3)
+    with col_tl1:
+        with st.container(border=True):
+            st.markdown(f"**{_get_svg_icon('reports', size=16, color='#2563EB')} Resume Studio**", unsafe_allow_html=True)
+            st.caption("ATS-ready resume builder with STAR bullet rewrites and PDF export.")
+            if st.button("Open Resume Studio", key="ind_dash_btn_resume", type="primary", use_container_width=True):
+                navigate_to("Resume Studio")
+    with col_tl2:
+        with st.container(border=True):
+            st.markdown(f"**{_get_svg_icon('target', size=16, color='#10B981')} Career Direction**", unsafe_allow_html=True)
+            st.caption("Define your target industry, role benchmarks, and growth timeline.")
+            if st.button("Set Career Direction", key="ind_dash_btn_direction", use_container_width=True):
+                navigate_to("Career Direction")
+    with col_tl3:
+        with st.container(border=True):
+            st.markdown(f"**{_get_svg_icon('coach', size=16, color='#8B5CF6')} AI Career Coach**", unsafe_allow_html=True)
+            st.caption("Executive strategy guidance evaluating gaps and role readiness.")
+            if st.button("Ask Career Coach", key="ind_dash_btn_coach", use_container_width=True):
+                navigate_to("Career Coach")
 
     # 5. Join an Organization Promotional Callout Banner
     _render_html(

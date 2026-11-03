@@ -49,7 +49,7 @@ try:
         add_employee_skill, get_employee_skills, delete_employee_skill, get_employee_skill_gaps,
         add_goal, get_goals, get_goal_by_id, update_goal, update_goal_progress, delete_goal, get_goal_stats,
         add_training_record, get_training_records,
-        get_org_dashboard_stats, get_employee_dashboard_data,
+        get_org_dashboard_stats, get_employee_dashboard_data, get_individual_dashboard_stats,
         generate_invitation_code, list_invitation_codes, revoke_invitation_code, validate_invitation_code,
         get_db_path, check_db_health,
         get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
@@ -129,6 +129,7 @@ except Exception as _core_err:
         get_training_records = _core_mod.get_training_records
         get_org_dashboard_stats = _core_mod.get_org_dashboard_stats
         get_employee_dashboard_data = _core_mod.get_employee_dashboard_data
+        get_individual_dashboard_stats = getattr(_core_mod, 'get_individual_dashboard_stats', lambda uid: {})
         generate_invitation_code = _core_mod.generate_invitation_code
         list_invitation_codes = _core_mod.list_invitation_codes
         revoke_invitation_code = _core_mod.revoke_invitation_code
@@ -1462,18 +1463,30 @@ initials = (name_parts[0][0] + (name_parts[-1][0] if len(name_parts) > 1 else ""
 
 def navigate_to(target_page: str):
     alias_map = {
-        "Skills": "My Skills" if is_individual else "Skills & Assessment",
-        "Skills & Competency Matrix": "My Skills" if is_individual else "Skills & Assessment",
-        "Skills & Assessments": "My Skills" if is_individual else "Skills & Assessment",
-        "Skill Assessments": "Skill Assessments",
-        "Career Goals": "Career Goals" if is_individual else ("Growth Progress" if not is_admin else "Career Goals"),
-        "Career Direction & Gaps": "Skill Gap Analysis" if is_individual else "Career Direction",
+        "Skills": "Skills & Assessment",
+        "My Skills": "Skills & Assessment",
+        "Skills & Competency Matrix": "Skills & Assessment",
+        "Skills & Assessments": "Skills & Assessment",
+        "Skill Assessments": "Skills & Assessment",
+        "Career Goals": "Career Goals" if is_admin else "Growth Progress",
+        "My Progress": "Growth Progress",
+        "Career Goals Progress": "Growth Progress",
+        "Career Direction & Gaps": "Career Direction",
+        "Career Direction": "Career Direction",
+        "Skill Gap Analysis": "Role Match & Gaps",
+        "Role Match & Competency Gaps": "Role Match & Gaps",
         "ATS Resume Studio": "Resume Studio",
-        "Reports": "Career Report" if not is_admin else "Reports",
+        "Resume Studio": "Resume Studio",
+        "Reports": "Reports" if is_admin else "Career Report",
+        "Career Growth Report": "Career Report",
         "AI Career Coach": "Career Coach",
+        "Career Coach": "Career Coach",
         "Join an Organization": "Join an Organization"
     }
-    st.session_state.page_to_navigate = alias_map.get(target_page, target_page)
+    target = alias_map.get(target_page, target_page)
+    st.session_state.page_to_navigate = target
+    st.session_state.current_page = target
+    st.session_state.nav_radio = target
     st.rerun()
 
 # ------------------------------------------------------------------------------
@@ -1488,7 +1501,7 @@ def toggle_sidebar():
 is_expanded = st.session_state.get("sidebar_expanded", True)
 
 # Enforce backend role permissions (RBAC)
-if is_individual and st.session_state.get("current_page") in ["Employees", "Performance", "Reports", "Resume Studio", "Career Direction", "Career Coach"]:
+if is_individual and st.session_state.get("current_page") in ["Employees", "Performance", "Reports"]:
     st.session_state.current_page = "Dashboard"
     st.session_state.nav_radio = "Dashboard"
 elif not is_admin and not is_individual and st.session_state.get("current_page") in ["Employees", "Performance", "Reports", "Career Goals"]:
@@ -3763,7 +3776,7 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
             def_idx = all_roles.index(profile["target_role"]) if profile.get("target_role") in all_roles else 0
             target_role_eval = st.selectbox("Select Target Role for Gap Analysis", all_roles, index=def_idx, key="emp_sel_bench_role")
 
-            gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval, org_id=org_id)
+            gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval, org_id=org_id, user_id=uid)
             c_g1, c_g2 = st.columns([1.1, 1], gap="large")
             with c_g1:
                 st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
@@ -4104,7 +4117,7 @@ elif page in ["Role Match & Gaps", "Role Match & Competency Gaps", "Competency G
     default_role_idx = all_roles.index(profile["target_role"]) if profile.get("target_role") in all_roles else 0
     target_role_eval = st.selectbox("Benchmark Target Role", all_roles, index=default_role_idx, key="sel_role_match_page")
 
-    gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval, org_id=org_id)
+    gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval, org_id=org_id, user_id=uid)
 
     c_radar1, c_radar2 = st.columns([1.1, 1], gap="large")
     with c_radar1:
@@ -4665,10 +4678,10 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
         """
     )
 
-    employees = get_employees(org_id=org_id)
-    reviews = get_performance_reviews(org_id=org_id)
-    goals = get_goals(org_id=org_id)
-    dept_summary = get_department_performance_summary(org_id=org_id)
+    employees = get_employees(org_id=org_id) if not is_individual else []
+    reviews = get_performance_reviews(org_id=org_id) if not is_individual else []
+    goals = get_goals(user_id=uid) if is_individual else get_goals(org_id=org_id)
+    dept_summary = get_department_performance_summary(org_id=org_id) if not is_individual else []
     tab_rep_overview, tab_rep_csv, tab_rep_pdf = st.tabs(["Analytics Overview", "Download CSV Data Reports", "Generate PDF Dossier"])
 
     with tab_rep_overview:
@@ -4746,13 +4759,23 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
         st.markdown("#### Download Structured CSV Data Reports")
         c_csv1, c_csv2 = st.columns(2)
         with c_csv1:
-            if employees:
-                csv_emp = pd.DataFrame(employees).to_csv(index=False).encode("utf-8")
-                st.download_button("Download Employees (CSV)", csv_emp, "talent_growth_employees.csv", "text/csv", type="primary", use_container_width=True)
-            if reviews:
-                st.write("")
-                csv_rev = pd.DataFrame(reviews).to_csv(index=False).encode("utf-8")
-                st.download_button("Download Performance Reviews (CSV)", csv_rev, "talent_growth_performance_reviews.csv", "text/csv", use_container_width=True)
+            if is_individual:
+                if skills:
+                    csv_sk = pd.DataFrame(skills).to_csv(index=False).encode("utf-8")
+                    st.download_button("Download My Skills (CSV)", csv_sk, "talent_growth_skills.csv", "text/csv", type="primary", use_container_width=True)
+                assessments_ind = get_assessments(uid=uid)
+                if assessments_ind:
+                    st.write("")
+                    csv_ass = pd.DataFrame(assessments_ind).to_csv(index=False).encode("utf-8")
+                    st.download_button("Download Assessment History (CSV)", csv_ass, "talent_growth_assessments.csv", "text/csv", use_container_width=True)
+            else:
+                if employees:
+                    csv_emp = pd.DataFrame(employees).to_csv(index=False).encode("utf-8")
+                    st.download_button("Download Employees (CSV)", csv_emp, "talent_growth_employees.csv", "text/csv", type="primary", use_container_width=True)
+                if reviews:
+                    st.write("")
+                    csv_rev = pd.DataFrame(reviews).to_csv(index=False).encode("utf-8")
+                    st.download_button("Download Performance Reviews (CSV)", csv_rev, "talent_growth_performance_reviews.csv", "text/csv", use_container_width=True)
         with c_csv2:
             if goals:
                 csv_goal = pd.DataFrame(goals).to_csv(index=False).encode("utf-8")
@@ -4767,10 +4790,10 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
         a = analysis_bundle()
         gaps = gap_analysis(profile.get("target_role", ""), skills)
         recs = recommendations(profile, skills)
-        assessments = get_assessments(uid=uid, employee_id=emp_id, org_id=org_id)
+        assessments = get_assessments(uid=uid) if is_individual else get_assessments(uid=uid, employee_id=emp_id, org_id=org_id)
         progress = get_progress(uid)
-        user_goals = get_goals(user_id=uid, org_id=org_id)
-        user_reviews = get_performance_reviews(employee_id=emp_id, org_id=org_id)
+        user_goals = get_goals(user_id=uid) if is_individual else get_goals(user_id=uid, org_id=org_id)
+        user_reviews = [] if is_individual else get_performance_reviews(employee_id=emp_id, org_id=org_id)
 
         pdf_bytes = create_report(
             profile=profile,

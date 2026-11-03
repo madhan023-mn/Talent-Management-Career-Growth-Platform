@@ -28,8 +28,11 @@ from services.core import (
     get_organization_by_name,
     get_org_dashboard_stats,
     get_recent_email_logs, send_test_email,
-    get_resume, save_resume, get_employee_skills, get_employee_skill_gaps
+    get_resume, save_resume, get_employee_skills, get_employee_skill_gaps,
+    format_resume_as_text, generate_resume_pdf, profile_analysis, recommendations, get_progress
 )
+from services.ai_coach import generate_ai_coaching_guidance
+from services.reports import create_report
 
 @pytest.fixture(autouse=True)
 def setup_database():
@@ -704,12 +707,18 @@ def test_individual_full_employee_suite_support():
     ok_res, msg_res = save_resume(uid, resume)
     assert ok_res is True
 
+    # Test resume formatting and PDF generation
+    res_text = format_resume_as_text(resume, user)
+    assert "Experienced full stack software engineer" in res_text
+    pdf_bytes = generate_resume_pdf(resume, {"name": user["name"], "email": email, "phone": "", "location": ""})
+    assert len(pdf_bytes) > 100
+
     # 2. Competencies & Skills retrieval for Individual
     emp_skills = get_employee_skills(emp_code, user_id=uid)
     assert len(emp_skills) >= 1
 
     # 3. Role Gap Analysis for Individual
-    gap_res = get_employee_skill_gaps(emp_code, "Full Stack Engineer")
+    gap_res = get_employee_skill_gaps(emp_code, "Full Stack Engineer", user_id=uid)
     assert "gaps" in gap_res
     assert "match_percentage" in gap_res
 
@@ -719,3 +728,48 @@ def test_individual_full_employee_suite_support():
     stats = get_goal_stats(user_id=uid)
     assert stats["total"] >= 1
     assert stats["in_progress"] >= 1
+
+    # 5. Career Direction & Profile Persistence for Individual
+    save_profile(uid, {
+        "job_title": "Senior Python Developer",
+        "target_role": "Cloud Architect",
+        "target_level": "Lead",
+        "timeline": "6–12 months"
+    })
+    prof = get_profile(uid)
+    assert prof["target_role"] == "Cloud Architect"
+    assert prof["target_level"] == "Lead"
+
+    # 6. Career Coach Heuristic Guidance for Individual
+    coach_res = generate_ai_coaching_guidance(
+        user_name=user["name"],
+        question="How to transition to Cloud Architect?",
+        profile=prof,
+        skills=emp_skills,
+        target_role=prof["target_role"],
+        gap_data=gap_res.get("gaps", [])
+    )
+    assert coach_res is not None
+    assert "content" in coach_res
+    assert len(coach_res["content"]) > 50
+
+    # 7. Career Report & Dashboard Stats for Individual
+    ind_stats = get_individual_dashboard_stats(uid)
+    assert "proficiency_distribution" in ind_stats
+    assert "completed_assessments" in ind_stats
+
+    # Dossier PDF creation
+    user_skills = list_skills(uid)
+    analysis = profile_analysis(prof, user_skills)
+    analysis["match"] = role_match(prof["target_role"], user_skills, float(prof.get("years_experience") or 0))
+    dossier_pdf = create_report(
+        profile=prof,
+        skills=user_skills,
+        analysis=analysis,
+        gaps=gap_res.get("gaps", []),
+        recommendations=recommendations(prof, user_skills),
+        assessments=get_assessments(uid=uid),
+        progress=get_progress(uid),
+        goals=get_goals(user_id=uid)
+    )
+    assert len(dossier_pdf) > 200
