@@ -861,6 +861,8 @@ def init_db() -> None:
 
         # Automatic startup purge of requested user accounts (e.g. user re-registration cleanup)
         for purge_email in [
+            "vibifess6813@en2ch.com",
+            "vibifes6813@en2ch.com",
             "madhannethag23@gmail.com",
             "madhannethag23@mail.com",
             "madhangosikonda2003@gmail.com",
@@ -890,6 +892,26 @@ def init_db() -> None:
                 cursor.execute("DELETE FROM users WHERE LOWER(email) = ?", (purge_email,))
             except Exception:
                 pass
+
+        # Also purge any disposable test accounts from en2ch.com domain
+        try:
+            cursor.execute("SELECT email FROM users WHERE LOWER(email) LIKE '%@en2ch.com'")
+            for r in cursor.fetchall():
+                e = r["email"].lower()
+                cursor.execute("DELETE FROM profiles WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
+                cursor.execute("DELETE FROM skills WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
+                cursor.execute("DELETE FROM employee_skills WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
+                cursor.execute("DELETE FROM assessments WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
+                cursor.execute("DELETE FROM career_goals WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
+                cursor.execute("DELETE FROM goals WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
+                cursor.execute("DELETE FROM resumes WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
+                cursor.execute("DELETE FROM progress WHERE user_id IN (SELECT id FROM users WHERE LOWER(email) = ?)", (e,))
+                cursor.execute("DELETE FROM membership_requests WHERE LOWER(user_email) = ?", (e,))
+                cursor.execute("DELETE FROM employees WHERE LOWER(email) = ?", (e,))
+                cursor.execute("DELETE FROM email_logs WHERE LOWER(to_email) = ?", (e,))
+                cursor.execute("DELETE FROM users WHERE LOWER(email) = ?", (e,))
+        except Exception:
+            pass
     conn.close()
 
 # ----------------- Organization Management -----------------
