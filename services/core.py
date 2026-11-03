@@ -1683,13 +1683,25 @@ def register(
 
         # Trigger welcome email safely outside the database write transaction
         try:
-            send_welcome_email(
-                to_email=email,
-                user_name=name,
-                role=role,
-                org_name=resolved_org_name,
-                app_url=app_url
-            )
+            import inspect
+            sig = inspect.signature(send_welcome_email)
+            if "is_pending" in sig.parameters:
+                send_welcome_email(
+                    to_email=email,
+                    user_name=name,
+                    role=role,
+                    org_name=resolved_org_name,
+                    app_url=app_url,
+                    is_pending=(user_status == "Pending Approval")
+                )
+            else:
+                send_welcome_email(
+                    to_email=email,
+                    user_name=name,
+                    role=role,
+                    org_name=resolved_org_name,
+                    app_url=app_url
+                )
         except Exception:
             # Gracefully ignore email transport failures to avoid corrupting account creation
             pass
