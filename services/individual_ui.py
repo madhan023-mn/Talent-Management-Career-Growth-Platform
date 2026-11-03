@@ -75,8 +75,8 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
             <div style="z-index: 2; flex-shrink: 0; text-align: right;">
                 <div style="background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 12px; padding: 12px 18px; text-align: center; backdrop-filter: blur(4px);">
                     <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #CCFBF1;">Target Role</div>
-                    <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; margin-top: 2px;">{profile.get('target_role') or 'Full Stack Engineer'}</div>
-                    <div style="font-size: 0.75rem; color: #E6FFFA; margin-top: 2px;">{stats['match_percentage']}% Competency Readiness</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; margin-top: 2px;">{profile.get('target_role') or stats.get('target_role') or 'Full Stack Engineer'}</div>
+                    <div style="font-size: 0.75rem; color: #E6FFFA; margin-top: 2px;">{stats.get('match_percentage', stats.get('role_readiness', 0))}% Competency Readiness</div>
                 </div>
             </div>
         </div>
@@ -84,8 +84,10 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
     )
 
     # 2. Four Solid Vibrant KPI Cards
-    avg_score_text = f"{stats['avg_assessment_score']}%" if stats['completed_assessments'] > 0 else "N/A"
-    avg_score_sub = "Across verified tests" if stats['completed_assessments'] > 0 else "Take an assessment to verify"
+    completed_cnt = stats.get('completed_assessments', 0)
+    avg_score_val = stats.get('avg_assessment_score', stats.get('average_assessment_score', 0.0))
+    avg_score_text = f"{avg_score_val}%" if completed_cnt > 0 else "N/A"
+    avg_score_sub = "Across verified tests" if completed_cnt > 0 else "Take an assessment to verify"
 
     _render_html(
         f"""
@@ -96,7 +98,7 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Total Skills Added</div>
-                    <div class="kpi-vibrant-number">{stats['total_skills']}</div>
+                    <div class="kpi-vibrant-number">{stats.get('total_skills', 0)}</div>
                     <div class="kpi-vibrant-sub">
                         {_get_svg_icon("sparkles", size=13, color="#FFFFFF")} Self-reported portfolio
                     </div>
@@ -108,7 +110,7 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Completed Assessments</div>
-                    <div class="kpi-vibrant-number">{stats['completed_assessments']}</div>
+                    <div class="kpi-vibrant-number">{stats.get('completed_assessments', 0)}</div>
                     <div class="kpi-vibrant-sub">
                         {_get_svg_icon("check", size=13, color="#FFFFFF")} Standardized MCQ evals
                     </div>
@@ -132,9 +134,9 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Career Goals Progress</div>
-                    <div class="kpi-vibrant-number">{stats['goal_avg_progress']}%</div>
+                    <div class="kpi-vibrant-number">{stats.get('goal_avg_progress', stats.get('career_growth_progress', 0))}%</div>
                     <div class="kpi-vibrant-sub">
-                        {_get_svg_icon("check", size=13, color="#FFFFFF")} {stats['completed_goals']} / {stats['total_goals']} milestones achieved
+                        {_get_svg_icon("check", size=13, color="#FFFFFF")} {stats.get('completed_goals', 0)} / {stats.get('total_goals', 0)} milestones achieved
                     </div>
                 </div>
             </div>
@@ -183,6 +185,11 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
             hist = stats.get("assessment_history", [])
             if hist:
                 hist_df = pd.DataFrame(hist)
+                if "skill_name" not in hist_df.columns:
+                    hist_df["skill_name"] = hist_df.get("category", "Technical")
+                else:
+                    hist_df["skill_name"] = hist_df["skill_name"].fillna("Technical")
+
                 fig_hist = px.bar(
                     hist_df, x="skill_name", y="score",
                     color="score",
@@ -210,24 +217,28 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
 
     with col_gap:
         with st.container(border=True):
-            st.markdown(f"<h3 style='font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 0.35rem;'>Skill Gap Analysis Snapshot &bull; {profile.get('target_role') or 'Full Stack Engineer'}</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h3 style='font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 0.35rem;'>Skill Gap Analysis Snapshot &bull; {profile.get('target_role') or stats.get('target_role') or 'Full Stack Engineer'}</h3>", unsafe_allow_html=True)
             st.caption("Self-reported skills are compared against role requirements. Assessments provide verified proficiency evidence.")
 
             gaps = stats.get("role_gaps", [])
             if gaps:
                 gap_rows = []
                 for g in gaps[:6]:
-                    status_badge = '<span style="background: #ECFDF5; color: #047857; font-weight: 700; border-radius: 9999px; padding: 2px 8px; font-size: 0.74rem;">Acquired</span>' if g['status'] == "Acquired" else (
-                        '<span style="background: #FEF3C7; color: #B45309; font-weight: 700; border-radius: 9999px; padding: 2px 8px; font-size: 0.74rem;">Needs Improvement</span>' if g['status'] == "Needs Improvement" else
+                    status_val = g.get('status') or ("Acquired" if g.get('priority') == "Met" else ("Needs Improvement" if g.get('priority') == "Medium" else "Missing Skill"))
+                    status_badge = '<span style="background: #ECFDF5; color: #047857; font-weight: 700; border-radius: 9999px; padding: 2px 8px; font-size: 0.74rem;">Acquired</span>' if status_val == "Acquired" else (
+                        '<span style="background: #FEF3C7; color: #B45309; font-weight: 700; border-radius: 9999px; padding: 2px 8px; font-size: 0.74rem;">Needs Improvement</span>' if status_val == "Needs Improvement" else
                         '<span style="background: #FEE2E2; color: #B91C1C; font-weight: 700; border-radius: 9999px; padding: 2px 8px; font-size: 0.74rem;">Missing Skill</span>'
                     )
                     evidence_badge = f'<span style="color: #2563EB; font-weight: 600; font-size: 0.78rem;">Score: {g["verified_score"]}%</span>' if g.get("verified_score") is not None else '<span style="color: #94A3B8; font-size: 0.74rem;">Self-Reported Only</span>'
+                    curr_lvl = g.get('current_level', g.get('current', 0))
+                    req_lvl = g.get('required_level', g.get('required', 0))
+                    skill_name_disp = g.get('skill', 'Skill')
 
                     gap_rows.append(
                         f"""
                         <tr style="border-bottom: 1px solid #F1F5F9;">
-                            <td style="padding: 9px 12px; font-weight: 700; color: #0F172A;">{g['skill']}</td>
-                            <td style="padding: 9px 12px; font-size: 0.85rem; color: #475569;">Level {g['current_level']} / Req: {g['required_level']}</td>
+                            <td style="padding: 9px 12px; font-weight: 700; color: #0F172A;">{skill_name_disp}</td>
+                            <td style="padding: 9px 12px; font-size: 0.85rem; color: #475569;">Level {curr_lvl} / Req: {req_lvl}</td>
                             <td style="padding: 9px 12px;">{status_badge}</td>
                             <td style="padding: 9px 12px;">{evidence_badge}</td>
                         </tr>
@@ -263,8 +274,9 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
             if activities:
                 act_items = []
                 for act in activities[:5]:
-                    act_type = act.get("type", "Activity")
+                    act_type = str(act.get("type", "Activity")).capitalize()
                     type_color = "#2563EB" if act_type == "Skill" else ("#10B981" if act_type == "Assessment" else "#EA580C")
+                    act_date = act.get('timestamp') or act.get('date', '')
                     act_items.append(
                         f"""
                         <div style="display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #F1F5F9;">
@@ -273,7 +285,7 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
                             </span>
                             <div style="flex: 1;">
                                 <div style="font-weight: 600; color: #0F172A; font-size: 0.86rem;">{act.get('title', '')}</div>
-                                <div style="font-size: 0.76rem; color: #64748B;">{act.get('timestamp', '')}</div>
+                                <div style="font-size: 0.76rem; color: #64748B;">{act_date}</div>
                             </div>
                         </div>
                         """
@@ -375,7 +387,9 @@ def render_individual_skills(user: Dict[str, Any], skills: List[Dict[str, Any]],
                 with c_edit:
                     with st.popover("Edit"):
                         st.markdown(f"**Edit {sk['name']}**")
-                        edit_prof = st.selectbox("Proficiency", ["Beginner", "Intermediate", "Advanced", "Expert"], index=["Beginner", "Intermediate", "Advanced", "Expert"].index(prof), key=f"edit_prof_{sk['id']}")
+                        prof_choices = ["Beginner", "Intermediate", "Advanced", "Expert"]
+                        p_idx = prof_choices.index(prof) if prof in prof_choices else 1
+                        edit_prof = st.selectbox("Proficiency", prof_choices, index=p_idx, key=f"edit_prof_{sk['id']}")
                         edit_years = st.number_input("Years", min_value=0.0, max_value=50.0, value=float(sk.get("years", 1.0)), step=0.5, key=f"edit_yrs_{sk['id']}")
                         edit_desc = st.text_area("Practical Notes", value=sk.get("description", ""), key=f"edit_desc_{sk['id']}")
                         if st.button("Save Changes", key=f"save_sk_{sk['id']}", type="primary"):
@@ -405,10 +419,15 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
     tab_test, tab_history = st.tabs(["Take Assessment", "Assessment History & Score Tracking"])
 
     with tab_test:
+        if not catalog:
+            st.info("No assessments currently available.")
+            return
+
+        skill_options = [c.get("skill") or c.get("skill_name") for c in catalog]
         sel_skill = st.selectbox(
             "Select Skill to Evaluate *",
-            options=[c["skill"] for c in catalog],
-            format_func=lambda x: f"{x} ({next((c['question_count'] for c in catalog if c['skill'] == x), 5)} Questions Available)"
+            options=skill_options,
+            format_func=lambda x: f"{x} ({next((c.get('question_count') or c.get('total_questions', 5) for c in catalog if (c.get('skill') == x or c.get('skill_name') == x)), 5)} Questions Available)"
         )
 
         st.markdown(f"<div style='margin: 1rem 0; padding: 12px 18px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; font-size: 0.88rem; color: #1E40AF;'>You are attempting the standardized <strong>{sel_skill} Competency Assessment</strong>. Select the best answer for each question and submit for immediate automated scoring and concept feedback.</div>", unsafe_allow_html=True)
@@ -416,17 +435,18 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
         questions = get_assessment_questions(sel_skill)
 
         with st.form(f"assessment_form_{sel_skill}"):
-            user_answers: Dict[str, int] = {}
+            user_answers: Dict[str, Any] = {}
             for idx, q in enumerate(questions, start=1):
-                st.markdown(f"<div style='font-weight: 700; color: #0F172A; font-size: 1rem; margin-top: 1rem; margin-bottom: 0.5rem;'>Question {idx}: {q['question']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-weight: 700; color: #0F172A; font-size: 1rem; margin-top: 1rem; margin-bottom: 0.5rem;'>Question {idx}: {q.get('question', '')}</div>", unsafe_allow_html=True)
+                opts = q.get("options", [])
                 choice = st.radio(
                     f"Q{idx} Options",
-                    options=list(range(len(q["options"]))),
-                    format_func=lambda i, opts=q["options"]: opts[i],
+                    options=list(range(len(opts))),
+                    format_func=lambda i, options_list=opts: options_list[i] if 0 <= i < len(options_list) else "",
                     key=f"q_{sel_skill}_{q['id']}",
                     label_visibility="collapsed"
                 )
-                user_answers[q["id"]] = choice
+                user_answers[q["id"]] = opts[choice] if (0 <= choice < len(opts)) else ""
 
             submit_eval = st.form_submit_button("Submit Assessment for Evaluation", type="primary", use_container_width=True)
 
@@ -437,18 +457,21 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
         # Show Results if available
         last_res = st.session_state.get(f"last_assessment_result_{sel_skill}")
         if last_res:
-            score_pct = last_res["score_percentage"]
+            score_pct = last_res.get("score_percentage", 0.0)
             banner_bg = "#ECFDF5" if score_pct >= 80 else ("#EFF6FF" if score_pct >= 60 else "#FEF2F2")
             banner_border = "#10B981" if score_pct >= 80 else ("#3B82F6" if score_pct >= 60 else "#EF4444")
             banner_color = "#047857" if score_pct >= 80 else ("#1D4ED8" if score_pct >= 60 else "#B91C1C")
+            c_cnt = last_res.get("correct_count", last_res.get("correct_answers", 0))
+            t_cnt = last_res.get("total_questions", len(questions))
+            p_rat = last_res.get("proficiency_rating", "Proficient" if score_pct >= 70 else "Developing")
 
             _render_html(
                 f"""
                 <div style="margin-top: 1.5rem; background: {banner_bg}; border: 2px solid {banner_border}; border-radius: 12px; padding: 1.5rem; text-align: center;">
-                    <div style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: {banner_color};">Assessment Results &bull; {last_res['skill_name']}</div>
+                    <div style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: {banner_color};">Assessment Results &bull; {last_res.get('skill_name', sel_skill)}</div>
                     <div style="font-size: 2.5rem; font-weight: 800; color: {banner_color}; margin: 4px 0;">{score_pct}% Score</div>
                     <div style="font-size: 1rem; font-weight: 600; color: #1E293B;">
-                        {last_res['correct_count']} of {last_res['total_questions']} questions correct &bull; Rating: <strong>{last_res['proficiency_rating']}</strong>
+                        {c_cnt} of {t_cnt} questions correct &bull; Rating: <strong>{p_rat}</strong>
                     </div>
                     <div style="font-size: 0.85rem; color: #475569; margin-top: 6px;">
                         This verified assessment score has been permanently recorded in your personal career profile.
@@ -489,16 +512,17 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
             # Display history table
             rows = []
             for h in hist:
-                delta_str = f"+{h['score_delta']}%" if h.get("score_delta") is not None and h["score_delta"] > 0 else (
-                    f"{h['score_delta']}%" if h.get("score_delta") is not None and h["score_delta"] < 0 else "Baseline"
+                d_val = h.get("score_delta", h.get("delta"))
+                delta_str = f"+{d_val}%" if d_val is not None and d_val > 0 else (
+                    f"{d_val}%" if d_val is not None and d_val < 0 else "Baseline"
                 )
                 delta_color = "#10B981" if "+" in delta_str else ("#EF4444" if "-" in delta_str else "#64748B")
 
                 rows.append(
                     f"""
                     <tr style="border-bottom: 1px solid #F1F5F9;">
-                        <td style="padding: 10px 14px; font-weight: 700; color: #0F172A;">{h['skill_name']}</td>
-                        <td style="padding: 10px 14px; font-weight: 800; color: #2563EB;">{h['score']}%</td>
+                        <td style="padding: 10px 14px; font-weight: 700; color: #0F172A;">{h.get('skill_name', 'Skill')}</td>
+                        <td style="padding: 10px 14px; font-weight: 800; color: #2563EB;">{h.get('score', 0)}%</td>
                         <td style="padding: 10px 14px; font-weight: 700; color: {delta_color};">{delta_str}</td>
                         <td style="padding: 10px 14px; color: #64748B; font-size: 0.82rem;">{h.get('created_at', '')}</td>
                         <td style="padding: 10px 14px; font-size: 0.82rem; color: #475569;">{h.get('notes', '')}</td>
@@ -724,19 +748,19 @@ def render_individual_career_goals(user: Dict[str, Any], navigate_to: Callable[[
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 1.25rem 0;">
             <div style="background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 10px; padding: 12px; text-align: center;">
                 <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #2563EB;">Total Goals</div>
-                <div style="font-size: 1.5rem; font-weight: 800; color: #1E40AF;">{stats['total']}</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: #1E40AF;">{stats.get('total', 0)}</div>
             </div>
             <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 10px; padding: 12px; text-align: center;">
                 <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #059669;">Completed</div>
-                <div style="font-size: 1.5rem; font-weight: 800; color: #065F46;">{stats['completed']}</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: #065F46;">{stats.get('completed', 0)}</div>
             </div>
             <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 12px; text-align: center;">
                 <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #D97706;">In Progress</div>
-                <div style="font-size: 1.5rem; font-weight: 800; color: #92400E;">{stats['in_progress']}</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: #92400E;">{stats.get('in_progress', 0)}</div>
             </div>
             <div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 10px; padding: 12px; text-align: center;">
                 <div style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #DC2626;">Overdue</div>
-                <div style="font-size: 1.5rem; font-weight: 800; color: #991B1B;">{stats['overdue']}</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: #991B1B;">{stats.get('overdue', 0)}</div>
             </div>
         </div>
         """
@@ -753,16 +777,17 @@ def render_individual_career_goals(user: Dict[str, Any], navigate_to: Callable[[
                 prog = int(g.get("progress") or 0)
                 status = g.get("status", "In Progress")
                 status_color = "#10B981" if status == "Completed" else ("#F59E0B" if status == "In Progress" else "#EF4444")
+                g_title = g.get('title', 'Milestone')
 
                 _render_html(
                     f"""
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                        <span style="font-size: 1.15rem; font-weight: 800; color: #0F172A;">{g['title']}</span>
+                        <span style="font-size: 1.15rem; font-weight: 800; color: #0F172A;">{g_title}</span>
                         <span style="background: {status_color}1A; color: {status_color}; border: 1px solid {status_color}4D; padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">{status}</span>
                         {f"<span style='background: #F1F5F9; color: #475569; padding: 2px 7px; border-radius: 6px; font-size: 0.72rem;'>{g['target_designation']}</span>" if g.get('target_designation') else ""}
                     </div>
                     <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 6px;">
-                        Target Completion: <strong>{g.get('target_date')}</strong>
+                        Target Completion: <strong>{g.get('target_date', 'Ongoing')}</strong>
                     </div>
                     """
                 )
@@ -805,6 +830,10 @@ def render_individual_progress(user: Dict[str, Any]) -> None:
     if hist:
         # Score Trajectory Plot
         hist_df = pd.DataFrame(hist)
+        if "skill_name" not in hist_df.columns:
+            hist_df["skill_name"] = hist_df.get("category", "Technical")
+        else:
+            hist_df["skill_name"] = hist_df["skill_name"].fillna("Technical")
         hist_df["attempt"] = range(1, len(hist_df) + 1)
 
         fig_traj = px.line(
@@ -831,18 +860,18 @@ def render_individual_progress(user: Dict[str, Any]) -> None:
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 1.5rem;">
             <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                 <div style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: #64748B;">Competency Growth</div>
-                <div style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin: 4px 0;">{stats['total_skills']} Skills</div>
+                <div style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin: 4px 0;">{stats.get('total_skills', 0)} Skills</div>
                 <div style="font-size: 0.82rem; color: #10B981;">Added across portfolio</div>
             </div>
             <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                 <div style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: #64748B;">Verified Tests</div>
-                <div style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin: 4px 0;">{stats['completed_assessments']} Tests</div>
-                <div style="font-size: 0.82rem; color: #2563EB;">Average Score: {stats['avg_assessment_score']}%</div>
+                <div style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin: 4px 0;">{stats.get('completed_assessments', 0)} Tests</div>
+                <div style="font-size: 0.82rem; color: #2563EB;">Average Score: {stats.get('avg_assessment_score', stats.get('average_assessment_score', 0.0))}%</div>
             </div>
             <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                 <div style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: #64748B;">Milestones Achieved</div>
-                <div style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin: 4px 0;">{stats['completed_goals']} Goals</div>
-                <div style="font-size: 0.82rem; color: #EA580C;">{stats['goal_avg_progress']}% Overall Completion</div>
+                <div style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin: 4px 0;">{stats.get('completed_goals', 0)} Goals</div>
+                <div style="font-size: 0.82rem; color: #EA580C;">{stats.get('goal_avg_progress', stats.get('career_growth_progress', 0))}% Overall Completion</div>
             </div>
         </div>
         """
@@ -882,16 +911,25 @@ def render_join_organization_card(user: Dict[str, Any]) -> None:
                 if not code_input:
                     st.error("Please enter a valid invitation code.")
                 else:
-                    ok, msg_or_data = join_organization(uid, code_input)
+                    join_res = join_organization(uid, code_input)
+                    if isinstance(join_res, tuple) and len(join_res) == 3:
+                        ok, msg, updated_user = join_res
+                    elif isinstance(join_res, tuple) and len(join_res) == 2:
+                        ok, msg = join_res
+                        updated_user = None
+                    else:
+                        ok, msg, updated_user = False, "Unknown response", None
+
                     if ok:
-                        st.session_state.user["account_type"] = "Organization"
-                        st.session_state.user["org_id"] = msg_or_data["org_id"]
-                        st.session_state.user["org_name"] = msg_or_data["org_name"]
-                        st.session_state.user["employee_id"] = msg_or_data["employee_id"]
-                        st.success(f"Success! Welcome to {msg_or_data['org_name']} ({msg_or_data['org_id']}). Your personal skills and assessments have been linked.")
+                        if updated_user:
+                            st.session_state.user["account_type"] = "Organization"
+                            st.session_state.user["org_id"] = updated_user.get("org_id")
+                            st.session_state.user["org_name"] = updated_user.get("org_name")
+                            st.session_state.user["employee_id"] = updated_user.get("employee_id")
+                        st.success(msg)
                         st.rerun()
                     else:
-                        st.error(msg_or_data.get("error", "Unable to join organization."))
+                        st.error(msg if isinstance(msg, str) else "Unable to join organization.")
 
         _render_html(
             """

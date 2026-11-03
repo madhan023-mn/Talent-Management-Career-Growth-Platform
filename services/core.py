@@ -5159,9 +5159,11 @@ def get_available_assessments() -> List[Dict[str, Any]]:
     for skill, qlist in SKILL_ASSESSMENT_BANK.items():
         cat = "Soft Skill" if skill == "Communication" else "Technical"
         items.append({
+            "skill": skill,
             "skill_name": skill,
             "category": cat,
             "total_questions": len(qlist),
+            "question_count": len(qlist),
             "estimated_minutes": max(3, len(qlist) * 2),
             "passing_score": 70
         })
@@ -5182,7 +5184,7 @@ def get_assessment_questions(skill_name: str) -> List[Dict[str, Any]]:
 def evaluate_assessment(
     uid: int,
     skill_name: str,
-    submitted_answers: Dict[str, str],
+    submitted_answers: Dict[str, Any],
     employee_id: Optional[str] = None,
     org_id: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -5200,21 +5202,33 @@ def evaluate_assessment(
     breakdown = []
 
     for q in questions:
-        user_ans = (submitted_answers.get(q["id"]) or "").strip()
-        is_correct = (user_ans == q["answer"])
+        raw_ans = submitted_answers.get(q["id"])
+        # Support either string text answer, index int, or index string
+        if isinstance(raw_ans, int) and 0 <= raw_ans < len(q.get("options", [])):
+            user_ans = q["options"][raw_ans]
+        elif isinstance(raw_ans, str) and raw_ans.isdigit() and int(raw_ans) < len(q.get("options", [])):
+            user_ans = q["options"][int(raw_ans)]
+        elif raw_ans is not None:
+            user_ans = str(raw_ans).strip()
+        else:
+            user_ans = ""
+
+        correct_ans = str(q["answer"]).strip()
+        is_correct = (user_ans.lower() == correct_ans.lower())
         if is_correct:
             correct_count += 1
         breakdown.append({
             "id": q["id"],
             "question": q["question"],
             "user_answer": user_ans,
-            "correct_answer": q["answer"],
+            "correct_answer": correct_ans,
             "is_correct": is_correct,
             "explanation": q.get("explanation", "")
         })
 
     score_pct = round((correct_count / total_questions) * 100, 1)
     passed = (score_pct >= 70.0)
+    prof_rating = "Mastery" if score_pct >= 85 else ("Proficient" if passed else "Developing")
 
     if score_pct >= 85:
         feedback = f"Outstanding technical proficiency! You scored {score_pct}% ({correct_count}/{total_questions} correct). Excellent command of {skill_name} principles."
@@ -5238,8 +5252,10 @@ def evaluate_assessment(
         "skill_name": skill_name,
         "total_questions": total_questions,
         "correct_answers": correct_count,
+        "correct_count": correct_count,
         "score_percentage": score_pct,
         "passed": passed,
+        "proficiency_rating": prof_rating,
         "feedback": feedback,
         "breakdown": breakdown
     }
@@ -5261,9 +5277,10 @@ def get_skill_assessment_history(uid: int, skill_name: Optional[str] = None) -> 
         history.append({
             "attempt": i,
             "id": a.get("id"),
-            "skill_name": a.get("skill_name") or a.get("category"),
+            "skill_name": a.get("skill_name") or a.get("category") or "Technical",
             "score": score,
             "delta": delta,
+            "score_delta": delta,
             "created_at": a.get("created_at", ""),
             "notes": a.get("notes", "")
         })
@@ -5433,9 +5450,40 @@ def get_individual_dashboard_stats(user_id: int) -> Dict[str, Any]:
     role_readiness = role_match(target_role, skills, years)
     gaps = gap_analysis(target_role, skills)
 
-    skills_acquired = [g["skill"] for g in gaps if g["priority"] == "Met"]
-    skills_improving = [g["skill"] for g in gaps if g["priority"] == "Medium"]
-    skills_missing = [g["skill"] for g in gaps if g["priority"] == "High"]
+    skills_acquired = [g["skill"] for g in gaps if g.get("priority") == "Met"]
+    skills_improving = [g["skill"] for g in gaps if g.get("priority") == "Medium"]
+    skills_missing = [g["skill"] for g in gaps if g.get("priority") == "High"]
+
+    assessment_map: Dict[str, float] = {}
+    formatted_assessments = []
+    for a in assessments:
+        sk_n = (a.get("skill_name") or a.get("category") or "Technical").strip()
+        sc = float(a.get("score") or 0.0)
+        item_a = dict(a)
+        item_a["skill_name"] = sk_n
+        item_a["score"] = sc
+        formatted_assessments.append(item_a)
+        assessment_map[sk_n.lower()] = max(assessment_map.get(sk_n.lower(), 0.0), sc)
+
+    enriched_gaps = []
+    for g in gaps:
+        sk = g.get("skill", "")
+        curr = g.get("current", 0)
+        req = g.get("required", 0)
+        prio = g.get("priority", "High")
+        status = "Acquired" if prio == "Met" else ("Needs Improvement" if prio == "Medium" else "Missing Skill")
+        v_score = assessment_map.get(sk.strip().lower())
+        enriched_gaps.append({
+            "skill": sk,
+            "current": curr,
+            "required": req,
+            "current_level": curr,
+            "required_level": req,
+            "gap": g.get("gap", 0),
+            "priority": prio,
+            "status": status,
+            "verified_score": v_score
+        })
 
     activities = []
     for a in assessments[:5]:
@@ -5443,21 +5491,24 @@ def get_individual_dashboard_stats(user_id: int) -> Dict[str, Any]:
             "type": "assessment",
             "title": f"Completed {a.get('skill_name') or a.get('category')} Assessment",
             "subtitle": f"Score: {a.get('score')}%",
-            "date": a.get("created_at", "")
+            "date": a.get("created_at", ""),
+            "timestamp": a.get("created_at", "")
         })
     for g in goals[:5]:
         activities.append({
             "type": "goal",
             "title": f"Career Goal: {g.get('title')}",
             "subtitle": f"Progress: {g.get('progress')}% &bull; Status: {g.get('status')}",
-            "date": g.get("updated_at") or g.get("created_at", "")
+            "date": g.get("updated_at") or g.get("created_at", ""),
+            "timestamp": g.get("updated_at") or g.get("created_at", "")
         })
     for s in skills[:5]:
         activities.append({
             "type": "skill",
             "title": f"Added Skill: {s.get('name')}",
             "subtitle": f"Proficiency: {s.get('proficiency')} &bull; Experience: {s.get('years')} yrs",
-            "date": s.get("created_at", "")
+            "date": s.get("created_at", ""),
+            "timestamp": s.get("created_at", "")
         })
 
     activities.sort(key=lambda x: x.get("date", ""), reverse=True)
@@ -5469,15 +5520,20 @@ def get_individual_dashboard_stats(user_id: int) -> Dict[str, Any]:
         "total_skills": total_skills,
         "completed_assessments": completed_assessments,
         "average_assessment_score": avg_score,
+        "avg_assessment_score": avg_score,
         "proficiency_distribution": proficiency_counts,
         "career_growth_progress": growth_progress,
+        "goal_avg_progress": growth_progress,
         "completed_goals": completed_goals,
         "total_goals": total_goals,
         "target_role": target_role,
         "role_readiness": role_readiness,
+        "match_percentage": role_readiness,
         "skills_acquired": skills_acquired,
         "skills_improving": skills_improving,
         "skills_missing": skills_missing,
+        "role_gaps": enriched_gaps,
+        "assessment_history": formatted_assessments,
         "recent_activities": activities[:8]
     }
 

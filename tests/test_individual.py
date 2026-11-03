@@ -132,6 +132,13 @@ def test_individual_dashboard_stats_aggregation():
     assert stats["total_skills"] >= 1
     assert stats["completed_assessments"] == 0
     assert stats["average_assessment_score"] == 0.0
+    assert stats["avg_assessment_score"] == 0.0
+    assert "match_percentage" in stats
+    assert "role_readiness" in stats
+    assert "goal_avg_progress" in stats
+    assert "career_growth_progress" in stats
+    assert "role_gaps" in stats
+    assert "assessment_history" in stats
     assert isinstance(stats["proficiency_distribution"], dict)
     assert isinstance(stats["recent_activities"], list)
     assert isinstance(stats["skills_missing"], list)

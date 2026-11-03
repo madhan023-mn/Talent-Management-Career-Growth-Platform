@@ -34,3 +34,4 @@ def test_individual_registration_on_legacy_notnull_org_database():
     assert user is not None
     assert user["account_type"] == "Individual"
     assert user["org_id"] is None
+
