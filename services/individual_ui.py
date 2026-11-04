@@ -60,10 +60,10 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
     # 1. Welcome Hero Banner
     _render_html(
         f"""
-        <div style="background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #4F46E5 100%); border-radius: 16px; padding: 1.75rem 2.25rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; box-shadow: 0 4px 20px rgba(79, 70, 229, 0.22); position: relative; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #0B1020 0%, #1E1B4B 45%, #4338CA 100%); border-radius: 16px; border: 1px solid rgba(139, 92, 246, 0.4); padding: 1.75rem 2.25rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; box-shadow: 0 4px 24px rgba(79, 70, 229, 0.28); position: relative; overflow: hidden;">
             <div style="z-index: 2; max-width: 65%;">
-                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.3); padding: 4px 12px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
-                    {_get_svg_icon("sparkles", size=13, color="#FEF08A")} Independent Professional Career Hub
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(34, 211, 238, 0.15); border: 1px solid rgba(34, 211, 238, 0.4); padding: 4px 12px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #22D3EE; margin-bottom: 8px;">
+                    {_get_svg_icon("sparkles", size=13, color="#22D3EE")} Independent Professional Career Hub
                 </div>
                 <div style="font-size: 2rem; font-weight: 800; color: #FFFFFF; line-height: 1.25; margin-bottom: 6px;">
                     Welcome back, {user.get('name', 'Professional')}
@@ -73,10 +73,10 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
                 </div>
             </div>
             <div style="z-index: 2; flex-shrink: 0; text-align: right;">
-                <div style="background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 12px; padding: 12px 18px; text-align: center; backdrop-filter: blur(4px);">
-                    <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #CCFBF1;">Target Role</div>
+                <div style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(34, 211, 238, 0.35); border-radius: 12px; padding: 12px 18px; text-align: center; backdrop-filter: blur(4px);">
+                    <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #22D3EE;">Target Role</div>
                     <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; margin-top: 2px;">{profile.get('target_role') or stats.get('target_role') or 'Full Stack Engineer'}</div>
-                    <div style="font-size: 0.75rem; color: #E6FFFA; margin-top: 2px;">{stats.get('match_percentage', stats.get('role_readiness', 0))}% Competency Readiness</div>
+                    <div style="font-size: 0.75rem; color: #E0E7FF; margin-top: 2px;">{stats.get('match_percentage', stats.get('role_readiness', 0))}% Competency Readiness</div>
                 </div>
             </div>
         </div>
@@ -154,10 +154,10 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
             if any(dist.values()):
                 dist_df = pd.DataFrame([{"Proficiency": k, "Count": v} for k, v in dist.items()])
                 color_map = {
-                    "Beginner": "#C7D2FE",
+                    "Beginner": "#A5B4FC",
                     "Intermediate": "#6366F1",
-                    "Advanced": "#4F46E5",
-                    "Expert": "#312E81"
+                    "Advanced": "#8B5CF6",
+                    "Expert": "#4338CA"
                 }
                 fig_dist = px.bar(
                     dist_df, x="Proficiency", y="Count", color="Proficiency",
@@ -193,7 +193,7 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
                 fig_hist = px.bar(
                     hist_df, x="skill_name", y="score",
                     color="score",
-                    color_continuous_scale=["#EF4444", "#F59E0B", "#10B981"],
+                    color_continuous_scale=["#6366F1", "#8B5CF6", "#22D3EE"],
                     text="score",
                     labels={"skill_name": "Skill", "score": "Score (%)"}
                 )

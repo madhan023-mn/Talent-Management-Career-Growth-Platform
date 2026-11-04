@@ -1274,28 +1274,79 @@ def login_page():
 
     st.markdown("<div style='border-bottom: 1px solid #E2E8F0; margin: 0.75rem 0 1.75rem 0;'></div>", unsafe_allow_html=True)
 
-    col_l, col_center, col_r = st.columns([1, 1.4, 1])
-    with col_center:
+    col_left, col_right = st.columns([1.1, 1.2], gap="large")
+    with col_left:
+        render_html(
+            f"""
+            <div style="background: linear-gradient(135deg, #0B1020 0%, #1E1B4B 50%, #312E81 100%); border-radius: 18px; border: 1px solid rgba(139, 92, 246, 0.4); padding: 2.25rem 2.25rem; color: #FFFFFF; height: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.25); display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div style="display: inline-flex; align-items: center; gap: 7px; background: rgba(34, 211, 238, 0.15); border: 1px solid rgba(34, 211, 238, 0.4); padding: 5px 14px; border-radius: 9999px; font-size: 0.76rem; font-weight: 700; color: #22D3EE; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.25rem;">
+                        {get_svg_icon("sparkles", size=13, color="#22D3EE")} Enterprise Talent Platform
+                    </div>
+                    <h1 style="font-size: 2.15rem; font-weight: 800; color: #FFFFFF; line-height: 1.2; margin-bottom: 0.85rem; letter-spacing: -0.02em;">
+                        Accelerate Careers &amp; Scale Enterprise Talent
+                    </h1>
+                    <p style="color: #CBD5E1; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.75rem;">
+                        Next-generation workforce development hub combining automated competency radar analysis, standardized MCQ evaluations, ATS resume studio, and AI executive coaching.
+                    </p>
+
+                    <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 2rem;">
+                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.90rem; color: #F8FAFC;">
+                            <div style="width: 22px; height: 22px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); border: 1px solid #10B981; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                {get_svg_icon("check", size=12, color="#10B981")}
+                            </div>
+                            <span><strong>Live AI Career Strategy Coach</strong> with personalized blueprints</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.90rem; color: #F8FAFC;">
+                            <div style="width: 22px; height: 22px; border-radius: 50%; background: rgba(99, 102, 241, 0.25); border: 1px solid #6366F1; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                {get_svg_icon("check", size=12, color="#818CF8")}
+                            </div>
+                            <span><strong>Standardized Technical MCQ Assessments</strong> with instant scoring</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.90rem; color: #F8FAFC;">
+                            <div style="width: 22px; height: 22px; border-radius: 50%; background: rgba(34, 211, 238, 0.2); border: 1px solid #22D3EE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                {get_svg_icon("check", size=12, color="#22D3EE")}
+                            </div>
+                            <span><strong>ATS Resume Studio</strong> with automated STAR bullet rewrites</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.90rem; color: #F8FAFC;">
+                            <div style="width: 22px; height: 22px; border-radius: 50%; background: rgba(139, 92, 246, 0.25); border: 1px solid #8B5CF6; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                {get_svg_icon("check", size=12, color="#C084FC")}
+                            </div>
+                            <span><strong>Enterprise Workforce Directory</strong> with role gap radar telemetry</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.12); display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; color: #94A3B8;">
+                    <span>🔒 Enterprise RBAC &amp; Tenant Isolation</span>
+                    <span>⚡ Sub-second Analytics Engine</span>
+                </div>
+            </div>
+            """
+        )
+
+    with col_right:
         with st.container(border=True):
             render_html(
                 f"""
                 <div style="text-align: center; margin-bottom: 1.25rem;">
-                    <div style="width: 52px; height: 52px; border-radius: 14px; background: #EEF2FF; border: 1px solid #C7D2FE; display: inline-flex; align-items: center; justify-content: center; color: #4F46E5; margin-bottom: 0.75rem;">
-                        {get_svg_icon("lock", size=24, color="#4F46E5")}
+                    <div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); display: inline-flex; align-items: center; justify-content: center; color: #6366F1; margin-bottom: 0.75rem;">
+                        {get_svg_icon("lock", size=24, color="#6366F1")}
                     </div>
                     <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0; letter-spacing: -0.02em;">Sign In to Your Account</h2>
-                    <p style="color: #64748B; font-size: 0.90rem; margin: 0;">Enter your email credentials or click a pre-configured demo account below.</p>
+                    <p style="color: #64748B; font-size: 0.90rem; margin: 0;">Enter your credentials or select an instant demo profile.</p>
                 </div>
 
-                <div style="margin-bottom: 1rem;">
-                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Instant Demo Access (1-Click Sign In)</div>
+                <div style="margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">⚡ 1-Click Instant Demo Access</div>
                 </div>
                 """
             )
 
             col_chip1, col_chip2, col_chip3 = st.columns(3)
             with col_chip1:
-                if st.button("HR Admin", key="login_chip_admin", use_container_width=True, type="secondary"):
+                if st.button("⚡ HR Admin", key="login_chip_admin", use_container_width=True, type="secondary"):
                     u = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
                     if u:
                         st.session_state.user = u
@@ -1303,7 +1354,7 @@ def login_page():
                         st.session_state.auth_view = "landing"
                         st.rerun()
             with col_chip2:
-                if st.button("Employee", key="login_chip_alex", use_container_width=True, type="secondary"):
+                if st.button("⚡ Employee", key="login_chip_alex", use_container_width=True, type="secondary"):
                     u = login("alex@company.com", "Password123")
                     if u:
                         st.session_state.user = u
@@ -1311,7 +1362,7 @@ def login_page():
                         st.session_state.auth_view = "landing"
                         st.rerun()
             with col_chip3:
-                if st.button("Individual", key="login_chip_ravi", use_container_width=True, type="secondary"):
+                if st.button("⚡ Individual", key="login_chip_ravi", use_container_width=True, type="secondary"):
                     u = login("ravi@company.com", "Password123")
                     if u:
                         st.session_state.user = u
@@ -1329,7 +1380,7 @@ def login_page():
                 with c_rem:
                     remember_me = st.checkbox("Remember me", value=True)
                 with c_forgot:
-                    st.markdown("<div style='text-align: right; font-size: 0.85rem; color: #2563EB; font-weight: 600; padding-top: 4px;'>Forgot password?</div>", unsafe_allow_html=True)
+                    st.markdown("<div style='text-align: right; font-size: 0.85rem; color: #6366F1; font-weight: 600; padding-top: 4px;'>Forgot password?</div>", unsafe_allow_html=True)
 
                 submit_login = st.form_submit_button("Sign In", type="primary", use_container_width=True)
 
@@ -1724,70 +1775,37 @@ label_justify = "flex-start" if is_expanded else "center"
 circle_margin_right = "10px" if is_expanded else "0px"
 text_display = "inline-flex" if is_expanded else "none"
 
-if is_admin:
-    # HR Administrator: Dark Navy Theme
-    bg_color = "#0A1128"
-    border_color = "#1E293B"
-    text_color = "#FFFFFF"
-    item_inactive_color = "#94A3B8"
-    circle_inactive_border = "#64748B"
-    item_hover_bg = "#16223F"
-    item_hover_color = "#FFFFFF"
-    circle_hover_border = "#94A3B8"
-    active_bg = "#2563EB"
-    active_text = "#FFFFFF"
-    active_circle_border = "#FFFFFF"
-    active_circle_bg = "#FFFFFF"
-    active_circle_shadow = "inset 0 0 0 2.5px #2563EB"
-    ham_bg = "#16223F"
-    ham_border = "#334155"
-    ham_color = "#FFFFFF"
-    ham_hover_bg = "#1E293B"
-    ham_hover_color = "#60A5FA"
-    ham_hover_border = "#60A5FA"
-    home_btn_bg = "transparent"
-    home_btn_border = "#334155"
-    home_btn_color = "#94A3B8"
-    home_btn_hover_bg = "#16223F"
-    home_btn_hover_color = "#FFFFFF"
-    home_btn_hover_border = "#475569"
-    signout_border = "#334155"
-    signout_color = "#94A3B8"
-    signout_hover_bg = "#16223F"
-    signout_hover_color = "#F87171"
-    signout_hover_border = "#EF4444"
-else:
-    # Employee: Light Ice-Blue Theme
-    bg_color = "#EFF4F8"
-    border_color = "#D9E4EC"
-    text_color = "#102A43"
-    item_inactive_color = "#627D98"
-    circle_inactive_border = "#94A3B8"
-    item_hover_bg = "#E2EBF2"
-    item_hover_color = "#102A43"
-    circle_hover_border = "#64748B"
-    active_bg = "#E0F2FE"
-    active_text = "#0284C7"
-    active_circle_border = "#0284C7"
-    active_circle_bg = "#0284C7"
-    active_circle_shadow = "inset 0 0 0 2.5px #E0F2FE"
-    ham_bg = "#FFFFFF"
-    ham_border = "#CBD5E1"
-    ham_color = "#0E2A38"
-    ham_hover_bg = "#F1F5F9"
-    ham_hover_color = "#0284C7"
-    ham_hover_border = "#0284C7"
-    home_btn_bg = "transparent"
-    home_btn_border = "#D2E0EB"
-    home_btn_color = "#627D98"
-    home_btn_hover_bg = "#E2EBF2"
-    home_btn_hover_color = "#102A43"
-    home_btn_hover_border = "#BAC7D5"
-    signout_border = "#D2E0EB"
-    signout_color = "#627D98"
-    signout_hover_bg = "#FEE2E2"
-    signout_hover_color = "#DC2626"
-    signout_hover_border = "#EF4444"
+# Unified Midnight Indigo - Electric Violet - Cyan Theme for ALL roles
+bg_color = "#111827"
+border_color = "#1E293B"
+text_color = "#F8FAFC"
+item_inactive_color = "#94A3B8"
+circle_inactive_border = "#475569"
+item_hover_bg = "rgba(99, 102, 241, 0.12)"
+item_hover_color = "#FFFFFF"
+circle_hover_border = "#8B5CF6"
+active_bg = "linear-gradient(90deg, rgba(99, 102, 241, 0.28) 0%, rgba(139, 92, 246, 0.16) 100%)"
+active_text = "#FFFFFF"
+active_circle_border = "#8B5CF6"
+active_circle_bg = "#8B5CF6"
+active_circle_shadow = "0 0 8px rgba(139, 92, 246, 0.7)"
+ham_bg = "#1E293B"
+ham_border = "#334155"
+ham_color = "#FFFFFF"
+ham_hover_bg = "#334155"
+ham_hover_color = "#22D3EE"
+ham_hover_border = "#22D3EE"
+home_btn_bg = "transparent"
+home_btn_border = "#334155"
+home_btn_color = "#94A3B8"
+home_btn_hover_bg = "rgba(99, 102, 241, 0.12)"
+home_btn_hover_color = "#FFFFFF"
+home_btn_hover_border = "#6366F1"
+signout_border = "#334155"
+signout_color = "#94A3B8"
+signout_hover_bg = "rgba(239, 68, 68, 0.15)"
+signout_hover_color = "#F87171"
+signout_hover_border = "#EF4444"
 
 sidebar_dynamic_css = f"""
 <style>
@@ -2069,7 +2087,7 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
                 st.button("☰", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Collapse sidebar (☰)")
                 st.markdown('</div>', unsafe_allow_html=True)
             with col_brand:
-                brand_title_color = "#FFFFFF" if is_admin else "#0E2A38"
+                brand_title_color = "#FFFFFF"
                 st.markdown(
                     f"""
                     <div style="display: flex; align-items: center; gap: 8px; padding-top: 4px;">
@@ -2081,19 +2099,19 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
                 )
 
             # 2. Signed-in User Info & Role Subtitle
-            user_subtitle_color = "#94A3B8" if is_admin else "#5A7383"
+            user_subtitle_color = "#94A3B8"
             role_title = "Individual Professional" if is_individual else ("HR Administrator" if is_admin else "Employee")
             if is_individual:
                 org_pill_html = """
-                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 6px; padding: 3px 8px; margin-bottom: 1.15rem; font-size: 0.76rem; color: #10B981; font-weight: 700;">
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(139, 92, 246, 0.16); border: 1px solid rgba(139, 92, 246, 0.35); border-radius: 6px; padding: 3px 8px; margin-bottom: 1.15rem; font-size: 0.76rem; color: #C4B5FD; font-weight: 700;">
                     <span>Independent Professional Account</span>
                 </div>
                 """
             else:
                 org_pill_html = f"""
-                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(37, 99, 235, 0.12); border: 1px solid rgba(37, 99, 235, 0.28); border-radius: 6px; padding: 3px 8px; margin-bottom: 1.15rem; font-size: 0.76rem; color: {user_subtitle_color};">
-                    <span style="font-weight: 700; color: #60A5FA;">{user.get('org_name', 'Talent Growth')}</span>
-                    <span style="opacity: 0.75; font-family: monospace;">({user.get('org_id', 'ORG-TALENT-01')})</span>
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(34, 211, 238, 0.12); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 6px; padding: 3px 8px; margin-bottom: 1.15rem; font-size: 0.76rem; color: #22D3EE;">
+                    <span style="font-weight: 700; color: #22D3EE;">{user.get('org_name', 'Talent Growth')}</span>
+                    <span style="opacity: 0.85; font-family: monospace; color: #A5F3FC;">({user.get('org_id', 'ORG-TALENT-01')})</span>
                 </div>
                 """
             st.markdown(
@@ -5965,13 +5983,13 @@ elif page in ["Career Direction", "Career Direction & Gaps"]:
         st.info(f"**Benchmark Standard Criteria for {profile['target_role']}:** {ROLE_CATALOG[profile['target_role']]['criteria']}")
 
 elif page in ["Career Coach", "AI Career Coach"]:
-    # Check Gemini API status
+    # Permanent Gemini API configuration is active; settings panel is kept completely hidden
     current_key = get_gemini_api_key(st.session_state.get("gemini_user_key"))
     has_gemini = bool(current_key)
-    badge_label = "GEMINI LIVE AI ACTIVE" if has_gemini else "DETERMINISTIC HEURISTIC MODE"
-    badge_color = "#10B981" if has_gemini else "#64748B"
-    badge_bg = "#ECFDF5" if has_gemini else "#F1F5F9"
-    badge_border = "#A7F3D0" if has_gemini else "#CBD5E1"
+    badge_label = "⚡ GEMINI LIVE AI ACTIVE" if has_gemini else "AI EXECUTIVE HEURISTIC ACTIVE"
+    badge_color = "#10B981" if has_gemini else "#8B5CF6"
+    badge_bg = "rgba(16, 185, 129, 0.12)" if has_gemini else "rgba(139, 92, 246, 0.12)"
+    badge_border = "rgba(16, 185, 129, 0.28)" if has_gemini else "rgba(139, 92, 246, 0.28)"
 
     render_html(
         f"""
@@ -5994,45 +6012,25 @@ elif page in ["Career Coach", "AI Career Coach"]:
         """
     )
 
-    # Only display API settings configuration if key is missing; keep hidden when permanent key is active
-    if not has_gemini:
-        with st.expander("Gemini API Configuration & Model Settings", expanded=True):
-            st.caption("Powered by Google Gemini API. Set your key in `.env` (`GEMINI_API_KEY=your_key`) or paste it below for live generative coaching.")
-            col_k1, col_k2 = st.columns([3, 1])
-            with col_k1:
-                entered_key = st.text_input("Gemini API Key", value=st.session_state.get("gemini_user_key", current_key or ""), type="password", placeholder="AIzaSy...", help="Get a free key from Google AI Studio (aistudio.google.com)")
-            with col_k2:
-                st.write("")
-                st.write("")
-                if st.button("Save API Key", use_container_width=True, type="secondary"):
-                    if entered_key.strip():
-                        st.session_state.gemini_user_key = entered_key.strip()
-                        st.success("API Key updated for current session!")
-                        st.rerun()
-                    else:
-                        st.session_state.gemini_user_key = ""
-                        st.info("Reset to default system API key.")
-                        st.rerun()
-
     render_html(
         f"""
         <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
-            {get_svg_icon("lightbulb", size=18, color="#2563EB")} Quick Strategy Prompts (1-Click Analysis)
+            {get_svg_icon("lightbulb", size=18, color="#6366F1")} Quick Strategy Prompts (1-Click Analysis)
         </div>
         """
     )
     cp1, cp2, cp3, cp4 = st.columns(4)
     with cp1:
-        if st.button("Lead Role Roadmap", use_container_width=True):
+        if st.button("🎯 Lead Role Roadmap", use_container_width=True, key="btn_coach_lead"):
             st.session_state.coach_prompt_val = "What precise strategic roadmap should I follow to advance into a Lead / Principal designation over the next 12 months?"
     with cp2:
-        if st.button("Cloud & Architecture", use_container_width=True):
+        if st.button("☁️ Cloud & Architecture", use_container_width=True, key="btn_coach_cloud"):
             st.session_state.coach_prompt_val = "Which high-leverage cloud and distributed architecture skills will maximize my competency valuation?"
     with cp3:
-        if st.button("Promotion Blueprint", use_container_width=True):
+        if st.button("📈 Promotion Blueprint", use_container_width=True, key="btn_coach_promo"):
             st.session_state.coach_prompt_val = "How should I structure my achievements and metrics for our upcoming annual performance review cycle?"
     with cp4:
-        if st.button("90-Day Action Plan", use_container_width=True):
+        if st.button("⚡ 90-Day Action Plan", use_container_width=True, key="btn_coach_sprint"):
             st.session_state.coach_prompt_val = "Generate a prioritized 90-day developmental sprint to close my most pressing skill gap."
 
     default_q = st.session_state.get("coach_prompt_val", "")

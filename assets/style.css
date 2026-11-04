@@ -4,29 +4,34 @@
    ENTERPRISE SAAS DESIGN SYSTEM TOKENS (TalentSphere / Stripe & Linear Inspired)
    ============================================================================== */
 :root {
-    --primary: #4F46E5;
+    --primary: #6366F1;
     --primary-hover: #4338CA;
+    --primary-dark: #4338CA;
     --primary-light: #EEF2FF;
     --primary-border: #C7D2FE;
     --secondary: #6366F1;
     --secondary-hover: #4F46E5;
     --secondary-light: #E0E7FF;
+    --electric-violet: #8B5CF6;
+    --cyan-accent: #22D3EE;
+    --dark-bg: #0B1020;
+    --sidebar-bg: #111827;
     --dark-navy: #111827;
-    --navy-card: #1F2937;
-    --main-bg: #F8FAFC;
+    --navy-card: #1E293B;
+    --main-bg: #F4F6FC;
     --card-bg: #FFFFFF;
-    --text-primary: #111827;
+    --text-primary: #172033;
     --text-secondary: #64748B;
     --text-muted: #94A3B8;
     --border-color: #E2E8F0;
     --border-subtle: #F1F5F9;
-    --success: #16A34A;
-    --success-bg: #F0FDF4;
-    --success-border: #BBF7D0;
+    --success: #10B981;
+    --success-bg: #ECFDF5;
+    --success-border: #A7F3D0;
     --warning: #F59E0B;
     --warning-bg: #FFFBEB;
     --warning-border: #FDE68A;
-    --danger: #DC2626;
+    --danger: #EF4444;
     --danger-bg: #FEF2F2;
     --danger-border: #FECACA;
     --radius-sm: 6px;
@@ -241,10 +246,22 @@ code, kbd, samp, pre {
     transform: translateY(-2px);
     box-shadow: 0 8px 22px -3px rgba(0, 0, 0, 0.16);
 }
-.kpi-vibrant-blue { background: linear-gradient(135deg, #1E1B4B 0%, #3730A3 50%, #4F46E5 100%); }
-.kpi-vibrant-green { background: linear-gradient(135deg, #064E3B 0%, #059669 50%, #16A34A 100%); }
-.kpi-vibrant-purple { background: linear-gradient(135deg, #312E81 0%, #4F46E5 50%, #6366F1 100%); }
-.kpi-vibrant-orange { background: linear-gradient(135deg, #7C2D12 0%, #D97706 50%, #F59E0B 100%); }
+.kpi-vibrant-blue {
+    background: linear-gradient(135deg, #0B1020 0%, #1E1B4B 50%, #4338CA 100%) !important;
+    border: 1px solid rgba(99, 102, 241, 0.4) !important;
+}
+.kpi-vibrant-green {
+    background: linear-gradient(135deg, #083344 0%, #0E7490 50%, #06B6D4 100%) !important;
+    border: 1px solid rgba(34, 211, 238, 0.4) !important;
+}
+.kpi-vibrant-purple {
+    background: linear-gradient(135deg, #1E1B4B 0%, #4C1D95 50%, #8B5CF6 100%) !important;
+    border: 1px solid rgba(139, 92, 246, 0.45) !important;
+}
+.kpi-vibrant-orange {
+    background: linear-gradient(135deg, #064E3B 0%, #059669 50%, #10B981 100%) !important;
+    border: 1px solid rgba(16, 185, 129, 0.4) !important;
+}
 
 .kpi-vibrant-icon {
     width: 52px;
@@ -376,7 +393,12 @@ code, kbd, samp, pre {
 html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
 html body section[data-testid="stSidebar"],
 html body [data-testid="stSidebar"],
-section[data-testid="stSidebar"] {
+section[data-testid="stSidebar"],
+div[data-testid="stSidebarContent"],
+div[data-testid="stSidebarUserContent"] {
+    background-color: #111827 !important;
+    background: #111827 !important;
+    color: #F8FAFC !important;
     height: 100vh !important;
     max-height: 100vh !important;
     overflow-y: auto !important;
@@ -385,6 +407,7 @@ section[data-testid="stSidebar"] {
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
+    border-right: 1px solid #1E293B !important;
     transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
                 min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
                 max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
