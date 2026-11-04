@@ -1,8 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ==============================================================================
+   ENTERPRISE SAAS DESIGN SYSTEM TOKENS (TalentSphere / Stripe & Linear Inspired)
+   ============================================================================== */
+:root {
+    --primary: #4F46E5;
+    --primary-hover: #4338CA;
+    --primary-light: #EEF2FF;
+    --primary-border: #C7D2FE;
+    --secondary: #6366F1;
+    --secondary-hover: #4F46E5;
+    --secondary-light: #E0E7FF;
+    --dark-navy: #111827;
+    --navy-card: #1F2937;
+    --main-bg: #F8FAFC;
+    --card-bg: #FFFFFF;
+    --text-primary: #111827;
+    --text-secondary: #64748B;
+    --text-muted: #94A3B8;
+    --border-color: #E2E8F0;
+    --border-subtle: #F1F5F9;
+    --success: #16A34A;
+    --success-bg: #F0FDF4;
+    --success-border: #BBF7D0;
+    --warning: #F59E0B;
+    --warning-bg: #FFFBEB;
+    --warning-border: #FDE68A;
+    --danger: #DC2626;
+    --danger-bg: #FEF2F2;
+    --danger-border: #FECACA;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
+    --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
 
 /* Global Typography & Canvas */
 html, body, [class*="css"], .stMarkdown, .stText {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: #0F172A;
 }
 
@@ -203,10 +241,10 @@ code, kbd, samp, pre {
     transform: translateY(-2px);
     box-shadow: 0 8px 22px -3px rgba(0, 0, 0, 0.16);
 }
-.kpi-vibrant-blue { background: linear-gradient(135deg, #1E40AF 0%, #2563EB 60%, #3B82F6 100%); }
-.kpi-vibrant-green { background: linear-gradient(135deg, #065F46 0%, #10B981 60%, #34D399 100%); }
-.kpi-vibrant-purple { background: linear-gradient(135deg, #5B21B6 0%, #8B5CF6 60%, #A78BFA 100%); }
-.kpi-vibrant-orange { background: linear-gradient(135deg, #C2410C 0%, #F97316 60%, #FB923C 100%); }
+.kpi-vibrant-blue { background: linear-gradient(135deg, #1E1B4B 0%, #3730A3 50%, #4F46E5 100%); }
+.kpi-vibrant-green { background: linear-gradient(135deg, #064E3B 0%, #059669 50%, #16A34A 100%); }
+.kpi-vibrant-purple { background: linear-gradient(135deg, #312E81 0%, #4F46E5 50%, #6366F1 100%); }
+.kpi-vibrant-orange { background: linear-gradient(135deg, #7C2D12 0%, #D97706 50%, #F59E0B 100%); }
 
 .kpi-vibrant-icon {
     width: 52px;
@@ -481,15 +519,16 @@ section[data-testid="stSidebar"] hr {
 .badge-emp { background-color: #EEF2FF; color: #3730A3; border: 1px solid #C7D2FE; }
 
 /* Custom Form & Button Styling */
-button[kind="primary"] {
-    background-color: #2563EB !important;
+button[kind="primary"], .stButton > button[type="primary"], div[data-testid="stFormSubmitButton"] > button {
+    background: #4F46E5 !important;
+    background-color: #4F46E5 !important;
     color: #FFFFFF !important;
     font-weight: 600 !important;
     border-radius: 8px !important;
-    border: none !important;
-    padding: 0.5rem 1.25rem !important;
-    box-shadow: 0 1px 2px 0 rgba(37, 99, 235, 0.25) !important;
-    transition: all 0.15s ease-in-out !important;
+    border: 1px solid #4338CA !important;
+    padding: 0.55rem 1.25rem !important;
+    box-shadow: 0 1px 3px 0 rgba(79, 70, 229, 0.35) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 button[kind="primary"]:hover {
     background-color: #1D4ED8 !important;
@@ -1362,22 +1401,15 @@ div[data-testid="stDataFrame"], div[data-testid="stTable"] {
 }
 
 /* Teal Primary Button Styling (Matching Screenshot Buttons) */
-.stButton > button[kind="primary"],
-.stFormSubmitButton > button {
-    background: #047857 !important;
-    background-color: #047857 !important;
-    border: 1px solid #047857 !important;
-    color: #FFFFFF !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-}
-
+/* Standardized Enterprise Primary Buttons */
 .stButton > button[kind="primary"]:hover,
-.stFormSubmitButton > button:hover {
-    background: #065F46 !important;
-    background-color: #065F46 !important;
-    border-color: #065F46 !important;
-    box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25) !important;
+.stFormSubmitButton > button:hover,
+button[kind="primary"]:hover {
+    background: #4338CA !important;
+    background-color: #4338CA !important;
+    border-color: #3730A3 !important;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.38) !important;
+    transform: translateY(-1px) !important;
 }
 
 /* ==============================================================================
@@ -1791,3 +1823,73 @@ button[data-testid="stSidebarCollapseButton"] {
     }
 }
 
+
+
+/* Enterprise Sidebar Navigation Item Styling */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
+    padding: 7px 12px !important;
+    border-radius: 8px !important;
+    font-size: 0.88rem !important;
+    font-weight: 500 !important;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-bottom: 2px !important;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
+    background-color: rgba(79, 70, 229, 0.08) !important;
+    color: #4F46E5 !important;
+    transform: translateX(2px) !important;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+    background-color: #EEF2FF !important;
+    color: #4F46E5 !important;
+    font-weight: 700 !important;
+    border-left: 3px solid #4F46E5 !important;
+}
+
+/* Enterprise Native Input Styling (Inter font, smooth shadow ring on focus) */
+div[data-baseweb="input"], div[data-baseweb="select"] > div, .stTextArea textarea {
+    border-radius: 8px !important;
+    border: 1px solid #E2E8F0 !important;
+    background-color: #FFFFFF !important;
+    color: #111827 !important;
+    font-size: 0.90rem !important;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within > div, .stTextArea textarea:focus {
+    border-color: #4F46E5 !important;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14) !important;
+}
+
+/* Streamlit Tabs - Enterprise Underline Style */
+div[data-baseweb="tab-list"] {
+    gap: 8px !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    margin-bottom: 1.25rem !important;
+}
+
+div[data-baseweb="tab-list"] button[role="tab"] {
+    font-weight: 600 !important;
+    font-size: 0.90rem !important;
+    color: #64748B !important;
+    padding: 10px 18px !important;
+    border-radius: 8px 8px 0 0 !important;
+    transition: all 0.18s ease !important;
+}
+
+div[data-baseweb="tab-list"] button[role="tab"]:hover {
+    color: #4F46E5 !important;
+    background: #F8FAFC !important;
+}
+
+div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] {
+    color: #4F46E5 !important;
+    border-bottom: 2px solid #4F46E5 !important;
+}

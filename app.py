@@ -316,7 +316,7 @@ def _build_svg_data_uri(inner_svg: str, width: int, height: int, stroke_color: s
     svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 24 24" fill="{fill_color}" stroke="{stroke_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{inner_svg}</svg>'
     return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("utf-8")
 
-def get_svg_icon(name: str, size: int = 18, color: str = "#2563EB", extra_style: str = "") -> str:
+def get_svg_icon(name: str, size: int = 18, color: str = "#4F46E5", extra_style: str = "") -> str:
     """Returns an inline, standalone, crisp SVG vector icon as a data URI img (NEVER stripped by sanitizers)."""
     if name == "brand_logo":
         icon_b64 = get_logo_b64("icon")
@@ -833,16 +833,25 @@ if "quick_fill_role" not in st.session_state:
 # 1. DEDICATED CORPORATE LANDING WEBPAGE
 # ------------------------------------------------------------------------------
 def landing_webpage():
-    # Top Glassmorphic Navbar
+    # Top Glassmorphic Enterprise Navbar
     render_html(
         f"""
-        <div style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid #E2E8F0; border-radius: 16px; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);">
-            <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(12px); border: 1px solid #E2E8F0; border-radius: 16px; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; align-items: center; gap: 14px;">
                 {get_svg_icon("brand_logo", size=36)}
                 <div>
-                    <div style="font-size: 1.35rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">Talent Growth</div>
-                    <div style="font-size: 0.78rem; color: #64748B; font-weight: 500;">Talent Management Platform for Employee Performance and Career Growth</div>
+                    <div style="font-size: 1.35rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px;">
+                        <span>Talent Growth</span>
+                        <span style="font-size: 0.70rem; font-weight: 700; color: #4F46E5; background: #EEF2FF; border: 1px solid #C7D2FE; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.05em;">Enterprise SaaS</span>
+                    </div>
+                    <div style="font-size: 0.80rem; color: #64748B; font-weight: 500;">AI-Powered Workforce Performance & Career Acceleration Platform</div>
                 </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 600; color: #059669; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 4px 10px; border-radius: 9999px;">
+                    <span style="width: 7px; height: 7px; background: #10B981; border-radius: 50%;"></span>
+                    SQLite Verified &bull; Active
+                </span>
             </div>
         </div>
         """
@@ -862,21 +871,21 @@ def landing_webpage():
     render_html(
         f"""
         <div class="webpage-hero-modern">
-            <div style="max-width: 860px; position: relative; z-index: 2;">
-                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(129, 140, 248, 0.35); padding: 5px 14px; border-radius: 9999px; color: #C7D2FE; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1.25rem;">
+            <div style="max-width: 880px; position: relative; z-index: 2;">
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(129, 140, 248, 0.4); padding: 6px 16px; border-radius: 9999px; color: #C7D2FE; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1.25rem;">
                     {get_svg_icon("sparkles", size=14, color="#A5B4FC")}
-                    Talent Management Platform for Employee Performance and Career Growth
+                    Next-Gen Talent Management & Career Growth Engine
                 </div>
-                <h1 style="font-size: 2.9rem; font-weight: 900; color: #FFFFFF; line-height: 1.15; letter-spacing: -0.03em; margin: 0 0 1rem 0;">
-                    Build Better Teams,<br/>
-                    <span class="hero-gradient-text">Grow Together</span>
+                <h1 style="font-size: 3.1rem; font-weight: 900; color: #FFFFFF; line-height: 1.15; letter-spacing: -0.03em; margin: 0 0 1.1rem 0;">
+                    Build Exceptional Teams,<br/>
+                    <span class="hero-gradient-text">Accelerate Careers</span>
                 </h1>
-                <p style="color: #94A3B8; font-size: 1.08rem; line-height: 1.6; margin-bottom: 1.85rem; max-width: 740px;">
-                    Talent management for a brighter future. Elevate workforce performance, discover skill benchmarks, and navigate personalized career pathways with intelligent evaluations and goal roadmaps.
+                <p style="color: #94A3B8; font-size: 1.12rem; line-height: 1.65; margin-bottom: 2rem; max-width: 760px;">
+                    The modern enterprise platform uniting workforce performance evaluation, 10-role competency benchmarks, real-time skill assessment, ATS resume engineering, and personalized generative AI career coaching.
                 </p>
-                <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 2rem;">
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 2.2rem;">
                     <div class="hero-feature-pill">
-                        {get_svg_icon("employees", size=16, color="#60A5FA")} Workforce Directory & Profiles
+                        {get_svg_icon("employees", size=16, color="#818CF8")} Workforce Directory & Profiles
                     </div>
                     <div class="hero-feature-pill">
                         {get_svg_icon("performance", size=16, color="#34D399")} Performance Trajectory Reviews
@@ -887,34 +896,41 @@ def landing_webpage():
                     <div class="hero-feature-pill">
                         {get_svg_icon("goals", size=16, color="#FB923C")} SMART Milestone Roadmap
                     </div>
+                    <div class="hero-feature-pill">
+                        {get_svg_icon("coach", size=16, color="#F472B6")} AI Executive Career Coach
+                    </div>
                 </div>
             </div>
-            <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 1.1rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #94A3B8; position: relative; z-index: 2;">
-                <span style="display: flex; align-items: center; gap: 6px;">
-                    {get_svg_icon("shield", size=15, color="#818CF8")}
-                    Encrypted Authentication & Local SQLite Database
+            <div style="border-top: 1px solid rgba(255, 255, 255, 0.12); padding-top: 1.2rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.84rem; color: #94A3B8; position: relative; z-index: 2; flex-wrap: wrap; gap: 12px;">
+                <span style="display: flex; align-items: center; gap: 7px;">
+                    {get_svg_icon("shield", size=16, color="#818CF8")}
+                    Salted Hash Encryption &bull; Isolated Tenant Storage
                 </span>
-                <span style="display: flex; align-items: center; gap: 6px;">
-                    {get_svg_icon("check", size=15, color="#34D399")}
-                    Enterprise Production Ready
+                <span style="display: flex; align-items: center; gap: 7px;">
+                    {get_svg_icon("check", size=16, color="#34D399")}
+                    Production-Grade Enterprise Architecture
+                </span>
+                <span style="display: flex; align-items: center; gap: 7px;">
+                    {get_svg_icon("sparkles", size=16, color="#FDE047")}
+                    Dual Support: Organizations &amp; Individuals
                 </span>
             </div>
         </div>
         """
     )
 
-    # SEPARATED SECTION 1: 1-CLICK QUICK DEMO SIGN-IN
+    # 1-CLICK QUICK DEMO SIGN-IN
     render_html(
         f"""
-        <div style="margin: 2.2rem 0 1.25rem 0;">
-            <div style="display: inline-flex; align-items: center; gap: 6px; background: #EFF6FF; border: 1px solid #DBEAFE; color: #2563EB; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
-                {get_svg_icon("sparkles", size=13, color="#2563EB")} Instant Live Demo
+        <div style="margin: 2.4rem 0 1.25rem 0;">
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: #EEF2FF; border: 1px solid #C7D2FE; color: #4F46E5; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+                {get_svg_icon("sparkles", size=13, color="#4F46E5")} Instant Live Demo
             </div>
-            <h2 style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0; letter-spacing: -0.02em;">
+            <h2 style="font-size: 1.95rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0; letter-spacing: -0.02em;">
                 1-Click Quick Demo Sign-In
             </h2>
-            <p style="color: #64748B; font-size: 0.95rem; margin: 0 0 1.25rem 0;">
-                Select a pre-configured enterprise role below to test full platform capabilities immediately without entering passwords.
+            <p style="color: #64748B; font-size: 0.95rem; margin: 0 0 1.35rem 0;">
+                Select a pre-configured role below to test full platform capabilities immediately without entering passwords.
             </p>
         </div>
         """
@@ -927,20 +943,20 @@ def landing_webpage():
             f"""
             <div class="demo-role-card demo-role-admin">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
-                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #FEF3C7; color: #92400E; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15);">
-                        {get_svg_icon("shield", size=22, color="#92400E")}
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #EEF2FF; color: #4F46E5; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.15);">
+                        {get_svg_icon("shield", size=22, color="#4F46E5")}
                     </div>
-                    <span style="font-size: 0.72rem; font-weight: 800; color: #92400E; background: #FEF3C7; border: 1px solid #FDE68A; padding: 3px 8px; border-radius: 9999px;">ADMIN</span>
+                    <span style="font-size: 0.72rem; font-weight: 800; color: #4338CA; background: #EEF2FF; border: 1px solid #C7D2FE; padding: 3px 8px; border-radius: 9999px;">HR ADMIN</span>
                 </div>
-                <div style="font-size: 1.2rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">HR Administrator</div>
+                <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">HR Administrator</div>
                 <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">admin@talentgrowth.com</div>
                 <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
                     Full administrative governance, workforce directory CRUD, performance trajectory tracking, bulk CSV imports, and ATS studio.
                 </p>
-                <div style="font-size: 0.78rem; color: #047857; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 6px;">
-                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Workforce CRUD & Lifecycle</span></div>
-                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Trajectory Reviews & Analytics</span></div>
-                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Bulk CSV & Excel Importer</span></div>
+                <div style="font-size: 0.78rem; color: #4338CA; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#4F46E5")} <span>Workforce Directory &amp; Lifecycle</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#4F46E5")} <span>Trajectory Reviews &amp; Analytics</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#4F46E5")} <span>Bulk CSV &amp; Excel Importer</span></div>
                 </div>
             </div>
             """
@@ -965,7 +981,7 @@ def landing_webpage():
                     </div>
                     <span style="font-size: 0.72rem; font-weight: 800; color: #1E40AF; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 3px 8px; border-radius: 9999px;">ENGINEER</span>
                 </div>
-                <div style="font-size: 1.2rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">Alex Morgan</div>
+                <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">Alex Morgan</div>
                 <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">alex@company.com</div>
                 <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
                     Employee self-service portal, 10-role skill benchmark matrix, target readiness radar, and SMART milestones roadmap.
@@ -996,17 +1012,17 @@ def landing_webpage():
                     <div style="width: 44px; height: 44px; border-radius: 12px; background: #ECFDF5; color: #065F46; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);">
                         {get_svg_icon("analytics", size=22, color="#065F46")}
                     </div>
-                    <span style="font-size: 0.72rem; font-weight: 800; color: #065F46; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 3px 8px; border-radius: 9999px;">DATA ANALYST</span>
+                    <span style="font-size: 0.72rem; font-weight: 800; color: #065F46; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 3px 8px; border-radius: 9999px;">INDIVIDUAL</span>
                 </div>
-                <div style="font-size: 1.2rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">Ravi Kumar</div>
+                <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">Ravi Kumar</div>
                 <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">ravi@company.com</div>
                 <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
-                    Competency portfolio tracking, historical review feedback, department skill gap analytics, and promotion milestones.
+                    Independent professional experience: self-service skills portfolio, technical MCQ testing, ATS resume builder, and AI coaching.
                 </p>
                 <div style="font-size: 0.78rem; color: #047857; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 6px;">
-                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Competency Portfolio Tracking</span></div>
-                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Training & Upskilling Records</span></div>
-                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>AI Career Coach & Strategy</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Personal Skills Portfolio</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>MCQ Technical Assessments</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>AI Career Coach &amp; Strategy</span></div>
                 </div>
             </div>
             """
@@ -1021,7 +1037,46 @@ def landing_webpage():
             else:
                 st.error("Authentication failed. Please verify employee credentials.")
 
-    # SEPARATED SECTION 2: ENTERPRISE PLATFORM CAPABILITIES
+    # HOW IT WORKS (4-STEP WORKFLOW)
+    render_html(
+        f"""
+        <div style="margin: 3rem 0 1.5rem 0;">
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: #F8FAFC; border: 1px solid #E2E8F0; color: #475569; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+                {get_svg_icon("layers", size=13, color="#475569")} Continuous Growth Pipeline
+            </div>
+            <h2 style="font-size: 1.95rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0; letter-spacing: -0.02em;">
+                How TalentSphere Powers Workforce Acceleration
+            </h2>
+            <p style="color: #64748B; font-size: 0.95rem; margin: 0 0 1.5rem 0;">
+                A proven 4-stage talent lifecycle engineered for individuals and high-growth enterprise teams.
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 1.25rem;">
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #EEF2FF; color: #4F46E5; font-weight: 800; font-size: 0.92rem; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">1</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Profile &amp; Onboard</div>
+                    <div style="font-size: 0.84rem; color: #64748B; line-height: 1.45;">Document current designations, experience years, and core verified competencies.</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #ECFDF5; color: #059669; font-weight: 800; font-size: 0.92rem; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">2</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Benchmark &amp; Assess</div>
+                    <div style="font-size: 0.84rem; color: #64748B; line-height: 1.45;">Evaluate skills against 10 corporate benchmark roles and test knowledge via technical MCQs.</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #F5F3FF; color: #7C3AED; font-weight: 800; font-size: 0.92rem; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">3</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">AI Strategy Coach</div>
+                    <div style="font-size: 0.84rem; color: #64748B; line-height: 1.45;">Receive tailored advice, 90-day developmental sprints, and promotion roadmaps.</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #FFF7ED; color: #EA580C; font-weight: 800; font-size: 0.92rem; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">4</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Promote &amp; Advance</div>
+                    <div style="font-size: 0.84rem; color: #64748B; line-height: 1.45;">Review quarterly rating trajectories, achieve SMART goals, and export ATS-ready dossiers.</div>
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    # ENTERPRISE PLATFORM CAPABILITIES
     render_html(
         f"""
         <div style="margin: 2.75rem 0 1.25rem 0;">
@@ -1044,11 +1099,11 @@ def landing_webpage():
             f"""
             <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.03); margin-bottom: 0.85rem;">
                 <div style="display: flex; align-items: flex-start; gap: 14px;">
-                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        {get_svg_icon("employees", size=22, color="#2563EB")}
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #EEF2FF; color: #4F46E5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        {get_svg_icon("employees", size=22, color="#4F46E5")}
                     </div>
                     <div>
-                        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Workforce Directory & Lifecycle</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Workforce Directory &amp; Lifecycle</div>
                         <p style="font-size: 0.88rem; color: #64748B; line-height: 1.5; margin: 0;">
                             Centralized employee records with multi-attribute filtering, live search, employment status management, and instant Excel/CSV dataset onboarding.
                         </p>
@@ -1084,7 +1139,7 @@ def landing_webpage():
                         {get_svg_icon("performance", size=22, color="#10B981")}
                     </div>
                     <div>
-                        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Performance Reviews & Trajectory</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Performance Reviews &amp; Trajectory</div>
                         <p style="font-size: 0.88rem; color: #64748B; line-height: 1.5; margin: 0;">
                             Objective 1.0–5.0 evaluation cycles, department rating averages, qualitative feedback logging, and interactive historical rating trend charts.
                         </p>
@@ -1111,16 +1166,16 @@ def landing_webpage():
             """
         )
 
-    # SEPARATED SECTION 3: CREDENTIALS CALL-TO-ACTION (SEPARATE CONTAINER)
+    # CREDENTIALS CALL-TO-ACTION (SEPARATE CONTAINER)
     render_html(
         f"""
-        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 2rem 2.2rem; margin: 2.75rem 0 1.25rem 0; text-align: center;">
-            <div style="width: 48px; height: 48px; border-radius: 12px; background: #EFF6FF; color: #2563EB; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.85rem;">
-                {get_svg_icon("lock", size=24, color="#2563EB")}
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 2.2rem 2.4rem; margin: 3rem 0 1.25rem 0; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #EEF2FF; color: #4F46E5; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.85rem;">
+                {get_svg_icon("lock", size=24, color="#4F46E5")}
             </div>
-            <h3 style="font-size: 1.45rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0;">Have Corporate Credentials?</h3>
-            <p style="color: #64748B; font-size: 0.92rem; max-width: 540px; margin: 0 auto 1.5rem auto;">
-                Sign in with your organization email and secure password, or register a new administrator / employee account.
+            <h3 style="font-size: 1.55rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0;">Have Corporate Credentials?</h3>
+            <p style="color: #64748B; font-size: 0.95rem; max-width: 560px; margin: 0 auto 1.6rem auto;">
+                Sign in with your organization email and secure password, or register a new administrator / employee / independent professional account.
             </p>
         </div>
         """
@@ -1136,24 +1191,21 @@ def landing_webpage():
             st.session_state.auth_view = "register"
             st.rerun()
 
-    # Footer
+    # Enterprise Footer
     render_html(
         """
-        <div style="border-top: 1px solid #E2E8F0; margin-top: 3rem; padding-top: 1.5rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #94A3B8;">
-            <div>&copy; 2026 Talent Growth. All rights reserved. Talent Management Platform for Employee Performance and Career Growth.</div>
-            <div style="display: flex; gap: 16px;">
-                <span>Security & Privacy</span>
-                <span>Terms of Service</span>
-                <span>Local SQLite Storage</span>
+        <div style="border-top: 1px solid #E2E8F0; margin-top: 3.5rem; padding-top: 1.75rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #94A3B8; flex-wrap: wrap; gap: 12px;">
+            <div>&copy; 2026 Talent Growth Technologies Inc. All rights reserved. Enterprise Talent Management Platform.</div>
+            <div style="display: flex; gap: 18px;">
+                <span>Security &amp; Governance</span>
+                <span>Role Benchmarks</span>
+                <span>Local SQLite Zero-Cloud</span>
+                <span>GDPR &amp; SOC2 Aligned</span>
             </div>
         </div>
         """
     )
 
-
-# ------------------------------------------------------------------------------
-# DATABASE DIAGNOSTICS & STORAGE INSPECTOR
-# ------------------------------------------------------------------------------
 def render_database_diagnostics_panel(key_suffix: str = ""):
     """Renders active SQLite database diagnostics and verification data without exposing credentials."""
     diag = get_database_diagnostics()
@@ -1228,14 +1280,46 @@ def login_page():
             render_html(
                 f"""
                 <div style="text-align: center; margin-bottom: 1.25rem;">
-                    <div style="width: 48px; height: 48px; border-radius: 12px; background: #EFF6FF; border: 1px solid #DBEAFE; display: inline-flex; align-items: center; justify-content: center; color: #2563EB; margin-bottom: 0.75rem;">
-                        {get_svg_icon("lock", size=22, color="#2563EB")}
+                    <div style="width: 52px; height: 52px; border-radius: 14px; background: #EEF2FF; border: 1px solid #C7D2FE; display: inline-flex; align-items: center; justify-content: center; color: #4F46E5; margin-bottom: 0.75rem;">
+                        {get_svg_icon("lock", size=24, color="#4F46E5")}
                     </div>
-                    <h2 style="font-size: 1.65rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">Sign In to Your Account</h2>
-                    <p style="color: #64748B; font-size: 0.9rem; margin: 0;">Enter your corporate email and password to access the platform.</p>
+                    <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0; letter-spacing: -0.02em;">Sign In to Your Account</h2>
+                    <p style="color: #64748B; font-size: 0.90rem; margin: 0;">Enter your email credentials or click a pre-configured demo account below.</p>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">Instant Demo Access (1-Click Sign In)</div>
                 </div>
                 """
             )
+
+            col_chip1, col_chip2, col_chip3 = st.columns(3)
+            with col_chip1:
+                if st.button("HR Admin", key="login_chip_admin", use_container_width=True, type="secondary"):
+                    u = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+                    if u:
+                        st.session_state.user = u
+                        st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
+                        st.rerun()
+            with col_chip2:
+                if st.button("Employee", key="login_chip_alex", use_container_width=True, type="secondary"):
+                    u = login("alex@company.com", "Password123")
+                    if u:
+                        st.session_state.user = u
+                        st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
+                        st.rerun()
+            with col_chip3:
+                if st.button("Individual", key="login_chip_ravi", use_container_width=True, type="secondary"):
+                    u = login("ravi@company.com", "Password123")
+                    if u:
+                        st.session_state.user = u
+                        st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
+                        st.rerun()
+
+            render_html("<div style='border-top: 1px solid #F1F5F9; margin: 12px 0 16px 0;'></div>")
 
             with st.form("dedicated_login_form"):
                 email = st.text_input("Corporate Email Address", placeholder="name@company.com")
@@ -2098,9 +2182,9 @@ with col_top_home:
         navigate_to("Dashboard")
 
 with col_top_trail:
-    badge_color = "#10B981" if is_individual else ("#2563EB" if is_admin else "#0284C7")
-    badge_bg = "#ECFDF5" if is_individual else ("#EFF6FF" if is_admin else "#E0F2FE")
-    badge_border = "#A7F3D0" if is_individual else ("#DBEAFE" if is_admin else "#BAE6FD")
+    badge_color = "#16A34A" if is_individual else ("#4F46E5" if is_admin else "#2563EB")
+    badge_bg = "#F0FDF4" if is_individual else ("#EEF2FF" if is_admin else "#EFF6FF")
+    badge_border = "#BBF7D0" if is_individual else ("#C7D2FE" if is_admin else "#BFDBFE")
     role_label = "INDIVIDUAL" if is_individual else (user.get('role', 'employee').upper())
     render_html(
         f"""
@@ -2220,7 +2304,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
     org_display_name = user.get("org_name") or "Talent Growth Technologies"
     render_html(
         f"""
-        <div style="background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 55%, #3B82F6 100%); border-radius: 16px; padding: 1.6rem 2.2rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 4px 18px rgba(37, 99, 235, 0.22); position: relative; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #111827 0%, #312E81 50%, #4F46E5 100%); border-radius: 16px; padding: 1.6rem 2.2rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 4px 18px rgba(79, 70, 229, 0.22); position: relative; overflow: hidden;">
             <div style="z-index: 2; max-width: 62%;">
                 <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.28); padding: 4px 11px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
                     {get_svg_icon("sparkles", size=13, color="#FEF08A")} Executive Talent Hub &bull; {org_display_name}
@@ -2403,7 +2487,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
             perf_dist = org_stats["performance_distribution"]
             tiers = list(perf_dist.keys())
             counts = list(perf_dist.values())
-            colors = ["#10B981", "#2563EB", "#F59E0B", "#EF4444"]
+            colors = ["#16A34A", "#4F46E5", "#F59E0B", "#DC2626"]
 
             fig_bar = go.Figure(go.Bar(
                 x=tiers,
@@ -2439,7 +2523,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                 df_dept = pd.DataFrame(dept_dist)
                 fig_donut = px.pie(
                     df_dept, values="count", names="department", hole=0.64,
-                    color_discrete_sequence=['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4']
+                    color_discrete_sequence=['#4F46E5', '#6366F1', '#16A34A', '#F59E0B', '#8B5CF6', '#06B6D4']
                 )
                 fig_donut.update_traces(
                     textinfo='none',

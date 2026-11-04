@@ -28,7 +28,7 @@ def _render_html(html_str: str) -> None:
     st.markdown(clean_html, unsafe_allow_html=True)
 
 
-def _get_svg_icon(name: str, size: int = 18, color: str = "#2563EB") -> str:
+def _get_svg_icon(name: str, size: int = 18, color: str = "#4F46E5") -> str:
     icons = {
         "sparkles": '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>',
         "target": '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
@@ -60,7 +60,7 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
     # 1. Welcome Hero Banner
     _render_html(
         f"""
-        <div style="background: linear-gradient(135deg, #0F766E 0%, #0D9488 50%, #14B8A6 100%); border-radius: 16px; padding: 1.75rem 2.25rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; box-shadow: 0 4px 20px rgba(13, 148, 136, 0.22); position: relative; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #4F46E5 100%); border-radius: 16px; padding: 1.75rem 2.25rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; box-shadow: 0 4px 20px rgba(79, 70, 229, 0.22); position: relative; overflow: hidden;">
             <div style="z-index: 2; max-width: 65%;">
                 <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.3); padding: 4px 12px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
                     {_get_svg_icon("sparkles", size=13, color="#FEF08A")} Independent Professional Career Hub
@@ -154,10 +154,10 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
             if any(dist.values()):
                 dist_df = pd.DataFrame([{"Proficiency": k, "Count": v} for k, v in dist.items()])
                 color_map = {
-                    "Beginner": "#93C5FD",
-                    "Intermediate": "#3B82F6",
-                    "Advanced": "#1D4ED8",
-                    "Expert": "#1E3A8A"
+                    "Beginner": "#C7D2FE",
+                    "Intermediate": "#6366F1",
+                    "Advanced": "#4F46E5",
+                    "Expert": "#312E81"
                 }
                 fig_dist = px.bar(
                     dist_df, x="Proficiency", y="Count", color="Proficiency",
@@ -392,8 +392,8 @@ def render_individual_skills(user: Dict[str, Any], skills: List[Dict[str, Any]],
             col_info, col_actions = st.columns([3.5, 1.5])
             with col_info:
                 prof = sk.get("proficiency", "Intermediate")
-                badge_bg = "#EFF6FF" if prof == "Intermediate" else ("#ECFDF5" if prof in ["Advanced", "Expert"] else "#F1F5F9")
-                badge_col = "#2563EB" if prof == "Intermediate" else ("#059669" if prof in ["Advanced", "Expert"] else "#64748B")
+                badge_bg = "#EEF2FF" if prof == "Intermediate" else ("#ECFDF5" if prof in ["Advanced", "Expert"] else "#F1F5F9")
+                badge_col = "#4F46E5" if prof == "Intermediate" else ("#059669" if prof in ["Advanced", "Expert"] else "#64748B")
 
                 _render_html(
                     f"""
