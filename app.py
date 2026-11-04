@@ -5839,26 +5839,25 @@ elif page in ["Career Coach", "AI Career Coach"]:
         """
     )
 
-    with st.expander("Gemini API Configuration & Model Settings", expanded=False):
-        if has_gemini:
-            st.success("✅ Permanent Gemini API key is configured and active. Live generative coaching is permanently enabled.")
-        else:
+    # Only display API settings configuration if key is missing; keep hidden when permanent key is active
+    if not has_gemini:
+        with st.expander("Gemini API Configuration & Model Settings", expanded=True):
             st.caption("Powered by Google Gemini API. Set your key in `.env` (`GEMINI_API_KEY=your_key`) or paste it below for live generative coaching.")
-        col_k1, col_k2 = st.columns([3, 1])
-        with col_k1:
-            entered_key = st.text_input("Gemini API Key", value=st.session_state.get("gemini_user_key", current_key or ""), type="password", placeholder="AIzaSy...", help="Get a free key from Google AI Studio (aistudio.google.com)")
-        with col_k2:
-            st.write("")
-            st.write("")
-            if st.button("Save API Key", use_container_width=True, type="secondary"):
-                if entered_key.strip():
-                    st.session_state.gemini_user_key = entered_key.strip()
-                    st.success("API Key updated for current session!")
-                    st.rerun()
-                else:
-                    st.session_state.gemini_user_key = ""
-                    st.info("Reset to default system API key.")
-                    st.rerun()
+            col_k1, col_k2 = st.columns([3, 1])
+            with col_k1:
+                entered_key = st.text_input("Gemini API Key", value=st.session_state.get("gemini_user_key", current_key or ""), type="password", placeholder="AIzaSy...", help="Get a free key from Google AI Studio (aistudio.google.com)")
+            with col_k2:
+                st.write("")
+                st.write("")
+                if st.button("Save API Key", use_container_width=True, type="secondary"):
+                    if entered_key.strip():
+                        st.session_state.gemini_user_key = entered_key.strip()
+                        st.success("API Key updated for current session!")
+                        st.rerun()
+                    else:
+                        st.session_state.gemini_user_key = ""
+                        st.info("Reset to default system API key.")
+                        st.rerun()
 
     render_html(
         f"""
@@ -5892,7 +5891,7 @@ elif page in ["Career Coach", "AI Career Coach"]:
             gaps_info = gap_analysis(profile.get("target_role", "Software Engineer"), skills)
             target_role = profile.get("target_role", "Senior Engineer")
             
-            with st.spinner("Consulting AI Career Coach (evaluating profile benchmarks and skill gaps)..."):
+            with st.spinner("⚡ Synthesizing deep AI career strategy guidance at high speed..."):
                 advice_res = generate_ai_coaching_guidance(
                     user_name=user.get("name", "User"),
                     question=question,
@@ -5902,72 +5901,83 @@ elif page in ["Career Coach", "AI Career Coach"]:
                     gap_data=gaps_info,
                     api_key=st.session_state.get("gemini_user_key")
                 )
-            
-            # Metrics Row
-            render_html(
-                f"""
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0 1rem 0;">
-                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 14px 18px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Profile Strength</div>
-                        <div style="font-size: 1.5rem; font-weight: 800; color: #2563EB;">{a['score']} / 100</div>
-                    </div>
-                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 14px 18px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Target Role Alignment</div>
-                        <div style="font-size: 1.5rem; font-weight: 800; color: #10B981;">{a['match']}%</div>
-                    </div>
-                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 14px 18px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Identified Competency Gaps</div>
-                        <div style="font-size: 1.5rem; font-weight: 800; color: #F59E0B;">{len(gaps_info)} Competencies</div>
-                    </div>
+                st.session_state["last_career_advice"] = {
+                    "advice": advice_res,
+                    "analysis": a,
+                    "gaps": gaps_info
+                }
+
+    stored_advice = st.session_state.get("last_career_advice")
+    if stored_advice:
+        advice_res = stored_advice["advice"]
+        a = stored_advice["analysis"]
+        gaps_info = stored_advice["gaps"]
+
+        # Metrics Row
+        render_html(
+            f"""
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0 1rem 0;">
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 14px 18px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Profile Strength</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #2563EB;">{a['score']} / 100</div>
                 </div>
-                """
-            )
-
-            # Advice Header Bar with Word Count and Depth Metrics
-            content_text = advice_res.get("content", "")
-            word_count = len(content_text.split())
-            read_time = max(1, round(word_count / 200))
-            source_badge = f"Google Gemini ({advice_res.get('model', 'Live AI')})" if advice_res.get("source") == "gemini" else "Deterministic Heuristic Engine"
-
-            render_html(
-                f"""
-                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 16px; margin: 1.25rem 0 0.75rem 0; display: flex; align-items: center; justify-content: space-between;">
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 8px;">
-                        <span>📋 Comprehensive Executive Career Strategy Dossier</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 12px; font-size: 0.8rem; color: #64748B;">
-                        <span><strong>{word_count:,}</strong> words</span>
-                        <span>·</span>
-                        <span><strong>~{read_time}</strong> min read</span>
-                        <span>·</span>
-                        <span style="background: #ECFDF5; color: #047857; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 0.75rem;">{source_badge}</span>
-                    </div>
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 14px 18px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Target Role Alignment</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #10B981;">{a['match']}%</div>
                 </div>
-                """
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 14px 18px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Identified Competency Gaps</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #F59E0B;">{len(gaps_info)} Competencies</div>
+                </div>
+            </div>
+            """
+        )
+
+        # Advice Header Bar with Word Count and Depth Metrics
+        content_text = advice_res.get("content", "")
+        word_count = len(content_text.split())
+        read_time = max(1, round(word_count / 200))
+        source_badge = f"Google Gemini ({advice_res.get('model', 'Live AI')})" if advice_res.get("source") == "gemini" else "Deterministic Heuristic Engine"
+
+        render_html(
+            f"""
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 16px; margin: 1.25rem 0 0.75rem 0; display: flex; align-items: center; justify-content: space-between;">
+                <div style="font-size: 0.88rem; font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 8px;">
+                    <span>📋 Comprehensive Executive Career Strategy Dossier</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; font-size: 0.8rem; color: #64748B;">
+                    <span><strong>{word_count:,}</strong> words</span>
+                    <span>·</span>
+                    <span><strong>~{read_time}</strong> min read</span>
+                    <span>·</span>
+                    <span style="background: #ECFDF5; color: #047857; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 0.75rem;">{source_badge}</span>
+                </div>
+            </div>
+            """
+        )
+
+        # Advice Body (Long-Form Executive Dossier)
+        with st.container(border=True):
+            st.markdown(content_text)
+
+        # Export & Download Capabilities for Long Dossier
+        c_dl, c_info = st.columns([1.5, 3.5])
+        with c_dl:
+            safe_name = "".join(c for c in user.get('name', 'career_plan') if c.isalnum() or c in (' ', '_')).rstrip().replace(' ', '_').lower()
+            st.download_button(
+                label="📥 Download Strategy Dossier (.md)",
+                data=content_text,
+                file_name=f"career_strategy_dossier_{safe_name}.md",
+                mime="text/markdown",
+                use_container_width=True
             )
-
-            # Advice Body (Long-Form Executive Dossier)
-            with st.container(border=True):
-                st.markdown(content_text)
-
-            # Export & Download Capabilities for Long Dossier
-            c_dl, c_info = st.columns([1.5, 3.5])
-            with c_dl:
-                safe_name = "".join(c for c in user.get('name', 'career_plan') if c.isalnum() or c in (' ', '_')).rstrip().replace(' ', '_').lower()
-                st.download_button(
-                    label="📥 Download Strategy Dossier (.md)",
-                    data=content_text,
-                    file_name=f"career_strategy_dossier_{safe_name}.md",
-                    mime="text/markdown",
-                    use_container_width=True
-                )
-            with c_info:
-                if advice_res["source"] == "gemini":
-                    st.success(f"Generated live in-depth via Google Gemini (`{advice_res['model']}`) with exhaustive technical architecture and promotional milestones.")
-                elif advice_res["source"] == "offline_fallback":
-                    st.warning(f"Live Gemini API could not be reached ({advice_res['error']}). Displaying comprehensive rule-based strategic blueprint.")
-                else:
-                    st.info("Displayed in comprehensive heuristic mode. Active Gemini API key generates customized live blueprints.")
+        with c_info:
+            if advice_res["source"] == "gemini":
+                st.success(f"Generated live in-depth via Google Gemini (`{advice_res['model']}`) with rapid execution and complete promotional milestones.")
+            elif advice_res["source"] == "offline_fallback":
+                st.warning(f"Live Gemini API could not be reached ({advice_res['error']}). Displaying comprehensive rule-based strategic blueprint.")
+            else:
+                st.info("Displayed in comprehensive heuristic mode. Active Gemini API key generates customized live blueprints.")
 
 # ==============================================================================
 # 11. SETTINGS & SYSTEM

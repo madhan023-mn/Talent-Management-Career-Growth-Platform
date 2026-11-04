@@ -9,11 +9,12 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env", override=False)
 
-# List of Gemini models in order of priority
+# List of Gemini models in order of priority (prioritizing ultra-fast Flash Lite for sub-5s response speed)
 GEMINI_MODELS = [
+    "gemini-flash-lite-latest",
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-latest"
 ]
 
 def get_gemini_api_key(explicit_key: Optional[str] = None) -> Optional[str]:
@@ -90,13 +91,13 @@ def call_gemini_api(
     prompt: str,
     system_instruction: Optional[str] = None,
     api_key: Optional[str] = None,
-    temperature: float = 0.7,
-    max_tokens: int = 8192
+    temperature: float = 0.6,
+    max_tokens: int = 3500
 ) -> Dict[str, Any]:
     """
     Calls the Google Gemini REST API using requests.
     Supports automatic model fallback and handles errors gracefully.
-    Default max_tokens is set to 8192 to support exhaustive, long-form responses.
+    Default max_tokens is tuned to 3500 for lightning-fast long-form responses.
     """
     key = get_gemini_api_key(api_key)
     if not key:
@@ -269,7 +270,7 @@ Provide a granular, week-by-week/month-by-month tactical plan:
 """
 
     if key:
-        res = call_gemini_api(user_prompt, system_instruction=system_prompt, api_key=key, temperature=0.6, max_tokens=8192)
+        res = call_gemini_api(user_prompt, system_instruction=system_prompt, api_key=key, temperature=0.6, max_tokens=3500)
         if res["success"]:
             return {
                 "source": "gemini",
