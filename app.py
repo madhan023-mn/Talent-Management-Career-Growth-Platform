@@ -5839,8 +5839,11 @@ elif page in ["Career Coach", "AI Career Coach"]:
         """
     )
 
-    with st.expander("Gemini API Configuration & Model Settings", expanded=(not has_gemini)):
-        st.caption("Powered by Google Gemini API. Set your key in `.env` (`GEMINI_API_KEY=your_key`) or paste it below for live generative coaching.")
+    with st.expander("Gemini API Configuration & Model Settings", expanded=False):
+        if has_gemini:
+            st.success("✅ Permanent Gemini API key is configured and active. Live generative coaching is permanently enabled.")
+        else:
+            st.caption("Powered by Google Gemini API. Set your key in `.env` (`GEMINI_API_KEY=your_key`) or paste it below for live generative coaching.")
         col_k1, col_k2 = st.columns([3, 1])
         with col_k1:
             entered_key = st.text_input("Gemini API Key", value=st.session_state.get("gemini_user_key", current_key or ""), type="password", placeholder="AIzaSy...", help="Get a free key from Google AI Studio (aistudio.google.com)")
@@ -5850,11 +5853,11 @@ elif page in ["Career Coach", "AI Career Coach"]:
             if st.button("Save API Key", use_container_width=True, type="secondary"):
                 if entered_key.strip():
                     st.session_state.gemini_user_key = entered_key.strip()
-                    st.success("API Key saved for current session!")
+                    st.success("API Key updated for current session!")
                     st.rerun()
                 else:
                     st.session_state.gemini_user_key = ""
-                    st.info("Cleared session API key.")
+                    st.info("Reset to default system API key.")
                     st.rerun()
 
     render_html(
