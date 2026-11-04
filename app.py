@@ -1650,9 +1650,9 @@ if "sidebar_expanded" not in st.session_state:
     st.session_state.sidebar_expanded = True
 
 def toggle_sidebar():
-    st.session_state.trigger_sidebar_collapse = True
+    st.session_state.sidebar_expanded = not st.session_state.get("sidebar_expanded", True)
 
-is_expanded = True
+is_expanded = st.session_state.get("sidebar_expanded", True)
 
 # Enforce backend role permissions (RBAC)
 if is_individual and st.session_state.get("current_page") in ["Employees", "Performance", "Reports"]:
@@ -1720,29 +1720,99 @@ def on_nav_change():
     st.session_state.current_page = st.session_state.nav_radio
 
 # ------------------------------------------------------------------------------
-# DYNAMIC SIDEBAR CSS (LIGHT THEME & BOXED MENU NAVIGATION)
+# DYNAMIC SIDEBAR CSS (LIGHT THEME, 285PX FIXED VISIBILITY & BOXED MENU NAVIGATION)
 # ------------------------------------------------------------------------------
-sidebar_dynamic_css = """
+if is_expanded:
+    sidebar_layout_css = """
+    /* Fixed 285px Light Sidebar Pinned to Left Viewport */
+    html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
+    html body section[data-testid="stSidebar"],
+    section[data-testid="stSidebar"],
+    div[data-testid="stSidebarContent"],
+    div[data-testid="stSidebarUserContent"] {
+        position: fixed !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        transform: none !important;
+        margin-left: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        z-index: 1000 !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        min-width: 285px !important;
+        width: 285px !important;
+        max-width: 285px !important;
+        background-color: #FFFFFF !important;
+        background: #FFFFFF !important;
+        border-right: 1px solid #E2E8F0 !important;
+        color: #0F172A !important;
+        padding-left: 0.95rem !important;
+        padding-right: 0.95rem !important;
+        padding-top: 1.1rem !important;
+        padding-bottom: 2rem !important;
+        box-sizing: border-box !important;
+        box-shadow: 2px 0 12px rgba(15, 23, 42, 0.04) !important;
+        transition: width 0.25s ease, margin-left 0.25s ease, left 0.25s ease !important;
+    }
+
+    /* Main Content Positioned Immediately to the Right of 285px Sidebar */
+    [data-testid="stAppViewContainer"] > section:nth-child(2),
+    [data-testid="stMain"] {
+        margin-left: 285px !important;
+        width: calc(100% - 285px) !important;
+        max-width: calc(100% - 285px) !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+        transition: width 0.25s ease, margin-left 0.25s ease !important;
+    }
+    """
+else:
+    sidebar_layout_css = """
+    /* Collapsed Sidebar Hidden Offscreen */
+    html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
+    html body section[data-testid="stSidebar"],
+    section[data-testid="stSidebar"] {
+        position: fixed !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        left: -320px !important;
+        transform: translateX(-100%) !important;
+        min-width: 0px !important;
+        width: 0px !important;
+        max-width: 0px !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        overflow: hidden !important;
+        pointer-events: none !important;
+        transition: width 0.25s ease, margin-left 0.25s ease, left 0.25s ease !important;
+    }
+
+    /* Main Content Takes Full Viewport Width */
+    [data-testid="stAppViewContainer"] > section:nth-child(2),
+    [data-testid="stMain"] {
+        margin-left: 0px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+        transition: width 0.25s ease, margin-left 0.25s ease !important;
+    }
+    """
+
+sidebar_dynamic_css = f"""
 <style>
-/* Clean Enterprise Light Sidebar */
-section[data-testid="stSidebar"],
-div[data-testid="stSidebarContent"],
-div[data-testid="stSidebarUserContent"] {
-    background-color: #FFFFFF !important;
-    background: #FFFFFF !important;
-    border-right: 1px solid #E2E8F0 !important;
-    color: #0F172A !important;
-    padding-left: 0.85rem !important;
-    padding-right: 0.85rem !important;
-    min-width: 275px !important;
-    max-width: 320px !important;
-    box-sizing: border-box !important;
-}
+{sidebar_layout_css}
 
 /* Ensure Block Container Fits Viewport Perfectly Without Overflow */
 .main .block-container,
 [data-testid="stMain"] [data-testid="block-container"],
-[data-testid="stMain"] [data-testid="stMainBlockContainer"] {
+[data-testid="stMain"] [data-testid="stMainBlockContainer"] {{
     padding-top: 1.2rem !important;
     padding-bottom: 3.5rem !important;
     padding-left: 1.5rem !important;
@@ -1751,76 +1821,46 @@ div[data-testid="stSidebarUserContent"] {
     width: 100% !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
-}
+}}
 
 /* Prevent Any Global Horizontal Scroll on Canvas */
-html, body, .stApp, [data-testid="stAppViewContainer"] {
+html, body, .stApp, [data-testid="stAppViewContainer"] {{
     overflow-x: hidden !important;
     max-width: 100vw !important;
     box-sizing: border-box !important;
-}
+}}
 
-/* Sidebar Collapse & Expand Controls (Smooth Native & Custom Toggle) */
-div[data-testid="collapsedControl"],
-div[data-testid="stSidebarCollapsedControl"] {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
+/* Floating Open Sidebar Button (Visible when Sidebar is Closed) */
+div.floating-sidebar-toggle {{
     position: fixed !important;
-    top: 14px !important;
+    top: 12px !important;
     left: 14px !important;
     z-index: 99999 !important;
-}
-
-div[data-testid="collapsedControl"] button,
-div[data-testid="stSidebarCollapsedControl"] button {
+}}
+div.floating-sidebar-toggle button {{
     background: #FFFFFF !important;
-    color: #334155 !important;
+    color: #0F172A !important;
     border: 1.5px solid #E2E8F0 !important;
     border-radius: 8px !important;
-    width: 38px !important;
-    height: 38px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08) !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-}
-
-div[data-testid="collapsedControl"] button:hover,
-div[data-testid="stSidebarCollapsedControl"] button:hover {
-    background: #EDE9FE !important;
-    border-color: #8B5CF6 !important;
-    color: #7C3AED !important;
-    transform: scale(1.05) !important;
-}
-
-button[data-testid="stSidebarCollapseButton"] {
+    padding: 6px 14px !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.10) !important;
     display: inline-flex !important;
     align-items: center !important;
-    justify-content: center !important;
-    background: #F1F5F9 !important;
-    color: #334155 !important;
-    border: 1px solid #E2E8F0 !important;
-    border-radius: 8px !important;
-    width: 34px !important;
-    height: 34px !important;
+    gap: 6px !important;
     cursor: pointer !important;
     transition: all 0.2s ease !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-button[data-testid="stSidebarCollapseButton"]:hover {
+}}
+div.floating-sidebar-toggle button:hover {{
     background: #EDE9FE !important;
     border-color: #8B5CF6 !important;
     color: #7C3AED !important;
-}
+    transform: scale(1.03) !important;
+}}
 
-/* Three-Line Hamburger Button Styling (Sidebar) */
-div.sidebar-ham-btn button {
+/* Sidebar Close Button */
+div.sidebar-ham-btn button {{
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -1839,15 +1879,15 @@ div.sidebar-ham-btn button {
     padding: 0 !important;
     box-shadow: none !important;
     transition: all 0.18s ease !important;
-}
-div.sidebar-ham-btn button:hover {
+}}
+div.sidebar-ham-btn button:hover {{
     background: #EDE9FE !important;
     color: #7C3AED !important;
     border-color: #8B5CF6 !important;
-}
+}}
 
-/* Radio Group Container: Boxed in ONE clean container */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
+/* Radio Group Container: Boxed inside ONE clean elevated card box */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {{
     background: #F8FAFC !important;
     border: 1px solid #E2E8F0 !important;
     border-radius: 14px !important;
@@ -1858,10 +1898,10 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     width: 100% !important;
     box-sizing: border-box !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
-}
+}}
 
 /* Radio Button Label: Clean single row item inside the box */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {{
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
@@ -1879,54 +1919,54 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     border: none !important;
     box-shadow: none !important;
     transition: background-color 0.18s ease, color 0.18s ease, transform 0.15s ease !important;
-}
+}}
 
 /* Radio Circle Outer Container (Hidden to present clean nav items) */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {{
     display: none !important;
-}
+}}
 
 /* Inactive Row Styling */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) {{
     background: transparent !important;
     color: #334155 !important;
-}
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) * {
+}}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) * {{
     color: #334155 !important;
     font-weight: 500 !important;
     font-size: 0.92rem !important;
-}
+}}
 
 /* Inactive Row Hover */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover {{
     background-color: #EDE9FE !important;
     transform: translateX(2px) !important;
-}
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover * {
+}}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover * {{
     color: #7C3AED !important;
     font-weight: 600 !important;
-}
+}}
 
 /* Active Row Highlight: Vibrant Page Heading Color Gradient */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {{
     background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%) !important;
     color: #FFFFFF !important;
     font-weight: 700 !important;
     border-radius: 8px !important;
     box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32) !important;
     border: none !important;
-}
+}}
 
 /* Active Text: Guaranteed 100% visible pure crisp white across all tags */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] *,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) * {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) * {{
     color: #FFFFFF !important;
     font-weight: 700 !important;
-}
+}}
 
 /* Text Container */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:last-child {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:last-child {{
     display: inline-flex !important;
     align-items: center !important;
     flex: 1 1 auto !important;
@@ -1935,12 +1975,12 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     padding: 0 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
-}
+}}
 
 /* Markdown Container & Paragraph */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"],
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {{
     display: inline-block !important;
     margin: 0 !important;
     padding: 0 !important;
@@ -1949,10 +1989,10 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-}
+}}
 
 /* Sidebar Sign Out Button */
-section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"] {
+section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"] {{
     background: #FFFFFF !important;
     border: 1px solid #E2E8F0 !important;
     color: #64748B !important;
@@ -1962,12 +2002,12 @@ section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"] {
     font-size: 0.90rem !important;
     width: 100% !important;
     transition: all 0.18s ease !important;
-}
-section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"]:hover {
+}}
+section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"]:hover {{
     background: #FEE2E2 !important;
     color: #DC2626 !important;
     border-color: #F87171 !important;
-}
+}}
 </style>
 """
 st.markdown(sidebar_dynamic_css, unsafe_allow_html=True)
@@ -2009,7 +2049,7 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
         col_ham, col_brand = st.columns([1.3, 4.7], gap="small")
         with col_ham:
             st.markdown('<div class="sidebar-ham-btn">', unsafe_allow_html=True)
-            st.button("", icon=":material/menu_open:", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Collapse sidebar")
+            st.button("", icon=":material/menu_open:", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Close sidebar")
             st.markdown('</div>', unsafe_allow_html=True)
         with col_brand:
             brand_title_color = "#0F172A"
@@ -2081,20 +2121,7 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
 
 page = render_app_sidebar(is_admin, user, active_pages)
 
-# Handle sidebar collapse trigger if requested via hamburger button
-if st.session_state.get("trigger_sidebar_collapse", False):
-    st.session_state.trigger_sidebar_collapse = False
-    import streamlit.components.v1 as _components
-    _components.html(
-        """
-        <script>
-        const btn = window.parent.document.querySelector('button[data-testid="stSidebarCollapseButton"]');
-        if (btn) btn.click();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
+
 
 def analysis_bundle():
     result = profile_analysis(profile, skills)
@@ -2104,10 +2131,18 @@ def analysis_bundle():
 # ------------------------------------------------------------------------------
 # UNIVERSAL TOP BAR WITH BACK TO HOME & BREADCRUMBS
 # ------------------------------------------------------------------------------
-col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
-with col_top_home:
-    if st.button("Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
-        navigate_to("Dashboard")
+if not is_expanded:
+    col_open, col_top_home, col_top_trail = st.columns([1.8, 2.2, 6.0], gap="small")
+    with col_open:
+        st.button("Open Menu", icon=":material/menu:", key="btn_open_sidebar_topbar", on_click=toggle_sidebar, type="primary", use_container_width=True)
+    with col_top_home:
+        if st.button("Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+            navigate_to("Dashboard")
+else:
+    col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
+    with col_top_home:
+        if st.button("Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+            navigate_to("Dashboard")
 
 with col_top_trail:
     badge_color = "#16A34A" if is_individual else ("#4F46E5" if is_admin else "#2563EB")
