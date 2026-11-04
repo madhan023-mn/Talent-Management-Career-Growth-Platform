@@ -91,11 +91,12 @@ def call_gemini_api(
     system_instruction: Optional[str] = None,
     api_key: Optional[str] = None,
     temperature: float = 0.7,
-    max_tokens: int = 2048
+    max_tokens: int = 8192
 ) -> Dict[str, Any]:
     """
     Calls the Google Gemini REST API using requests.
     Supports automatic model fallback and handles errors gracefully.
+    Default max_tokens is set to 8192 to support exhaustive, long-form responses.
     """
     key = get_gemini_api_key(api_key)
     if not key:
@@ -129,7 +130,7 @@ def call_gemini_api(
     for model in GEMINI_MODELS:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=30)
+            resp = requests.post(url, headers=headers, json=payload, timeout=45)
             if resp.status_code == 200:
                 data = resp.json()
                 try:
@@ -189,8 +190,9 @@ def generate_ai_coaching_guidance(
     api_key: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Generates tailored, high-impact executive career strategy advice.
-    Uses Gemini when key is present; returns rule-based fallback when offline.
+    Generates tailored, high-impact, exhaustive executive career strategy advice.
+    Produces long-form, deep-dive dossiers (1,000 to 2,000+ words) covering technical
+    architectures, phased execution roadmaps, stakeholder playbooks, and quantifiable KPIs.
     """
     key = get_gemini_api_key(api_key)
     
@@ -199,35 +201,75 @@ def generate_ai_coaching_guidance(
     gaps_summary = ", ".join(f"{g.get('skill', 'Skill')} (Gap: -{g.get('gap', 0)}, Priority: {g.get('priority', 'Medium')})" for g in gap_data) if gap_data else "No critical gaps identified"
     
     system_prompt = (
-        "You are an Elite Executive Career Strategist and Chief People Officer mentor at a top tech enterprise. "
-        "Your task is to provide rigorous, actionable, highly personalized career progression plans for professionals. "
-        "Structure your response cleanly with clear headings, crisp bullet points, and specific timelines (30/60/90 days). "
-        "Avoid generic corporate platitudes. Provide concrete technical architectures, leadership habits, and measurable KPIs."
+        "You are an Elite Executive Career Strategist, Principal Technical Fellow, and Chief People Officer mentor at a tier-1 global enterprise. "
+        "Your mission is to provide exhaustive, comprehensive, deep-dive, long-form career progression blueprints for users. "
+        "CRITICAL INSTRUCTION ON LENGTH & DEPTH: "
+        "- Deliver an extensive, thorough, and highly detailed masterclass dossier (typically 1,000 to 2,000+ words). "
+        "- Do NOT provide brief, shallow, or truncated summaries. Avoid short bullet points without deep explanation. "
+        "- For every point, elaborate with deep context, real-world engineering architecture examples, leadership nuances, stakeholder conversation scripts, and concrete failure modes to avoid. "
+        "- Structure your dossier with rich Markdown: use clear major headings (H2/H3), subheadings, formatted callouts, step-by-step phased timelines (Days 1–30, 31–60, 61–90, 91–180), technical architecture diagrams/code patterns where helpful, and detailed metric tables. "
+        "- Avoid generic corporate buzzwords. Anchor every piece of advice in tangible technical depth, business ROI metrics, and proven executive promotion mechanics."
     )
 
     user_prompt = f"""
-Employee Profile:
-- Name: {user_name}
-- Current Job Title: {profile.get('job_title') or 'Not specified'}
-- Department / Industry: {profile.get('department') or 'Technology'} / {profile.get('industry') or 'Software'}
-- Years of Experience: {profile.get('years_experience') or 0} years
-- Target Role: {target_role or 'Senior Engineer'}
-- Current Recorded Skills: {skills_summary}
-- Identified Skill Gaps against Target Role: {gaps_summary}
-- Career Growth Aspirations: {profile.get('career_goal') or 'Advance technically and lead high-impact initiatives'}
+================================================================================
+CANDIDATE DOSSIER & STRATEGIC BENCHMARK CONTEXT
+================================================================================
+• Candidate Name: {user_name}
+• Current Job Title: {profile.get('job_title') or 'Professional / Engineer'}
+• Current Department & Domain: {profile.get('department') or 'Technology & Engineering'} / {profile.get('company') or profile.get('industry') or 'Enterprise Software'}
+• Experience Level: {profile.get('years_experience') or 0} years verified professional experience
+• Target Progression Role: {target_role or 'Senior / Lead Specialist'}
+• Recorded Competency Inventory: {skills_summary}
+• Identified Skill Gaps against Target Role: {gaps_summary}
+• Candidate Growth Aspiration: {profile.get('career_goal') or 'Scale technical impact, master advanced architecture, and earn high-level designation promotion'}
 
-Employee's Specific Question or Challenge:
+================================================================================
+PRIMARY INQUIRY & STRATEGIC CHALLENGE FROM CANDIDATE
+================================================================================
 "{question}"
 
-Please provide a tailored Strategic Career Blueprint covering:
-1. **Executive Posture & Position Assessment**: Analysis of where the candidate stands relative to the target role.
-2. **Prioritized Skill Gap Closure Plan (30-60-90 Days)**: Specific technical, architectural, and domain learning actions.
-3. **High-Leverage Career Moves & Project Visibility**: How to earn leadership trust, drive architecture decisions, and document business impact.
-4. **Measurable Success Metrics for the Next Review Cycle**: Concrete KPIs, deliverables, and artifacts to bring to the promotion table.
+================================================================================
+EXECUTIVE MANDATE FOR YOUR COMPREHENSIVE STRATEGIC DOSSIER
+================================================================================
+Please generate an extensive, comprehensive, long-form Executive Strategic Blueprint. Fully flesh out each of the following 6 core pillars with rich paragraphs, deep technical substance, concrete scenarios, and exhaustive detail:
+
+### 1. Executive Position Diagnostic & Career Posture Assessment
+- Perform a rigorous comparison between candidate's current capabilities and the exact expectations of a top-tier {target_role}.
+- Analyze their current technical posture: what gives them an asymmetric advantage, and what blind spots or perception gaps could derail their trajectory?
+- Detail the psychological and behavioral shift required to operate at the target role level today before the title is officially bestowed.
+
+### 2. Comprehensive Competency Mastery & Technical Architecture Deep Dive
+- Break down the specific technical competencies ({gaps_summary}) that must be mastered.
+- For each competency, outline:
+  * The exact foundational concepts and advanced distributed/cloud architecture patterns required.
+  * Recommended reference architectures, modern tooling standards (e.g., streaming pipelines, microservices, observability, security governance).
+  * A concrete production-grade reference project or proof-of-concept the candidate can architect to prove mastery.
+
+### 3. Exhaustive 180-Day Tactical Execution Roadmap (Phased Blueprint)
+Provide a granular, week-by-week/month-by-month tactical plan:
+- **Phase 1: Days 1–30 (Foundation, Codebase Audit & Gap Remediation)**: Internal codebase diagnostics, learning syllabus, establishing baseline metrics.
+- **Phase 2: Days 31–60 (High-Leverage Implementation & Architecture Ownership)**: Authoring an RFC / Architecture Decision Record (ADR), building automation pipelines, eliminating high-cost bottlenecks.
+- **Phase 3: Days 61–90 (Cross-Functional Visibility & Technical Multiplying)**: Mentoring junior engineers, aligning with Product/DevOps stakeholders, presenting engineering tech talks.
+- **Phase 4: Days 91–180 (Strategic Solidification & Promotion Case Closure)**: Securing executive sponsorship, proving bottom-line business ROI, compiling the formal promotion packet.
+
+### 4. Strategic Influence, Organizational Dynamics & Leadership Playbook
+- How to earn high-trust relationships with Principal Engineers, Engineering Directors, and Product Managers.
+- Concrete conversational scripts and framing techniques for translating technical refactoring and tech-debt remediation into board-level business ROI (revenue protection, compute cost reduction, team velocity).
+- Navigating high-stakes disagreements, driving consensus in architecture review boards, and handling constructive pushback.
+
+### 5. Quantifiable Promotion Dossier & KPI Framework
+- A concrete matrix of measurable KPIs to track (e.g. p99 latency reduction %, cloud expenditure savings $, deployment frequency increase, mean-time-to-recovery improvement).
+- Sample brag-sheet entries formatted according to the Google XYZ / STAR framework (Situation, Task, Action, Result).
+- Exact 1-on-1 talking points for quarterly performance reviews and alignment check-ins with engineering managers.
+
+### 6. Deep-Dive Direct Response to Candidate's Question
+- Provide an exhaustive, step-by-step resolution tailored directly to: "{question}".
+- Dissect the core challenge into its underlying components, offer practical options with pros/cons, and outline the exact playbook the candidate should execute starting this week.
 """
 
     if key:
-        res = call_gemini_api(user_prompt, system_instruction=system_prompt, api_key=key, temperature=0.6)
+        res = call_gemini_api(user_prompt, system_instruction=system_prompt, api_key=key, temperature=0.6, max_tokens=8192)
         if res["success"]:
             return {
                 "source": "gemini",
@@ -351,31 +393,87 @@ def _build_rule_based_coaching(
     target_role: str,
     gap_data: List[Dict[str, Any]]
 ) -> str:
-    top_skills = [s.get('name') or s.get('skill_name') or 'Skill' for s in skills[:3]] if skills else ["Core Software Development"]
-    gaps_list = [f"{g.get('skill', 'Skill')} (priority: {g.get('priority', 'Medium')})" for g in gap_data[:4]] if gap_data else ["Continuous Integration", "System Architecture"]
+    top_skills = [s.get('name') or s.get('skill_name') or 'Skill' for s in skills[:4]] if skills else ["Core Software Development", "System Architecture", "SQL Database Optimization"]
+    gaps_list = [f"{g.get('skill', 'Skill')} (Priority: {g.get('priority', 'Medium')}, Gap: -{g.get('gap', 1)})" for g in gap_data[:5]] if gap_data else ["System Architecture", "Continuous Integration & Deployment", "Distributed Cloud Patterns"]
     
-    return f"""### Strategic Career Blueprint: {user_name}
-**Inquiry Focus:** *"{question}"*
+    current_title = profile.get('job_title') or 'Software Engineer'
+    resolved_target = target_role or 'Senior / Lead Engineer'
+    dept = profile.get('department') or 'Engineering'
+    exp = profile.get('years_experience') or 1.0
+
+    return f"""# Executive Career Strategy Masterclass & Advancement Blueprint
+
+**Candidate Executive Profile:** {user_name} · **Current Designation:** {current_title} ({exp} yrs experience)  
+**Target Milestone Role:** {resolved_target} · **Department:** {dept}  
+**Strategic Inquiry Focus:** *"{question}"*
 
 ---
 
-#### 1. Executive Posture & Role Positioning
-Your cataloged expertise reflects verified competence in **{', '.join(top_skills)}**. To achieve top-tier benchmark parity for **{target_role or 'Senior Engineer'}**, transition from individual task delivery toward system architecture ownership, technical mentorship, and business KPI stewardship.
+## 1. Executive Posture & Architectural Role Positioning
+Your verified skills portfolio highlights proven competence across **{', '.join(top_skills)}**. As an aspiring **{resolved_target}**, the single most impactful transition is moving from *individual ticket execution* to *system architecture stewardship, engineering velocity multiplication, and bottom-line business ROI*.
 
-#### 2. Prioritized 90-Day Competency Sprint
-- **Days 1–30 (Foundation)**: Focus on closing foundational gaps in **{gaps_list[0] if gaps_list else 'Core Systems'}**. Build a reference implementation or proof-of-concept repository.
-- **Days 31–60 (Impact)**: Champion an architectural improvement or automation pipeline in **{gaps_list[1] if len(gaps_list) > 1 else 'Cloud Infrastructure'}** within your current project workflow.
-- **Days 61–90 (Leadership)**: Author an Architecture Decision Record (ADR) or technical RFC and present it to cross-functional engineering peers.
+- **The Strategic Shift**: Senior and Lead talent do not merely write clean code—they anticipate cross-service failure modes, author RFCs, reduce systemic toil, and align software design with company revenue and latency KPIs.
+- **Perception Calibration**: Ensure your engineering leadership perceives you as an owner rather than an implementer. Own end-to-end reliability, disaster recovery posture, and cross-functional unblocking across product and operations.
 
-#### 3. High-Leverage Strategic Moves
-- **Quantify Business Value**: Frame every achievement in terms of latency reduced, dollars saved, or engineering velocity unlocked.
-- **Cross-Functional Alignment**: Partner with Product and DevOps stakeholders to solve unblocking friction across services.
-- **Mentorship Multiplier**: Review junior engineers' pull requests with thoughtful architectural commentary to demonstrate lead caliber.
+---
 
-#### 4. Success Milestones for Your Next Review
-1. Deliver at least 1 major production release with zero-downtime deployment.
-2. Formally close **{len(gap_data)} identified competency gaps** through targeted self-study or certification.
-3. Secure sponsor alignment with your manager on the concrete prerequisites for **{target_role or 'Senior Engineer'}**.
+## 2. Comprehensive Competency Mastery & Technical Architecture Roadmap
+To achieve complete benchmark readiness for **{resolved_target}**, you must systematically remediate the following prioritized competency gaps:
+
+{chr(10).join([f"• **{g}**: Transition from operational familiarity to deep architectural mastery. Build high-availability reference implementations and document design trade-offs." for g in gaps_list])}
+
+### Recommended Production Architecture Patterns to Master:
+1. **System Architecture & Distributed Resiliency**: Master event-driven architectures (Kafka / EventBridge), distributed caching (Redis / Memcached), circuit breaker patterns, and idempotency guarantees.
+2. **Cloud Scalability & Infrastructure-as-Code**: Standardize declarative Terraform/OpenTofu configurations, zero-trust network segmentation, and automated canary deployments.
+3. **Observability & Operational Excellence**: Instrument OpenTelemetry distributed tracing, actionable Prometheus/Grafana alerting, and SLI/SLO error budget governance.
+
+---
+
+## 3. Prioritized 90-Day & 180-Day Tactical Execution Roadmap
+
+### Phase 1: Days 1–30 — Baseline Audit & Core Competency Foundation
+- Conduct a comprehensive architectural audit of your team's most frequent production bottlenecks or high-latency database queries.
+- Dedicate 5 hours weekly to deep-dive mastery of **{gaps_list[0] if gaps_list else 'System Architecture'}**.
+- Establish baseline metrics for your current sprint outputs (cycle time, test coverage, PR review turnaround).
+
+### Phase 2: Days 31–60 — High-Leverage Architecture Ownership & High-Impact Delivery
+- Author a formal technical RFC (Request for Comments) or Architecture Decision Record (ADR) proposing an optimization in **{gaps_list[1] if len(gaps_list) > 1 else 'Cloud Infrastructure'}**.
+- Eliminate at least one major single-point-of-failure (SPOF) or manual deployment step through automated CI/CD gating.
+- Present your architectural findings at an internal engineering chapter sync or lunch-and-learn.
+
+### Phase 3: Days 61–90 — Cross-Functional Multiplying & Engineering Leadership Visibility
+- Formally mentor 1–2 junior engineers, conducting in-depth pull request reviews with architectural commentary.
+- Partner directly with Product Managers to translate roadmap features into scalable technical designs with clear milestone estimates.
+- Complete the 90-Day milestone review with your manager, demonstrating closed skill gaps and documented velocity gains.
+
+### Phase 4: Days 91–180 — Strategic Promotion Case Closure & Executive Sponsorship
+- Lead an initiative spanning multiple microservices or team boundaries with measurable financial or uptime impact.
+- Compile your formal Promotion Portfolio detailing quantifiable outcomes, peer testimonials, and technical artifacts.
+- Secure direct sponsorship from your Engineering Director and Staff+ technical leaders.
+
+---
+
+## 4. High-Leverage Strategic Career Moves & Influence Playbook
+- **Translate Tech Debt to Business ROI**: Frame refactoring not as "cleaning code", but as "protecting $50k in compute spend" or "preventing 20% checkout drop-off".
+- **Managing Up with Clarity**: Send bi-weekly executive status updates to your manager highlighting completed impact, in-flight risks, and strategic unblockers.
+- **Engineering Multiplier Habits**: Write comprehensive post-mortems for outages without finger-pointing, establishing blame-free prevention guardrails.
+
+---
+
+## 5. Measurable Success Metrics & Promotion Dossier (Google XYZ / STAR Format)
+When assembling your promotion packet for **{resolved_target}**, frame every achievement using quantified metrics:
+1. **Performance & Latency**: *"Architected caching and asynchronous workers, reducing p99 response times from 850ms to 120ms (85% reduction) under 10k peak concurrent requests."*
+2. **Reliability & Availability**: *"Instituted automated circuit breakers and health checks, boosting service SLA from 99.2% to 99.98% over two quarters."*
+3. **Team Velocity & Efficiency**: *"Standardized CI/CD test runners, slashing build turnaround times by 40% and freeing ~15 developer hours weekly across the engineering unit."*
+
+---
+
+## 6. Targeted Strategic Playbook for Your Question
+Regarding your specific inquiry: *"{question}"*
+
+- **Immediate Action (Next 48 Hours)**: Schedule a 30-minute sync with your direct lead. Explicitly align on the top 3 deliverables required for **{resolved_target}** designation.
+- **Mid-Term Execution (Weeks 2–6)**: Select the highest-impact technical gap in your matrix and build an open-source or internal proof-of-concept that proves your execution caliber.
+- **Long-Term Trajectory (Quarter 2–4)**: Drive that solution into live production, collect operational telemetry, and present the post-implementation metrics as your signature promotion artifact.
 """
 
 def _build_rule_based_resume_audit(
