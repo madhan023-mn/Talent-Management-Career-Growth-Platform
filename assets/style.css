@@ -427,21 +427,11 @@ html body [data-testid="stSidebar"],
 section[data-testid="stSidebar"],
 div[data-testid="stSidebarContent"],
 div[data-testid="stSidebarUserContent"] {
-    background-color: #111827 !important;
-    background: #111827 !important;
-    color: #F8FAFC !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    z-index: 1000 !important;
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    border-right: 1px solid #1E293B !important;
-    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-                min-width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-                max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    background-color: #FFFFFF !important;
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    border-right: 1px solid #E2E8F0 !important;
+    box-sizing: border-box !important;
 }
 
 /* Native Streamlit sidebar collapse & expand controls (smooth open/close) */
@@ -459,71 +449,66 @@ div[data-testid="stSidebarCollapsedControl"] {
 
 div[data-testid="collapsedControl"] button,
 div[data-testid="stSidebarCollapsedControl"] button {
-    background: #1E293B !important;
-    color: #FFFFFF !important;
-    border: 1.5px solid #334155 !important;
+    background: #FFFFFF !important;
+    color: #334155 !important;
+    border: 1.5px solid #E2E8F0 !important;
     border-radius: 8px !important;
-    width: 36px !important;
-    height: 36px !important;
+    width: 38px !important;
+    height: 38px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08) !important;
     cursor: pointer !important;
     transition: all 0.2s ease !important;
 }
 
 div[data-testid="collapsedControl"] button:hover,
 div[data-testid="stSidebarCollapsedControl"] button:hover {
-    background: #7C3AED !important;
+    background: #EDE9FE !important;
     border-color: #8B5CF6 !important;
-    color: #FFFFFF !important;
+    color: #7C3AED !important;
     transform: scale(1.05) !important;
 }
 
 button[data-testid="stSidebarCollapseButton"] {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-}
-
-/* Base Radio Container Styling */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 4px !important;
-    width: 100% !important;
-}
-
-/* Sidebar Collapse Button (<< icon keyboard_double_arrow_left) */
-section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] {
-    display: flex !important;
-    justify-content: flex-end !important;
-    margin-bottom: 0.25rem !important;
-}
-
-section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button {
-    display: flex !important;
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    color: rgba(24, 49, 58, 0.6) !important;
+    background: #F1F5F9 !important;
+    color: #334155 !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 8px !important;
+    width: 34px !important;
+    height: 34px !important;
     cursor: pointer !important;
-    padding: 4px !important;
-    border-radius: 6px !important;
     transition: all 0.2s ease !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
-section[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] button:hover {
-    color: #0E2A38 !important;
-    background: rgba(24, 49, 58, 0.08) !important;
+button[data-testid="stSidebarCollapseButton"]:hover {
+    background: #EDE9FE !important;
+    border-color: #8B5CF6 !important;
+    color: #7C3AED !important;
+}
+
+/* Base Radio Container Styling - Boxed Menu */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
+    background: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
 }
 
 section[data-testid="stSidebar"] hr {
-    border-color: #1E2E4E !important;
+    border-color: #E2E8F0 !important;
 }
 
 .sidebar-brand-box {
@@ -531,18 +516,18 @@ section[data-testid="stSidebar"] hr {
     align-items: center;
     gap: 12px;
     padding: 0.5rem 0 1.25rem 0;
-    border-bottom: 1px solid #1E293B;
+    border-bottom: 1px solid #E2E8F0;
     margin-bottom: 1.25rem;
 }
 .sidebar-brand-title {
     font-size: 1.28rem;
     font-weight: 800;
-    color: #FFFFFF;
+    color: #0F172A;
     letter-spacing: -0.02em;
 }
 .sidebar-user-footer {
-    background: #141E38;
-    border: 1px solid #1F2D4E;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
     border-radius: 12px;
     padding: 12px 14px;
     margin-top: 1.5rem;
@@ -1932,21 +1917,23 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
 /* Inactive Radio Item */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) {
     background: transparent !important;
-    color: #CBD5E1 !important;
+    color: #334155 !important;
 }
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) * {
-    color: #CBD5E1 !important;
+    color: #334155 !important;
     font-weight: 500 !important;
+    font-size: 0.92rem !important;
 }
 
 /* Inactive Hover */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover {
-    background: rgba(124, 58, 237, 0.16) !important;
-    color: #FFFFFF !important;
+    background: #EDE9FE !important;
+    color: #7C3AED !important;
     transform: translateX(2px) !important;
 }
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover * {
-    color: #FFFFFF !important;
+    color: #7C3AED !important;
+    font-weight: 600 !important;
 }
 
 /* Active Radio Item: Vibrant Colorful Career Gradient Pill */

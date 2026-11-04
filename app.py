@@ -1650,9 +1650,9 @@ if "sidebar_expanded" not in st.session_state:
     st.session_state.sidebar_expanded = True
 
 def toggle_sidebar():
-    st.session_state.sidebar_expanded = not st.session_state.get("sidebar_expanded", True)
+    st.session_state.trigger_sidebar_collapse = True
 
-is_expanded = st.session_state.get("sidebar_expanded", True)
+is_expanded = True
 
 # Enforce backend role permissions (RBAC)
 if is_individual and st.session_state.get("current_page") in ["Employees", "Performance", "Reports"]:
@@ -1720,97 +1720,29 @@ def on_nav_change():
     st.session_state.current_page = st.session_state.nav_radio
 
 # ------------------------------------------------------------------------------
-# DYNAMIC SIDEBAR CSS (THEMES, EXPANSION, HORIZONTAL RADIO ALIGNMENT)
+# DYNAMIC SIDEBAR CSS (LIGHT THEME & BOXED MENU NAVIGATION)
 # ------------------------------------------------------------------------------
-width_px = 285 if is_expanded else 68
-pad_x = 0.9 if is_expanded else 0.35
-label_pad = "0 12px" if is_expanded else "0"
-label_justify = "flex-start" if is_expanded else "center"
-circle_margin_right = "10px" if is_expanded else "0px"
-text_display = "inline-flex" if is_expanded else "none"
-
-# Unified Midnight Indigo - Electric Violet - Cyan Theme for ALL roles
-bg_color = "#111827"
-border_color = "#1E293B"
-text_color = "#F8FAFC"
-item_inactive_color = "#94A3B8"
-circle_inactive_border = "#475569"
-item_hover_bg = "rgba(99, 102, 241, 0.12)"
-item_hover_color = "#FFFFFF"
-circle_hover_border = "#8B5CF6"
-active_bg = "linear-gradient(135deg, #7C3AED 0%, #2563EB 100%)"
-active_text = "#FFFFFF"
-active_circle_border = "#8B5CF6"
-active_circle_bg = "#8B5CF6"
-active_circle_shadow = "0 0 8px rgba(139, 92, 246, 0.7)"
-ham_bg = "#1E293B"
-ham_border = "#334155"
-ham_color = "#FFFFFF"
-ham_hover_bg = "#334155"
-ham_hover_color = "#22D3EE"
-ham_hover_border = "#22D3EE"
-home_btn_bg = "transparent"
-home_btn_border = "#334155"
-home_btn_color = "#94A3B8"
-home_btn_hover_bg = "rgba(99, 102, 241, 0.12)"
-home_btn_hover_color = "#FFFFFF"
-home_btn_hover_border = "#6366F1"
-signout_border = "#334155"
-signout_color = "#94A3B8"
-signout_hover_bg = "rgba(239, 68, 68, 0.15)"
-signout_hover_color = "#F87171"
-signout_hover_border = "#EF4444"
-
-sidebar_dynamic_css = f"""
+sidebar_dynamic_css = """
 <style>
-/* Lock Sidebar to Left Viewport and Guarantee Visibility */
-html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
-html body section[data-testid="stSidebar"],
-section[data-testid="stSidebar"] {{
-    position: fixed !important;
-    top: 0 !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    transform: none !important;
-    margin-left: 0 !important;
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    z-index: 1000 !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    min-width: {width_px}px !important;
-    width: {width_px}px !important;
-    max-width: {width_px}px !important;
-    background-color: {bg_color} !important;
-    border-right: 1px solid {border_color} !important;
-    color: {text_color} !important;
-    padding-left: {pad_x}rem !important;
-    padding-right: {pad_x}rem !important;
-    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                min-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}}
-
-/* Position Main Content Immediately to Right of Sidebar (No Overlap, No Horizontal Cutoff) */
-[data-testid="stAppViewContainer"] > section:nth-child(2),
-[data-testid="stMain"] {{
-    margin-left: {width_px}px !important;
-    width: calc(100% - {width_px}px) !important;
-    max-width: calc(100% - {width_px}px) !important;
+/* Clean Enterprise Light Sidebar */
+section[data-testid="stSidebar"],
+div[data-testid="stSidebarContent"],
+div[data-testid="stSidebarUserContent"] {
+    background-color: #FFFFFF !important;
+    background: #FFFFFF !important;
+    border-right: 1px solid #E2E8F0 !important;
+    color: #0F172A !important;
+    padding-left: 0.85rem !important;
+    padding-right: 0.85rem !important;
+    min-width: 275px !important;
+    max-width: 320px !important;
     box-sizing: border-box !important;
-    overflow-x: hidden !important;
-    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}}
+}
 
 /* Ensure Block Container Fits Viewport Perfectly Without Overflow */
 .main .block-container,
 [data-testid="stMain"] [data-testid="block-container"],
-[data-testid="stMain"] [data-testid="stMainBlockContainer"] {{
+[data-testid="stMain"] [data-testid="stMainBlockContainer"] {
     padding-top: 1.2rem !important;
     padding-bottom: 3.5rem !important;
     padding-left: 1.5rem !important;
@@ -1819,27 +1751,18 @@ section[data-testid="stSidebar"] {{
     width: 100% !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
-}}
+}
 
 /* Prevent Any Global Horizontal Scroll on Canvas */
-html, body, .stApp, [data-testid="stAppViewContainer"] {{
+html, body, .stApp, [data-testid="stAppViewContainer"] {
     overflow-x: hidden !important;
     max-width: 100vw !important;
     box-sizing: border-box !important;
-}}
-
-@media screen and (max-width: 768px) {{
-    [data-testid="stAppViewContainer"] > section:nth-child(2),
-    [data-testid="stMain"] {{
-        margin-left: 0 !important;
-        width: 100% !important;
-        max-width: 100% !important;
-    }}
-}}
+}
 
 /* Sidebar Collapse & Expand Controls (Smooth Native & Custom Toggle) */
 div[data-testid="collapsedControl"],
-div[data-testid="stSidebarCollapsedControl"] {{
+div[data-testid="stSidebarCollapsedControl"] {
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -1848,62 +1771,66 @@ div[data-testid="stSidebarCollapsedControl"] {{
     top: 14px !important;
     left: 14px !important;
     z-index: 99999 !important;
-}}
+}
 
 div[data-testid="collapsedControl"] button,
-div[data-testid="stSidebarCollapsedControl"] button {{
-    background: #1E293B !important;
-    color: #FFFFFF !important;
-    border: 1.5px solid #334155 !important;
+div[data-testid="stSidebarCollapsedControl"] button {
+    background: #FFFFFF !important;
+    color: #334155 !important;
+    border: 1.5px solid #E2E8F0 !important;
     border-radius: 8px !important;
-    width: 36px !important;
-    height: 36px !important;
+    width: 38px !important;
+    height: 38px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08) !important;
     cursor: pointer !important;
     transition: all 0.2s ease !important;
-}}
+}
 
 div[data-testid="collapsedControl"] button:hover,
-div[data-testid="stSidebarCollapsedControl"] button:hover {{
-    background: #7C3AED !important;
+div[data-testid="stSidebarCollapsedControl"] button:hover {
+    background: #EDE9FE !important;
     border-color: #8B5CF6 !important;
-    color: #FFFFFF !important;
+    color: #7C3AED !important;
     transform: scale(1.05) !important;
-}}
+}
 
-button[data-testid="stSidebarCollapseButton"] {{
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    background: #1E293B !important;
-    color: #CBD5E1 !important;
-    border: 1px solid #334155 !important;
-    border-radius: 8px !important;
-    transition: all 0.2s ease !important;
-}}
-
-button[data-testid="stSidebarCollapseButton"]:hover {{
-    background: #7C3AED !important;
-    border-color: #8B5CF6 !important;
-    color: #FFFFFF !important;
-}}
-
-/* Three-Line Hamburger Button Styling (Sidebar) */
-div.sidebar-ham-btn button {{
+button[data-testid="stSidebarCollapseButton"] {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 38px !important;
-    height: 38px !important;
-    min-width: 38px !important;
-    min-height: 38px !important;
-    background: {ham_bg} !important;
-    border: 1px solid {ham_border} !important;
-    color: {ham_color} !important;
+    background: #F1F5F9 !important;
+    color: #334155 !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 8px !important;
+    width: 34px !important;
+    height: 34px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+button[data-testid="stSidebarCollapseButton"]:hover {
+    background: #EDE9FE !important;
+    border-color: #8B5CF6 !important;
+    color: #7C3AED !important;
+}
+
+/* Three-Line Hamburger Button Styling (Sidebar) */
+div.sidebar-ham-btn button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    background: #F1F5F9 !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #334155 !important;
     border-radius: 8px !important;
     font-size: 1.25rem !important;
     font-weight: 700 !important;
@@ -1912,32 +1839,38 @@ div.sidebar-ham-btn button {{
     padding: 0 !important;
     box-shadow: none !important;
     transition: all 0.18s ease !important;
-}}
-div.sidebar-ham-btn button:hover {{
-    background: {ham_hover_bg} !important;
-    color: {ham_hover_color} !important;
-    border-color: {ham_hover_border} !important;
-}}
+}
+div.sidebar-ham-btn button:hover {
+    background: #EDE9FE !important;
+    color: #7C3AED !important;
+    border-color: #8B5CF6 !important;
+}
 
-/* Radio Group Container */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {{
+/* Radio Group Container: Boxed in ONE clean container */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
+    background: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 8px !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 4px !important;
+    gap: 3px !important;
     width: 100% !important;
-}}
+    box-sizing: border-box !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
 
-/* Radio Button Label: Strictly single row, horizontal flexbox, vertically centered */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {{
+/* Radio Button Label: Clean single row item inside the box */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
-    justify-content: {label_justify} !important;
+    justify-content: flex-start !important;
     width: 100% !important;
     min-height: 40px !important;
     height: 40px !important;
-    padding: {label_pad} !important;
+    padding: 8px 12px !important;
     border-radius: 8px !important;
     cursor: pointer !important;
     margin: 0 !important;
@@ -1945,82 +1878,56 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    transition: background-color 0.15s ease, color 0.15s ease !important;
-}}
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.15s ease !important;
+}
 
-/* Radio Circle Outer Container (First Child - Hidden to present clean nav items) */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {{
+/* Radio Circle Outer Container (Hidden to present clean nav items) */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
     display: none !important;
-}}
+}
 
-/* The actual circle inside first-child */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {{
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 14px !important;
-    height: 14px !important;
-    min-width: 14px !important;
-    min-height: 14px !important;
-    border-radius: 50% !important;
-    box-sizing: border-box !important;
-    transition: all 0.15s ease-in-out !important;
-}}
-
-/* Inactive Radio Circle: Outlined Circle */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) > div:first-child div {{
-    border: 2px solid {circle_inactive_border} !important;
+/* Inactive Row Styling */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) {
     background: transparent !important;
-}}
+    color: #334155 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) * {
+    color: #334155 !important;
+    font-weight: 500 !important;
+    font-size: 0.92rem !important;
+}
 
 /* Inactive Row Hover */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover {{
-    background-color: {item_hover_bg} !important;
-}}
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover p {{
-    color: {item_hover_color} !important;
-}}
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover > div:first-child div {{
-    border-color: {circle_hover_border} !important;
-}}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover {
+    background-color: #EDE9FE !important;
+    transform: translateX(2px) !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover * {
+    color: #7C3AED !important;
+    font-weight: 600 !important;
+}
 
-/* Inactive Text */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) p {{
-    color: {item_inactive_color} !important;
-    font-weight: 500 !important;
-}}
-
-/* Active Row Highlight: Blue Background Pill */
+/* Active Row Highlight: Vibrant Page Heading Color Gradient */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {{
-    background-color: {active_bg} !important;
-    border-radius: 8px !important;
-}}
-
-/* Active Radio Circle: Filled Circle */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] > div:first-child div,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) > div:first-child div {{
-    border: 2px solid {active_circle_border} !important;
-    background-color: {active_circle_bg} !important;
-    box-shadow: {active_circle_shadow} !important;
-}}
-
-/* Active Text: 100% Visible White */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] *,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) * {{
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+    background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%) !important;
     color: #FFFFFF !important;
     font-weight: 700 !important;
-}}
+    border-radius: 8px !important;
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32) !important;
+    border: none !important;
+}
 
-/* Inactive Text: 100% Visible Slate */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) * {{
-    color: #CBD5E1 !important;
-    font-weight: 500 !important;
-}}
+/* Active Text: Guaranteed 100% visible pure crisp white across all tags */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) * {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
 
-/* Text Container (Second Child / Last Child) */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:last-child {{
-    display: {text_display} !important;
+/* Text Container */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:last-child {
+    display: inline-flex !important;
     align-items: center !important;
     flex: 1 1 auto !important;
     min-width: 0 !important;
@@ -2028,42 +1935,39 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     padding: 0 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
-}}
+}
 
 /* Markdown Container & Paragraph */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"],
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {{
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {
     display: inline-block !important;
     margin: 0 !important;
     padding: 0 !important;
-    font-size: 0.93rem !important;
+    font-size: 0.92rem !important;
     line-height: 1 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-}}
-
+}
 
 /* Sidebar Sign Out Button */
-section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"],
-section[data-testid="stSidebar"] button[key="btn_sidebar_signout_collapsed"] {{
-    background: transparent !important;
-    border: 1px solid {signout_border} !important;
-    color: {signout_color} !important;
+section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"] {
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #64748B !important;
     border-radius: 8px !important;
     padding: 8px 16px !important;
     font-weight: 600 !important;
     font-size: 0.90rem !important;
     width: 100% !important;
     transition: all 0.18s ease !important;
-}}
-section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"]:hover,
-section[data-testid="stSidebar"] button[key="btn_sidebar_signout_collapsed"]:hover {{
-    background: {signout_hover_bg} !important;
-    color: {signout_hover_color} !important;
-    border-color: {signout_hover_border} !important;
-}}
+}
+section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"]:hover {
+    background: #FEE2E2 !important;
+    color: #DC2626 !important;
+    border-color: #F87171 !important;
+}
 </style>
 """
 st.markdown(sidebar_dynamic_css, unsafe_allow_html=True)
@@ -2096,122 +2000,101 @@ NAV_ICONS = {
 
 def nav_format(page_name: str) -> str:
     icon_name = NAV_ICONS.get(page_name, "chevron_right")
-    if st.session_state.get("sidebar_expanded", True):
-        return f":material/{icon_name}:  {page_name}"
-    else:
-        return f":material/{icon_name}:"
+    return f":material/{icon_name}:  {page_name}"
 
 def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
-    """Renders the shared sidebar component with Talent Growth branding, radio items, and Back to Home button."""
+    """Renders the shared sidebar component with Talent Growth branding, boxed radio menu, and Sign out button."""
     with st.sidebar:
-        if is_expanded:
-            # 1. Branding: Material Icon Toggle Button + Brand Title
-            col_ham, col_brand = st.columns([1.3, 4.7], gap="small")
-            with col_ham:
-                st.markdown('<div class="sidebar-ham-btn">', unsafe_allow_html=True)
-                st.button("", icon=":material/menu_open:", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Collapse sidebar")
-                st.markdown('</div>', unsafe_allow_html=True)
-            with col_brand:
-                brand_title_color = "#FFFFFF"
-                st.markdown(
-                    f"""
-                    <div style="display: flex; align-items: center; gap: 8px; padding-top: 4px;">
-                        {get_svg_icon("brand_logo", size=26)}
-                        <span style="font-weight: 800; font-size: 1.20rem; color: {brand_title_color}; letter-spacing: -0.01em; line-height: 1;">Talent Growth</span>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-            # 2. Signed-in User Info & Role Subtitle
-            user_subtitle_color = "#94A3B8"
-            role_title = "Individual Professional" if is_individual else ("HR Administrator" if is_admin else "Employee")
-            if is_individual:
-                org_pill_html = """
-                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(139, 92, 246, 0.16); border: 1px solid rgba(139, 92, 246, 0.35); border-radius: 6px; padding: 3px 8px; margin-bottom: 1.15rem; font-size: 0.76rem; color: #C4B5FD; font-weight: 700;">
-                    <span>Independent Professional Account</span>
-                </div>
-                """
-            else:
-                org_pill_html = f"""
-                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(34, 211, 238, 0.12); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 6px; padding: 3px 8px; margin-bottom: 1.15rem; font-size: 0.76rem; color: #22D3EE;">
-                    <span style="font-weight: 700; color: #22D3EE;">{user.get('org_name', 'Talent Growth')}</span>
-                    <span style="opacity: 0.85; font-family: monospace; color: #A5F3FC;">({user.get('org_id', 'ORG-TALENT-01')})</span>
-                </div>
-                """
-            st.markdown(
-                f"""
-                <div style="font-size: 0.83rem; color: {user_subtitle_color}; margin-top: 2px; margin-bottom: 4px; padding-left: 2px;">
-                    Signed in as <strong>{user.get('name', 'User')}</strong> &bull; {role_title}
-                </div>
-                {org_pill_html}
-                """,
-                unsafe_allow_html=True
-            )
-
-            # 3. Radio Navigation Rows with Material Icons
-            selected_nav = st.radio(
-                "Navigation",
-                active_pages,
-                format_func=nav_format,
-                key="nav_radio",
-                on_change=on_nav_change,
-                label_visibility="collapsed"
-            )
-            st.session_state.current_page = selected_nav
-
-            # 4. Spacing to bottom
-            st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
-
-            # 5. Bottom Action: Sign out button with Material Icon
-            if st.button("Sign out", icon=":material/logout:", use_container_width=True, type="secondary", key="btn_sidebar_sign_out"):
-                st.session_state.user = None
-                st.session_state.auth_view = "landing"
-                st.session_state.current_page = "Dashboard"
-                st.session_state.page_to_navigate = "Dashboard"
-                st.rerun()
-
-            return selected_nav
-
-        else:
-            # COLLAPSED NAVIGATION RAIL (~68px)
-            st.markdown('<div class="sidebar-ham-btn" style="display: flex; justify-content: center; margin-bottom: 0.75rem;">', unsafe_allow_html=True)
-            st.button("", icon=":material/menu:", key="sidebar_hamburger_btn_collapsed", on_click=toggle_sidebar, help="Expand sidebar")
+        # 1. Branding: Material Icon Toggle Button + Brand Title
+        col_ham, col_brand = st.columns([1.3, 4.7], gap="small")
+        with col_ham:
+            st.markdown('<div class="sidebar-ham-btn">', unsafe_allow_html=True)
+            st.button("", icon=":material/menu_open:", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Collapse sidebar")
             st.markdown('</div>', unsafe_allow_html=True)
-
-            # Centered Compact Brand Logo
+        with col_brand:
+            brand_title_color = "#0F172A"
             st.markdown(
                 f"""
-                <div style="display: flex; justify-content: center; margin-bottom: 1.1rem;" title="Talent Growth">
+                <div style="display: flex; align-items: center; gap: 8px; padding-top: 4px;">
                     {get_svg_icon("brand_logo", size=26)}
+                    <span style="font-weight: 800; font-size: 1.22rem; color: {brand_title_color}; letter-spacing: -0.01em; line-height: 1;">Talent Growth</span>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
 
-            # Radio indicators with Material Icons
-            selected_nav = st.radio(
-                "Navigation",
-                active_pages,
-                format_func=nav_format,
-                key="nav_radio",
-                on_change=on_nav_change,
-                label_visibility="collapsed"
-            )
-            st.session_state.current_page = selected_nav
+        # 2. Signed-in User Info & Role Subtitle
+        user_subtitle_color = "#64748B"
+        role_title = "Individual Professional" if is_individual else ("HR Administrator" if is_admin else "Employee")
+        if is_individual:
+            org_pill_html = """
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 6px; padding: 4px 10px; margin-bottom: 1.15rem; font-size: 0.76rem; color: #7C3AED; font-weight: 700;">
+                <span>Independent Professional Account</span>
+            </div>
+            """
+        else:
+            org_pill_html = f"""
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; padding: 4px 10px; margin-bottom: 1.15rem; font-size: 0.76rem; color: #1D4ED8;">
+                <span style="font-weight: 700; color: #1D4ED8;">{user.get('org_name', 'Talent Growth')}</span>
+                <span style="opacity: 0.85; font-family: monospace; color: #3B82F6;">({user.get('org_id', 'ORG-TALENT-01')})</span>
+            </div>
+            """
+        st.markdown(
+            f"""
+            <div style="font-size: 0.83rem; color: {user_subtitle_color}; margin-top: 2px; margin-bottom: 4px; padding-left: 2px;">
+                Signed in as <strong style="color: #0F172A;">{user.get('name', 'User')}</strong> &bull; {role_title}
+            </div>
+            {org_pill_html}
+            """,
+            unsafe_allow_html=True
+        )
 
-            # Bottom Action: Single compact Sign out button with Material Icon
-            st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
-            if st.button("", icon=":material/logout:", help="Sign out", use_container_width=True, type="secondary", key="btn_sidebar_signout_collapsed"):
-                st.session_state.user = None
-                st.session_state.auth_view = "landing"
-                st.session_state.current_page = "Dashboard"
-                st.session_state.page_to_navigate = "Dashboard"
-                st.rerun()
+        # 3. Boxed Navigation Menu Header
+        st.markdown(
+            '<div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748B; margin-bottom: 6px; padding-left: 4px;">Menu Navigation</div>',
+            unsafe_allow_html=True
+        )
 
-            return selected_nav
+        # 4. Radio Navigation Rows inside Box
+        selected_nav = st.radio(
+            "Navigation",
+            active_pages,
+            format_func=nav_format,
+            key="nav_radio",
+            on_change=on_nav_change,
+            label_visibility="collapsed"
+        )
+        st.session_state.current_page = selected_nav
+
+        # 5. Spacing to bottom
+        st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
+
+        # 6. Bottom Action: Sign out button with Material Icon
+        if st.button("Sign out", icon=":material/logout:", use_container_width=True, type="secondary", key="btn_sidebar_sign_out"):
+            st.session_state.user = None
+            st.session_state.auth_view = "landing"
+            st.session_state.current_page = "Dashboard"
+            st.session_state.page_to_navigate = "Dashboard"
+            st.rerun()
+
+        return selected_nav
 
 page = render_app_sidebar(is_admin, user, active_pages)
+
+# Handle sidebar collapse trigger if requested via hamburger button
+if st.session_state.get("trigger_sidebar_collapse", False):
+    st.session_state.trigger_sidebar_collapse = False
+    import streamlit.components.v1 as _components
+    _components.html(
+        """
+        <script>
+        const btn = window.parent.document.querySelector('button[data-testid="stSidebarCollapseButton"]');
+        if (btn) btn.click();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 
 def analysis_bundle():
     result = profile_analysis(profile, skills)
