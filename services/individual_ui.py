@@ -60,23 +60,23 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
     # 1. Welcome Hero Banner
     _render_html(
         f"""
-        <div style="background: linear-gradient(135deg, #0B1020 0%, #1E1B4B 45%, #4338CA 100%); border-radius: 16px; border: 1px solid rgba(139, 92, 246, 0.4); padding: 1.75rem 2.25rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; box-shadow: 0 4px 24px rgba(79, 70, 229, 0.28); position: relative; overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #2E1065 0%, #7C3AED 35%, #2563EB 75%, #06B6D4 100%); border-radius: 18px; border: 1.5px solid rgba(255, 255, 255, 0.25); padding: 2rem 2.4rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; box-shadow: 0 8px 30px rgba(124, 58, 237, 0.35); position: relative; overflow: hidden;">
             <div style="z-index: 2; max-width: 65%;">
-                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(34, 211, 238, 0.15); border: 1px solid rgba(34, 211, 238, 0.4); padding: 4px 12px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #22D3EE; margin-bottom: 8px;">
-                    {_get_svg_icon("sparkles", size=13, color="#22D3EE")} Independent Professional Career Hub
+                <div style="display: inline-flex; align-items: center; gap: 7px; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.35); padding: 5px 14px; border-radius: 9999px; font-size: 0.76rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #FDF4FF; margin-bottom: 10px;">
+                    {_get_svg_icon("sparkles", size=13, color="#FEF08A")} Independent Professional Career Studio
                 </div>
-                <div style="font-size: 2rem; font-weight: 800; color: #FFFFFF; line-height: 1.25; margin-bottom: 6px;">
+                <div style="font-size: 2.15rem; font-weight: 900; color: #FFFFFF; line-height: 1.2; margin-bottom: 8px; letter-spacing: -0.02em;">
                     Welcome back, {user.get('name', 'Professional')}
                 </div>
-                <div style="font-size: 0.96rem; color: rgba(255, 255, 255, 0.92); font-weight: 400; line-height: 1.5;">
+                <div style="font-size: 1rem; color: rgba(255, 255, 255, 0.94); font-weight: 400; line-height: 1.55;">
                     Track personal competencies, validate your knowledge through standardized technical assessments, and navigate your independent career milestones.
                 </div>
             </div>
             <div style="z-index: 2; flex-shrink: 0; text-align: right;">
-                <div style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(34, 211, 238, 0.35); border-radius: 12px; padding: 12px 18px; text-align: center; backdrop-filter: blur(4px);">
-                    <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #22D3EE;">Target Role</div>
-                    <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; margin-top: 2px;">{profile.get('target_role') or stats.get('target_role') or 'Full Stack Engineer'}</div>
-                    <div style="font-size: 0.75rem; color: #E0E7FF; margin-top: 2px;">{stats.get('match_percentage', stats.get('role_readiness', 0))}% Competency Readiness</div>
+                <div style="background: rgba(255, 255, 255, 0.16); border: 1.5px solid rgba(255, 255, 255, 0.3); border-radius: 16px; padding: 14px 22px; text-align: center; backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,0.15);">
+                    <div style="font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; color: #A5F3FC;">Target Role</div>
+                    <div style="font-size: 1.3rem; font-weight: 900; color: #FFFFFF; margin-top: 3px;">{profile.get('target_role') or stats.get('target_role') or 'Full Stack Engineer'}</div>
+                    <div style="font-size: 0.80rem; color: #FEF08A; font-weight: 800; margin-top: 3px;">{stats.get('match_percentage', stats.get('role_readiness', 0))}% Competency Readiness</div>
                 </div>
             </div>
         </div>
@@ -305,19 +305,19 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
     col_tl1, col_tl2, col_tl3 = st.columns(3)
     with col_tl1:
         with st.container(border=True):
-            st.markdown(f"**{_get_svg_icon('reports', size=16, color='#2563EB')} Resume Studio**", unsafe_allow_html=True)
+            st.markdown(f"<div style='border-left: 4px solid #2563EB; padding-left: 8px;'><strong>{_get_svg_icon('reports', size=16, color='#2563EB')} ATS Resume Studio</strong></div>", unsafe_allow_html=True)
             st.caption("ATS-ready resume builder with STAR bullet rewrites and PDF export.")
             if st.button("Open Resume Studio", key="ind_dash_btn_resume", type="primary", use_container_width=True):
                 navigate_to("Resume Studio")
     with col_tl2:
         with st.container(border=True):
-            st.markdown(f"**{_get_svg_icon('target', size=16, color='#10B981')} Career Direction**", unsafe_allow_html=True)
+            st.markdown(f"<div style='border-left: 4px solid #0D9488; padding-left: 8px;'><strong>{_get_svg_icon('target', size=16, color='#0D9488')} Career Direction</strong></div>", unsafe_allow_html=True)
             st.caption("Define your target industry, role benchmarks, and growth timeline.")
             if st.button("Set Career Direction", key="ind_dash_btn_direction", use_container_width=True):
                 navigate_to("Career Direction")
     with col_tl3:
         with st.container(border=True):
-            st.markdown(f"**{_get_svg_icon('coach', size=16, color='#8B5CF6')} AI Career Coach**", unsafe_allow_html=True)
+            st.markdown(f"<div style='border-left: 4px solid #7C3AED; padding-left: 8px;'><strong>{_get_svg_icon('coach', size=16, color='#7C3AED')} AI Career Coach</strong></div>", unsafe_allow_html=True)
             st.caption("Executive strategy guidance evaluating gaps and role readiness.")
             if st.button("Ask Career Coach", key="ind_dash_btn_coach", use_container_width=True):
                 navigate_to("Career Coach")
@@ -349,8 +349,30 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
 # ==============================================================================
 def render_individual_skills(user: Dict[str, Any], skills: List[Dict[str, Any]], navigate_to: Callable[[str], None]) -> None:
     uid = user["id"]
-    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.35rem;'>Personal Skills Management</h1>", unsafe_allow_html=True)
-    st.caption("Manage your complete skill inventory, select proficiency levels, track years of experience, and record practical competencies.")
+    _render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDFA 60%, #EFF6FF 100%); border-left: 6px solid #0D9488;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #0D9488 0%, #2563EB 100%);">
+                    {_get_svg_icon("briefcase", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        Personal Skills Portfolio &amp; Inventory
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Manage verified competencies, proficiency levels, and hands-on experience notes.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #0D9488, #2563EB);">
+                    SKILL INVENTORY
+                </span>
+            </div>
+        </div>
+        """
+    )
 
     # Top Add Skill Bar
     with st.expander("Add New Competency to Profile", expanded=(len(skills) == 0)):
@@ -439,8 +461,30 @@ def render_individual_skills(user: Dict[str, Any], skills: List[Dict[str, Any]],
 # ==============================================================================
 def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, Any]]) -> None:
     uid = user["id"]
-    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.35rem;'>Technical Skill Assessments</h1>", unsafe_allow_html=True)
-    st.caption("Evaluate your competencies with standardized technical tests. Self-reported skills are only treated as verified once assessment evidence is recorded.")
+    _render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 60%, #EFF6FF 100%); border-left: 6px solid #7C3AED;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);">
+                    {_get_svg_icon("check", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        Standardized Technical MCQ Assessments
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Validate competencies with automated evaluation, instant scoring, and concept feedback.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #7C3AED, #2563EB);">
+                    TESTING ENGINE
+                </span>
+            </div>
+        </div>
+        """
+    )
 
     catalog = get_available_assessments()
 
@@ -586,8 +630,30 @@ def render_individual_skill_gaps(user: Dict[str, Any], skills: List[Dict[str, An
     uid = user["id"]
     profile = get_profile(uid)
 
-    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.35rem;'>Personal Skill Gap Analysis</h1>", unsafe_allow_html=True)
-    st.caption("Select your target career or job role. We analyze your added skills and verified assessment results against industry benchmarks.")
+    _render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 60%, #FDF2F8 100%); border-left: 6px solid #8B5CF6;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);">
+                    {_get_svg_icon("target", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        Benchmark Skill Gap Analysis
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Compare profile competencies against target roles to identify shortfalls and plan development.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #8B5CF6, #EC4899);">
+                    GAP TELEMETRY
+                </span>
+            </div>
+        </div>
+        """
+    )
 
     roles_list = list(ROLE_CATALOG.keys())
     default_role = profile.get("target_role") or "Junior Python Developer"
@@ -734,8 +800,30 @@ def render_individual_skill_gaps(user: Dict[str, Any], skills: List[Dict[str, An
 # ==============================================================================
 def render_individual_career_goals(user: Dict[str, Any], navigate_to: Callable[[str], None]) -> None:
     uid = user["id"]
-    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.35rem;'>Career Goal Management</h1>", unsafe_allow_html=True)
-    st.caption("Define SMART career growth targets, set completion target dates, track milestone progress, and record your achievements.")
+    _render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #FFF7ED 60%, #FEF2F2 100%); border-left: 6px solid #F97316;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #F97316 0%, #F43F5E 100%);">
+                    {_get_svg_icon("award", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        Personal Career Milestones &amp; SMART Goals
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Define target designations, completion timelines, and monitor developmental sprints.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #F97316, #F43F5E);">
+                    GOAL TRACKER
+                </span>
+            </div>
+        </div>
+        """
+    )
 
     # Create Goal Form
     with st.expander("Create New Career Goal", expanded=False):
@@ -850,8 +938,30 @@ def render_individual_progress(user: Dict[str, Any]) -> None:
     uid = user["id"]
     stats = get_individual_dashboard_stats(uid)
 
-    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.35rem;'>Personal Development & Performance Tracking</h1>", unsafe_allow_html=True)
-    st.caption("Monitor your historical assessment trajectories, competency gains, and development progress over time.")
+    _render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #EEF2FF 60%, #F0F9FF 100%); border-left: 6px solid #2563EB;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%);">
+                    {_get_svg_icon("trending_up", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        Assessment Trajectory &amp; Growth Analytics
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Track score improvements across test attempts and competency growth velocity over time.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #2563EB, #06B6D4);">
+                    GROWTH ANALYTICS
+                </span>
+            </div>
+        </div>
+        """
+    )
 
     hist = stats.get("assessment_history", [])
 

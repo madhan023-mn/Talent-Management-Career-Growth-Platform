@@ -1,28 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ==============================================================================
-   ENTERPRISE SAAS DESIGN SYSTEM TOKENS (TalentSphere / Stripe & Linear Inspired)
+   COLORFUL CAREER — MODERN TALENT GROWTH EXPERIENCE DESIGN SYSTEM TOKENS
    ============================================================================== */
 :root {
-    --primary: #6366F1;
-    --primary-hover: #4338CA;
-    --primary-dark: #4338CA;
-    --primary-light: #EEF2FF;
-    --primary-border: #C7D2FE;
-    --secondary: #6366F1;
-    --secondary-hover: #4F46E5;
-    --secondary-light: #E0E7FF;
+    /* Primary Colorful Career Palette */
+    --vibrant-purple: #7C3AED;
     --electric-violet: #8B5CF6;
-    --cyan-accent: #22D3EE;
-    --dark-bg: #0B1020;
-    --sidebar-bg: #111827;
-    --dark-navy: #111827;
+    --bright-blue: #2563EB;
+    --teal-accent: #0D9488;
+    --cyan-accent: #06B6D4;
+    --coral-accent: #F43F5E;
+    --soft-pink: #EC4899;
+    --orange-accent: #F97316;
+    --light-lavender: #EDE9FE;
+    --lavender-surface: #F5F3FF;
+    --warm-white: #FFFFFF;
+    --deep-navy: #0F172A;
+    --sidebar-bg: #0F172A;
+    --canvas-bg: #F8FAFC;
+    --card-surface: #FFFFFF;
+
+    /* Legacy tokens mapped to vibrant theme */
+    --primary: #7C3AED;
+    --primary-hover: #6D28D9;
+    --primary-dark: #5B21B6;
+    --primary-light: #F5F3FF;
+    --primary-border: #DDD6FE;
+    --secondary: #2563EB;
+    --secondary-hover: #1D4ED8;
+    --secondary-light: #EFF6FF;
+    --dark-bg: #0B0F19;
+    --dark-navy: #0F172A;
     --navy-card: #1E293B;
-    --main-bg: #F4F6FC;
+    --main-bg: #F8FAFC;
     --card-bg: #FFFFFF;
-    --text-primary: #172033;
-    --text-secondary: #64748B;
-    --text-muted: #94A3B8;
+    --text-primary: #0F172A;
+    --text-secondary: #334155;
+    --text-muted: #64748B;
     --border-color: #E2E8F0;
     --border-subtle: #F1F5F9;
     --success: #10B981;
@@ -31,16 +46,28 @@
     --warning: #F59E0B;
     --warning-bg: #FFFBEB;
     --warning-border: #FDE68A;
-    --danger: #EF4444;
-    --danger-bg: #FEF2F2;
-    --danger-border: #FECACA;
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 14px;
-    --radius-xl: 18px;
+    --danger: #F43F5E;
+    --danger-bg: #FFF1F2;
+    --danger-border: #FECDD3;
+
+    /* Signature Gradients */
+    --grad-purple-blue: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);
+    --grad-violet-pink: linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%);
+    --grad-blue-cyan: linear-gradient(135deg, #2563EB 0%, #06B6D4 50%, #0D9488 100%);
+    --grad-coral-orange: linear-gradient(135deg, #F43F5E 0%, #F97316 100%);
+    --grad-teal-blue: linear-gradient(135deg, #0D9488 0%, #2563EB 100%);
+    --grad-hero-dark: linear-gradient(135deg, #0F172A 0%, #3B0764 45%, #1E1B4B 80%, #0B0F19 100%);
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 22px;
     --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    --shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+    --shadow-card: 0 4px 14px -2px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
+    --shadow-glow-purple: 0 8px 24px -4px rgba(124, 58, 237, 0.35);
+    --shadow-glow-blue: 0 8px 24px -4px rgba(37, 99, 235, 0.35);
+    --shadow-glow-pink: 0 8px 24px -4px rgba(236, 72, 153, 0.35);
+    --shadow-glow-teal: 0 8px 24px -4px rgba(13, 148, 136, 0.35);
 }
 
 /* Global Typography & Canvas */
@@ -247,20 +274,24 @@ code, kbd, samp, pre {
     box-shadow: 0 8px 22px -3px rgba(0, 0, 0, 0.16);
 }
 .kpi-vibrant-blue {
-    background: linear-gradient(135deg, #0B1020 0%, #1E1B4B 50%, #4338CA 100%) !important;
-    border: 1px solid rgba(99, 102, 241, 0.4) !important;
+    background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 50%, #3B82F6 100%) !important;
+    border: 1px solid rgba(59, 130, 246, 0.45) !important;
+    box-shadow: 0 8px 24px -4px rgba(37, 99, 235, 0.42) !important;
 }
 .kpi-vibrant-green {
-    background: linear-gradient(135deg, #083344 0%, #0E7490 50%, #06B6D4 100%) !important;
-    border: 1px solid rgba(34, 211, 238, 0.4) !important;
+    background: linear-gradient(135deg, #0F766E 0%, #0D9488 50%, #14B8A6 100%) !important;
+    border: 1px solid rgba(20, 184, 166, 0.45) !important;
+    box-shadow: 0 8px 24px -4px rgba(13, 148, 136, 0.42) !important;
 }
 .kpi-vibrant-purple {
-    background: linear-gradient(135deg, #1E1B4B 0%, #4C1D95 50%, #8B5CF6 100%) !important;
+    background: linear-gradient(135deg, #6D28D9 0%, #7C3AED 50%, #8B5CF6 100%) !important;
     border: 1px solid rgba(139, 92, 246, 0.45) !important;
+    box-shadow: 0 8px 24px -4px rgba(124, 58, 237, 0.45) !important;
 }
 .kpi-vibrant-orange {
-    background: linear-gradient(135deg, #064E3B 0%, #059669 50%, #10B981 100%) !important;
-    border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    background: linear-gradient(135deg, #E11D48 0%, #F43F5E 50%, #F97316 100%) !important;
+    border: 1px solid rgba(244, 63, 94, 0.45) !important;
+    box-shadow: 0 8px 24px -4px rgba(244, 63, 94, 0.42) !important;
 }
 
 .kpi-vibrant-icon {
@@ -1915,4 +1946,48 @@ div[data-baseweb="tab-list"] button[role="tab"]:hover {
 div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] {
     color: #4F46E5 !important;
     border-bottom: 2px solid #4F46E5 !important;
+}
+
+/* ==============================================================================
+   COLORFUL CAREER - PAGE HERO BANNERS & ACCENT CARD STYLES
+   ============================================================================== */
+.colorful-page-hero {
+    border-radius: 16px !important;
+    padding: 1.35rem 1.75rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 1.5rem !important;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05) !important;
+    border: 1px solid #E2E8F0 !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.colorful-page-hero:hover {
+    box-shadow: 0 8px 24px -2px rgba(15, 23, 42, 0.08) !important;
+}
+
+.hero-icon-container {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.hero-badge-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    color: #FFFFFF !important;
+    padding: 6px 14px !important;
+    border-radius: 9999px !important;
+    font-size: 0.76rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 }
