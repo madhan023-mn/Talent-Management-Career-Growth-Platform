@@ -2669,35 +2669,38 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
     goal_stats = get_goal_stats(uid)
     emp_record = get_employee_by_id(emp_id) if emp_id else None
 
-    # Header matching Screenshot 4
     org_display_name = user.get("org_name") or "Talent Growth Technologies"
+    target_role_str = profile.get("target_role") or "Full Stack Engineer"
+    match_pct = analysis.get("match", 85)
+
+    # 1. Executive Employee Welcome Banner
     render_html(
         f"""
-        <div style="margin-bottom: 1.5rem;">
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/>
-                    <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/>
-                    <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/>
-                    <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
-                </svg>
-                <h1 style="font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin: 0;">
-                    Good to see you, {user.get('name', 'User')}
-                </h1>
+        <div style="background: linear-gradient(135deg, #111827 0%, #312E81 50%, #4F46E5 100%); border-radius: 16px; padding: 1.6rem 2.2rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 4px 20px rgba(79, 70, 229, 0.22); position: relative; overflow: hidden;">
+            <div style="z-index: 2; max-width: 65%;">
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.28); padding: 4px 12px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+                    {get_svg_icon("sparkles", size=13, color="#FEF08A")} Employee Career Acceleration Hub &bull; {org_display_name}
+                </div>
+                <div style="font-size: 1.95rem; font-weight: 800; color: #FFFFFF; line-height: 1.25; margin-bottom: 6px;">
+                    Welcome back, {user.get('name', 'Alex Morgan')}
+                </div>
+                <div style="font-size: 0.96rem; color: rgba(255, 255, 255, 0.92); font-weight: 400; line-height: 1.5;">
+                    Your personalized career acceleration workspace: track 10-role competency benchmarks, evaluate skill gap analytics, and execute promotion milestones.
+                </div>
             </div>
-            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px;">
-                <span style="font-size: 0.95rem; color: #64748B;">Build a clearer view of where you are and what comes next.</span>
-                <span style="display: inline-flex; align-items: center; gap: 5px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 9999px; padding: 2px 10px; font-size: 0.78rem; font-weight: 700; color: #1D4ED8;">
-                    {get_svg_icon("building", size=13, color="#2563EB")} {org_display_name} <span style="font-family: monospace; font-size: 0.72rem; opacity: 0.8;">({org_id})</span>
-                </span>
+            <div style="z-index: 2; flex-shrink: 0; text-align: right;">
+                <div style="background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 14px; padding: 12px 18px; text-align: center; backdrop-filter: blur(6px); box-shadow: 0 4px 14px rgba(0,0,0,0.1);">
+                    <div style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #C7D2FE;">Target Role</div>
+                    <div style="font-size: 1.2rem; font-weight: 800; color: #FFFFFF; margin-top: 2px;">{target_role_str}</div>
+                    <div style="font-size: 0.76rem; color: #A7F3D0; font-weight: 700; margin-top: 2px;">{match_pct}% Competency Alignment</div>
+                </div>
             </div>
         </div>
         """
     )
 
-    # 4 Top Metrics Row - Solid Vibrant KPI Cards matching reference design
+    # 2. Four Solid Vibrant Enterprise KPI Cards
     comp_sub = "+ All sections complete" if completion >= 100 else ("+ Action needed" if completion == 0 else f"+{len(missing)} fields to add")
-    
     strength_score = analysis.get("score", 0)
     if strength_score >= 80:
         strength_sub = "+ Top tier readiness"
@@ -2707,157 +2710,177 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
         strength_sub = "+ Developing readiness"
     else:
         strength_sub = "+ Early stage profile"
-        
-    target_role_str = profile.get("target_role") or ""
-    if target_role_str:
-        role_label = (target_role_str[:14] + "..") if len(target_role_str) > 16 else target_role_str
-        role_sub = f"vs {role_label}"
-    else:
-        role_sub = "+ Choose target role"
-        
+
     skills_cnt = len(skills)
     skills_sub = f"+{skills_cnt} verified skills" if skills_cnt > 0 else "+ Add competencies"
 
     render_html(
         f"""
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 2rem;">
+        <div class="kpi-row-grid-vibrant" style="margin-bottom: 1.35rem;">
             <!-- Profile Completion -->
-            <div style="background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="width: 48px; height: 48px; border-radius: 10px; background: #DBEAFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    {get_svg_icon("user", size=24, color="#2563EB")}
+            <div class="kpi-card-vibrant kpi-vibrant-blue">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("user", size=26, color="#FFFFFF")}
                 </div>
                 <div>
-                    <div style="font-size: 0.88rem; font-weight: 600; color: #1E293B; margin-bottom: 2px;">Profile completion</div>
-                    <div style="font-size: 1.95rem; font-weight: 800; color: #0F172A; line-height: 1.15;">{completion}%</div>
+                    <div class="kpi-vibrant-title">Profile Completion</div>
+                    <div class="kpi-vibrant-number">{completion}%</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("check", size=13, color="#FFFFFF")} {comp_sub}
+                    </div>
                 </div>
             </div>
             <!-- Profile Strength -->
-            <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="width: 48px; height: 48px; border-radius: 10px; background: #D1FAE5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    {get_svg_icon("trending_up", size=24, color="#059669")}
+            <div class="kpi-card-vibrant kpi-vibrant-green">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("trending_up", size=26, color="#FFFFFF")}
                 </div>
                 <div>
-                    <div style="font-size: 0.88rem; font-weight: 600; color: #1E293B; margin-bottom: 2px;">Profile strength</div>
-                    <div style="font-size: 1.95rem; font-weight: 800; color: #0F172A; line-height: 1.15;">{strength_score}/100</div>
+                    <div class="kpi-vibrant-title">Profile Strength</div>
+                    <div class="kpi-vibrant-number">{strength_score} / 100</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} {strength_sub}
+                    </div>
                 </div>
             </div>
             <!-- Target Role Match -->
-            <div style="background: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="width: 48px; height: 48px; border-radius: 10px; background: #EDE9FE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    {get_svg_icon("target", size=24, color="#7C3AED")}
+            <div class="kpi-card-vibrant kpi-vibrant-purple">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("target", size=26, color="#FFFFFF")}
                 </div>
                 <div>
-                    <div style="font-size: 0.88rem; font-weight: 600; color: #1E293B; margin-bottom: 2px;">Target role match</div>
-                    <div style="font-size: 1.95rem; font-weight: 800; color: #0F172A; line-height: 1.15;">{analysis['match']}%</div>
+                    <div class="kpi-vibrant-title">Target Role Match</div>
+                    <div class="kpi-vibrant-number">{match_pct}%</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("sparkles", size=13, color="#FFFFFF")} vs {target_role_str[:16]}
+                    </div>
                 </div>
             </div>
-            <!-- Skills Recorded -->
-            <div style="background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="width: 48px; height: 48px; border-radius: 10px; background: #FFEDD5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    {get_svg_icon("star", size=24, color="#EA580C")}
+            <!-- Verified Competencies -->
+            <div class="kpi-card-vibrant kpi-vibrant-orange">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("star", size=26, color="#FFFFFF")}
                 </div>
                 <div>
-                    <div style="font-size: 0.88rem; font-weight: 600; color: #1E293B; margin-bottom: 2px;">Skills recorded</div>
-                    <div style="font-size: 1.95rem; font-weight: 800; color: #0F172A; line-height: 1.15;">{skills_cnt}</div>
+                    <div class="kpi-vibrant-title">Skills Recorded</div>
+                    <div class="kpi-vibrant-number">{skills_cnt}</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("check", size=13, color="#FFFFFF")} {skills_sub}
+                    </div>
                 </div>
             </div>
         </div>
         """
     )
 
+    # 3. Interactive Quick Actions Toolbar
+    col_eq1, col_eq2, col_eq3, col_eq4 = st.columns(4)
+    with col_eq1:
+        if st.button("Resume Studio", key="emp_bar_resume", use_container_width=True, type="primary"):
+            navigate_to("Resume Studio")
+    with col_eq2:
+        if st.button("Skills & Assessment", key="emp_bar_skills", use_container_width=True):
+            navigate_to("Skills & Assessment")
+    with col_eq3:
+        if st.button("Role Match & Gaps", key="emp_bar_gaps", use_container_width=True):
+            navigate_to("Role Match & Gaps")
+    with col_eq4:
+        if st.button("AI Career Coach", key="emp_bar_coach", use_container_width=True):
+            navigate_to("Career Coach")
+
+    st.markdown("<div style='margin-bottom: 1.35rem;'></div>", unsafe_allow_html=True)
+
+    # 4. Two-Column Middle Section
     col_dash_left, col_dash_right = st.columns([1.15, 1], gap="large")
 
     with col_dash_left:
-        st.markdown("<h3 style='font-size: 1.35rem; font-weight: 800; color: #0F172A; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;'>Your next useful actions <span style='font-size: 1.1rem; color: #94A3B8;'>🔗</span></h3>", unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("<h3 style='font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 8px;'>Next High-Impact Actions</h3>", unsafe_allow_html=True)
 
-        # Action Card 1: Profile Completeness
-        if completion < 100:
-            missing_text = ", ".join(missing[:4]) if missing else "Phone, summary, and experience"
-            action_1_body = f"Add the missing sections: {missing_text}. This gives the career matching engine better evidence."
-        else:
-            action_1_body = "Your profile is fully populated. Review and update your certifications and latest deliverables as your career progresses."
-
-        render_html(
-            f"""
-            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="width: 44px; height: 44px; border-radius: 10px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    {get_svg_icon("reports", size=22, color="#2563EB")}
-                </div>
-                <div>
-                    <div style="font-weight: 800; font-size: 0.98rem; color: #0F172A; margin-bottom: 4px;">High &middot; Complete your professional profile</div>
-                    <div style="font-size: 0.86rem; color: #64748B; line-height: 1.5;">{action_1_body}</div>
-                </div>
-            </div>
-            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                <div style="width: 44px; height: 44px; border-radius: 10px; background: #ECFDF5; border: 1px solid #A7F3D0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    {get_svg_icon("reports", size=22, color="#059669")}
-                </div>
-                <div>
-                    <div style="font-weight: 800; font-size: 0.98rem; color: #0F172A; margin-bottom: 4px;">Medium &middot; Create a role-aligned resume</div>
-                    <div style="font-size: 0.86rem; color: #64748B; line-height: 1.5;">Use your profile details to draft an ATS-friendly resume and add measurable outcomes drawn from your actual work.</div>
-                </div>
-            </div>
-            """
-        )
-
-        # Collapsible: Profile sections to complete
-        with st.expander("Profile sections to complete"):
-            if missing:
-                st.markdown(f"**Still to add:** {', '.join(missing)}")
-                if st.button("Complete Profile Now", key="dash_goto_prof_btn"):
-                    navigate_to("My Profile")
+            # Action Card 1: Profile Completeness
+            if completion < 100:
+                missing_text = ", ".join(missing[:4]) if missing else "Phone, summary, and experience"
+                action_1_body = f"Add the missing sections: {missing_text}. This provides the career matching engine with objective evidence."
             else:
-                st.success("All primary profile sections are complete!")
-                if st.button("Review Profile Details", key="dash_rev_prof_btn"):
-                    navigate_to("My Profile")
+                action_1_body = "Your profile is fully populated. Review and update your certifications and latest deliverables as your career progresses."
+
+            render_html(
+                f"""
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: flex-start; gap: 14px;">
+                    <div style="width: 42px; height: 42px; border-radius: 10px; background: #EEF2FF; border: 1px solid #C7D2FE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        {get_svg_icon("reports", size=20, color="#4F46E5")}
+                    </div>
+                    <div>
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #0F172A; margin-bottom: 3px;">High Priority &middot; Complete Profile Credentials</div>
+                        <div style="font-size: 0.85rem; color: #64748B; line-height: 1.5;">{action_1_body}</div>
+                    </div>
+                </div>
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: flex-start; gap: 14px;">
+                    <div style="width: 42px; height: 42px; border-radius: 10px; background: #ECFDF5; border: 1px solid #A7F3D0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        {get_svg_icon("target", size=20, color="#059669")}
+                    </div>
+                    <div>
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #0F172A; margin-bottom: 3px;">Medium Priority &middot; Create ATS Role-Aligned Resume</div>
+                        <div style="font-size: 0.85rem; color: #64748B; line-height: 1.5;">Draft an ATS-friendly resume and apply STAR bullet points with measurable outcomes drawn from your actual deliverables.</div>
+                    </div>
+                </div>
+                """
+            )
+
+            with st.expander("Profile sections still needed", expanded=False):
+                if missing:
+                    st.markdown(f"**Still to add:** {', '.join(missing)}")
+                    if st.button("Complete Profile Now", key="dash_goto_prof_btn"):
+                        navigate_to("My Profile")
+                else:
+                    st.success("All primary profile sections are complete!")
+                    if st.button("Review Profile Details", key="dash_rev_prof_btn"):
+                        navigate_to("My Profile")
 
     with col_dash_right:
-        st.markdown("<h3 style='font-size: 1.35rem; font-weight: 800; color: #0F172A; margin-bottom: 1rem;'>Career snapshot</h3>", unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("<h3 style='font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 0.85rem;'>Career Competencies Snapshot</h3>", unsafe_allow_html=True)
 
-        current_role_disp = profile.get('job_title') or (emp_record['designation'] if emp_record else "Add your current role")
-        target_role_disp = profile.get('target_role') or "Choose a target role"
+            current_role_disp = profile.get('job_title') or (emp_record['designation'] if emp_record else "Software Engineer")
+            target_role_disp = profile.get('target_role') or "Lead Full Stack Engineer"
 
-        render_html(
-            f"""
-            <div style="font-size: 0.95rem; color: #0F172A; line-height: 1.8; margin-bottom: 0.85rem;">
-                <div><strong>Current role:</strong> {current_role_disp}</div>
-                <div><strong>Target:</strong> {target_role_disp}</div>
-            </div>
-            <div style="background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 8px; padding: 12px 16px; color: #1E40AF; font-size: 0.88rem; margin-bottom: 1rem;">
-                {len(skills)} competencies recorded. Target role readiness is evaluated at {analysis['match']}%.
-            </div>
-            """
-        )
-
-        if not skills:
             render_html(
-                """
-                <div class="ts-callout-blue">
-                    Add a few skills to see your career snapshot.
+                f"""
+                <div style="display: flex; align-items: center; justify-content: space-between; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px;">
+                    <div>
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Current Role</div>
+                        <div style="font-weight: 800; color: #0F172A; font-size: 0.92rem;">{current_role_disp}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Target Goal</div>
+                        <div style="font-weight: 800; color: #4F46E5; font-size: 0.92rem;">{target_role_disp}</div>
+                    </div>
                 </div>
                 """
             )
-            st.markdown("<div style='margin-top: 0.75rem;'></div>", unsafe_allow_html=True)
-            if st.button("Add Skills in Portfolio", key="dash_add_skills_btn"):
-                navigate_to("Skills & Assessment")
-        else:
-            df_skills = pd.DataFrame(skills)
-            fig_s = px.bar(
-                df_skills, x="name", y="years", color="category",
-                title="Skills & Experience Duration",
-                labels={"name": "", "years": "Years Exp", "category": "Category"},
-                color_discrete_map={"Technical": "#2563EB", "Soft Skills": "#10B981", "Domain": "#F59E0B"}
-            )
-            fig_s.update_layout(
-                margin=dict(l=10, r=10, t=35, b=10),
-                height=260,
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                yaxis=dict(gridcolor="#F1F5F9", title="Years Exp"),
-                xaxis=dict(gridcolor="#F1F5F9", title=""),
-                legend=dict(orientation="v", yanchor="top", y=1, xanchor="right", x=1.18, font=dict(size=11, color="#334155"))
-            )
-            st.plotly_chart(fig_s, use_container_width=True)
+
+            if not skills:
+                st.info("Add competencies in Skills & Assessment to see your career depth visualization.")
+                if st.button("Add Skills to Portfolio", key="dash_add_skills_btn", type="primary"):
+                    navigate_to("Skills & Assessment")
+            else:
+                df_skills = pd.DataFrame(skills)
+                fig_s = px.bar(
+                    df_skills, x="name", y="years", color="category",
+                    title="Skills & Experience Duration",
+                    labels={"name": "", "years": "Years Exp", "category": "Category"},
+                    color_discrete_map={"Technical": "#4F46E5", "Soft Skills": "#16A34A", "Domain": "#F59E0B", "Tools": "#6366F1"}
+                )
+                fig_s.update_layout(
+                    margin=dict(l=10, r=10, t=35, b=10),
+                    height=240,
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    yaxis=dict(gridcolor="#F1F5F9", title="Years Exp"),
+                    xaxis=dict(gridcolor="#F1F5F9", title=""),
+                    legend=dict(orientation="v", yanchor="top", y=1, xanchor="right", x=1.18, font=dict(size=11, color="#334155"))
+                )
+                st.plotly_chart(fig_s, use_container_width=True)
 
     # Personalized Employee Deep Dive: Skills, Assessments, Gaps, Goals, and Performance
     emp_dash_data = get_employee_dashboard_data(uid, emp_id, org_id)
@@ -4971,7 +4994,23 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
 # 8. MY PROFILE
 # ==============================================================================
 elif page == "My Profile":
-    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.85rem;'>My professional profile</h1>", unsafe_allow_html=True)
+    render_html(
+        f"""
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div>
+                <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
+                    {get_svg_icon("profile", size=24, color="#4F46E5")} Professional Profile &amp; Career Dossier
+                </div>
+                <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
+                    Manage contact coordinates, company affiliation, industry background, education, and portfolio links.
+                </div>
+            </div>
+            <div>
+                <span class="badge-status badge-active">PROFILE CREDENTIALS</span>
+            </div>
+        </div>
+        """
+    )
 
     if is_individual:
         org_display_name = "Independent Professional"
@@ -4984,7 +5023,7 @@ elif page == "My Profile":
         <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 18px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="width: 38px; height: 38px; border-radius: 10px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1);">
-                    {get_svg_icon("building" if not is_individual else "user", size=20, color="#2563EB")}
+                    {get_svg_icon("building" if not is_individual else "user", size=20, color="#4F46E5")}
                 </div>
                 <div>
                     <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">{'Career Membership Status' if is_individual else 'Organization Membership'}</div>
@@ -5047,8 +5086,23 @@ elif page == "My Profile":
 
 
 elif page == "ATS Resume Studio" or page == "Resume Studio":
-    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.35rem;'>Resume Studio</h1>", unsafe_allow_html=True)
-    st.markdown("<div style='font-size: 0.95rem; color: #64748B; margin-bottom: 1.25rem;'>Create, edit, and optimize your ATS-ready resume with real-time screening, STAR bullet rewrites, and PDF export.</div>", unsafe_allow_html=True)
+    render_html(
+        f"""
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div>
+                <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
+                    {get_svg_icon("reports", size=24, color="#4F46E5")} ATS Resume Studio &amp; Dossier Builder
+                </div>
+                <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
+                    Create, audit, and optimize your ATS-ready resume with real-time keyword screening, STAR bullet rewrites, and PDF export.
+                </div>
+            </div>
+            <div>
+                <span class="badge-status badge-active">ATS OPTIMIZATION</span>
+            </div>
+        </div>
+        """
+    )
 
     # --------------------------------------------------------------------------
     # HR ADMINISTRATOR vs EMPLOYEE MODE
@@ -5857,7 +5911,23 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
 # 10. CAREER DIRECTION & AI COACH
 # ==============================================================================
 elif page in ["Career Direction", "Career Direction & Gaps"]:
-    st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 1.5rem;'>Career direction</h1>", unsafe_allow_html=True)
+    render_html(
+        f"""
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div>
+                <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
+                    {get_svg_icon("target", size=24, color="#4F46E5")} Career Direction &amp; Designation Strategy
+                </div>
+                <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
+                    Define target benchmark roles, promotional timelines, leadership ambitions, and core career vision.
+                </div>
+            </div>
+            <div>
+                <span class="badge-status badge-active">CAREER ARCHITECTURE</span>
+            </div>
+        </div>
+        """
+    )
 
     with st.form("career_direction_form"):
         current = st.text_input("Current role", value=profile.get("job_title", ""))
