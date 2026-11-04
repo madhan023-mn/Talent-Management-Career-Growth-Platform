@@ -1552,7 +1552,6 @@ def navigate_to(target_page: str):
     target = alias_map.get(target_page, target_page)
     st.session_state.page_to_navigate = target
     st.session_state.current_page = target
-    st.session_state.nav_radio = target
     st.rerun()
 
 # ------------------------------------------------------------------------------
@@ -1624,6 +1623,8 @@ if "current_page" not in st.session_state or st.session_state.current_page not i
     st.session_state.current_page = "Dashboard"
 
 if "nav_radio" not in st.session_state or st.session_state.nav_radio not in active_pages:
+    st.session_state.nav_radio = st.session_state.current_page
+elif st.session_state.get("current_page") and st.session_state.nav_radio != st.session_state.current_page:
     st.session_state.nav_radio = st.session_state.current_page
 
 def on_nav_change():
