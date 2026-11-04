@@ -424,20 +424,116 @@ code, kbd, samp, pre {
 html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
 html body section[data-testid="stSidebar"],
 html body [data-testid="stSidebar"],
-section[data-testid="stSidebar"],
-div[data-testid="stSidebarContent"],
-div[data-testid="stSidebarUserContent"] {
-    background-color: #FFFFFF !important;
-    background: #FFFFFF !important;
-    color: #0F172A !important;
-    border-right: 1px solid #E2E8F0 !important;
+section[data-testid="stSidebar"] {
+    background-color: #0D1527 !important;
+    background: #0D1527 !important;
+    color: #FFFFFF !important;
+    border-right: 1px solid #1E293B !important;
     box-sizing: border-box !important;
 }
 
-/* Native Streamlit sidebar collapse & expand controls (smooth open/close) */
-div[data-testid="collapsedControl"],
-div[data-testid="stSidebarCollapsedControl"] {
+section[data-testid="stSidebar"][aria-expanded="true"],
+section[data-testid="stSidebar"]:not([aria-expanded="false"]) {
+    min-width: 285px !important;
+    max-width: 320px !important;
+}
+
+section[data-testid="stSidebar"][aria-expanded="false"] {
+    min-width: 0 !important;
+    max-width: 0 !important;
+    width: 0 !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+div[data-testid="stSidebarContent"],
+div[data-testid="stSidebarUserContent"] {
+    background-color: #0D1527 !important;
+    background: #0D1527 !important;
+    color: #FFFFFF !important;
+    box-sizing: border-box !important;
+}
+
+/* Sidebar Header */
+div[data-testid="stSidebarHeader"] {
     display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 10px 14px 6px 14px !important;
+    background: transparent !important;
+    min-height: 44px !important;
+}
+
+/* Ensure collapse button container is always visible */
+div[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapseButton"] {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Sidebar Collapse Button inside stSidebarHeader (Image 2 style) */
+[data-testid="stSidebarCollapseButton"] button,
+button[data-testid="stSidebarCollapseButton"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background-color: #FFFFFF !important;
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    transition: all 0.2s ease !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    padding: 0 !important;
+}
+
+[data-testid="stSidebarCollapseButton"] button:hover,
+button[data-testid="stSidebarCollapseButton"]:hover {
+    background-color: #F8FAFC !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22) !important;
+}
+
+[data-testid="stSidebarCollapseButton"] svg,
+button[data-testid="stSidebarCollapseButton"] svg {
+    fill: #111827 !important;
+    color: #111827 !important;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Sidebar Expand Button when Sidebar is Collapsed (Image 2 style) */
+[data-testid="stExpandSidebarButton"],
+[data-testid="stExpandSidebarButton"] button,
+button[data-testid="stExpandSidebarButton"],
+div[data-testid="collapsedControl"] button,
+div[data-testid="stSidebarCollapsedControl"] button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background-color: #FFFFFF !important;
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto !important;
@@ -445,66 +541,39 @@ div[data-testid="stSidebarCollapsedControl"] {
     top: 14px !important;
     left: 14px !important;
     z-index: 99999 !important;
+    padding: 0 !important;
 }
 
-div[data-testid="collapsedControl"] button,
-div[data-testid="stSidebarCollapsedControl"] button {
-    background: #FFFFFF !important;
-    color: #334155 !important;
-    border: 1.5px solid #E2E8F0 !important;
-    border-radius: 8px !important;
-    width: 38px !important;
-    height: 38px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08) !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-}
-
+[data-testid="stExpandSidebarButton"]:hover,
+[data-testid="stExpandSidebarButton"] button:hover,
+button[data-testid="stExpandSidebarButton"]:hover,
 div[data-testid="collapsedControl"] button:hover,
 div[data-testid="stSidebarCollapsedControl"] button:hover {
-    background: #EDE9FE !important;
-    border-color: #8B5CF6 !important;
-    color: #7C3AED !important;
+    background-color: #F8FAFC !important;
     transform: scale(1.05) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
 }
 
-button[data-testid="stSidebarCollapseButton"] {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: #F1F5F9 !important;
-    color: #334155 !important;
-    border: 1px solid #E2E8F0 !important;
-    border-radius: 8px !important;
-    width: 34px !important;
-    height: 34px !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+[data-testid="stExpandSidebarButton"] svg,
+button[data-testid="stExpandSidebarButton"] svg,
+div[data-testid="collapsedControl"] button svg,
+div[data-testid="stSidebarCollapsedControl"] button svg {
+    fill: #111827 !important;
+    color: #111827 !important;
+    width: 20px !important;
+    height: 20px !important;
 }
 
-button[data-testid="stSidebarCollapseButton"]:hover {
-    background: #EDE9FE !important;
-    border-color: #8B5CF6 !important;
-    color: #7C3AED !important;
-}
-
-/* Base Radio Container Styling - Boxed Menu */
+/* Radio Group Container matching Image 1 */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
-    background: #F8FAFC !important;
-    border: 1px solid #E2E8F0 !important;
-    border-radius: 14px !important;
-    padding: 8px !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 3px !important;
+    gap: 6px !important;
     width: 100% !important;
-    box-sizing: border-box !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 1.2rem 0 !important;
 }
 
 section[data-testid="stSidebar"] hr {
@@ -1664,9 +1733,8 @@ button[kind="primary"]:hover {
     color: #334155;
 }
 
-/* Hide Streamlit Community Cloud GitHub repo link, branch badge, toolbar and viewer decorations */
+/* Hide Streamlit Community Cloud GitHub repo link, branch badge, and viewer decorations */
 #GithubIcon, 
-[data-testid="stToolbar"], 
 [data-testid="stDecoration"], 
 [data-testid="stStatusWidget"],
 div[class*="embeddedAppMetaInfoBar"],
@@ -1689,20 +1757,21 @@ footer {
     pointer-events: none !important;
 }
 
-/* Unclip Header to host the 3-Line Hamburger Menu Toggle */
+/* Header & Toolbar Visible to host the Sidebar Expand Toggle */
 header[data-testid="stHeader"] {
     background: transparent !important;
     height: 48px !important;
     overflow: visible !important;
     z-index: 99999 !important;
-}
-
-/* 3-Line Hamburger Menu / Collapse Arrow Toggle to Slide Open Sidebar (Active) */
-button[data-testid="stSidebarCollapseButton"] {
     display: flex !important;
     visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
+}
+
+div[data-testid="stToolbar"] {
+    display: flex !important;
+    visibility: visible !important;
+    background: transparent !important;
+    overflow: visible !important;
 }
 
 /* ==============================================================================
@@ -1914,49 +1983,63 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     box-sizing: border-box !important;
 }
 
-/* Inactive Radio Item */
+/* Inactive Radio Item matching Image 1 */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) {
     background: transparent !important;
-    color: #334155 !important;
+    color: #CBD5E1 !important;
 }
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) * {
-    color: #334155 !important;
+    color: #CBD5E1 !important;
     font-weight: 500 !important;
-    font-size: 0.92rem !important;
+    font-size: 0.93rem !important;
 }
 
 /* Inactive Hover */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover {
-    background: #EDE9FE !important;
-    color: #7C3AED !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #FFFFFF !important;
     transform: translateX(2px) !important;
 }
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover * {
-    color: #7C3AED !important;
-    font-weight: 600 !important;
+    color: #FFFFFF !important;
 }
 
-/* Active Radio Item: Vibrant Colorful Career Gradient Pill */
+/* Active Radio Item: Blue Pill matching Image 1 */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-    background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%) !important;
+    background-color: #2563EB !important;
+    background: #2563EB !important;
     color: #FFFFFF !important;
     font-weight: 700 !important;
     border-radius: 8px !important;
-    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.38) !important;
+    box-shadow: 0 2px 10px rgba(37, 99, 235, 0.45) !important;
     border: none !important;
 }
 
-/* Active Text: Guaranteed 100% visible pure crisp white across all tags */
+/* Active Text */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] *,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) * {
     color: #FFFFFF !important;
     font-weight: 700 !important;
+    font-size: 0.95rem !important;
 }
 
-/* Hide the native round radio button circle dot */
+/* White Circle Dots on Radio Rows matching Image 1 */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
-    display: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-right: 12px !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {
+    width: 13px !important;
+    height: 13px !important;
+    min-width: 13px !important;
+    min-height: 13px !important;
+    border-radius: 50% !important;
+    background-color: #FFFFFF !important;
+    border: 2px solid #FFFFFF !important;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.6) !important;
 }
 
 /* Enterprise Native Input Styling (Inter font, smooth shadow ring on focus) */

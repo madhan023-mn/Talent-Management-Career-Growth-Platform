@@ -1646,13 +1646,8 @@ def navigate_to(target_page: str):
 # ------------------------------------------------------------------------------
 # SIDEBAR STATE MANAGEMENT & ROLE-BASED ACCESS CONTROL
 # ------------------------------------------------------------------------------
-if "sidebar_expanded" not in st.session_state:
-    st.session_state.sidebar_expanded = True
-
 def toggle_sidebar():
-    st.session_state.sidebar_expanded = not st.session_state.get("sidebar_expanded", True)
-
-is_expanded = st.session_state.get("sidebar_expanded", True)
+    st.session_state.trigger_sidebar_collapse = True
 
 # Enforce backend role permissions (RBAC)
 if is_individual and st.session_state.get("current_page") in ["Employees", "Performance", "Reports"]:
@@ -1720,99 +1715,51 @@ def on_nav_change():
     st.session_state.current_page = st.session_state.nav_radio
 
 # ------------------------------------------------------------------------------
-# DYNAMIC SIDEBAR CSS (LIGHT THEME, 285PX FIXED VISIBILITY & BOXED MENU NAVIGATION)
+# DYNAMIC SIDEBAR CSS (DARK NAVY THEME MATCHING USER MOCKUP & SMOOTH TOGGLE)
 # ------------------------------------------------------------------------------
-if is_expanded:
-    sidebar_layout_css = """
-    /* Fixed 285px Light Sidebar Pinned to Left Viewport */
-    html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
-    html body section[data-testid="stSidebar"],
-    section[data-testid="stSidebar"],
-    div[data-testid="stSidebarContent"],
-    div[data-testid="stSidebarUserContent"] {
-        position: fixed !important;
-        top: 0 !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        transform: none !important;
-        margin-left: 0 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        z-index: 1000 !important;
-        height: 100vh !important;
-        max-height: 100vh !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        min-width: 285px !important;
-        width: 285px !important;
-        max-width: 285px !important;
-        background-color: #FFFFFF !important;
-        background: #FFFFFF !important;
-        border-right: 1px solid #E2E8F0 !important;
-        color: #0F172A !important;
-        padding-left: 0.95rem !important;
-        padding-right: 0.95rem !important;
-        padding-top: 1.1rem !important;
-        padding-bottom: 2rem !important;
-        box-sizing: border-box !important;
-        box-shadow: 2px 0 12px rgba(15, 23, 42, 0.04) !important;
-        transition: width 0.25s ease, margin-left 0.25s ease, left 0.25s ease !important;
-    }
-
-    /* Main Content Positioned Immediately to the Right of 285px Sidebar */
-    [data-testid="stAppViewContainer"] > section:nth-child(2),
-    [data-testid="stMain"] {
-        margin-left: 285px !important;
-        width: calc(100% - 285px) !important;
-        max-width: calc(100% - 285px) !important;
-        box-sizing: border-box !important;
-        overflow-x: hidden !important;
-        transition: width 0.25s ease, margin-left 0.25s ease !important;
-    }
-    """
-else:
-    sidebar_layout_css = """
-    /* Collapsed Sidebar Hidden Offscreen */
-    html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
-    html body section[data-testid="stSidebar"],
-    section[data-testid="stSidebar"] {
-        position: fixed !important;
-        top: 0 !important;
-        bottom: 0 !important;
-        left: -320px !important;
-        transform: translateX(-100%) !important;
-        min-width: 0px !important;
-        width: 0px !important;
-        max-width: 0px !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        overflow: hidden !important;
-        pointer-events: none !important;
-        transition: width 0.25s ease, margin-left 0.25s ease, left 0.25s ease !important;
-    }
-
-    /* Main Content Takes Full Viewport Width */
-    [data-testid="stAppViewContainer"] > section:nth-child(2),
-    [data-testid="stMain"] {
-        margin-left: 0px !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        overflow-x: hidden !important;
-        transition: width 0.25s ease, margin-left 0.25s ease !important;
-    }
-    """
-
-sidebar_dynamic_css = f"""
+sidebar_dynamic_css = """
 <style>
-{sidebar_layout_css}
+/* Dark Navy Enterprise Sidebar matching Image 1 */
+html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
+html body section[data-testid="stSidebar"],
+html body [data-testid="stSidebar"],
+section[data-testid="stSidebar"] {
+    background-color: #0D1527 !important;
+    background: #0D1527 !important;
+    border-right: 1px solid #1E293B !important;
+    color: #FFFFFF !important;
+    box-sizing: border-box !important;
+}
+
+section[data-testid="stSidebar"][aria-expanded="true"],
+section[data-testid="stSidebar"]:not([aria-expanded="false"]) {
+    min-width: 285px !important;
+    max-width: 320px !important;
+}
+
+section[data-testid="stSidebar"][aria-expanded="false"] {
+    min-width: 0 !important;
+    max-width: 0 !important;
+    width: 0 !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+div[data-testid="stSidebarContent"],
+div[data-testid="stSidebarUserContent"] {
+    background-color: #0D1527 !important;
+    background: #0D1527 !important;
+    color: #FFFFFF !important;
+    box-sizing: border-box !important;
+}
 
 /* Ensure Block Container Fits Viewport Perfectly Without Overflow */
 .main .block-container,
 [data-testid="stMain"] [data-testid="block-container"],
-[data-testid="stMain"] [data-testid="stMainBlockContainer"] {{
+[data-testid="stMain"] [data-testid="stMainBlockContainer"] {
     padding-top: 1.2rem !important;
     padding-bottom: 3.5rem !important;
     padding-left: 1.5rem !important;
@@ -1821,96 +1768,190 @@ sidebar_dynamic_css = f"""
     width: 100% !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
-}}
+}
 
 /* Prevent Any Global Horizontal Scroll on Canvas */
-html, body, .stApp, [data-testid="stAppViewContainer"] {{
+html, body, .stApp, [data-testid="stAppViewContainer"] {
     overflow-x: hidden !important;
     max-width: 100vw !important;
     box-sizing: border-box !important;
-}}
+}
 
-/* Floating Open Sidebar Button (Visible when Sidebar is Closed) */
-div.floating-sidebar-toggle {{
-    position: fixed !important;
-    top: 12px !important;
-    left: 14px !important;
-    z-index: 99999 !important;
-}}
-div.floating-sidebar-toggle button {{
+/* Sidebar Header */
+div[data-testid="stSidebarHeader"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 10px 14px 6px 14px !important;
+    background: transparent !important;
+    min-height: 44px !important;
+}
+
+/* Ensure collapse button container is always visible */
+div[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapseButton"] {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Streamlit Native Collapse Button (Image 2 style: White rounded square button) */
+[data-testid="stSidebarCollapseButton"] button,
+button[data-testid="stSidebarCollapseButton"] {
     background: #FFFFFF !important;
-    color: #0F172A !important;
-    border: 1.5px solid #E2E8F0 !important;
+    color: #111827 !important;
+    border: 1px solid #CBD5E1 !important;
     border-radius: 8px !important;
-    padding: 6px 14px !important;
-    font-weight: 700 !important;
-    font-size: 0.88rem !important;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.10) !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-}}
-div.floating-sidebar-toggle button:hover {{
-    background: #EDE9FE !important;
-    border-color: #8B5CF6 !important;
-    color: #7C3AED !important;
-    transform: scale(1.03) !important;
-}}
-
-/* Sidebar Close Button */
-div.sidebar-ham-btn button {{
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
     width: 36px !important;
     height: 36px !important;
     min-width: 36px !important;
     min-height: 36px !important;
-    background: #F1F5F9 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    padding: 0 !important;
+}
+[data-testid="stSidebarCollapseButton"] button:hover,
+button[data-testid="stSidebarCollapseButton"]:hover {
+    background: #F8FAFC !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22) !important;
+}
+[data-testid="stSidebarCollapseButton"] svg,
+button[data-testid="stSidebarCollapseButton"] svg {
+    fill: #111827 !important;
+    color: #111827 !important;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Streamlit Native Expand Button (Image 2 style: White rounded square button when Collapsed) */
+[data-testid="stExpandSidebarButton"],
+[data-testid="stExpandSidebarButton"] button,
+button[data-testid="stExpandSidebarButton"],
+div[data-testid="collapsedControl"] button,
+div[data-testid="stSidebarCollapsedControl"] button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: fixed !important;
+    top: 14px !important;
+    left: 14px !important;
+    z-index: 99999 !important;
+    padding: 0 !important;
+}
+
+[data-testid="stExpandSidebarButton"]:hover,
+[data-testid="stExpandSidebarButton"] button:hover,
+button[data-testid="stExpandSidebarButton"]:hover,
+div[data-testid="collapsedControl"] button:hover,
+div[data-testid="stSidebarCollapsedControl"] button:hover {
+    background: #F8FAFC !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-testid="stExpandSidebarButton"] svg,
+button[data-testid="stExpandSidebarButton"] svg,
+div[data-testid="collapsedControl"] button svg,
+div[data-testid="stSidebarCollapsedControl"] button svg {
+    fill: #111827 !important;
+    color: #111827 !important;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Header & Toolbar Visible to host the Sidebar Expand Toggle */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+    height: 48px !important;
+    overflow: visible !important;
+    z-index: 99999 !important;
+    display: flex !important;
+    visibility: visible !important;
+}
+
+div[data-testid="stToolbar"] {
+    display: flex !important;
+    visibility: visible !important;
+    background: transparent !important;
+    overflow: visible !important;
+}
+
+/* White Hamburger Button inside Sidebar Header matching Image 1 */
+div.sidebar-ham-btn button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    background: #FFFFFF !important;
     border: 1px solid #E2E8F0 !important;
-    color: #334155 !important;
+    color: #111827 !important;
     border-radius: 8px !important;
     font-size: 1.25rem !important;
     font-weight: 700 !important;
     line-height: 1 !important;
     cursor: pointer !important;
     padding: 0 !important;
-    box-shadow: none !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
     transition: all 0.18s ease !important;
-}}
-div.sidebar-ham-btn button:hover {{
-    background: #EDE9FE !important;
-    color: #7C3AED !important;
-    border-color: #8B5CF6 !important;
-}}
-
-/* Radio Group Container: Boxed inside ONE clean elevated card box */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {{
+}
+div.sidebar-ham-btn button:hover {
     background: #F8FAFC !important;
-    border: 1px solid #E2E8F0 !important;
-    border-radius: 14px !important;
-    padding: 8px !important;
+    transform: scale(1.04) !important;
+}
+div.sidebar-ham-btn button svg,
+div.sidebar-ham-btn button * {
+    color: #111827 !important;
+    fill: #111827 !important;
+}
+
+/* Radio Group Container matching Image 1 */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
     display: flex !important;
     flex-direction: column !important;
-    gap: 3px !important;
+    gap: 6px !important;
     width: 100% !important;
     box-sizing: border-box !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
-}}
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 1.2rem 0 !important;
+}
 
-/* Radio Button Label: Clean single row item inside the box */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {{
+/* Radio Button Label */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
     justify-content: flex-start !important;
     width: 100% !important;
-    min-height: 40px !important;
-    height: 40px !important;
-    padding: 8px 12px !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 14px !important;
     border-radius: 8px !important;
     cursor: pointer !important;
     margin: 0 !important;
@@ -1919,54 +1960,69 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     border: none !important;
     box-shadow: none !important;
     transition: background-color 0.18s ease, color 0.18s ease, transform 0.15s ease !important;
-}}
+}
 
-/* Radio Circle Outer Container (Hidden to present clean nav items) */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {{
-    display: none !important;
-}}
+/* White Circle Dots on Radio Rows matching Image 1 */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-right: 12px !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {
+    width: 13px !important;
+    height: 13px !important;
+    min-width: 13px !important;
+    min-height: 13px !important;
+    border-radius: 50% !important;
+    background-color: #FFFFFF !important;
+    border: 2px solid #FFFFFF !important;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.6) !important;
+    box-sizing: border-box !important;
+}
 
 /* Inactive Row Styling */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) {{
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) {
     background: transparent !important;
-    color: #334155 !important;
-}}
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) * {{
-    color: #334155 !important;
+    color: #CBD5E1 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) * {
+    color: #CBD5E1 !important;
     font-weight: 500 !important;
-    font-size: 0.92rem !important;
-}}
+    font-size: 0.93rem !important;
+}
 
 /* Inactive Row Hover */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover {{
-    background-color: #EDE9FE !important;
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
     transform: translateX(2px) !important;
-}}
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover * {{
-    color: #7C3AED !important;
-    font-weight: 600 !important;
-}}
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover * {
+    color: #FFFFFF !important;
+}
 
-/* Active Row Highlight: Vibrant Page Heading Color Gradient */
+/* Active Row Highlight: Vibrant Blue Pill matching Image 1 */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {{
-    background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%) !important;
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+    background-color: #2563EB !important;
+    background: #2563EB !important;
     color: #FFFFFF !important;
     font-weight: 700 !important;
     border-radius: 8px !important;
-    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32) !important;
+    box-shadow: 0 2px 10px rgba(37, 99, 235, 0.45) !important;
     border: none !important;
-}}
+}
 
 /* Active Text: Guaranteed 100% visible pure crisp white across all tags */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] *,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) * {{
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) * {
     color: #FFFFFF !important;
     font-weight: 700 !important;
-}}
+    font-size: 0.95rem !important;
+}
 
 /* Text Container */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:last-child {{
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:last-child {
     display: inline-flex !important;
     align-items: center !important;
     flex: 1 1 auto !important;
@@ -1975,39 +2031,49 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     padding: 0 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
-}}
+}
 
 /* Markdown Container & Paragraph */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"],
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {{
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {
     display: inline-block !important;
     margin: 0 !important;
     padding: 0 !important;
-    font-size: 0.92rem !important;
+    font-size: 0.93rem !important;
     line-height: 1 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-}}
+}
 
-/* Sidebar Sign Out Button */
-section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"] {{
+/* White Sign Out Button at Bottom matching Image 1 */
+div.sidebar-signout-btn button,
+section[data-testid="stSidebar"] .sidebar-signout-btn button {
+    background-color: #FFFFFF !important;
     background: #FFFFFF !important;
     border: 1px solid #E2E8F0 !important;
-    color: #64748B !important;
+    color: #1E293B !important;
     border-radius: 8px !important;
-    padding: 8px 16px !important;
-    font-weight: 600 !important;
-    font-size: 0.90rem !important;
+    padding: 10px 16px !important;
+    font-weight: 700 !important;
+    font-size: 0.92rem !important;
     width: 100% !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
     transition: all 0.18s ease !important;
-}}
-section[data-testid="stSidebar"] button[key="btn_sidebar_sign_out"]:hover {{
-    background: #FEE2E2 !important;
+}
+div.sidebar-signout-btn button:hover,
+section[data-testid="stSidebar"] .sidebar-signout-btn button:hover {
+    background-color: #F8FAFC !important;
     color: #DC2626 !important;
     border-color: #F87171 !important;
-}}
+    transform: scale(1.02) !important;
+}
+div.sidebar-signout-btn button *,
+section[data-testid="stSidebar"] .sidebar-signout-btn button * {
+    color: #1E293B !important;
+    font-weight: 700 !important;
+}
 </style>
 """
 st.markdown(sidebar_dynamic_css, unsafe_allow_html=True)
@@ -2015,87 +2081,46 @@ st.markdown(sidebar_dynamic_css, unsafe_allow_html=True)
 # ------------------------------------------------------------------------------
 # REUSABLE SIDEBAR COMPONENT (HR ADMINISTRATOR & EMPLOYEE)
 # ------------------------------------------------------------------------------
-NAV_ICONS = {
-    "Dashboard": "dashboard",
-    "Employees": "group",
-    "Employee Management": "group",
-    "Performance": "analytics",
-    "Performance Reviews": "analytics",
-    "Skills & Assessment": "psychology",
-    "Skills": "psychology",
-    "Career Goals": "flag",
-    "Growth Progress": "trending_up",
-    "Reports": "description",
-    "Career Report": "description",
-    "Resume Studio": "badge",
-    "ATS Resume Studio": "badge",
-    "My Profile": "person",
-    "Career Direction": "explore",
-    "Role Match & Gaps": "radar",
-    "Career Coach": "smart_toy",
-    "AI Career Coach": "smart_toy",
-    "Settings": "settings",
-    "Join an Organization": "corporate_fare"
-}
-
 def nav_format(page_name: str) -> str:
-    icon_name = NAV_ICONS.get(page_name, "chevron_right")
-    return f":material/{icon_name}:  {page_name}"
+    """Clean page title formatted with circular dot matching Image 1."""
+    return page_name
 
 def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
-    """Renders the shared sidebar component with Talent Growth branding, boxed radio menu, and Sign out button."""
+    """Renders the sidebar component matching Image 1 exactly."""
     with st.sidebar:
-        # 1. Branding: Material Icon Toggle Button + Brand Title
+        # 1. Branding Header Row: White Rounded Hamburger Button + Logo + Talent Growth
         col_ham, col_brand = st.columns([1.3, 4.7], gap="small")
         with col_ham:
             st.markdown('<div class="sidebar-ham-btn">', unsafe_allow_html=True)
-            st.button("", icon=":material/menu_open:", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Close sidebar")
+            st.button("", icon=":material/menu:", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Close sidebar")
             st.markdown('</div>', unsafe_allow_html=True)
         with col_brand:
-            brand_title_color = "#0F172A"
             st.markdown(
                 f"""
-                <div style="display: flex; align-items: center; gap: 8px; padding-top: 4px;">
-                    {get_svg_icon("brand_logo", size=26)}
-                    <span style="font-weight: 800; font-size: 1.22rem; color: {brand_title_color}; letter-spacing: -0.01em; line-height: 1;">Talent Growth</span>
+                <div style="display: flex; align-items: center; gap: 10px; padding-top: 2px;">
+                    {get_svg_icon("brand_logo", size=30)}
+                    <div style="display: flex; flex-direction: column; line-height: 1.1;">
+                        <span style="font-weight: 800; font-size: 1.12rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent</span>
+                        <span style="font-weight: 800; font-size: 1.12rem; color: #FFFFFF; letter-spacing: -0.01em;">Growth</span>
+                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
 
-        # 2. Signed-in User Info & Role Subtitle
-        user_subtitle_color = "#64748B"
+        # 2. Signed-in User Info & Role Subtitle matching Image 1
         role_title = "Individual Professional" if is_individual else ("HR Administrator" if is_admin else "Employee")
-        if is_individual:
-            org_pill_html = """
-            <div style="display: inline-flex; align-items: center; gap: 6px; background: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 6px; padding: 4px 10px; margin-bottom: 1.15rem; font-size: 0.76rem; color: #7C3AED; font-weight: 700;">
-                <span>Independent Professional Account</span>
-            </div>
-            """
-        else:
-            org_pill_html = f"""
-            <div style="display: inline-flex; align-items: center; gap: 6px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; padding: 4px 10px; margin-bottom: 1.15rem; font-size: 0.76rem; color: #1D4ED8;">
-                <span style="font-weight: 700; color: #1D4ED8;">{user.get('org_name', 'Talent Growth')}</span>
-                <span style="opacity: 0.85; font-family: monospace; color: #3B82F6;">({user.get('org_id', 'ORG-TALENT-01')})</span>
-            </div>
-            """
+        user_name = user.get('name', 'User')
         st.markdown(
             f"""
-            <div style="font-size: 0.83rem; color: {user_subtitle_color}; margin-top: 2px; margin-bottom: 4px; padding-left: 2px;">
-                Signed in as <strong style="color: #0F172A;">{user.get('name', 'User')}</strong> &bull; {role_title}
+            <div style="font-size: 0.83rem; color: #94A3B8; margin-top: 1rem; margin-bottom: 0.5rem; padding-left: 2px;">
+                Signed in as <strong style="color: #FFFFFF;">{user_name}</strong> &bull; {role_title}
             </div>
-            {org_pill_html}
             """,
             unsafe_allow_html=True
         )
 
-        # 3. Boxed Navigation Menu Header
-        st.markdown(
-            '<div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748B; margin-bottom: 6px; padding-left: 4px;">Menu Navigation</div>',
-            unsafe_allow_html=True
-        )
-
-        # 4. Radio Navigation Rows inside Box
+        # 3. Radio Navigation Rows matching Image 1
         selected_nav = st.radio(
             "Navigation",
             active_pages,
@@ -2106,22 +2131,53 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
         )
         st.session_state.current_page = selected_nav
 
-        # 5. Spacing to bottom
+        # 4. Spacing to bottom
         st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
 
-        # 6. Bottom Action: Sign out button with Material Icon
-        if st.button("Sign out", icon=":material/logout:", use_container_width=True, type="secondary", key="btn_sidebar_sign_out"):
+        # 5. Bottom Action: White Sign out button matching Image 1
+        st.markdown('<div class="sidebar-signout-btn">', unsafe_allow_html=True)
+        if st.button("Sign out", use_container_width=True, type="secondary", key="btn_sidebar_sign_out"):
             st.session_state.user = None
             st.session_state.auth_view = "landing"
             st.session_state.current_page = "Dashboard"
             st.session_state.page_to_navigate = "Dashboard"
             st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
         return selected_nav
 
 page = render_app_sidebar(is_admin, user, active_pages)
 
-
+# Trigger Streamlit's native sidebar collapse button when hamburger is clicked
+if st.session_state.get("trigger_sidebar_collapse", False):
+    st.session_state.trigger_sidebar_collapse = False
+    import streamlit.components.v1 as _components
+    _components.html(
+        """
+        <script>
+        (function() {
+            function triggerCollapse() {
+                try {
+                    const doc = window.parent ? window.parent.document : document;
+                    const btn = doc.querySelector('[data-testid="stSidebarCollapseButton"] button, button[data-testid="stSidebarCollapseButton"], [data-testid="stSidebarCollapseButton"]');
+                    if (btn) {
+                        btn.click();
+                        return true;
+                    }
+                } catch(e) {}
+                return false;
+            }
+            if (!triggerCollapse()) {
+                setTimeout(triggerCollapse, 40);
+                setTimeout(triggerCollapse, 120);
+                setTimeout(triggerCollapse, 250);
+            }
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 
 def analysis_bundle():
     result = profile_analysis(profile, skills)
@@ -2131,18 +2187,10 @@ def analysis_bundle():
 # ------------------------------------------------------------------------------
 # UNIVERSAL TOP BAR WITH BACK TO HOME & BREADCRUMBS
 # ------------------------------------------------------------------------------
-if not is_expanded:
-    col_open, col_top_home, col_top_trail = st.columns([1.8, 2.2, 6.0], gap="small")
-    with col_open:
-        st.button("Open Menu", icon=":material/menu:", key="btn_open_sidebar_topbar", on_click=toggle_sidebar, type="primary", use_container_width=True)
-    with col_top_home:
-        if st.button("Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
-            navigate_to("Dashboard")
-else:
-    col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
-    with col_top_home:
-        if st.button("Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
-            navigate_to("Dashboard")
+col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
+with col_top_home:
+    if st.button("Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+        navigate_to("Dashboard")
 
 with col_top_trail:
     badge_color = "#16A34A" if is_individual else ("#4F46E5" if is_admin else "#2563EB")
