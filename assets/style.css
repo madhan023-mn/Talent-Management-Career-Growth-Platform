@@ -444,12 +444,48 @@ div[data-testid="stSidebarUserContent"] {
                 max-width 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* Hide native Streamlit sidebar collapse controls */
+/* Native Streamlit sidebar collapse & expand controls (smooth open/close) */
 div[data-testid="collapsedControl"],
-div[data-testid="stSidebarCollapsedControl"],
+div[data-testid="stSidebarCollapsedControl"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: fixed !important;
+    top: 14px !important;
+    left: 14px !important;
+    z-index: 99999 !important;
+}
+
+div[data-testid="collapsedControl"] button,
+div[data-testid="stSidebarCollapsedControl"] button {
+    background: #1E293B !important;
+    color: #FFFFFF !important;
+    border: 1.5px solid #334155 !important;
+    border-radius: 8px !important;
+    width: 36px !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+div[data-testid="collapsedControl"] button:hover,
+div[data-testid="stSidebarCollapsedControl"] button:hover {
+    background: #7C3AED !important;
+    border-color: #8B5CF6 !important;
+    color: #FFFFFF !important;
+    transform: scale(1.05) !important;
+}
+
 button[data-testid="stSidebarCollapseButton"] {
-    display: none !important;
-    visibility: hidden !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
 }
 
 /* Base Radio Container Styling */
@@ -1676,14 +1712,12 @@ header[data-testid="stHeader"] {
     z-index: 99999 !important;
 }
 
-/* 3-Line Hamburger Menu / Collapse Arrow Toggle to Slide Open Sidebar */
-div[data-testid="collapsedControl"],
-div[data-testid="stSidebarCollapsedControl"],
+/* 3-Line Hamburger Menu / Collapse Arrow Toggle to Slide Open Sidebar (Active) */
 button[data-testid="stSidebarCollapseButton"] {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
 }
 
 /* ==============================================================================
@@ -1881,30 +1915,61 @@ button[data-testid="stSidebarCollapseButton"] {
 
 /* Enterprise Sidebar Navigation Item Styling */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
-    padding: 7px 12px !important;
+    padding: 8px 14px !important;
     border-radius: 8px !important;
-    font-size: 0.88rem !important;
+    font-size: 0.90rem !important;
     font-weight: 500 !important;
     transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
     cursor: pointer !important;
     display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
-    margin-bottom: 2px !important;
+    gap: 10px !important;
+    margin-bottom: 3px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
-    background-color: rgba(79, 70, 229, 0.08) !important;
-    color: #4F46E5 !important;
+/* Inactive Radio Item */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) {
+    background: transparent !important;
+    color: #CBD5E1 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) * {
+    color: #CBD5E1 !important;
+    font-weight: 500 !important;
+}
+
+/* Inactive Hover */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover {
+    background: rgba(124, 58, 237, 0.16) !important;
+    color: #FFFFFF !important;
     transform: translateX(2px) !important;
 }
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover * {
+    color: #FFFFFF !important;
+}
 
+/* Active Radio Item: Vibrant Colorful Career Gradient Pill */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-    background-color: #EEF2FF !important;
-    color: #4F46E5 !important;
+    background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%) !important;
+    color: #FFFFFF !important;
     font-weight: 700 !important;
-    border-left: 3px solid #4F46E5 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.38) !important;
+    border: none !important;
+}
+
+/* Active Text: Guaranteed 100% visible pure crisp white across all tags */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) * {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Hide the native round radio button circle dot */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
+    display: none !important;
 }
 
 /* Enterprise Native Input Styling (Inter font, smooth shadow ring on focus) */

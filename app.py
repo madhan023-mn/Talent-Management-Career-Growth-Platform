@@ -849,7 +849,7 @@ def landing_webpage():
             <div style="display: flex; align-items: center; gap: 12px;">
                 <span style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; color: #7C3AED; background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(37, 99, 235, 0.12) 100%); border: 1px solid rgba(124, 58, 237, 0.35); padding: 5px 14px; border-radius: 9999px;">
                     <span style="width: 8px; height: 8px; background: #8B5CF6; border-radius: 50%; box-shadow: 0 0 8px #8B5CF6;"></span>
-                    ✨ Modern Talent Growth Experience
+                    Modern Talent Growth Experience
                 </span>
             </div>
         </div>
@@ -1277,8 +1277,8 @@ def login_page():
                 </div>
 
                 <div style="padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.12); display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; color: #94A3B8;">
-                    <span>🔒 Enterprise RBAC &amp; Tenant Isolation</span>
-                    <span>⚡ Sub-second Analytics Engine</span>
+                    <span>Enterprise RBAC &amp; Tenant Isolation</span>
+                    <span>Sub-second Analytics Engine</span>
                 </div>
             </div>
             """
@@ -1297,14 +1297,14 @@ def login_page():
                 </div>
 
                 <div style="margin-bottom: 0.75rem;">
-                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">⚡ 1-Click Instant Demo Access</div>
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">1-Click Instant Demo Access</div>
                 </div>
                 """
             )
 
             col_chip1, col_chip2, col_chip3 = st.columns(3)
             with col_chip1:
-                if st.button("⚡ HR Admin", key="login_chip_admin", use_container_width=True, type="secondary"):
+                if st.button("HR Admin", icon=":material/admin_panel_settings:", key="login_chip_admin", use_container_width=True, type="secondary"):
                     u = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
                     if u:
                         st.session_state.user = u
@@ -1312,7 +1312,7 @@ def login_page():
                         st.session_state.auth_view = "landing"
                         st.rerun()
             with col_chip2:
-                if st.button("⚡ Employee", key="login_chip_alex", use_container_width=True, type="secondary"):
+                if st.button("Employee", icon=":material/badge:", key="login_chip_alex", use_container_width=True, type="secondary"):
                     u = login("alex@company.com", "Password123")
                     if u:
                         st.session_state.user = u
@@ -1320,7 +1320,7 @@ def login_page():
                         st.session_state.auth_view = "landing"
                         st.rerun()
             with col_chip3:
-                if st.button("⚡ Individual", key="login_chip_ravi", use_container_width=True, type="secondary"):
+                if st.button("Individual", icon=":material/person:", key="login_chip_ravi", use_container_width=True, type="secondary"):
                     u = login("ravi@company.com", "Password123")
                     if u:
                         st.session_state.user = u
@@ -1738,7 +1738,7 @@ circle_inactive_border = "#475569"
 item_hover_bg = "rgba(99, 102, 241, 0.12)"
 item_hover_color = "#FFFFFF"
 circle_hover_border = "#8B5CF6"
-active_bg = "linear-gradient(90deg, rgba(99, 102, 241, 0.28) 0%, rgba(139, 92, 246, 0.16) 100%)"
+active_bg = "linear-gradient(135deg, #7C3AED 0%, #2563EB 100%)"
 active_text = "#FFFFFF"
 active_circle_border = "#8B5CF6"
 active_circle_bg = "#8B5CF6"
@@ -1837,14 +1837,59 @@ html, body, .stApp, [data-testid="stAppViewContainer"] {{
     }}
 }}
 
-/* Completely Hide Streamlit Native Collapse Controls */
+/* Sidebar Collapse & Expand Controls (Smooth Native & Custom Toggle) */
 div[data-testid="collapsedControl"],
-div[data-testid="stSidebarCollapsedControl"],
+div[data-testid="stSidebarCollapsedControl"] {{
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: fixed !important;
+    top: 14px !important;
+    left: 14px !important;
+    z-index: 99999 !important;
+}}
+
+div[data-testid="collapsedControl"] button,
+div[data-testid="stSidebarCollapsedControl"] button {{
+    background: #1E293B !important;
+    color: #FFFFFF !important;
+    border: 1.5px solid #334155 !important;
+    border-radius: 8px !important;
+    width: 36px !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}}
+
+div[data-testid="collapsedControl"] button:hover,
+div[data-testid="stSidebarCollapsedControl"] button:hover {{
+    background: #7C3AED !important;
+    border-color: #8B5CF6 !important;
+    color: #FFFFFF !important;
+    transform: scale(1.05) !important;
+}}
+
 button[data-testid="stSidebarCollapseButton"] {{
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    background: #1E293B !important;
+    color: #CBD5E1 !important;
+    border: 1px solid #334155 !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+}}
+
+button[data-testid="stSidebarCollapseButton"]:hover {{
+    background: #7C3AED !important;
+    border-color: #8B5CF6 !important;
+    color: #FFFFFF !important;
 }}
 
 /* Three-Line Hamburger Button Styling (Sidebar) */
@@ -1903,19 +1948,9 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     transition: background-color 0.15s ease, color 0.15s ease !important;
 }}
 
-/* Radio Circle Outer Container (First Child) */
+/* Radio Circle Outer Container (First Child - Hidden to present clean nav items) */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {{
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 18px !important;
-    min-width: 18px !important;
-    max-width: 18px !important;
-    height: 18px !important;
-    margin: 0 {circle_margin_right} 0 0 !important;
-    padding: 0 !important;
-    flex-shrink: 0 !important;
-    flex-grow: 0 !important;
+    display: none !important;
 }}
 
 /* The actual circle inside first-child */
@@ -1970,11 +2005,17 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     box-shadow: {active_circle_shadow} !important;
 }}
 
-/* Active Text */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] p,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {{
-    color: {active_text} !important;
+/* Active Text: 100% Visible White */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) * {{
+    color: #FFFFFF !important;
     font-weight: 700 !important;
+}}
+
+/* Inactive Text: 100% Visible Slate */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) * {{
+    color: #CBD5E1 !important;
+    font-weight: 500 !important;
 }}
 
 /* Text Container (Second Child / Last Child) */
@@ -2030,15 +2071,45 @@ st.markdown(sidebar_dynamic_css, unsafe_allow_html=True)
 # ------------------------------------------------------------------------------
 # REUSABLE SIDEBAR COMPONENT (HR ADMINISTRATOR & EMPLOYEE)
 # ------------------------------------------------------------------------------
+NAV_ICONS = {
+    "Dashboard": "dashboard",
+    "Employees": "group",
+    "Employee Management": "group",
+    "Performance": "analytics",
+    "Performance Reviews": "analytics",
+    "Skills & Assessment": "psychology",
+    "Skills": "psychology",
+    "Career Goals": "flag",
+    "Growth Progress": "trending_up",
+    "Reports": "description",
+    "Career Report": "description",
+    "Resume Studio": "badge",
+    "ATS Resume Studio": "badge",
+    "My Profile": "person",
+    "Career Direction": "explore",
+    "Role Match & Gaps": "radar",
+    "Career Coach": "smart_toy",
+    "AI Career Coach": "smart_toy",
+    "Settings": "settings",
+    "Join an Organization": "corporate_fare"
+}
+
+def nav_format(page_name: str) -> str:
+    icon_name = NAV_ICONS.get(page_name, "chevron_right")
+    if st.session_state.get("sidebar_expanded", True):
+        return f":material/{icon_name}:  {page_name}"
+    else:
+        return f":material/{icon_name}:"
+
 def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
     """Renders the shared sidebar component with Talent Growth branding, radio items, and Back to Home button."""
     with st.sidebar:
         if is_expanded:
-            # 1. Branding: Hamburger Button (☰) + [Talent Growth Logo] Talent Growth
+            # 1. Branding: Material Icon Toggle Button + Brand Title
             col_ham, col_brand = st.columns([1.3, 4.7], gap="small")
             with col_ham:
                 st.markdown('<div class="sidebar-ham-btn">', unsafe_allow_html=True)
-                st.button("☰", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Collapse sidebar (☰)")
+                st.button("", icon=":material/menu_open:", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Collapse sidebar")
                 st.markdown('</div>', unsafe_allow_html=True)
             with col_brand:
                 brand_title_color = "#FFFFFF"
@@ -2078,10 +2149,11 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
                 unsafe_allow_html=True
             )
 
-            # 3. Radio Navigation Rows
+            # 3. Radio Navigation Rows with Material Icons
             selected_nav = st.radio(
                 "Navigation",
                 active_pages,
+                format_func=nav_format,
                 key="nav_radio",
                 on_change=on_nav_change,
                 label_visibility="collapsed"
@@ -2091,8 +2163,8 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
             # 4. Spacing to bottom
             st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
 
-            # 5. Bottom Action: Single Sign out button
-            if st.button("Sign out", use_container_width=True, type="secondary", key="btn_sidebar_sign_out"):
+            # 5. Bottom Action: Sign out button with Material Icon
+            if st.button("Sign out", icon=":material/logout:", use_container_width=True, type="secondary", key="btn_sidebar_sign_out"):
                 st.session_state.user = None
                 st.session_state.auth_view = "landing"
                 st.session_state.current_page = "Dashboard"
@@ -2104,7 +2176,7 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
         else:
             # COLLAPSED NAVIGATION RAIL (~68px)
             st.markdown('<div class="sidebar-ham-btn" style="display: flex; justify-content: center; margin-bottom: 0.75rem;">', unsafe_allow_html=True)
-            st.button("☰", key="sidebar_hamburger_btn_collapsed", on_click=toggle_sidebar, help="Expand sidebar (☰)")
+            st.button("", icon=":material/menu:", key="sidebar_hamburger_btn_collapsed", on_click=toggle_sidebar, help="Expand sidebar")
             st.markdown('</div>', unsafe_allow_html=True)
 
             # Centered Compact Brand Logo
@@ -2117,19 +2189,20 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
                 unsafe_allow_html=True
             )
 
-            # Radio indicators (centered circles)
+            # Radio indicators with Material Icons
             selected_nav = st.radio(
                 "Navigation",
                 active_pages,
+                format_func=nav_format,
                 key="nav_radio",
                 on_change=on_nav_change,
                 label_visibility="collapsed"
             )
             st.session_state.current_page = selected_nav
 
-            # Bottom Action: Single compact Sign out button
+            # Bottom Action: Single compact Sign out button with Material Icon
             st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
-            if st.button("⎋", help="Sign out", use_container_width=True, type="secondary", key="btn_sidebar_signout_collapsed"):
+            if st.button("", icon=":material/logout:", help="Sign out", use_container_width=True, type="secondary", key="btn_sidebar_signout_collapsed"):
                 st.session_state.user = None
                 st.session_state.auth_view = "landing"
                 st.session_state.current_page = "Dashboard"
@@ -4426,7 +4499,7 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
             </div>
         </div>
         """)
-        if st.button("All Goals" if not is_act else "Active ✓", key="btn_card_all", use_container_width=True, type="primary" if is_act else "secondary"):
+        if st.button("All Goals" if not is_act else "Active", key="btn_card_all", use_container_width=True, type="primary" if is_act else "secondary"):
             st.session_state.cg_status_sel = "All Statuses"
             st.rerun()
 
@@ -4447,7 +4520,7 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
             </div>
         </div>
         """)
-        if st.button("Filter: In Progress" if not is_act else "Active ✓", key="btn_card_prog", use_container_width=True, type="primary" if is_act else "secondary"):
+        if st.button("Filter: In Progress" if not is_act else "Active", key="btn_card_prog", use_container_width=True, type="primary" if is_act else "secondary"):
             st.session_state.cg_status_sel = "In Progress"
             st.rerun()
 
@@ -4468,7 +4541,7 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
             </div>
         </div>
         """)
-        if st.button("Filter: Done" if not is_act else "Active ✓", key="btn_card_comp", use_container_width=True, type="primary" if is_act else "secondary"):
+        if st.button("Filter: Done" if not is_act else "Active", key="btn_card_comp", use_container_width=True, type="primary" if is_act else "secondary"):
             st.session_state.cg_status_sel = "Completed"
             st.rerun()
 
@@ -4489,7 +4562,7 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
             </div>
         </div>
         """)
-        if st.button("Filter: Overdue" if not is_act else "Active ✓", key="btn_card_overdue", use_container_width=True, type="primary" if is_act else "secondary"):
+        if st.button("Filter: Overdue" if not is_act else "Active", key="btn_card_overdue", use_container_width=True, type="primary" if is_act else "secondary"):
             st.session_state.cg_status_sel = "Overdue"
             st.rerun()
 
@@ -5289,7 +5362,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                                     unsafe_allow_html=True
                                 )
                             with c_del:
-                                if st.button("✕", key=f"btn_rs_del_skill_{idx}_{active_target_uid}", help=f"Remove {s_name}"):
+                                if st.button("", icon=":material/close:", key=f"btn_rs_del_skill_{idx}_{active_target_uid}", help=f"Remove {s_name}"):
                                     res_data["skills"].pop(idx)
                                     st.session_state[res_session_key] = res_data
                                     st.rerun()
@@ -5363,7 +5436,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                                         st.session_state[res_session_key] = res_data
                                         st.rerun()
                                 with c_del:
-                                    if st.button("✕", key=f"btn_exp_del_{idx}", help="Delete Entry"):
+                                    if st.button("", icon=":material/close:", key=f"btn_exp_del_{idx}", help="Delete Entry"):
                                         exp_list.pop(idx)
                                         res_data["experience"] = exp_list
                                         st.session_state[res_session_key] = res_data
@@ -5436,7 +5509,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                                 if ed.get("details"):
                                     st.markdown(f"<div style='font-size: 0.86rem; color: #334155; margin-top: 4px;'>{ed['details']}</div>", unsafe_allow_html=True)
                             with col_edu_ctrl:
-                                if st.button("✕", key=f"btn_edu_del_{idx}", help="Delete Entry"):
+                                if st.button("", icon=":material/close:", key=f"btn_edu_del_{idx}", help="Delete Entry"):
                                     edu_list.pop(idx)
                                     res_data["education"] = edu_list
                                     st.session_state[res_session_key] = res_data
@@ -5498,7 +5571,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                                 if c.get("credential_url"):
                                     st.markdown(f"<a href='{c['credential_url']}' target='_blank' style='font-size: 0.82rem; color: #2563EB;'>Verify Credential</a>", unsafe_allow_html=True)
                             with col_c_ctrl:
-                                if st.button("✕", key=f"btn_cert_del_{idx}", help="Delete Certification"):
+                                if st.button("", icon=":material/close:", key=f"btn_cert_del_{idx}", help="Delete Certification"):
                                     certs_list.pop(idx)
                                     res_data["certifications"] = certs_list
                                     st.session_state[res_session_key] = res_data
@@ -5569,7 +5642,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                                 if p_urls:
                                     st.markdown(f"<div style='font-size: 0.82rem; margin-top: 4px;'>{' &bull; '.join(p_urls)}</div>", unsafe_allow_html=True)
                             with col_p_ctrl:
-                                if st.button("✕", key=f"btn_proj_del_{idx}", help="Delete Project"):
+                                if st.button("", icon=":material/close:", key=f"btn_proj_del_{idx}", help="Delete Project"):
                                     projs_list.pop(idx)
                                     res_data["projects"] = projs_list
                                     st.session_state[res_session_key] = res_data
@@ -5627,7 +5700,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                             href = l_target if l_target.startswith('http') else f"https://{l_target}"
                             st.markdown(f"<a href='{href}' target='_blank' style='color: #2563EB;'>{l_target}</a>", unsafe_allow_html=True)
                         with col_l_del:
-                            if st.button("✕", key=f"btn_link_del_{idx}", help="Remove Link"):
+                            if st.button("", icon=":material/close:", key=f"btn_link_del_{idx}", help="Remove Link"):
                                 links_list.pop(idx)
                                 res_data["links"] = links_list
                                 st.session_state[res_session_key] = res_data
@@ -5664,7 +5737,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
             st.markdown("<div style='border-top: 2px solid #E2E8F0; margin: 2rem 0 1.25rem 0;'></div>", unsafe_allow_html=True)
             col_save_btn, col_cancel_btn, col_save_status = st.columns([3, 2, 4])
             with col_save_btn:
-                if st.button("💾 Save All Resume Changes", key="btn_rs_save_all", type="primary", use_container_width=True):
+                if st.button("Save All Resume Changes", icon=":material/save:", key="btn_rs_save_all", type="primary", use_container_width=True):
                     ok_save, msg_save = save_resume(active_target_uid, res_data, org_id=org_id)
                     if ok_save:
                         st.session_state[res_session_key] = get_resume(active_target_uid, org_id=org_id) or {}
@@ -5703,7 +5776,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                 }
             )
             st.download_button(
-                "📥 Download ATS Resume PDF",
+                "Download ATS Resume PDF",
                 pdf_bytes,
                 file_name=f"talent_growth_resume_{active_target_user.get('employee_id', active_target_uid)}.pdf",
                 mime="application/pdf",
@@ -6007,7 +6080,7 @@ elif page in ["Career Coach", "AI Career Coach"]:
     # Permanent Gemini API configuration is active; settings panel is kept completely hidden
     current_key = get_gemini_api_key(st.session_state.get("gemini_user_key"))
     has_gemini = bool(current_key)
-    badge_label = "⚡ GEMINI LIVE AI ACTIVE" if has_gemini else "AI EXECUTIVE HEURISTIC ACTIVE"
+    badge_label = "GEMINI LIVE AI ACTIVE" if has_gemini else "AI EXECUTIVE HEURISTIC ACTIVE"
 
     render_html(
         f"""
@@ -6043,16 +6116,16 @@ elif page in ["Career Coach", "AI Career Coach"]:
     )
     cp1, cp2, cp3, cp4 = st.columns(4)
     with cp1:
-        if st.button("🎯 Lead Role Roadmap", use_container_width=True, key="btn_coach_lead"):
+        if st.button("Lead Role Roadmap", icon=":material/explore:", use_container_width=True, key="btn_coach_lead"):
             st.session_state.coach_prompt_val = "What precise strategic roadmap should I follow to advance into a Lead / Principal designation over the next 12 months?"
     with cp2:
-        if st.button("☁️ Cloud & Architecture", use_container_width=True, key="btn_coach_cloud"):
+        if st.button("Cloud & Architecture", icon=":material/cloud:", use_container_width=True, key="btn_coach_cloud"):
             st.session_state.coach_prompt_val = "Which high-leverage cloud and distributed architecture skills will maximize my competency valuation?"
     with cp3:
-        if st.button("📈 Promotion Blueprint", use_container_width=True, key="btn_coach_promo"):
+        if st.button("Promotion Blueprint", icon=":material/trending_up:", use_container_width=True, key="btn_coach_promo"):
             st.session_state.coach_prompt_val = "How should I structure my achievements and metrics for our upcoming annual performance review cycle?"
     with cp4:
-        if st.button("⚡ 90-Day Action Plan", use_container_width=True, key="btn_coach_sprint"):
+        if st.button("90-Day Action Plan", icon=":material/speed:", use_container_width=True, key="btn_coach_sprint"):
             st.session_state.coach_prompt_val = "Generate a prioritized 90-day developmental sprint to close my most pressing skill gap."
 
     default_q = st.session_state.get("coach_prompt_val", "")
@@ -6066,7 +6139,7 @@ elif page in ["Career Coach", "AI Career Coach"]:
             gaps_info = gap_analysis(profile.get("target_role", "Software Engineer"), skills)
             target_role = profile.get("target_role", "Senior Engineer")
             
-            with st.spinner("⚡ Synthesizing deep AI career strategy guidance at high speed..."):
+            with st.spinner("Synthesizing deep AI career strategy guidance at high speed..."):
                 advice_res = generate_ai_coaching_guidance(
                     user_name=user.get("name", "User"),
                     question=question,
@@ -6118,7 +6191,7 @@ elif page in ["Career Coach", "AI Career Coach"]:
             f"""
             <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 16px; margin: 1.25rem 0 0.75rem 0; display: flex; align-items: center; justify-content: space-between;">
                 <div style="font-size: 0.88rem; font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 8px;">
-                    <span>📋 Comprehensive Executive Career Strategy Dossier</span>
+                    <span>Comprehensive Executive Career Strategy Dossier</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 12px; font-size: 0.8rem; color: #64748B;">
                     <span><strong>{word_count:,}</strong> words</span>
@@ -6140,7 +6213,7 @@ elif page in ["Career Coach", "AI Career Coach"]:
         with c_dl:
             safe_name = "".join(c for c in user.get('name', 'career_plan') if c.isalnum() or c in (' ', '_')).rstrip().replace(' ', '_').lower()
             st.download_button(
-                label="📥 Download Strategy Dossier (.md)",
+                label="Download Strategy Dossier (.md)", icon=":material/download:",
                 data=content_text,
                 file_name=f"career_strategy_dossier_{safe_name}.md",
                 mime="text/markdown",

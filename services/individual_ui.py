@@ -791,7 +791,7 @@ def render_individual_skill_gaps(user: Dict[str, Any], skills: List[Dict[str, An
         st.markdown(f"**Recommended Curriculum for {target_role}:**")
         recs = role_info.get("recommended_training", [])
         for r in recs:
-            st.markdown(f"- 📘 **{r}**")
+            st.markdown(f"- **{r}**")
         st.markdown(f"**Criteria Note:** {role_info.get('criteria', '')}")
 
 
