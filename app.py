@@ -1731,21 +1731,12 @@ section[data-testid="stSidebar"] {
     box-sizing: border-box !important;
 }
 
-section[data-testid="stSidebar"][aria-expanded="true"],
-section[data-testid="stSidebar"]:not([aria-expanded="false"]) {
-    min-width: 285px !important;
-    max-width: 320px !important;
-}
-
-section[data-testid="stSidebar"][aria-expanded="false"] {
+/* Ensure Dashboard Content Occupies Full Available Space Fluidly */
+[data-testid="stMain"] {
     min-width: 0 !important;
-    max-width: 0 !important;
-    width: 0 !important;
-    border: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 div[data-testid="stSidebarContent"],
@@ -2088,25 +2079,19 @@ def nav_format(page_name: str) -> str:
 def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
     """Renders the sidebar component matching Image 1 exactly."""
     with st.sidebar:
-        # 1. Branding Header Row: White Rounded Hamburger Button + Logo + Talent Growth
-        col_ham, col_brand = st.columns([1.3, 4.7], gap="small")
-        with col_ham:
-            st.markdown('<div class="sidebar-ham-btn">', unsafe_allow_html=True)
-            st.button("", icon=":material/menu:", key="sidebar_hamburger_btn", on_click=toggle_sidebar, help="Close sidebar")
-            st.markdown('</div>', unsafe_allow_html=True)
-        with col_brand:
-            st.markdown(
-                f"""
-                <div style="display: flex; align-items: center; gap: 10px; padding-top: 2px;">
-                    {get_svg_icon("brand_logo", size=30)}
-                    <div style="display: flex; flex-direction: column; line-height: 1.1;">
-                        <span style="font-weight: 800; font-size: 1.12rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent</span>
-                        <span style="font-weight: 800; font-size: 1.12rem; color: #FFFFFF; letter-spacing: -0.01em;">Growth</span>
-                    </div>
+        # 1. Branding Header Row: Swirl Logo + Talent Growth (Single Toggle Button is in stSidebarHeader)
+        st.markdown(
+            f"""
+            <div style="display: flex; align-items: center; gap: 12px; padding: 2px 0 10px 0;">
+                {get_svg_icon("brand_logo", size=32)}
+                <div style="display: flex; flex-direction: column; line-height: 1.15;">
+                    <span style="font-weight: 800; font-size: 1.18rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent</span>
+                    <span style="font-weight: 800; font-size: 1.18rem; color: #FFFFFF; letter-spacing: -0.01em;">Growth</span>
                 </div>
-                """,
-                unsafe_allow_html=True
-            )
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         # 2. Signed-in User Info & Role Subtitle matching Image 1
         role_title = "Individual Professional" if is_individual else ("HR Administrator" if is_admin else "Employee")
@@ -2148,36 +2133,7 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
 
 page = render_app_sidebar(is_admin, user, active_pages)
 
-# Trigger Streamlit's native sidebar collapse button when hamburger is clicked
-if st.session_state.get("trigger_sidebar_collapse", False):
-    st.session_state.trigger_sidebar_collapse = False
-    import streamlit.components.v1 as _components
-    _components.html(
-        """
-        <script>
-        (function() {
-            function triggerCollapse() {
-                try {
-                    const doc = window.parent ? window.parent.document : document;
-                    const btn = doc.querySelector('[data-testid="stSidebarCollapseButton"] button, button[data-testid="stSidebarCollapseButton"], [data-testid="stSidebarCollapseButton"]');
-                    if (btn) {
-                        btn.click();
-                        return true;
-                    }
-                } catch(e) {}
-                return false;
-            }
-            if (!triggerCollapse()) {
-                setTimeout(triggerCollapse, 40);
-                setTimeout(triggerCollapse, 120);
-                setTimeout(triggerCollapse, 250);
-            }
-        })();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
+# Sidebar open/close is handled by Streamlit's native single collapse/expand buttons
 
 def analysis_bundle():
     result = profile_analysis(profile, skills)
@@ -2189,7 +2145,7 @@ def analysis_bundle():
 # ------------------------------------------------------------------------------
 col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
 with col_top_home:
-    if st.button("Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+    if st.button("← Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
         navigate_to("Dashboard")
 
 with col_top_trail:
@@ -2197,14 +2153,22 @@ with col_top_trail:
     badge_bg = "#F0FDF4" if is_individual else ("#EEF2FF" if is_admin else "#EFF6FF")
     badge_border = "#BBF7D0" if is_individual else ("#C7D2FE" if is_admin else "#BFDBFE")
     role_label = "INDIVIDUAL" if is_individual else (user.get('role', 'employee').upper())
+    breadcrumb_trail = f"Dashboard &rarr; {page}" if page != "Dashboard" else "Dashboard"
     render_html(
         f"""
         <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
+            <span style="color: #64748B; font-size: 0.82rem; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+                {get_svg_icon('home', size=13, color='#64748B')} {breadcrumb_trail}
+            </span>
+            <span style="color: #CBD5E1;">|</span>
             <span style="display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 3px 10px; border-radius: 9999px;">
                 {get_svg_icon("user", size=13, color="#475569")}
                 <strong>{user.get('name', 'User')}</strong> &bull; {role_label}
             </span>
-            <span style="color: #CBD5E1;">|</span>
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #F1F5F9; border: 1px solid #E2E8F0; color: #64748B; position: relative;">
+                {get_svg_icon("bell", size=14, color="#64748B")}
+                <span style="position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: #10B981;"></span>
+            </span>
             <span style="color: {badge_color}; font-weight: 700; background: {badge_bg}; border: 1px solid {badge_border}; padding: 3px 10px; border-radius: 9999px;">{page}</span>
         </div>
         """
@@ -3020,54 +2984,123 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
             st.info("No performance reviews recorded for your profile yet.")
 # ==============================================================================
 elif page in ["Employees", "Employee Management"]:
+    # 1. Premium Workforce Hero Section (Section 3)
     render_html(
         f"""
-        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 60%, #E0F2FE 100%); border-left: 6px solid #2563EB;">
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 50%, #EEF2FF 100%); border: 1px solid #C7D2FE; border-left: 6px solid #2563EB; border-radius: 16px; padding: 1.5rem 1.8rem; margin-bottom: 1.5rem; box-shadow: 0 4px 20px rgba(37,99,235,0.08); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
             <div style="display: flex; align-items: center; gap: 16px;">
-                <div class="hero-icon-container" style="background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%);">
-                    {get_svg_icon("employees", size=24, color="#FFFFFF")}
+                <div style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(37,99,235,0.3); color: #FFFFFF; flex-shrink: 0;">
+                    {get_svg_icon("employees", size=26, color="#FFFFFF")}
                 </div>
                 <div>
-                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                    <div style="font-size: 1.7rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; line-height: 1.2;">
                         Workforce Directory &amp; Talent Lifecycle
                     </div>
-                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
-                        Personnel profiles, department assignments, contact information, and skill records.
+                    <div style="color: #475569; font-size: 0.92rem; margin-top: 4px; font-weight: 500;">
+                        Manage employees, explore talent profiles, track competencies, and support employee growth.
                     </div>
                 </div>
             </div>
-            <div>
-                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #2563EB, #06B6D4);">
-                    ORGANIZATION DIRECTORY
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 0.80rem; font-weight: 700; color: #1E40AF; background: #DBEAFE; border: 1px solid #BFDBFE; border-radius: 9999px; padding: 5px 14px; display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.03em;">
+                    {get_svg_icon("sparkles", size=13, color="#1E40AF")}
+                    ORGANIZATION DIRECTORY &bull; {org_id}
                 </span>
             </div>
         </div>
         """
     )
 
+    # 2. Modern Segmented Navigation Tabs (Section 4)
     tab_dir, tab_add, tab_bulk, tab_edit, tab_invite, tab_requests = st.tabs([
-        "Workforce Directory",
-        "Add New Employee",
-        "Bulk Dataset Upload (CSV/Excel)",
-        "Manage Records (Edit / Delete / Deactivate)",
-        "Organization Invitation Codes",
-        "Membership Requests"
+        "👥 Workforce Directory",
+        "➕ Add New Employee",
+        "📤 Bulk Dataset Upload",
+        "⚙️ Manage Records",
+        "🔑 Invitation Codes",
+        "📥 Membership Requests"
     ])
 
     # --- TAB 1: WORKFORCE DIRECTORY (PRIMARY VIEW) ---
     with tab_dir:
-        c_title, c_toggle = st.columns([2.2, 1.3])
+        # Section 5: Directory Section Header with segmented view controls and export
+        c_title, c_toggle = st.columns([2.5, 1.5], gap="small")
         with c_title:
-            st.markdown("#### Workforce Directory & Talent Profiles")
-            st.caption("Browse team personnel, filter competencies, and inspect real-time performance ratings.")
+            st.markdown("### Workforce Directory & Talent Profiles")
+            st.caption("Discover employees, review competencies, and manage workforce information.")
         with c_toggle:
-            view_mode = st.radio("Display Layout", ["Cards View", "Table View"], horizontal=True, key="emp_view_mode", label_visibility="collapsed")
+            view_mode = st.radio(
+                "Display Layout",
+                ["Cards View", "Table View"],
+                horizontal=True,
+                key="emp_view_mode",
+                label_visibility="collapsed"
+            )
 
-        f1, f2, f3, f4 = st.columns([1.6, 1, 1, 1])
-        s_query = f1.text_input("Live Search (Name, ID, Role, Skill)", placeholder="Search by name, designation, skill, or ID...", key="emp_live_search")
-        s_dept = f2.selectbox("Filter by Department", ["All Departments"] + get_all_departments(org_id=org_id), key="emp_dept_filter")
-        s_desig = f3.selectbox("Filter by Designation", ["All Designations"] + get_all_designations(org_id=org_id), key="emp_desig_filter")
-        s_status = f4.selectbox("Filter by Status", ["All Statuses"] + EMPLOYMENT_STATUSES, key="emp_status_filter")
+        # Section 6: Modern Search & Filter Panel
+        with st.container():
+            render_html(
+                f"""
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #0F172A; font-size: 0.95rem; margin-bottom: 0.6rem;">
+                    {get_svg_icon("filter", size=16, color="#2563EB")} Search &amp; Filter Talent
+                </div>
+                """
+            )
+            f1, f2, f3, f4 = st.columns([1.7, 1, 1, 1], gap="small")
+            with f1:
+                s_query = st.text_input(
+                    "Live Search",
+                    placeholder="Search by employee name, designation, skill, or employee ID...",
+                    key="emp_live_search",
+                    label_visibility="collapsed"
+                )
+            with f2:
+                s_dept = st.selectbox(
+                    "Filter by Department",
+                    ["All Departments"] + get_all_departments(org_id=org_id),
+                    key="emp_dept_filter",
+                    label_visibility="collapsed"
+                )
+            with f3:
+                s_desig = st.selectbox(
+                    "Filter by Designation",
+                    ["All Designations"] + get_all_designations(org_id=org_id),
+                    key="emp_desig_filter",
+                    label_visibility="collapsed"
+                )
+            with f4:
+                s_status = st.selectbox(
+                    "Filter by Status",
+                    ["All Statuses"] + EMPLOYMENT_STATUSES,
+                    key="emp_status_filter",
+                    label_visibility="collapsed"
+                )
+
+            # Active filter chips and Clear All Filters
+            active_filters = []
+            if s_query.strip():
+                active_filters.append(f"Search: '{s_query.strip()}'")
+            if s_dept != "All Departments":
+                active_filters.append(f"Dept: {s_dept}")
+            if s_desig != "All Designations":
+                active_filters.append(f"Designation: {s_desig}")
+            if s_status != "All Statuses":
+                active_filters.append(f"Status: {s_status}")
+
+            if active_filters:
+                c_chips, c_clear = st.columns([4, 1])
+                with c_chips:
+                    chips_html = "".join(f"<span class='filter-chip'>{c}</span>" for c in active_filters)
+                    render_html(f"<div style='display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0;'>{chips_html}</div>")
+                with c_clear:
+                    if st.button("Clear All Filters", key="btn_clear_emp_filters", type="secondary", use_container_width=True):
+                        st.session_state.emp_live_search = ""
+                        st.session_state.emp_dept_filter = "All Departments"
+                        st.session_state.emp_desig_filter = "All Designations"
+                        st.session_state.emp_status_filter = "All Statuses"
+                        st.rerun()
+
+        st.markdown("<div style='margin-bottom: 0.75rem;'></div>", unsafe_allow_html=True)
 
         emp_results = get_employees(
             search_query=s_query if s_query.strip() else None,
@@ -3077,62 +3110,147 @@ elif page in ["Employees", "Employee Management"]:
             org_id=org_id
         )
 
-        # Metrics bar with deltas
-        m_a, m_b, m_c, m_d = st.columns(4)
-        m_a.metric("Matching Personnel", len(emp_results), delta=f"{len(emp_results)} active records")
-        m_b.metric("Active Status", sum(1 for e in emp_results if e["employment_status"] == "Active"), delta="In Office / Remote")
-        m_c.metric("Avg Experience", f"{round(sum(e['years_experience'] for e in emp_results)/len(emp_results), 1) if emp_results else 0.0} yrs", delta="Tenure")
-        avg_rtg_val = round(sum(e['avg_rating'] for e in emp_results if e['avg_rating'])/len([e for e in emp_results if e['avg_rating']]), 2) if any(e['avg_rating'] for e in emp_results) else None
-        m_d.metric("Avg Rating", f"{avg_rtg_val} / 5.0" if avg_rtg_val else "N/A", delta="Quarterly Cycle")
+        # Section 7: Workforce Statistics (4 Modern Cards)
+        active_cnt = sum(1 for e in emp_results if e.get("employment_status") == "Active")
+        avg_exp_val = round(sum(e['years_experience'] for e in emp_results)/len(emp_results), 1) if emp_results else 0.0
+        ratings_list = [e['avg_rating'] for e in emp_results if e.get('avg_rating')]
+        avg_rtg_val = round(sum(ratings_list)/len(ratings_list), 2) if ratings_list else None
+        avg_rtg_str = f"{avg_rtg_val} / 5.0" if avg_rtg_val else "N/A"
 
+        render_html(
+            f"""
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                <div style="background: #FFFFFF; border: 1px solid #DBEAFE; border-top: 4px solid #2563EB; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(37,99,235,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Matching Personnel</span>
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; color: #2563EB;">
+                            {get_svg_icon("users", size=17, color="#2563EB")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{len(emp_results)}</div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.78rem; color: #2563EB; font-weight: 600;">
+                        <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #2563EB;"></span>
+                        {len(emp_results)} records matching filters
+                    </div>
+                </div>
+
+                <div style="background: #FFFFFF; border: 1px solid #BBF7D0; border-top: 4px solid #10B981; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(16,185,129,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Active Workforce</span>
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #ECFDF5; display: flex; align-items: center; justify-content: center; color: #10B981;">
+                            {get_svg_icon("check_circle", size=17, color="#10B981")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{active_cnt}</div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.78rem; color: #10B981; font-weight: 600;">
+                        <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10B981;"></span>
+                        In Office &bull; Remote Active
+                    </div>
+                </div>
+
+                <div style="background: #FFFFFF; border: 1px solid #DDD6FE; border-top: 4px solid #7C3AED; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(124,58,237,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Avg Experience</span>
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #F5F3FF; display: flex; align-items: center; justify-content: center; color: #7C3AED;">
+                            {get_svg_icon("briefcase", size=17, color="#7C3AED")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{avg_exp_val} <span style="font-size: 1rem; font-weight: 600; color: #64748B;">yrs</span></div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.78rem; color: #7C3AED; font-weight: 600;">
+                        <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #7C3AED;"></span>
+                        Organizational Tenure
+                    </div>
+                </div>
+
+                <div style="background: #FFFFFF; border: 1px solid #FDE68A; border-top: 4px solid #F59E0B; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(245,158,11,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Avg Performance</span>
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #FFFBEB; display: flex; align-items: center; justify-content: center; color: #F59E0B;">
+                            {get_svg_icon("star", size=17, color="#F59E0B")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{avg_rtg_str}</div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.78rem; color: #D97706; font-weight: 600;">
+                        <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #F59E0B;"></span>
+                        Quarterly Review Cycle
+                    </div>
+                </div>
+            </div>
+            """
+        )
+
+        # Section 8 & 9: Employee Profile Cards
         if emp_results:
             if view_mode == "Cards View":
-                card_cols = st.columns(3)
+                avatar_gradients = [
+                    "linear-gradient(135deg, #2563EB 0%, #06B6D4 100%)",
+                    "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)",
+                    "linear-gradient(135deg, #0D9488 0%, #2563EB 100%)",
+                    "linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)",
+                    "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)"
+                ]
+                card_cols = st.columns(3, gap="medium")
                 for i, emp in enumerate(emp_results):
                     with card_cols[i % 3]:
                         n_parts = emp["name"].strip().split()
                         init = (n_parts[0][0] + (n_parts[-1][0] if len(n_parts) > 1 else "")).upper()
+                        grad = avatar_gradients[i % len(avatar_gradients)]
                         rating_display = f"{emp['avg_rating']} / 5.0" if emp['avg_rating'] else "New Talent"
-                        status_cls = "badge-active" if emp['employment_status'] == 'Active' else ('badge-leave' if emp['employment_status'] == 'On Leave' else 'badge-overdue')
+
+                        emp_st = emp.get('employment_status', 'Active')
+                        if emp_st == 'Active':
+                            st_badge_html = "<span style='font-size: 0.72rem; font-weight: 700; color: #16A34A; background: #F0FDF4; border: 1px solid #BBF7D0; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase;'>ACTIVE</span>"
+                        elif emp_st in ['On Leave', 'Pending']:
+                            st_badge_html = f"<span style='font-size: 0.72rem; font-weight: 700; color: #D97706; background: #FEF3C7; border: 1px solid #FDE68A; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase;'>{emp_st}</span>"
+                        else:
+                            st_badge_html = f"<span style='font-size: 0.72rem; font-weight: 700; color: #64748B; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase;'>{emp_st}</span>"
+
                         skills_list = [s.strip() for s in (emp['primary_skills'] or '').split(',') if s.strip()][:4]
                         skills_html = ''.join(f"<span class='skill-pill'>{s}</span>" for s in skills_list) if skills_list else "<span style='font-size: 0.75rem; color: #94A3B8;'>No skills listed</span>"
 
                         render_html(
                             f"""
                             <div class="talent-card">
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <div class="talent-avatar-lg">{init}</div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div style="width: 46px; height: 46px; border-radius: 12px; background: {grad}; color: #FFFFFF; font-weight: 800; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(37,99,235,0.22);">
+                                            {init}
+                                        </div>
                                         <div>
-                                            <div style="font-weight: 800; font-size: 1.02rem; color: #0F172A; line-height: 1.2;">{emp['name']}</div>
-                                            <div style="font-size: 0.8rem; color: #2563EB; font-weight: 600;">{emp['designation']}</div>
+                                            <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A; line-height: 1.2;">{emp['name']}</div>
+                                            <div style="font-size: 0.82rem; color: #2563EB; font-weight: 600; margin-top: 2px;">{emp['designation']}</div>
                                         </div>
                                     </div>
-                                    <span class="badge-status {status_cls}">{emp['employment_status'].upper()}</span>
+                                    {st_badge_html}
                                 </div>
-                                <div style="font-size: 0.74rem; color: #1E40AF; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 6px; padding: 2px 7px; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 5px;">
-                                    {get_svg_icon("sparkles", size=11, color="#2563EB")} <strong>{emp.get('org_name', org_name)}</strong> ({emp.get('org_id', org_id)})
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;">
+                                    <span style="font-size: 0.74rem; color: #1E40AF; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 6px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px;">
+                                        {get_svg_icon("sparkles", size=11, color="#2563EB")} <strong>{emp.get('org_name', org_name)}</strong> ({emp.get('org_id', org_id)})
+                                    </span>
+                                    <span style="font-size: 0.74rem; color: #475569; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px;">
+                                        {get_svg_icon("building", size=11, color="#64748B")} {emp['department']}
+                                    </span>
+                                    <span class="tbl-id-pill">{emp['employee_id']}</span>
                                 </div>
-                                <div style="font-size: 0.78rem; color: #64748B; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                                    {get_svg_icon("building", size=13, color="#64748B")} <strong>{emp['department']}</strong> · <span class="tbl-id-pill">{emp['employee_id']}</span>
-                                </div>
-                                <div class="talent-mini-stats">
-                                    <div class="talent-stat-item">
-                                        <div class="talent-stat-val">{emp['years_experience']} yrs</div>
-                                        <div class="talent-stat-lbl">Experience</div>
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0;">
+                                    <div style="background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 8px; padding: 7px 4px; text-align: center;">
+                                        <div style="font-size: 0.92rem; font-weight: 800; color: #1E40AF;">{emp['years_experience']} yrs</div>
+                                        <div style="font-size: 0.66rem; font-weight: 700; color: #3B82F6; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px;">Experience</div>
                                     </div>
-                                    <div class="talent-stat-item">
-                                        <div class="talent-stat-val" style="color: #2563EB;">{rating_display}</div>
-                                        <div class="talent-stat-lbl">Performance</div>
+                                    <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 7px 4px; text-align: center;">
+                                        <div style="font-size: 0.92rem; font-weight: 800; color: #B45309; display: flex; align-items: center; justify-content: center; gap: 3px;">
+                                            {get_svg_icon("star", size=11, color="#D97706")} {rating_display}
+                                        </div>
+                                        <div style="font-size: 0.66rem; font-weight: 700; color: #D97706; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px;">Performance</div>
                                     </div>
-                                    <div class="talent-stat-item">
-                                        <div class="talent-stat-val">{emp['joining_date']}</div>
-                                        <div class="talent-stat-lbl">Joined</div>
+                                    <div style="background: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 8px; padding: 7px 4px; text-align: center;">
+                                        <div style="font-size: 0.80rem; font-weight: 800; color: #6D28D9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{emp['joining_date']}</div>
+                                        <div style="font-size: 0.66rem; font-weight: 700; color: #7C3AED; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px;">Joined</div>
                                     </div>
                                 </div>
-                                <div style="margin-top: 6px;">
-                                    <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Core Skills</div>
-                                    <div class="talent-skill-pills">{skills_html}</div>
+                                <div style="margin-top: 8px;">
+                                    <div style="font-size: 0.70rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Core Competencies</div>
+                                    <div class="talent-skill-pills" style="margin-top: 4px;">{skills_html}</div>
                                 </div>
                             </div>
                             """

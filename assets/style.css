@@ -432,29 +432,33 @@ section[data-testid="stSidebar"] {
     box-sizing: border-box !important;
 }
 
-section[data-testid="stSidebar"][aria-expanded="true"],
-section[data-testid="stSidebar"]:not([aria-expanded="false"]) {
-    min-width: 285px !important;
-    max-width: 320px !important;
-}
-
-section[data-testid="stSidebar"][aria-expanded="false"] {
-    min-width: 0 !important;
-    max-width: 0 !important;
-    width: 0 !important;
-    border: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-}
-
 div[data-testid="stSidebarContent"],
 div[data-testid="stSidebarUserContent"] {
     background-color: #0D1527 !important;
     background: #0D1527 !important;
     color: #FFFFFF !important;
     box-sizing: border-box !important;
+}
+
+/* Ensure Dashboard Content Occupies Full Available Space Fluidly */
+[data-testid="stMain"] {
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.main .block-container,
+[data-testid="stMain"] [data-testid="block-container"],
+[data-testid="stMain"] [data-testid="stMainBlockContainer"] {
+    padding-top: 1.2rem !important;
+    padding-bottom: 3.5rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
 }
 
 /* Sidebar Header */
@@ -2125,4 +2129,63 @@ div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] {
     letter-spacing: 0.05em !important;
     text-transform: uppercase !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Modern Segmented Navigation Tabs */
+div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    gap: 8px !important;
+    background-color: #F8FAFC !important;
+    padding: 6px !important;
+    border-radius: 12px !important;
+    border: 1px solid #E2E8F0 !important;
+    margin-bottom: 1.25rem !important;
+}
+div[data-testid="stTabs"] [data-baseweb="tab"] {
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    font-weight: 600 !important;
+    font-size: 0.90rem !important;
+    color: #64748B !important;
+    border: none !important;
+    background: transparent !important;
+    transition: all 0.2s ease !important;
+}
+div[data-testid="stTabs"] [data-baseweb="tab"]:hover {
+    background-color: #F1F5F9 !important;
+    color: #1E293B !important;
+}
+div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
+    background-color: #FFFFFF !important;
+    color: #2563EB !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+    border: 1px solid #BFDBFE !important;
+}
+div[data-testid="stTabs"] [data-baseweb="tab-border"] {
+    display: none !important;
+}
+div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+    display: none !important;
+}
+
+/* Workforce Search & Filter Card */
+.workforce-filter-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+}
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    color: #1E40AF;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 9999px;
 }
