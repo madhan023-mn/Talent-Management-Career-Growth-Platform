@@ -308,7 +308,15 @@ _SVG_RAW_PATHS = {
     "briefcase": '<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
     "filter": '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
     "chevron_down": '<polyline points="6 9 12 15 18 9"/>',
-    "external_link": '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>'
+    "external_link": '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
+    "upload": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+    "trash": '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+    "alert_triangle": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+    "sliders": '<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="1" x2="7" y1="14" y2="14"/><line x1="9" x2="15" y1="8" y2="8"/><line x1="17" x2="23" y1="16" y2="16"/>',
+    "edit": '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+    "refresh": '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>',
+    "check_circle": '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+    "x_circle": '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
 }
 
 @st.cache_data
@@ -1206,8 +1214,197 @@ def landing_webpage():
     )
 
 def render_database_diagnostics_panel(key_suffix: str = ""):
-    """Internal diagnostics helper (kept silent to maintain enterprise SaaS presentation)."""
-    pass
+    """Renders active SQLite database diagnostics & storage inspector with modern colorful cards and zero truncation."""
+    diag = get_database_diagnostics()
+    if not diag:
+        return
+
+    with st.expander("Active Database Diagnostics & Storage Inspector", expanded=(key_suffix == "settings")):
+        render_html(
+            f"""
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 16px;">
+                <!-- Card 1: Active Database -->
+                <div style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 100%); border: 1.5px solid #BFDBFE; border-left: 5px solid #2563EB; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(37,99,235,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.74rem; font-weight: 800; color: #1E40AF; text-transform: uppercase; letter-spacing: 0.05em;">Active Database</span>
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #DBEAFE; display: flex; align-items: center; justify-content: center;">
+                            {get_svg_icon("database", size=16, color="#2563EB")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A; line-height: 1.2; word-break: break-all;">
+                        {diag.get('filename', 'talentsphere.db')}
+                    </div>
+                    <div style="font-size: 0.76rem; color: #475569; margin-top: 8px; line-height: 1.4;">
+                        <strong>Path:</strong> <span style="font-family: monospace; background: #FFFFFF; padding: 2px 6px; border-radius: 4px; border: 1px solid #E2E8F0; font-size: 0.74rem; word-break: break-all; color: #0D9488;">{diag.get('absolute_path', '')}</span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Connection Status -->
+                <div style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%); border: 1.5px solid #BBF7D0; border-left: 5px solid #10B981; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(16,185,129,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.74rem; font-weight: 800; color: #065F46; text-transform: uppercase; letter-spacing: 0.05em;">Connection Status</span>
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #DCFCE7; display: flex; align-items: center; justify-content: center;">
+                            {get_svg_icon("check", size=16, color="#10B981")}
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #10B981; display: inline-block; box-shadow: 0 0 10px #10B981;"></span>
+                        <span style="font-size: 1.25rem; font-weight: 800; color: #065F46;">Connected (OK)</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #047857; margin-top: 8px;">
+                        Integrity: <strong>{diag.get('integrity', 'ok').upper()}</strong> &bull; Size: <strong>{diag.get('size_kb', 0)} KB</strong>
+                    </div>
+                </div>
+
+                <!-- Card 3: Total Users & Directory Metrics -->
+                <div style="background: linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 100%); border: 1.5px solid #E9D5FF; border-left: 5px solid #7C3AED; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(124,58,237,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.74rem; font-weight: 800; color: #6B21A8; text-transform: uppercase; letter-spacing: 0.05em;">Total Users</span>
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #F3E8FF; display: flex; align-items: center; justify-content: center;">
+                            {get_svg_icon("employees", size=16, color="#7C3AED")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.55rem; font-weight: 900; color: #581C87; line-height: 1.1;">
+                        {diag.get('total_users', 0)}
+                    </div>
+                    <div style="font-size: 0.78rem; color: #6B21A8; margin-top: 8px;">
+                        Employees: <strong>{diag.get('total_employees', 0)}</strong> &bull; Organizations: <strong>{diag.get('total_organizations', 0)}</strong>
+                    </div>
+                </div>
+            </div>
+            """
+        )
+
+        last_v = st.session_state.get("last_registered_verification")
+        if last_v:
+            render_html(
+                f"""
+                <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 10px; padding: 12px 16px; margin: 12px 0;">
+                    <div style="font-weight: 800; color: #15803D; font-size: 0.90rem; display: flex; align-items: center; gap: 8px;">
+                        {get_svg_icon("check", size=16, color="#15803D")} Verified Account in Active Database:
+                    </div>
+                    <div style="font-size: 0.84rem; color: #1E293B; margin-top: 4px; line-height: 1.5;">
+                        <strong>User ID:</strong> {last_v.get('id')} &bull;
+                        <strong>Name:</strong> {last_v.get('name')} &bull;
+                        <strong>Email:</strong> {last_v.get('email')} &bull;
+                        <strong>Role:</strong> {last_v.get('role')} &bull;
+                        <strong>Status:</strong> {last_v.get('status')}
+                    </div>
+                </div>
+                """
+            )
+
+        recent = diag.get("recent_users", [])
+        if recent:
+            render_html(
+                f"""
+                <div style="font-size: 0.92rem; font-weight: 800; color: #0F172A; margin: 14px 0 8px 0; display: flex; align-items: center; gap: 8px;">
+                    {get_svg_icon("employees", size=16, color="#2563EB")} Recent Users in Active Database:
+                </div>
+                """
+            )
+            df_recent = pd.DataFrame(recent)
+            cols_show = [c for c in ["id", "name", "email", "role", "account_type", "status", "date_joined"] if c in df_recent.columns]
+            st.dataframe(
+                df_recent[cols_show],
+                width="stretch",
+                hide_index=True,
+                column_config={
+                    "id": st.column_config.NumberColumn("ID", width="small"),
+                    "name": st.column_config.TextColumn("User Name", width="medium"),
+                    "email": st.column_config.TextColumn("Email Address", width="medium"),
+                    "role": st.column_config.TextColumn("Role", width="small"),
+                    "account_type": st.column_config.TextColumn("Account Type", width="small"),
+                    "status": st.column_config.TextColumn("Status", width="small"),
+                    "date_joined": st.column_config.TextColumn("Joined Date", width="small")
+                }
+            )
+
+def render_welcome_email_dispatch_panel():
+    """Renders the Welcome Email Dispatch & SMTP Delivery panel matching and upgrading Screenshot 2."""
+    email_cfg = get_email_config()
+    is_smtp_live = bool(email_cfg.get("smtp_host") and email_cfg.get("smtp_user"))
+    smtp_status_color = "#10B981" if is_smtp_live else "#F59E0B"
+    smtp_status_badge = "LIVE NETWORK DELIVERY" if is_smtp_live else "LOCAL LOGGING / SAFE MODE"
+
+    render_html(
+        f"""
+        <div style="background: #FFFFFF; border: 1.5px solid #DCE5F1; border-radius: 16px; padding: 24px; margin-top: 1.5rem; box-shadow: 0 4px 16px rgba(30, 64, 175, 0.04);">
+            <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    {get_svg_icon("mail", size=20, color="#2563EB")}
+                    <span>Welcome Email Dispatch &amp; SMTP Delivery</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 800; padding: 4px 12px; border-radius: 9999px; background: {smtp_status_color}18; color: {smtp_status_color}; border: 1px solid {smtp_status_color}55;">
+                        <span style="width: 7px; height: 7px; border-radius: 50%; background: {smtp_status_color};"></span>
+                        {smtp_status_badge}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Server Header Banner -->
+            <div style="background: #F8FAFC; border: 1px solid #DCE5F1; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: {smtp_status_color};"></span>
+                <span style="font-weight: 700; font-size: 0.90rem; color: #0F172A;">SMTP Server: <code>{email_cfg.get('smtp_host', 'Not configured')}</code></span>
+            </div>
+
+            <!-- 3 Info Boxes -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 14px;">
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Sender Address</div>
+                    <div style="font-size: 0.90rem; font-weight: 700; color: #0F172A; margin-top: 3px;">{email_cfg.get('smtp_from', 'Talent Growth')}</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">SMTP Port &amp; TLS</div>
+                    <div style="font-size: 0.90rem; font-weight: 700; color: #0F172A; margin-top: 3px;">Port {email_cfg.get('smtp_port', 587)} &bull; {'TLS Enabled' if email_cfg.get('smtp_use_tls') else 'TLS Disabled'}</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Active Auth User</div>
+                    <div style="font-size: 0.90rem; font-weight: 700; color: #2563EB; margin-top: 3px; word-break: break-all;">{email_cfg.get('smtp_user', 'Local / Unauthenticated')}</div>
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    with st.expander("Send Test Welcome Email", expanded=False):
+        c_test_mail, c_test_name = st.columns([1.5, 1])
+        t_email = c_test_mail.text_input("Recipient Email Address", placeholder="test.user@company.com", key="test_smtp_recipient")
+        t_name = c_test_name.text_input("Recipient Name", placeholder="Test Employee", key="test_smtp_name")
+        if st.button("Dispatch Test Welcome Email", type="primary", use_container_width=True, key="btn_dispatch_test_email"):
+            if not t_email.strip() or "@" not in t_email:
+                st.error("Please provide a valid recipient email address.")
+            else:
+                ok_mail, msg_mail = send_test_email(t_email.strip(), t_name.strip() or "Test Recipient")
+                if ok_mail:
+                    st.success(f"Dispatched: {msg_mail}")
+                    st.rerun()
+                else:
+                    st.warning(f"Notice: {msg_mail}")
+
+    render_html(
+        f"""
+        <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; margin: 1.25rem 0 0.75rem 0; display: flex; align-items: center; gap: 8px;">
+            {get_svg_icon("mail", size=18, color="#2563EB")} Recent Account Creation Emails
+        </div>
+        """
+    )
+    email_logs = get_recent_email_logs(limit=25)
+    if email_logs:
+        df_emails = pd.DataFrame(email_logs)
+        cols_present = [c for c in ["to_email", "user_name", "role", "subject", "status", "created_at"] if c in df_emails.columns]
+        df_emails_sub = df_emails[cols_present].rename(columns={
+            "to_email": "Recipient",
+            "user_name": "Name",
+            "role": "Role",
+            "subject": "Subject",
+            "status": "Status",
+            "created_at": "Timestamp"
+        })
+        st.dataframe(df_emails_sub, width="stretch", hide_index=True)
+    else:
+        st.info("No account creation emails logged yet.")
 
 
 # ------------------------------------------------------------------------------
@@ -1745,6 +1942,7 @@ div[data-testid="stSidebarUserContent"] {
     background: #0D1527 !important;
     color: #FFFFFF !important;
     box-sizing: border-box !important;
+    min-width: 260px !important;
 }
 
 /* Ensure Block Container Fits Viewport Perfectly Without Overflow */
@@ -1841,13 +2039,6 @@ div[data-testid="stSidebarCollapsedControl"] button {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
     cursor: pointer !important;
     transition: all 0.2s ease !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    position: fixed !important;
-    top: 14px !important;
-    left: 14px !important;
-    z-index: 99999 !important;
     padding: 0 !important;
 }
 
@@ -1953,23 +2144,29 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     transition: background-color 0.18s ease, color 0.18s ease, transform 0.15s ease !important;
 }
 
-/* White Circle Dots on Radio Rows matching Image 1 */
+/* Hide Default Radio Circle and use Sleek Modern Indicator */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin-right: 12px !important;
+    display: none !important;
 }
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {
-    width: 13px !important;
-    height: 13px !important;
-    min-width: 13px !important;
-    min-height: 13px !important;
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::before {
+    content: "" !important;
+    display: inline-block !important;
+    width: 8px !important;
+    height: 8px !important;
+    min-width: 8px !important;
+    min-height: 8px !important;
     border-radius: 50% !important;
-    background-color: #FFFFFF !important;
-    border: 2px solid #FFFFFF !important;
-    box-shadow: 0 0 4px rgba(255, 255, 255, 0.6) !important;
-    box-sizing: border-box !important;
+    background: #64748B !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    margin-right: 8px !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"]::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked)::before {
+    background: #FFFFFF !important;
+    box-shadow: 0 0 8px #FFFFFF !important;
+    width: 9px !important;
+    height: 9px !important;
+    min-width: 9px !important;
 }
 
 /* Inactive Row Styling */
@@ -3013,12 +3210,12 @@ elif page in ["Employees", "Employee Management"]:
 
     # 2. Modern Segmented Navigation Tabs (Section 4)
     tab_dir, tab_add, tab_bulk, tab_edit, tab_invite, tab_requests = st.tabs([
-        "👥 Workforce Directory",
-        "➕ Add New Employee",
-        "📤 Bulk Dataset Upload",
-        "⚙️ Manage Records",
-        "🔑 Invitation Codes",
-        "📥 Membership Requests"
+        "Workforce Directory",
+        "Add New Employee",
+        "Bulk Dataset Upload",
+        "Manage Records",
+        "Invitation Codes",
+        "Membership Requests"
     ])
 
     # --- TAB 1: WORKFORCE DIRECTORY (PRIMARY VIEW) ---
@@ -3294,8 +3491,26 @@ elif page in ["Employees", "Employee Management"]:
 
     # --- TAB 2: ADD EMPLOYEE ---
     with tab_add:
-        st.markdown("#### Register New Employee")
-        st.caption("Enter employee credentials and core competencies. Fields marked with (*) are required.")
+        render_html(
+            f"""
+            <div style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 100%); border: 1.5px solid #BFDBFE; border-left: 6px solid #2563EB; border-radius: 16px; padding: 1.35rem 1.6rem; margin-bottom: 1.5rem; box-shadow: 0 4px 16px rgba(37,99,235,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #2563EB, #1D4ED8); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(37,99,235,0.25);">
+                            {get_svg_icon("user_plus", size=22, color="#FFFFFF")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Register New Employee</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Enroll personnel, configure department placement, and catalog core competencies.</div>
+                        </div>
+                    </div>
+                    <span style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
+                        ORGANIZATION: {org_name} ({org_id})
+                    </span>
+                </div>
+            </div>
+            """
+        )
 
         if st.session_state.clear_emp_form_flag:
             st.session_state.e_name = ""
@@ -3309,20 +3524,47 @@ elif page in ["Employees", "Employee Management"]:
             st.session_state.e_status = "Active"
             st.session_state.clear_emp_form_flag = False
 
-        depts = ["Select Department"] + get_all_departments()
+        depts = ["Select Department"] + get_all_departments(org_id=org_id)
 
-        col_form_wrap, col_guidelines = st.columns([2, 1])
+        col_form_wrap, col_guidelines = st.columns([2.1, 1], gap="large")
         with col_form_wrap:
             with st.form("add_employee_master_form", clear_on_submit=False):
-                name_input = st.text_input("Employee Full Name *", key="e_name", placeholder="e.g. Alexander Wright")
-                id_input = st.text_input("Employee ID Code *", key="e_id", placeholder="e.g. EMP205").strip().upper()
-                email_input = st.text_input("Corporate Email Address", key="e_email", placeholder="e.g. alexander.w@company.com")
-                phone_input = st.text_input("Contact Phone Number", key="e_phone", placeholder="+1-555-0199")
+                # Section 1: Identity & Credentials
+                render_html(
+                    f"""
+                    <div style="font-size: 0.96rem; font-weight: 800; color: #1E40AF; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; border-bottom: 1.5px solid #BFDBFE; padding-bottom: 6px;">
+                        {get_svg_icon("user", size=18, color="#2563EB")} 1. Personal Identity &amp; Credentials
+                    </div>
+                    """
+                )
+                c_id1, c_id2 = st.columns(2)
+                name_input = c_id1.text_input("Employee Full Name *", key="e_name", placeholder="e.g. Alexander Wright")
+                id_input = c_id2.text_input("Employee ID Code *", key="e_id", placeholder="e.g. EMP205").strip().upper()
 
+                c_co1, c_co2 = st.columns(2)
+                email_input = c_co1.text_input("Corporate Email Address", key="e_email", placeholder="e.g. alexander.w@company.com")
+                phone_input = c_co2.text_input("Contact Phone Number", key="e_phone", placeholder="+1-555-0199")
+
+                # Section 2: Department & Placement
+                render_html(
+                    f"""
+                    <div style="font-size: 0.96rem; font-weight: 800; color: #0D9488; display: flex; align-items: center; gap: 8px; margin: 16px 0 10px 0; border-bottom: 1.5px solid #99F6E4; padding-bottom: 6px;">
+                        {get_svg_icon("briefcase", size=18, color="#0D9488")} 2. Department &amp; Role Placement
+                    </div>
+                    """
+                )
                 c_d1, c_d2 = st.columns(2)
                 dept_input = c_d1.selectbox("Department *", depts, key="e_dept")
                 desig_input = c_d2.text_input("Designation / Title *", key="e_desig", placeholder="e.g. Senior Backend Engineer")
 
+                # Section 3: Competencies & Tenure
+                render_html(
+                    f"""
+                    <div style="font-size: 0.96rem; font-weight: 800; color: #7C3AED; display: flex; align-items: center; gap: 8px; margin: 16px 0 10px 0; border-bottom: 1.5px solid #E9D5FF; padding-bottom: 6px;">
+                        {get_svg_icon("award", size=18, color="#7C3AED")} 3. Professional Experience &amp; Competencies
+                    </div>
+                    """
+                )
                 c_e1, c_e2, c_e3 = st.columns(3)
                 exp_input = c_e1.number_input("Years of Experience *", min_value=0.0, max_value=60.0, value=0.0, step=0.5, key="e_exp")
                 status_input = c_e2.selectbox("Employment Status", EMPLOYMENT_STATUSES, key="e_status")
@@ -3330,9 +3572,10 @@ elif page in ["Employees", "Employee Management"]:
 
                 skills_input = st.text_input("Primary Skills (Comma-separated) *", key="e_skills", placeholder="e.g. Python, Django, PostgreSQL, Docker, AWS")
 
+                st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
                 submit_add_emp = st.form_submit_button("Save Employee Record to Database", type="primary", use_container_width=True)
 
-            if st.button("Reset Form Fields", use_container_width=True):
+            if st.button("Reset Form Fields", use_container_width=True, type="secondary"):
                 st.session_state.clear_emp_form_flag = True
                 st.rerun()
 
@@ -3372,58 +3615,166 @@ elif page in ["Employees", "Employee Management"]:
                         st.error(msg)
 
         with col_guidelines:
-            with st.container(border=True):
-                st.markdown("#### System Validation Rules")
-                st.markdown(
-                    """
-                    - **Unique Constraints**: Employee ID and Corporate Email must be unique across the organization.
-                    - **Experience Boundary**: Accepted values range between `0.0` and `60.0` years.
-                    - **Competency Catalog**: Primary skills are parsed and indexed into the organizational skills index.
-                    - **Persistence Guarantee**: Saved directly into SQLite with parameterized queries.
-                    """
-                )
-
-    # --- TAB 2: BULK DATASET UPLOAD ---
-    with tab_bulk:
-        st.markdown("#### Bulk Employee Dataset Ingestion")
-        st.caption("Upload a formatted CSV or Excel file containing multiple employee records for instant batch ingestion into SQLite.")
-
-        col_b_left, col_b_right = st.columns([2, 1])
-        with col_b_right:
-            with st.container(border=True):
-                st.markdown("##### Standard CSV Template")
-                st.markdown("Download our official pre-structured employee dataset template to ensure error-free imports.")
-                sample_csv_str = get_sample_employee_csv()
-                st.download_button(
-                    "Download Sample CSV Template",
-                    data=sample_csv_str,
-                    file_name="talent_growth_sample_employees.csv",
-                    mime="text/csv",
-                    type="secondary",
-                    use_container_width=True
-                )
-                st.markdown(
-                    """
-                    <div style="font-size: 0.8rem; color: #64748B; margin-top: 10px;">
-                        <strong>Supported Columns:</strong><br>
-                        • <code>employee_id</code> (Unique, required)<br>
-                        • <code>name</code> (Full name, required)<br>
-                        • <code>department</code> (Business unit)<br>
-                        • <code>designation</code> (Job role)<br>
-                        • <code>primary_skills</code> (Comma-separated)<br>
-                        • <code>years_experience</code> (0–60)<br>
-                        • <code>email</code>, <code>phone</code>, <code>joining_date</code>
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                        {get_svg_icon("shield", size=18, color="#2563EB")} System Validation Rules
                     </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+
+                    <!-- Rule 1: Unique Constraints -->
+                    <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;">
+                        <div style="font-weight: 800; font-size: 0.84rem; color: #1E40AF; display: flex; align-items: center; gap: 6px;">
+                            {get_svg_icon("lock", size=14, color="#1E40AF")} Unique Constraints
+                        </div>
+                        <div style="font-size: 0.78rem; color: #334155; margin-top: 3px; line-height: 1.4;">
+                            Employee ID and Corporate Email must be globally unique across the organization directory.
+                        </div>
+                    </div>
+
+                    <!-- Rule 2: Experience Boundary -->
+                    <div style="background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;">
+                        <div style="font-weight: 800; font-size: 0.84rem; color: #0D9488; display: flex; align-items: center; gap: 6px;">
+                            {get_svg_icon("sliders", size=14, color="#0D9488")} Experience Boundaries
+                        </div>
+                        <div style="font-size: 0.78rem; color: #334155; margin-top: 3px; line-height: 1.4;">
+                            Accepted career experience values range between <code>0.0</code> and <code>60.0</code> years in 0.5-year steps.
+                        </div>
+                    </div>
+
+                    <!-- Rule 3: Competency Catalog -->
+                    <div style="background: #FAF5FF; border: 1px solid #E9D5FF; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;">
+                        <div style="font-weight: 800; font-size: 0.84rem; color: #7C3AED; display: flex; align-items: center; gap: 6px;">
+                            {get_svg_icon("sparkles", size=14, color="#7C3AED")} Competency Catalog
+                        </div>
+                        <div style="font-size: 0.78rem; color: #334155; margin-top: 3px; line-height: 1.4;">
+                            Skills are parsed, normalized, and indexed into the organizational skills matrix for AI gap analysis.
+                        </div>
+                    </div>
+
+                    <!-- Rule 4: Persistence Guarantee -->
+                    <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 12px 14px;">
+                        <div style="font-weight: 800; font-size: 0.84rem; color: #065F46; display: flex; align-items: center; gap: 6px;">
+                            {get_svg_icon("check", size=14, color="#065F46")} Persistence Guarantee
+                        </div>
+                        <div style="font-size: 0.78rem; color: #334155; margin-top: 3px; line-height: 1.4;">
+                            Committed immediately into SQLite storage engine with parameterized queries and WAL transaction logs.
+                        </div>
+                    </div>
+                </div>
+                """
+            )
+    # --- TAB 3: BULK DATASET UPLOAD ---
+    with tab_bulk:
+        render_html(
+            f"""
+            <div style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDFA 100%); border: 1.5px solid #99F6E4; border-left: 6px solid #0D9488; border-radius: 16px; padding: 1.35rem 1.6rem; margin-bottom: 1.5rem; box-shadow: 0 4px 16px rgba(13,148,136,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0D9488, #059669); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(13,148,136,0.25);">
+                            {get_svg_icon("upload", size=22, color="#FFFFFF")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Bulk Employee Dataset Ingestion</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Batch upload structured CSV or Excel spreadsheets to ingest multiple personnel profiles into SQLite instantly.</div>
+                        </div>
+                    </div>
+                    <span style="background: #F0FDFA; border: 1px solid #99F6E4; color: #0F766E; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
+                        BATCH INGESTION ENGINE
+                    </span>
+                </div>
+            </div>
+
+            <!-- 3-Step Visual Workflow Roadmap -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 1.5rem;">
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(30,64,175,0.03);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 26px; height: 26px; border-radius: 50%; background: #2563EB; color: #FFFFFF; font-size: 0.80rem; font-weight: 800; display: flex; align-items: center; justify-content: center;">1</span>
+                        <span style="font-weight: 700; font-size: 0.90rem; color: #0F172A;">Download Template</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #64748B; margin-top: 4px;">Get our official pre-structured CSV template.</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(30,64,175,0.03);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 26px; height: 26px; border-radius: 50%; background: #0D9488; color: #FFFFFF; font-size: 0.80rem; font-weight: 800; display: flex; align-items: center; justify-content: center;">2</span>
+                        <span style="font-weight: 700; font-size: 0.90rem; color: #0F172A;">Populate Profiles</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #64748B; margin-top: 4px;">Fill in ID, name, department, title, and skills.</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(30,64,175,0.03);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 26px; height: 26px; border-radius: 50%; background: #7C3AED; color: #FFFFFF; font-size: 0.80rem; font-weight: 800; display: flex; align-items: center; justify-content: center;">3</span>
+                        <span style="font-weight: 700; font-size: 0.90rem; color: #0F172A;">Ingest &amp; Verify</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #64748B; margin-top: 4px;">Upload and validate ACID database persistence.</div>
+                </div>
+            </div>
+            """
+        )
+
+        col_b_left, col_b_right = st.columns([1.8, 1.2], gap="large")
+        with col_b_right:
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        {get_svg_icon("download", size=18, color="#2563EB")} Standard CSV Template
+                    </div>
+                    <div style="font-size: 0.84rem; color: #475569; margin-bottom: 12px; line-height: 1.4;">
+                        Download our pre-structured template formatted with standard schema headers to guarantee smooth imports.
+                    </div>
+                """
+            )
+            sample_csv_str = get_sample_employee_csv()
+            st.download_button(
+                "Download Sample CSV Template",
+                data=sample_csv_str,
+                file_name="talent_growth_sample_employees.csv",
+                mime="text/csv",
+                type="secondary",
+                use_container_width=True
+            )
+            render_html(
+                """
+                    <div style="margin-top: 14px; border-top: 1px solid #F1F5F9; padding-top: 12px;">
+                        <div style="font-size: 0.76rem; font-weight: 800; color: #64748B; text-transform: uppercase; margin-bottom: 8px;">Supported Columns:</div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.80rem;">
+                            <span style="color: #1E293B;"><code style="color: #2563EB; font-weight: 700;">employee_id</code> &bull; Unique Key (Required)</span>
+                            <span style="color: #1E293B;"><code style="color: #0D9488; font-weight: 700;">name</code> &bull; Full Legal Name (Required)</span>
+                            <span style="color: #1E293B;"><code style="color: #7C3AED; font-weight: 700;">department</code> &bull; Business Unit (Required)</span>
+                            <span style="color: #1E293B;"><code style="color: #475569; font-weight: 700;">designation</code> &bull; Corporate Title (Required)</span>
+                            <span style="color: #1E293B;"><code style="color: #F59E0B; font-weight: 700;">primary_skills</code> &bull; Comma-separated (Required)</span>
+                            <span style="color: #1E293B;"><code style="color: #10B981; font-weight: 700;">years_experience</code> &bull; Numeric (0–60)</span>
+                            <span style="color: #64748B;"><code style="color: #64748B;">email</code>, <code>phone</code>, <code>joining_date</code></span>
+                        </div>
+                    </div>
+                </div>
+                """
+            )
 
         with col_b_left:
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; margin-bottom: 1rem; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            {get_svg_icon("upload", size=18, color="#0D9488")} Upload Dataset File
+                        </span>
+                        <div style="display: gap: 6px;">
+                            <span style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">.CSV</span>
+                            <span style="background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">.XLSX</span>
+                            <span style="background: #F8FAFC; border: 1px solid #E2E8F0; color: #64748B; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">50MB MAX</span>
+                        </div>
+                    </div>
+                """
+            )
             uploaded_file = st.file_uploader(
                 "Select CSV or Excel Dataset to Ingest",
                 type=["csv", "xlsx"],
-                help="Accepts .csv or .xlsx spreadsheets containing multiple employee profiles."
+                help="Accepts .csv or .xlsx spreadsheets containing multiple employee profiles.",
+                label_visibility="collapsed"
             )
+            render_html("</div>")
 
             if uploaded_file is not None:
                 try:
@@ -3432,7 +3783,13 @@ elif page in ["Employees", "Employee Management"]:
                     else:
                         df_upload = pd.read_excel(uploaded_file)
 
-                    st.markdown(f"##### Dataset Preview ({len(df_upload)} rows detected)")
+                    render_html(
+                        f"""
+                        <div style="font-size: 0.96rem; font-weight: 800; color: #0F172A; margin: 12px 0 8px 0; display: flex; align-items: center; gap: 8px;">
+                            {get_svg_icon("table", size=16, color="#2563EB")} Dataset Preview ({len(df_upload)} records detected)
+                        </div>
+                        """
+                    )
                     st.dataframe(df_upload.head(10), width="stretch", hide_index=True)
 
                     btn_import = st.button("Validate & Ingest Dataset into Database", type="primary", use_container_width=True)
@@ -3441,10 +3798,24 @@ elif page in ["Employees", "Employee Management"]:
                         with st.spinner("Processing records and enforcing SQLite constraints..."):
                             import_res = bulk_import_employees_df(df_upload, created_by=uid, org_id=org_id)
 
-                        m1, m2, m3 = st.columns(3)
-                        m1.metric("Total In File", import_res["total"])
-                        m2.metric("Successfully Added", import_res["success_count"])
-                        m3.metric("Skipped / Duplicate", import_res["skipped_count"])
+                        render_html(
+                            f"""
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0;">
+                                <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 14px; text-align: center;">
+                                    <div style="font-size: 0.74rem; font-weight: 700; color: #1E40AF; text-transform: uppercase;">Total In File</div>
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #1E3A8A; margin-top: 2px;">{import_res['total']}</div>
+                                </div>
+                                <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 14px; text-align: center;">
+                                    <div style="font-size: 0.74rem; font-weight: 700; color: #065F46; text-transform: uppercase;">Successfully Added</div>
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #064E3B; margin-top: 2px;">{import_res['success_count']}</div>
+                                </div>
+                                <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px; padding: 14px; text-align: center;">
+                                    <div style="font-size: 0.74rem; font-weight: 700; color: #B45309; text-transform: uppercase;">Skipped / Duplicate</div>
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #78350F; margin-top: 2px;">{import_res['skipped_count']}</div>
+                                </div>
+                            </div>
+                            """
+                        )
 
                         if import_res["success_count"] > 0:
                             st.success(f"Successfully imported {import_res['success_count']} employees into {org_name}!")
@@ -3460,11 +3831,40 @@ elif page in ["Employees", "Employee Management"]:
                 except Exception as ex:
                     st.error(f"Error reading dataset file: {ex}")
             else:
-                st.info("Upload a CSV or Excel dataset above to begin bulk employee ingestion.")
-
+                render_html(
+                    f"""
+                    <div style="background: #F8FAFD; border: 1.5px dashed #DCE5F1; border-radius: 14px; padding: 2.2rem; text-align: center;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: #EEF2FF; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                            {get_svg_icon("upload", size=22, color="#2563EB")}
+                        </div>
+                        <div style="font-weight: 700; color: #0F172A; font-size: 0.96rem;">No File Selected Yet</div>
+                        <div style="font-size: 0.84rem; color: #64748B; margin-top: 4px;">Upload a CSV or Excel dataset above to preview and batch-import employee records.</div>
+                    </div>
+                    """
+                )
     # --- TAB 4: EDIT & DELETE ---
     with tab_edit:
-        st.markdown("#### Modify or Remove Employee Records")
+        render_html(
+            f"""
+            <div style="background: linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 100%); border: 1.5px solid #E9D5FF; border-left: 6px solid #7C3AED; border-radius: 16px; padding: 1.35rem 1.6rem; margin-bottom: 1.5rem; box-shadow: 0 4px 16px rgba(124,58,237,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #7C3AED, #6D28D9); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(124,58,237,0.25);">
+                            {get_svg_icon("settings", size=22, color="#FFFFFF")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Employee Record Management &amp; Lifecycle</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Update employee profile credentials, modify department assignments, or manage deactivation and removal.</div>
+                        </div>
+                    </div>
+                    <span style="background: #FAF5FF; border: 1px solid #E9D5FF; color: #6B21A8; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
+                        LIFECYCLE MANAGEMENT
+                    </span>
+                </div>
+            </div>
+            """
+        )
+
         all_emps = get_employees(org_id=org_id)
         if not all_emps:
             st.info(f"No employee records currently available in {org_name}.")
@@ -3475,25 +3875,70 @@ elif page in ["Employees", "Employee Management"]:
             emp_curr = get_employee_by_id(selected_emp_code, org_id=org_id)
 
             if emp_curr:
-                col_ed, col_rm = st.columns([1.6, 1])
+                initials = "".join([part[:1].upper() for part in (emp_curr.get("name") or "User").split()[:2]])
+                status_color = "#10B981" if emp_curr["employment_status"] == "Active" else ("#EF4444" if emp_curr["employment_status"] == "Terminated" else "#F59E0B")
+
+                # Live Profile Badge
+                render_html(
+                    f"""
+                    <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 14px 18px; margin: 10px 0 16px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 46px; height: 46px; border-radius: 12px; background: linear-gradient(135deg, #2563EB, #7C3AED); color: #FFFFFF; font-weight: 800; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(37,99,235,0.25);">
+                                {initials}
+                            </div>
+                            <div>
+                                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A;">
+                                    {emp_curr['name']}
+                                    <span style="font-family: monospace; font-size: 0.78rem; background: #F1F5F9; color: #475569; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">
+                                        {emp_curr['employee_id']}
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.82rem; color: #64748B; margin-top: 2px;">
+                                    {emp_curr['designation']} &bull; {emp_curr['department']}
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <span style="background: {status_color}18; border: 1px solid {status_color}55; color: {status_color}; font-size: 0.76rem; font-weight: 800; padding: 4px 12px; border-radius: 9999px;">
+                                {emp_curr['employment_status'].upper()}
+                            </span>
+                        </div>
+                    </div>
+                    """
+                )
+
+                col_ed, col_rm = st.columns([1.6, 1], gap="large")
                 with col_ed:
+                    render_html(
+                        f"""
+                        <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                            <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                {get_svg_icon("edit", size=18, color="#2563EB")} Edit Profile Information
+                            </div>
+                        """
+                    )
                     with st.form("edit_emp_master_form"):
-                        st.markdown(f"##### Edit Details for `{emp_curr['employee_id']}`")
                         up_name = st.text_input("Full Legal Name", value=emp_curr["name"])
-                        up_email = st.text_input("Corporate Email", value=emp_curr["email"] or "")
-                        up_phone = st.text_input("Phone Number", value=emp_curr["phone"] or "")
+                        c_mail, c_ph = st.columns(2)
+                        up_email = c_mail.text_input("Corporate Email", value=emp_curr["email"] or "")
+                        up_phone = c_ph.text_input("Phone Number", value=emp_curr["phone"] or "")
 
                         d_list = get_all_departments(org_id=org_id)
                         d_idx = d_list.index(emp_curr["department"]) if emp_curr["department"] in d_list else 0
-                        up_dept = st.selectbox("Department", d_list, index=d_idx)
-                        up_desig = st.text_input("Designation / Title", value=emp_curr["designation"])
+                        c_dept, c_des = st.columns(2)
+                        up_dept = c_dept.selectbox("Department", d_list, index=d_idx)
+                        up_desig = c_des.text_input("Designation / Title", value=emp_curr["designation"])
 
                         s_idx = EMPLOYMENT_STATUSES.index(emp_curr["employment_status"]) if emp_curr["employment_status"] in EMPLOYMENT_STATUSES else 0
-                        up_status = st.selectbox("Employment Status", EMPLOYMENT_STATUSES, index=s_idx)
-                        up_exp = st.number_input("Years of Experience", min_value=0.0, max_value=60.0, value=float(emp_curr["years_experience"]), step=0.5)
+                        c_st, c_xp = st.columns(2)
+                        up_status = c_st.selectbox("Employment Status", EMPLOYMENT_STATUSES, index=s_idx)
+                        up_exp = c_xp.number_input("Years of Experience", min_value=0.0, max_value=60.0, value=float(emp_curr["years_experience"]), step=0.5)
                         up_skills = st.text_input("Primary Skills", value=emp_curr["primary_skills"])
 
-                        update_save_btn = st.form_submit_button("Update Employee Record", type="primary")
+                        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+                        update_save_btn = st.form_submit_button("Update Employee Record", type="primary", use_container_width=True)
+
+                    render_html("</div>")
 
                     if update_save_btn:
                         ok_upd, msg_upd = update_employee(
@@ -3516,166 +3961,267 @@ elif page in ["Employees", "Employee Management"]:
                             st.error(msg_upd)
 
                 with col_rm:
-                    with st.container(border=True):
-                        st.markdown("##### Deactivate or Remove Record")
-                        st.markdown(
-                            f"""
-                            <div style="font-size: 0.88rem; color: #475569; margin-bottom: 8px;">
-                                Manage status or delete <strong>{emp_curr['name']}</strong> (<code>{emp_curr['employee_id']}</code>).
+                    # Deactivation Box
+                    render_html(
+                        f"""
+                        <div style="background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 16px; padding: 20px; margin-bottom: 1.2rem; box-shadow: 0 4px 14px rgba(245,158,11,0.06);">
+                            <div style="font-size: 0.98rem; font-weight: 800; color: #92400E; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                {get_svg_icon("alert_triangle", size=18, color="#F59E0B")} Action 1: Deactivate Account
                             </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                        st.markdown("**Action 1: Deactivate Account**")
-                        st.caption("Deactivating suspends login and sets employment status to Terminated while preserving performance history.")
-                        if st.button("Deactivate Employee", key=f"btn_deact_{emp_curr['employee_id']}", type="secondary", use_container_width=True):
-                            ok_dea, msg_dea = deactivate_employee(emp_curr["employee_id"], org_id=org_id)
-                            if ok_dea:
-                                st.success(msg_dea)
-                                st.rerun()
-                            else:
-                                st.error(msg_dea)
+                            <div style="font-size: 0.80rem; color: #78350F; line-height: 1.4; margin-bottom: 12px;">
+                                Suspends active login and marks employment status as Terminated while preserving past evaluations and skill records.
+                            </div>
+                        """
+                    )
+                    if st.button("Deactivate Employee", key=f"btn_deact_{emp_curr['employee_id']}", type="secondary", use_container_width=True):
+                        ok_dea, msg_dea = deactivate_employee(emp_curr["employee_id"], org_id=org_id)
+                        if ok_dea:
+                            st.success(msg_dea)
+                            st.rerun()
+                        else:
+                            st.error(msg_dea)
+                    render_html("</div>")
 
-                        st.markdown("<div style='border-top: 1px solid #E2E8F0; margin: 12px 0 8px 0;'></div>", unsafe_allow_html=True)
-                        st.markdown("**Action 2: Permanent Removal**")
-                        st.caption("Cascade removes associated reviews, skills, and training logs.")
-                        confirm_deletion = st.checkbox("I confirm permanent deletion of this record.", key=f"chk_del_{emp_curr['employee_id']}")
-                        if st.button("Permanently Delete", type="secondary", disabled=not confirm_deletion, key=f"btn_del_{emp_curr['employee_id']}", use_container_width=True):
-                            ok_del, msg_del = delete_employee(emp_curr["employee_id"], org_id=org_id)
-                            if ok_del:
-                                st.success(msg_del)
-                                st.rerun()
-                            else:
-                                st.error(msg_del)
-
+                    # Danger Box: Permanent Deletion
+                    render_html(
+                        f"""
+                        <div style="background: #FEF2F2; border: 1.5px solid #FECACA; border-radius: 16px; padding: 20px; box-shadow: 0 4px 14px rgba(239,68,68,0.06);">
+                            <div style="font-size: 0.98rem; font-weight: 800; color: #991B1B; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                {get_svg_icon("trash", size=18, color="#EF4444")} Action 2: Permanent Removal
+                            </div>
+                            <div style="font-size: 0.80rem; color: #7F1D1D; line-height: 1.4; margin-bottom: 10px;">
+                                Irreversibly deletes this employee record and all associated performance reviews, assessments, and logs.
+                            </div>
+                        """
+                    )
+                    confirm_deletion = st.checkbox("I confirm permanent deletion of this record.", key=f"chk_del_{emp_curr['employee_id']}")
+                    if st.button("Permanently Delete", type="secondary", disabled=not confirm_deletion, key=f"btn_del_{emp_curr['employee_id']}", use_container_width=True):
+                        ok_del, msg_del = delete_employee(emp_curr["employee_id"], org_id=org_id)
+                        if ok_del:
+                            st.success(msg_del)
+                            st.rerun()
+                        else:
+                            st.error(msg_del)
+                    render_html("</div>")
     # --- TAB 5: INVITATION CODES ---
     with tab_invite:
-        st.markdown("#### Organization Employee Invitation Codes")
-        st.caption("Generate secure, expiring, multi-use invitation codes to onboarding employees into your organization.")
+        render_html(
+            f"""
+            <div style="background: linear-gradient(135deg, #FFFFFF 0%, #FFFBEB 100%); border: 1.5px solid #FDE68A; border-left: 6px solid #F59E0B; border-radius: 16px; padding: 1.35rem 1.6rem; margin-bottom: 1.5rem; box-shadow: 0 4px 16px rgba(245,158,11,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #F59E0B, #D97706); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(245,158,11,0.25);">
+                            {get_svg_icon("key", size=22, color="#FFFFFF")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Organization Employee Invitation Codes</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Generate secure, expiring onboarding codes to automatically map new employees to your organization.</div>
+                        </div>
+                    </div>
+                    <span style="background: #FFFBEB; border: 1px solid #FDE68A; color: #B45309; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
+                        ORG CODE ENGINE
+                    </span>
+                </div>
+            </div>
+            """
+        )
 
         c_inv_l, c_inv_r = st.columns([1.2, 1.8], gap="large")
         with c_inv_l:
-            with st.container(border=True):
-                st.markdown("##### Generate New Invitation Code")
-                st.markdown(f"Issuing for: **{org_name}** (`{org_id}`)")
-                inv_expiry_days = st.slider("Expiration Period (Days)", min_value=1, max_value=90, value=14, step=1, key="inv_gen_exp")
-                inv_max_uses = st.number_input("Maximum Allowed Uses", min_value=1, max_value=500, value=10, step=1, key="inv_gen_max")
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        {get_svg_icon("key", size=18, color="#F59E0B")} Generate New Invitation Code
+                    </div>
+                    <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 12px;">
+                        Issuing for: <strong style="color: #0F172A;">{org_name}</strong> (<code>{org_id}</code>)
+                    </div>
+                """
+            )
+            inv_expiry_days = st.slider("Expiration Period (Days)", min_value=1, max_value=90, value=14, step=1, key="inv_gen_exp")
+            inv_max_uses = st.number_input("Maximum Allowed Uses", min_value=1, max_value=500, value=10, step=1, key="inv_gen_max")
 
-                if st.button("Generate Invitation Code", type="primary", use_container_width=True, key="btn_gen_inv_code"):
-                    ok_inv, inv_data = generate_invitation_code(
-                        org_id=org_id,
-                        created_by=user.get("name", "HR Admin"),
-                        expiry_days=inv_expiry_days,
-                        max_uses=inv_max_uses
-                    )
-                    if ok_inv:
-                        st.session_state["latest_inv_code"] = inv_data["code"]
-                        st.success("New invitation code generated successfully!")
-                    else:
-                        st.error(inv_data.get("error", "Failed to generate code"))
+            st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+            if st.button("Generate Invitation Code", type="primary", use_container_width=True, key="btn_gen_inv_code"):
+                ok_inv, inv_data = generate_invitation_code(
+                    org_id=org_id,
+                    created_by=user.get("name", "HR Admin"),
+                    expiry_days=inv_expiry_days,
+                    max_uses=inv_max_uses
+                )
+                if ok_inv:
+                    st.session_state["latest_inv_code"] = inv_data["code"]
+                    st.success("New invitation code generated successfully!")
+                else:
+                    st.error(inv_data.get("error", "Failed to generate code"))
 
-                if "latest_inv_code" in st.session_state:
-                    st.markdown("---")
-                    st.markdown("###### Share this code with new employees:")
-                    st.code(st.session_state["latest_inv_code"], language="text")
-                    st.caption("Copy this code and share it with employees. During registration, entering this code will automatically map the employee to your organization.")
+            if "latest_inv_code" in st.session_state:
+                st.markdown("<div style='margin-top: 12px; border-top: 1px solid #F1F5F9; padding-top: 12px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='font-size: 0.82rem; font-weight: 700; color: #0F172A;'>Share this code with onboarding employees:</div>", unsafe_allow_html=True)
+                st.code(st.session_state["latest_inv_code"], language="text")
+                st.caption("Entering this code during employee registration automatically links their account to your organization directory.")
+
+            render_html("</div>")
 
         with c_inv_r:
-            with st.container(border=True):
-                st.markdown("##### Active & Historical Invitation Codes")
-                codes_list = list_invitation_codes(org_id=org_id)
-                if not codes_list:
-                    st.info("No invitation codes generated yet for this organization.")
-                else:
-                    for c_item in codes_list:
-                        status_color = "#10B981" if c_item["status"] == "Active" else ("#EF4444" if c_item["status"] == "Revoked" else "#F59E0B")
-                        col_code_info, col_code_action = st.columns([3, 1])
-                        with col_code_info:
-                            st.markdown(
-                                f"""
-                                <div style="font-family: monospace; font-size: 0.96rem; font-weight: 700; color: #1E293B;">
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                        {get_svg_icon("clipboard", size=18, color="#2563EB")} Active &amp; Historical Invitation Codes
+                    </div>
+                """
+            )
+            codes_list = list_invitation_codes(org_id=org_id)
+            if not codes_list:
+                render_html(
+                    f"""
+                    <div style="background: #F8FAFD; border: 1.5px dashed #DCE5F1; border-radius: 14px; padding: 2.2rem; text-align: center;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: #FEF3C7; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                            {get_svg_icon("key", size=22, color="#D97706")}
+                        </div>
+                        <div style="font-weight: 700; color: #0F172A; font-size: 0.96rem;">No Invitation Codes Generated Yet</div>
+                        <div style="font-size: 0.84rem; color: #64748B; margin-top: 4px;">Use the generator on the left to issue your first organization onboarding code.</div>
+                    </div>
+                    """
+                )
+            else:
+                for c_item in codes_list:
+                    status_color = "#10B981" if c_item["status"] == "Active" else ("#EF4444" if c_item["status"] == "Revoked" else "#F59E0B")
+                    col_code_info, col_code_action = st.columns([3, 1])
+                    with col_code_info:
+                        render_html(
+                            f"""
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-family: monospace; font-size: 0.96rem; font-weight: 800; color: #0F172A; background: #F8FAFC; padding: 2px 8px; border-radius: 6px; border: 1px solid #DCE5F1;">
                                     {c_item['code_prefix']}
-                                    <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: {status_color}22; color: {status_color}; font-weight: 700; text-transform: uppercase; margin-left: 8px;">
-                                        {c_item['status']}
-                                    </span>
-                                </div>
-                                <div style="font-size: 0.8rem; color: #64748B; margin-top: 2px;">
-                                    Uses: <strong>{c_item['used_count']} / {c_item['max_uses']}</strong> &bull; Expires: {c_item['expires_at']} &bull; Created: {c_item['created_at'][:10]} by {c_item['created_by']}
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                        with col_code_action:
-                            if c_item["status"] == "Active":
-                                if st.button("Revoke", key=f"btn_revoke_{c_item['id']}", type="secondary", use_container_width=True):
-                                    ok_rev, msg_rev = revoke_invitation_code(c_item["id"], org_id=org_id)
-                                    if ok_rev:
-                                        st.success(msg_rev)
-                                        st.rerun()
-                                    else:
-                                        st.error(msg_rev)
-                        st.markdown("<div style='border-bottom: 1px solid #F1F5F9; margin: 8px 0;'></div>", unsafe_allow_html=True)
+                                </span>
+                                <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: {status_color}18; color: {status_color}; font-weight: 800; text-transform: uppercase;">
+                                    {c_item['status']}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.80rem; color: #64748B; margin-top: 4px;">
+                                Uses: <strong>{c_item['used_count']} / {c_item['max_uses']}</strong> &bull; Expires: {c_item['expires_at']} &bull; Created: {c_item['created_at'][:10]}
+                            </div>
+                            """
+                        )
+                    with col_code_action:
+                        if c_item["status"] == "Active":
+                            if st.button("Revoke", key=f"btn_revoke_{c_item['id']}", type="secondary", use_container_width=True):
+                                ok_rev, msg_rev = revoke_invitation_code(c_item["id"], org_id=org_id)
+                                if ok_rev:
+                                    st.success(msg_rev)
+                                    st.rerun()
+                                else:
+                                    st.error(msg_rev)
+                    st.markdown("<div style='border-bottom: 1px solid #F1F5F9; margin: 10px 0;'></div>", unsafe_allow_html=True)
 
+            render_html("</div>")
     # --- TAB 6: ORGANIZATION MEMBERSHIP REQUESTS ---
     with tab_requests:
-        st.markdown("#### Organization Membership Requests")
-        st.caption("Review, approve, or reject employee registration requests seeking to join this organization.")
-
-        req_filter = st.selectbox(
-            "Filter Requests by Status",
-            ["Pending", "All Statuses", "Approved", "Rejected"],
-            key="membership_req_filter"
+        render_html(
+            f"""
+            <div style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 100%); border: 1.5px solid #BFDBFE; border-left: 6px solid #2563EB; border-radius: 16px; padding: 1.35rem 1.6rem; margin-bottom: 1.5rem; box-shadow: 0 4px 16px rgba(37,99,235,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #2563EB, #1D4ED8); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(37,99,235,0.25);">
+                            {get_svg_icon("user_check", size=22, color="#FFFFFF")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Organization Membership Requests</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Review, verify, and approve employee registration requests seeking to join this organization.</div>
+                        </div>
+                    </div>
+                    <span style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
+                        VERIFICATION PORTAL
+                    </span>
+                </div>
+            </div>
+            """
         )
+
+        col_req_filter, col_req_spacer = st.columns([1.5, 2.5])
+        with col_req_filter:
+            req_filter = st.selectbox(
+                "Filter Requests by Status",
+                ["Pending", "All Statuses", "Approved", "Rejected"],
+                key="membership_req_filter"
+            )
         requests_list = get_membership_requests(org_id=org_id, status_filter=req_filter)
 
         if not requests_list:
-            st.info(f"No {req_filter.lower()} membership requests found for {org_name}.")
+            render_html(
+                f"""
+                <div style="background: #F8FAFD; border: 1.5px dashed #DCE5F1; border-radius: 16px; padding: 2.5rem; text-align: center; margin: 1rem 0;">
+                    <div style="width: 48px; height: 48px; border-radius: 14px; background: #DCFCE7; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                        {get_svg_icon("check_circle", size=24, color="#16A34A")}
+                    </div>
+                    <div style="font-weight: 800; color: #0F172A; font-size: 1.05rem;">All Caught Up!</div>
+                    <div style="font-size: 0.86rem; color: #64748B; margin-top: 4px;">
+                        There are currently no {req_filter.lower()} employee registration requests awaiting action for <strong>{org_name}</strong>.
+                    </div>
+                </div>
+                """
+            )
         else:
             for req in requests_list:
                 status_color = "#F59E0B" if req["status"] == "Pending" else ("#10B981" if req["status"] == "Approved" else "#EF4444")
-                with st.container(border=True):
-                    col_info, col_acts = st.columns([3, 1.2])
-                    with col_info:
-                        st.markdown(
-                            f"""
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <strong style="font-size: 1.05rem; color: #0F172A;">{req['user_name']}</strong>
-                                <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: {status_color}22; color: {status_color}; font-weight: 700; text-transform: uppercase;">
-                                    {req['status']}
-                                </span>
+                initials = "".join([part[:1].upper() for part in (req.get("user_name") or "User").split()[:2]])
+                render_html(
+                    f"""
+                    <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 16px 20px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(30,64,175,0.03);">
+                    """
+                )
+                col_info, col_acts = st.columns([3, 1.2], gap="medium")
+                with col_info:
+                    render_html(
+                        f"""
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #2563EB, #7C3AED); color: #FFFFFF; font-weight: 800; font-size: 1.05rem; display: flex; align-items: center; justify-content: center;">
+                                {initials}
                             </div>
-                            <div style="font-size: 0.85rem; color: #64748B; margin-top: 4px;">
-                                <strong>Email:</strong> {req['user_email']} &bull;
-                                <strong>Department:</strong> {req.get('department') or 'General'} &bull;
-                                <strong>Designation:</strong> {req.get('designation') or 'Employee'}
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <strong style="font-size: 1.05rem; color: #0F172A;">{req['user_name']}</strong>
+                                    <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: {status_color}18; color: {status_color}; font-weight: 800; text-transform: uppercase;">
+                                        {req['status']}
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.84rem; color: #475569; margin-top: 2px;">
+                                    <strong>Email:</strong> {req['user_email']} &bull;
+                                    <strong>Department:</strong> {req.get('department') or 'General'} &bull;
+                                    <strong>Designation:</strong> {req.get('designation') or 'Employee'}
+                                </div>
+                                <div style="font-size: 0.76rem; color: #94A3B8; margin-top: 2px;">
+                                    Requested: {req.get('created_at', '')}
+                                    {f" &bull; Reviewed by: {req.get('reviewer_name') or 'HR Admin'}" if req.get('reviewed_by') else ""}
+                                </div>
                             </div>
-                            <div style="font-size: 0.78rem; color: #94A3B8; margin-top: 2px;">
-                                Requested at: {req.get('created_at', '')}
-                                {f" &bull; Reviewed by: {req.get('reviewer_name') or 'HR Admin'}" if req.get('reviewed_by') else ""}
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    with col_acts:
-                        if req["status"] == "Pending":
-                            c_appr, c_rej = st.columns(2)
-                            with c_appr:
-                                if st.button("Approve", key=f"btn_appr_req_{req['id']}", type="primary", use_container_width=True):
-                                    ok_appr, msg_appr = approve_membership_request(req["id"], reviewer_id=uid)
-                                    if ok_appr:
-                                        st.success(msg_appr)
-                                        st.rerun()
-                                    else:
-                                        st.error(msg_appr)
-                            with c_rej:
-                                if st.button("Reject", key=f"btn_rej_req_{req['id']}", type="secondary", use_container_width=True):
-                                    ok_rej, msg_rej = reject_membership_request(req["id"], reviewer_id=uid)
-                                    if ok_rej:
-                                        st.warning(msg_rej)
-                                        st.rerun()
-                                    else:
-                                        st.error(msg_rej)
+                        </div>
+                        """
+                    )
+                with col_acts:
+                    if req["status"] == "Pending":
+                        c_appr, c_rej = st.columns(2)
+                        with c_appr:
+                            if st.button("Approve", key=f"btn_appr_req_{req['id']}", type="primary", use_container_width=True):
+                                ok_appr, msg_appr = approve_membership_request(req["id"], reviewer_id=uid)
+                                if ok_appr:
+                                    st.success(msg_appr)
+                                    st.rerun()
+                                else:
+                                    st.error(msg_appr)
+                        with c_rej:
+                            if st.button("Reject", key=f"btn_rej_req_{req['id']}", type="secondary", use_container_width=True):
+                                ok_rej, msg_rej = reject_membership_request(req["id"], reviewer_id=uid)
+                                if ok_rej:
+                                    st.info(msg_rej)
+                                    st.rerun()
+                                else:
+                                    st.error(msg_rej)
 
+                render_html("</div>")
 # ==============================================================================
 # 4. PERFORMANCE REVIEWS & EVALUATIONS
 # ==============================================================================
