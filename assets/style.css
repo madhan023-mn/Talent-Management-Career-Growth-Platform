@@ -2044,29 +2044,22 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     font-size: 0.95rem !important;
 }
 
-/* Hide Default Radio Circle and use Sleek Modern Indicator */
+/* Single Radio Circle on Sidebar Navigation Rows */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
-    display: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-right: 12px !important;
 }
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::before {
-    content: "" !important;
-    display: inline-block !important;
-    width: 8px !important;
-    height: 8px !important;
-    min-width: 8px !important;
-    min-height: 8px !important;
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {
+    width: 13px !important;
+    height: 13px !important;
+    min-width: 13px !important;
+    min-height: 13px !important;
     border-radius: 50% !important;
-    background: #64748B !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    margin-right: 8px !important;
-}
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"]::before,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked)::before {
-    background: #FFFFFF !important;
-    box-shadow: 0 0 8px #FFFFFF !important;
-    width: 9px !important;
-    height: 9px !important;
-    min-width: 9px !important;
+    background-color: #FFFFFF !important;
+    border: 2px solid #FFFFFF !important;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.6) !important;
 }
 
 /* Enterprise Native Input Styling (Inter font, smooth shadow ring on focus) */
