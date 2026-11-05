@@ -2144,14 +2144,30 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     transition: background-color 0.18s ease, color 0.18s ease, transform 0.15s ease !important;
 }
 
-/* Single Radio Circle on Sidebar Navigation Rows */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin-right: 12px !important;
+/* Ensure the native hidden input / span is 100% hidden and takes zero layout space */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] input[type="radio"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] input,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label > span,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label > span:first-child,
+div[data-testid="stRadio"] input[type="radio"],
+div[data-testid="stRadio"] label > span:first-child {
+    display: none !important;
+    position: absolute !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
 }
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {
+
+/* Single Radio Circle on Sidebar Navigation Rows */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stRadioOption"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
     width: 13px !important;
     height: 13px !important;
     min-width: 13px !important;
@@ -2160,6 +2176,18 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     background-color: #FFFFFF !important;
     border: 2px solid #FFFFFF !important;
     box-shadow: 0 0 4px rgba(255, 255, 255, 0.6) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-right: 12px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Hide any nested inner dot inside the radio circle so only the single outer circle is visible */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stRadioOption"] > div > div:first-child div,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child div,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {
+    display: none !important;
 }
 
 /* Inactive Row Styling */

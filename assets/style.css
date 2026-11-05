@@ -2044,14 +2044,30 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     font-size: 0.95rem !important;
 }
 
-/* Single Radio Circle on Sidebar Navigation Rows */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin-right: 12px !important;
+/* Ensure the native hidden input / span is 100% hidden and takes zero layout space */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] input[type="radio"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] input,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label > span,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label > span:first-child,
+div[data-testid="stRadio"] input[type="radio"],
+div[data-testid="stRadio"] label > span:first-child {
+    display: none !important;
+    position: absolute !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
 }
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {
+
+/* Single Radio Circle on Sidebar Navigation Rows */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stRadioOption"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
     width: 13px !important;
     height: 13px !important;
     min-width: 13px !important;
@@ -2060,6 +2076,18 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     background-color: #FFFFFF !important;
     border: 2px solid #FFFFFF !important;
     box-shadow: 0 0 4px rgba(255, 255, 255, 0.6) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-right: 12px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Hide any nested inner dot inside the radio circle so only the single outer circle is visible */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stRadioOption"] > div > div:first-child div,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child div,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {
+    display: none !important;
 }
 
 /* Input styles centralized in comprehensive design system below */
@@ -2335,80 +2363,100 @@ button[kind="secondary"]:hover,
    focus ring (3px rgba(37, 99, 235, 0.12)), hover (#94A3B8), 600-weight labels (#334155).
    ============================================================================== */
 
-/* 1. All Text, Number, Date, Time Input Containers & BaseWeb Wrappers */
-div[data-baseweb="input"],
-div[data-baseweb="input"] > div,
+/* Outer root containers MUST NOT have borders */
 div[data-testid="stTextInputRootElement"],
 div[data-testid="stNumberInputRootElement"],
-div[data-testid="stDateInput"] div[data-baseweb="input"],
-div[data-testid="stTimeInput"] div[data-baseweb="input"] {
+div[data-testid="stTextAreaRootElement"],
+div[data-testid="stTextInput"],
+div[data-testid="stNumberInput"],
+div[data-testid="stTextArea"],
+div[data-testid="stDateInput"],
+div[data-testid="stTimeInput"],
+div[data-testid="stSelectbox"],
+div[data-testid="stMultiSelect"] {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* 1. All Text, Number, Date, Time Inputs: Exactly ONE border on div[data-baseweb="input"] */
+div[data-baseweb="input"] {
     background-color: #FFFFFF !important;
     border: 1px solid #CBD5E1 !important;
     border-radius: 10px !important;
-    color: #172033 !important;
-    font-size: 14px !important;
     min-height: 46px !important;
     box-sizing: border-box !important;
     outline: none !important;
+    box-shadow: none !important;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
 }
 
-/* Ensure inner BaseWeb input container has no duplicate border and transparent background */
-div[data-baseweb="input"] > div[data-baseweb="base-input"],
-div[data-baseweb="base-input"] {
-    border: none !important;
-    background: transparent !important;
-}
-
-/* Internal <input> elements for Text, Number, Date, Time */
+/* Inner containers, BaseWeb base-input wrappers, and input tags MUST have border: none */
+div[data-baseweb="input"] > div,
+div[data-baseweb="input"] div[data-baseweb="base-input"],
+div[data-baseweb="base-input"],
 div[data-baseweb="input"] input,
 div[data-testid="stTextInput"] input,
 div[data-testid="stNumberInput"] input,
 div[data-testid="stDateInput"] input,
 div[data-testid="stTimeInput"] input {
-    background-color: transparent !important;
     border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
     color: #172033 !important;
     font-size: 14px !important;
     font-family: inherit !important;
+    box-sizing: border-box !important;
+}
+
+div[data-baseweb="input"] input,
+div[data-testid="stTextInput"] input,
+div[data-testid="stNumberInput"] input,
+div[data-testid="stDateInput"] input,
+div[data-testid="stTimeInput"] input {
     padding: 11px 14px !important;
     min-height: 44px !important;
-    outline: none !important;
-    box-sizing: border-box !important;
     width: 100% !important;
 }
 
-/* 2. TextAreas */
-div[data-baseweb="textarea"],
-div[data-testid="stTextAreaRootElement"],
-.stTextArea textarea,
-div[data-testid="stTextArea"] textarea {
+/* 2. Textareas: Exactly ONE border on div[data-baseweb="textarea"] */
+div[data-baseweb="textarea"] {
     background-color: #FFFFFF !important;
     border: 1px solid #CBD5E1 !important;
     border-radius: 10px !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+/* Inner textarea elements MUST have border: none */
+div[data-baseweb="textarea"] > div,
+div[data-baseweb="textarea"] div[data-baseweb="base-input"],
+div[data-baseweb="textarea"] textarea,
+.stTextArea textarea,
+div[data-testid="stTextArea"] textarea {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
     color: #172033 !important;
     font-size: 14px !important;
     font-family: inherit !important;
     padding: 12px 14px !important;
     box-sizing: border-box !important;
-    outline: none !important;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+    width: 100% !important;
 }
 
-/* Inner textarea reset if wrapper has border */
-div[data-baseweb="textarea"] textarea {
+/* 3. Dropdowns / Selectboxes: Exactly ONE border on div[data-baseweb="select"] > div:first-child */
+div[data-baseweb="select"] {
     border: none !important;
-    background-color: transparent !important;
-    padding: 0 !important;
-    outline: none !important;
+    background: transparent !important;
     box-shadow: none !important;
-    font-size: 14px !important;
-    color: #172033 !important;
 }
 
-/* 3. Dropdowns / Selectboxes */
-div[data-baseweb="select"] > div,
-div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+div[data-baseweb="select"] > div:first-child {
     background-color: #FFFFFF !important;
     border: 1px solid #CBD5E1 !important;
     border-radius: 10px !important;
@@ -2419,23 +2467,27 @@ div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
     padding: 2px 8px !important;
     box-sizing: border-box !important;
     outline: none !important;
+    box-shadow: none !important;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
 }
 
-/* 4. Input Hover States (Slightly Darkened Border #94A3B8) */
+div[data-baseweb="select"] > div:first-child * {
+    border: none !important;
+    outline: none !important;
+}
+
+/* 4. Single Border Hover States (#94A3B8) */
 div[data-baseweb="input"]:hover:not(:focus-within),
 div[data-baseweb="textarea"]:hover:not(:focus-within),
-.stTextArea textarea:hover:not(:focus),
-div[data-baseweb="select"] > div:hover:not(:focus-within) {
+div[data-baseweb="select"] > div:first-child:hover:not(:focus-within) {
     border-color: #94A3B8 !important;
     background-color: #FFFFFF !important;
 }
 
-/* 5. Input Focus States (Primary Blue #2563EB & Subtle Focus Ring) */
+/* 5. Single Border Focus States (#2563EB & Subtle Focus Ring) */
 div[data-baseweb="input"]:focus-within,
 div[data-baseweb="textarea"]:focus-within,
-.stTextArea textarea:focus,
-div[data-baseweb="select"] > div:focus-within {
+div[data-baseweb="select"] > div:first-child:focus-within {
     border-color: #2563EB !important;
     background-color: #FFFFFF !important;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
