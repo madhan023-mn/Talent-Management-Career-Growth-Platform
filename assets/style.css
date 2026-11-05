@@ -2359,14 +2359,13 @@ button[kind="secondary"]:hover,
 
 /* ==============================================================================
    COMPREHENSIVE APPLICATION-WIDE INPUT FIELD DESIGN SYSTEM
-   Standard: Visible light border (#CBD5E1), 10px radius, 46px height, white bg (#FFFFFF),
+   Standard: Visible light border (1px solid #CBD5E1), 9px radius, white bg (#FFFFFF),
    focus ring (3px rgba(37, 99, 235, 0.12)), hover (#94A3B8), 600-weight labels (#334155).
+   Applies to ALL Text Inputs, Number Inputs, Textareas, Selectboxes, MultiSelects, 
+   Date/Time Inputs, and custom .form-control / .form-select elements across all pages.
    ============================================================================== */
 
-/* Outer root containers MUST NOT have borders */
-div[data-testid="stTextInputRootElement"],
-div[data-testid="stNumberInputRootElement"],
-div[data-testid="stTextAreaRootElement"],
+/* Outer root wrappers must not have conflicting outer borders */
 div[data-testid="stTextInput"],
 div[data-testid="stNumberInput"],
 div[data-testid="stTextArea"],
@@ -2379,27 +2378,25 @@ div[data-testid="stMultiSelect"] {
     box-shadow: none !important;
 }
 
-/* 1. All Text, Number, Date, Time Inputs: Exactly ONE border on div[data-baseweb="input"] */
-div[data-baseweb="input"] {
+/* 1. All Text Inputs: Exactly ONE visible border on the field container */
+div[data-testid="stTextInputRootElement"],
+div[data-baseweb="input"],
+.stTextInput [data-testid="stTextInputRootElement"] {
     background-color: #FFFFFF !important;
     border: 1px solid #CBD5E1 !important;
-    border-radius: 10px !important;
-    min-height: 46px !important;
+    border-radius: 9px !important;
+    min-height: 44px !important;
     box-sizing: border-box !important;
     outline: none !important;
     box-shadow: none !important;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
 }
 
-/* Inner containers, BaseWeb base-input wrappers, and input tags MUST have border: none */
-div[data-baseweb="input"] > div,
-div[data-baseweb="input"] div[data-baseweb="base-input"],
-div[data-baseweb="base-input"],
+/* Inner input tag takes full width, padding, clean text, no duplicate inner border */
+div[data-testid="stTextInputRootElement"] input,
+div[data-testid="stTextInputField"],
 div[data-baseweb="input"] input,
-div[data-testid="stTextInput"] input,
-div[data-testid="stNumberInput"] input,
-div[data-testid="stDateInput"] input,
-div[data-testid="stTimeInput"] input {
+div[data-testid="stTextInput"] input {
     border: none !important;
     outline: none !important;
     box-shadow: none !important;
@@ -2407,33 +2404,27 @@ div[data-testid="stTimeInput"] input {
     color: #172033 !important;
     font-size: 14px !important;
     font-family: inherit !important;
+    padding: 10px 13px !important;
+    min-height: 42px !important;
     box-sizing: border-box !important;
-}
-
-div[data-baseweb="input"] input,
-div[data-testid="stTextInput"] input,
-div[data-testid="stNumberInput"] input,
-div[data-testid="stDateInput"] input,
-div[data-testid="stTimeInput"] input {
-    padding: 11px 14px !important;
-    min-height: 44px !important;
     width: 100% !important;
 }
 
-/* 2. Textareas: Exactly ONE border on div[data-baseweb="textarea"] */
-div[data-baseweb="textarea"] {
+/* 2. All Textareas: Exactly ONE visible border on the textarea container */
+div[data-testid="stTextAreaRootElement"],
+div[data-baseweb="textarea"],
+.stTextArea [data-testid="stTextAreaRootElement"] {
     background-color: #FFFFFF !important;
     border: 1px solid #CBD5E1 !important;
-    border-radius: 10px !important;
+    border-radius: 9px !important;
     box-sizing: border-box !important;
     outline: none !important;
     box-shadow: none !important;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
 }
 
-/* Inner textarea elements MUST have border: none */
-div[data-baseweb="textarea"] > div,
-div[data-baseweb="textarea"] div[data-baseweb="base-input"],
+/* Inner textarea element has proper padding, readable text, no duplicate inner border */
+div[data-testid="stTextAreaRootElement"] textarea,
 div[data-baseweb="textarea"] textarea,
 .stTextArea textarea,
 div[data-testid="stTextArea"] textarea {
@@ -2444,26 +2435,83 @@ div[data-testid="stTextArea"] textarea {
     color: #172033 !important;
     font-size: 14px !important;
     font-family: inherit !important;
-    padding: 12px 14px !important;
+    padding: 10px 13px !important;
     box-sizing: border-box !important;
     width: 100% !important;
 }
 
-/* 3. Dropdowns / Selectboxes: Exactly ONE border on div[data-baseweb="select"] > div:first-child */
-div[data-baseweb="select"] {
-    border: none !important;
-    background: transparent !important;
-    box-shadow: none !important;
-}
-
-div[data-baseweb="select"] > div:first-child {
+/* 3. All Number Inputs: Exactly ONE visible border on the container */
+div[data-testid="stNumberInputContainer"],
+div[data-testid="stNumberInputRootElement"],
+.stNumberInput [data-testid="stNumberInputContainer"] {
     background-color: #FFFFFF !important;
     border: 1px solid #CBD5E1 !important;
-    border-radius: 10px !important;
+    border-radius: 9px !important;
+    min-height: 44px !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+div[data-testid="stNumberInputContainer"] input,
+div[data-testid="stNumberInputField"],
+div[data-testid="stNumberInput"] input {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
     color: #172033 !important;
     font-size: 14px !important;
     font-family: inherit !important;
-    min-height: 46px !important;
+    padding: 10px 13px !important;
+    min-height: 42px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+}
+
+/* 4. All Dropdowns and Selection Fields: Exactly ONE visible border */
+div[data-testid="stSelectbox"] div:has(> input),
+div[data-testid="stSelectbox"] div[class*="e1fp86qc0"],
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+div[data-baseweb="select"] > div:first-child,
+.stSelectbox div:has(> input) {
+    background-color: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 9px !important;
+    color: #172033 !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    min-height: 44px !important;
+    padding: 2px 10px !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+div[data-testid="stSelectbox"] div:has(> input) input,
+div[data-testid="stSelectbox"] input {
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #172033 !important;
+    font-size: 14px !important;
+    padding: 8px 4px !important;
+}
+
+/* 5. All MultiSelect Dropdowns */
+div[data-testid="stMultiSelect"] div:has(> [data-testid="stMultiSelectTagsContainer"]),
+div[data-testid="stMultiSelect"] div[class*="e1kig3hy0"],
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div,
+.stMultiSelect div:has(> [data-testid="stMultiSelectTagsContainer"]) {
+    background-color: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 9px !important;
+    color: #172033 !important;
+    font-size: 14px !important;
+    min-height: 44px !important;
     padding: 2px 8px !important;
     box-sizing: border-box !important;
     outline: none !important;
@@ -2471,23 +2519,80 @@ div[data-baseweb="select"] > div:first-child {
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
 }
 
-div[data-baseweb="select"] > div:first-child * {
+div[data-testid="stMultiSelectTagsContainer"] {
     border: none !important;
-    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
 }
 
-/* 4. Single Border Hover States (#94A3B8) */
+/* 6. All Date and Time Selection Fields */
+div[data-testid="stDateInputField"],
+div[data-testid="stDateTimeInputField"],
+div[data-testid="stDateInput"] div[data-baseweb="input"],
+div[data-testid="stTimeInput"] div[data-baseweb="input"] {
+    background-color: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 9px !important;
+    min-height: 44px !important;
+    padding: 2px 10px !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+/* 7. Standard HTML / Bootstrap / Custom Form Controls */
+.form-control,
+.form-select,
+select.form-select,
+input.form-control,
+textarea.form-control,
+select {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background-color: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 9px !important;
+    padding: 10px 13px !important;
+    color: #172033 !important;
+    font-size: 14px !important;
+    min-height: 44px !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* 8. Consistent Hover States (Slightly Darkened Border #94A3B8) */
+div[data-testid="stTextInputRootElement"]:hover:not(:focus-within),
+div[data-testid="stTextAreaRootElement"]:hover:not(:focus-within),
+div[data-testid="stNumberInputContainer"]:hover:not(:focus-within),
+div[data-testid="stDateInputField"]:hover:not(:focus-within),
+div[data-testid="stDateTimeInputField"]:hover:not(:focus-within),
+div[data-testid="stSelectbox"] div:has(> input):hover:not(:focus-within),
+div[data-testid="stMultiSelect"] div:has(> [data-testid="stMultiSelectTagsContainer"]):hover:not(:focus-within),
 div[data-baseweb="input"]:hover:not(:focus-within),
 div[data-baseweb="textarea"]:hover:not(:focus-within),
-div[data-baseweb="select"] > div:first-child:hover:not(:focus-within) {
+div[data-baseweb="select"] > div:first-child:hover:not(:focus-within),
+.form-control:hover:not(:focus),
+.form-select:hover:not(:focus) {
     border-color: #94A3B8 !important;
     background-color: #FFFFFF !important;
 }
 
-/* 5. Single Border Focus States (#2563EB & Subtle Focus Ring) */
+/* 9. Consistent Focus States (Primary Blue #2563EB & Subtle Focus Ring) */
+div[data-testid="stTextInputRootElement"]:focus-within,
+div[data-testid="stTextAreaRootElement"]:focus-within,
+div[data-testid="stNumberInputContainer"]:focus-within,
+div[data-testid="stDateInputField"]:focus-within,
+div[data-testid="stDateTimeInputField"]:focus-within,
+div[data-testid="stSelectbox"] div:has(> input):focus-within,
+div[data-testid="stMultiSelect"] div:has(> [data-testid="stMultiSelectTagsContainer"]):focus-within,
 div[data-baseweb="input"]:focus-within,
 div[data-baseweb="textarea"]:focus-within,
-div[data-baseweb="select"] > div:first-child:focus-within {
+div[data-baseweb="select"] > div:first-child:focus-within,
+.form-control:focus,
+.form-select:focus,
+textarea:focus {
     border-color: #2563EB !important;
     background-color: #FFFFFF !important;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
