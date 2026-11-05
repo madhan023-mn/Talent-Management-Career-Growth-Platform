@@ -5759,30 +5759,125 @@ elif page == "My Profile":
     )
 
     with st.form("my_profile_form"):
-        col_p1, col_p2 = st.columns(2, gap="large")
-        with col_p1:
-            st.text_input("Full name", value=user.get("name", ""), disabled=True)
-            phone = st.text_input("Phone", value=profile.get("phone", ""))
-            location = st.text_input("Location", value=profile.get("location", ""))
-            job = st.text_input("Current job title", value=profile.get("job_title", ""))
-            company = st.text_input("Company", value=profile.get("company", org_display_name))
-            department = st.text_input("Department", value=profile.get("department", ""))
-            industry = st.text_input("Industry", value=profile.get("industry", ""))
-        with col_p2:
+        # Section 1: Personal & Contact Information
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("user", size=18, color="#2563EB")} Personal &amp; Contact Details
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Verified identity, phone number, and physical office/remote location.
+                </div>
+            """
+        )
+        col_c1, col_c2 = st.columns(2, gap="large")
+        with col_c1:
+            st.text_input("Full Name", value=user.get("name", ""), disabled=True, help="Name is locked to authenticated identity.")
+            phone = st.text_input("Contact Phone Number", value=profile.get("phone", ""), placeholder="+1 (555) 000-0000")
+        with col_c2:
+            location = st.text_input("Work Location", value=profile.get("location", ""), placeholder="e.g. San Francisco, CA (Hybrid)")
+        render_html("</div>")
+
+        # Section 2: Current Corporate Role & Department
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("briefcase", size=18, color="#0D9488")} Current Role &amp; Organization Placement
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Corporate title, organizational business unit, and industry domain.
+                </div>
+            """
+        )
+        col_r1, col_r2 = st.columns(2, gap="large")
+        with col_r1:
+            job = st.text_input("Current Job Title", value=profile.get("job_title", ""), placeholder="e.g. Lead Software Engineer")
+            company = st.text_input("Company / Organization", value=profile.get("company", org_display_name), placeholder="e.g. Talent Growth Technologies")
+        with col_r2:
+            department = st.text_input("Department / Business Unit", value=profile.get("department", ""), placeholder="e.g. Engineering & Product")
+            industry = st.text_input("Industry Domain", value=profile.get("industry", ""), placeholder="e.g. Enterprise Software / SaaS")
+        render_html("</div>")
+
+        # Section 3: Employment Details & Experience Boundary
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("award", size=18, color="#7C3AED")} Employment Status &amp; Experience
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Contract type and cumulative professional career tenure.
+                </div>
+            """
+        )
+        col_e1, col_e2 = st.columns(2, gap="large")
+        with col_e1:
             emp_types = ["Full-time", "Part-time", "Contract", "Internship", "Freelance", "Other"]
             curr_emp = profile.get("employment_type")
             emp_idx = emp_types.index(curr_emp) if curr_emp in emp_types else 0
-            employment = st.selectbox("Employment type", emp_types, index=emp_idx)
-            years = st.number_input("Years of experience", min_value=0.0, max_value=60.0, value=float(profile.get("years_experience") or 0.0), step=0.5, format="%.2f")
-            linkedin = st.text_input("LinkedIn URL", value=profile.get("linkedin", ""))
-            github = st.text_input("GitHub URL", value=profile.get("github", ""))
-            portfolio = st.text_input("Portfolio URL", value=profile.get("portfolio", ""))
-            education = st.text_area("Education", value=profile.get("education", ""), placeholder="Degree - Institution - Year", height=68)
-            certifications = st.text_area("Certifications", value=profile.get("certifications", ""), height=68)
+            employment = st.selectbox("Employment Type", emp_types, index=emp_idx)
+        with col_e2:
+            years = st.number_input("Years of Professional Experience", min_value=0.0, max_value=60.0, value=float(profile.get("years_experience") or 0.0), step=0.5, format="%.2f")
+        render_html("</div>")
 
-        summary = st.text_area("Professional summary", value=profile.get("summary", ""), height=80)
-        experience = st.text_area("Experience", value=profile.get("experience", ""), placeholder="Role, company, dates, responsibilities, measurable outcomes", height=90)
-        projects = st.text_area("Projects and achievements", value=profile.get("projects", ""), height=80)
+        # Section 4: Professional Links & Online Presence
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("external_link", size=18, color="#2563EB")} Professional Links &amp; Online Portfolios
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Public repository, verified portfolio, and professional networking profiles.
+                </div>
+            """
+        )
+        col_l1, col_l2, col_l3 = st.columns(3, gap="medium")
+        with col_l1:
+            linkedin = st.text_input("LinkedIn Profile URL", value=profile.get("linkedin", ""), placeholder="https://linkedin.com/in/username")
+        with col_l2:
+            github = st.text_input("GitHub Profile URL", value=profile.get("github", ""), placeholder="https://github.com/username")
+        with col_l3:
+            portfolio = st.text_input("Portfolio / Website URL", value=profile.get("portfolio", ""), placeholder="https://yourportfolio.dev")
+        render_html("</div>")
+
+        # Section 5: Education & Certifications
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("sparkles", size=18, color="#F59E0B")} Academic Background &amp; Certifications
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Degrees, university credentials, and industry-recognized certifications.
+                </div>
+            """
+        )
+        col_ed1, col_ed2 = st.columns(2, gap="large")
+        with col_ed1:
+            education = st.text_area("Higher Education & Degrees", value=profile.get("education", ""), placeholder="Degree - Institution - Graduation Year (e.g. B.S. Computer Science - State University, 2022)", height=100)
+        with col_ed2:
+            certifications = st.text_area("Professional Certifications", value=profile.get("certifications", ""), placeholder="Credential Name - Issuing Body - Year (e.g. AWS Solutions Architect Associate, 2024)", height=100)
+        render_html("</div>")
+
+        # Section 6: Comprehensive Career Summary & Work History
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("clipboard", size=18, color="#4F46E5")} Professional Summary &amp; Career Impact
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Executive summary, notable achievements, and comprehensive employment track record.
+                </div>
+            """
+        )
+        summary = st.text_area("Executive Professional Summary", value=profile.get("summary", ""), placeholder="Brief 3-4 sentence overview of your domain expertise, technical leadership, and core accomplishments.", height=95)
+        experience = st.text_area("Detailed Work Experience & Impact", value=profile.get("experience", ""), placeholder="Roles, responsibilities, quantifiable achievements, and technology stacks used across previous positions.", height=110)
+        projects = st.text_area("Key Projects & Significant Deliverables", value=profile.get("projects", ""), placeholder="Major engineering or organizational projects delivered, including architecture, outcomes, and metrics.", height=95)
+        render_html("</div>")
 
         submitted_prof = st.form_submit_button("Save profile", type="primary")
 

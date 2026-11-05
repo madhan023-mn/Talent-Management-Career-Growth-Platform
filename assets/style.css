@@ -2062,20 +2062,7 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     box-shadow: 0 0 4px rgba(255, 255, 255, 0.6) !important;
 }
 
-/* Enterprise Native Input Styling (Inter font, smooth shadow ring on focus) */
-div[data-baseweb="input"], div[data-baseweb="select"] > div, .stTextArea textarea {
-    border-radius: 8px !important;
-    border: 1px solid #E2E8F0 !important;
-    background-color: #FFFFFF !important;
-    color: #111827 !important;
-    font-size: 0.90rem !important;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
-}
-
-div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within > div, .stTextArea textarea:focus {
-    border-color: #4F46E5 !important;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14) !important;
-}
+/* Input styles centralized in comprehensive design system below */
 
 /* Streamlit Tabs - Enterprise Underline Style */
 div[data-baseweb="tab-list"] {
@@ -2342,24 +2329,184 @@ button[kind="secondary"]:hover,
     border-color: #BFDBFE !important;
 }
 
-/* Inputs, Select Dropdowns, TextAreas */
+/* ==============================================================================
+   COMPREHENSIVE APPLICATION-WIDE INPUT FIELD DESIGN SYSTEM
+   Standard: Visible light border (#CBD5E1), 10px radius, 46px height, white bg (#FFFFFF),
+   focus ring (3px rgba(37, 99, 235, 0.12)), hover (#94A3B8), 600-weight labels (#334155).
+   ============================================================================== */
+
+/* 1. All Text, Number, Date, Time Input Containers & BaseWeb Wrappers */
 div[data-baseweb="input"],
-div[data-baseweb="select"] > div,
-.stTextArea textarea {
-    border-radius: 10px !important;
-    border: 1px solid #DCE5F1 !important;
+div[data-baseweb="input"] > div,
+div[data-testid="stTextInputRootElement"],
+div[data-testid="stNumberInputRootElement"],
+div[data-testid="stDateInput"] div[data-baseweb="input"],
+div[data-testid="stTimeInput"] div[data-baseweb="input"] {
     background-color: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 10px !important;
     color: #172033 !important;
-    font-size: 0.90rem !important;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    font-size: 14px !important;
+    min-height: 46px !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
 }
 
-div[data-baseweb="input"]:focus-within,
-div[data-baseweb="select"]:focus-within > div,
-.stTextArea textarea:focus {
-    border-color: #2563EB !important;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14) !important;
+/* Ensure inner BaseWeb input container has no duplicate border and transparent background */
+div[data-baseweb="input"] > div[data-baseweb="base-input"],
+div[data-baseweb="base-input"] {
+    border: none !important;
+    background: transparent !important;
 }
+
+/* Internal <input> elements for Text, Number, Date, Time */
+div[data-baseweb="input"] input,
+div[data-testid="stTextInput"] input,
+div[data-testid="stNumberInput"] input,
+div[data-testid="stDateInput"] input,
+div[data-testid="stTimeInput"] input {
+    background-color: transparent !important;
+    border: none !important;
+    color: #172033 !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    padding: 11px 14px !important;
+    min-height: 44px !important;
+    outline: none !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+}
+
+/* 2. TextAreas */
+div[data-baseweb="textarea"],
+div[data-testid="stTextAreaRootElement"],
+.stTextArea textarea,
+div[data-testid="stTextArea"] textarea {
+    background-color: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 10px !important;
+    color: #172033 !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    padding: 12px 14px !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+/* Inner textarea reset if wrapper has border */
+div[data-baseweb="textarea"] textarea {
+    border: none !important;
+    background-color: transparent !important;
+    padding: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    font-size: 14px !important;
+    color: #172033 !important;
+}
+
+/* 3. Dropdowns / Selectboxes */
+div[data-baseweb="select"] > div,
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    background-color: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 10px !important;
+    color: #172033 !important;
+    font-size: 14px !important;
+    font-family: inherit !important;
+    min-height: 46px !important;
+    padding: 2px 8px !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+/* 4. Input Hover States (Slightly Darkened Border #94A3B8) */
+div[data-baseweb="input"]:hover:not(:focus-within),
+div[data-baseweb="textarea"]:hover:not(:focus-within),
+.stTextArea textarea:hover:not(:focus),
+div[data-baseweb="select"] > div:hover:not(:focus-within) {
+    border-color: #94A3B8 !important;
+    background-color: #FFFFFF !important;
+}
+
+/* 5. Input Focus States (Primary Blue #2563EB & Subtle Focus Ring) */
+div[data-baseweb="input"]:focus-within,
+div[data-baseweb="textarea"]:focus-within,
+.stTextArea textarea:focus,
+div[data-baseweb="select"] > div:focus-within {
+    border-color: #2563EB !important;
+    background-color: #FFFFFF !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+    outline: none !important;
+}
+
+/* 6. Form Labels Across Entire Application */
+label[data-testid="stWidgetLabel"],
+label[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] p,
+.stTextInput label,
+.stNumberInput label,
+.stSelectbox label,
+.stTextArea label,
+.stDateInput label,
+.form-label {
+    display: block !important;
+    margin-bottom: 8px !important;
+    color: #334155 !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+}
+
+/* 7. Disabled Form Controls (Clear Border & Soft Background) */
+input:disabled,
+textarea:disabled,
+div[data-baseweb="input"]:has(input:disabled),
+div[data-baseweb="textarea"]:has(textarea:disabled) {
+    background-color: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #64748B !important;
+    cursor: not-allowed !important;
+}
+
+/* 8. Number Input Stepper Controls */
+div[data-testid="stNumberInput"] button {
+    border: none !important;
+    background: transparent !important;
+    color: #64748B !important;
+    padding: 0 8px !important;
+    min-height: 42px !important;
+}
+div[data-testid="stNumberInput"] button:hover {
+    color: #2563EB !important;
+    background: #EFF6FF !important;
+    border-radius: 6px !important;
+}
+
+/* 9. File Uploader Dropzone */
+section[data-testid="stFileUploadDropzone"] {
+    background: #FFFFFF !important;
+    border: 1.5px dashed #CBD5E1 !important;
+    border-radius: 12px !important;
+    padding: 1.5rem !important;
+    transition: border-color 0.2s ease, background-color 0.2s ease !important;
+}
+section[data-testid="stFileUploadDropzone"]:hover {
+    border-color: #2563EB !important;
+    background-color: #EFF6FF !important;
+}
+
+/* 10. Placeholder Typography */
+::placeholder,
+input::placeholder,
+textarea::placeholder {
+    color: #94A3B8 !important;
+    opacity: 1 !important;
+    font-size: 13.5px !important;
+}
+
 
 /* Modern DataFrames & Tables */
 div[data-testid="stDataFrame"],
