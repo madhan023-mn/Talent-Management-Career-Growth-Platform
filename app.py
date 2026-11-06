@@ -931,13 +931,13 @@ def landing_webpage():
         f"""
         <div style="margin: 2.4rem 0 1.25rem 0;">
             <div style="display: inline-flex; align-items: center; gap: 6px; background: #EEF2FF; border: 1px solid #C7D2FE; color: #4F46E5; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
-                {get_svg_icon("sparkles", size=13, color="#4F46E5")} Instant Live Demo
+                {get_svg_icon("sparkles", size=13, color="#4F46E5")} Platform Access
             </div>
             <h2 style="font-size: 1.95rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0; letter-spacing: -0.02em;">
-                1-Click Quick Demo Sign-In
+                Role-Based Account Portals
             </h2>
             <p style="color: #64748B; font-size: 0.95rem; margin: 0 0 1.35rem 0;">
-                Select a pre-configured role below to test full platform capabilities immediately without entering passwords.
+                Select your designated role profile below to proceed to the secure sign-in portal.
             </p>
         </div>
         """
@@ -969,14 +969,9 @@ def landing_webpage():
             """
         )
         if st.button("Sign In as HR Admin", key="landing_btn_admin", use_container_width=True, type="primary"):
-            admin_acc = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
-            if admin_acc:
-                st.session_state.user = admin_acc
-                st.session_state.current_page = "Dashboard"
-                st.session_state.auth_view = "landing"
-                st.rerun()
-            else:
-                st.error("Authentication failed. Please verify HR Admin credentials.")
+            st.session_state.auth_view = "login"
+            st.session_state.prefill_email = "admin@talentgrowth.com"
+            st.rerun()
 
     with col_d2:
         render_html(
@@ -986,7 +981,7 @@ def landing_webpage():
                     <div style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);">
                         {get_svg_icon("code", size=22, color="#2563EB")}
                     </div>
-                    <span style="font-size: 0.72rem; font-weight: 800; color: #1E40AF; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 3px 8px; border-radius: 9999px;">ENGINEER</span>
+                    <span style="font-size: 0.72rem; font-weight: 800; color: #1E40AF; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 3px 8px; border-radius: 9999px;">EMPLOYEE</span>
                 </div>
                 <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">Alex Morgan</div>
                 <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">alex@company.com</div>
@@ -1002,14 +997,9 @@ def landing_webpage():
             """
         )
         if st.button("Sign In as Alex Morgan", key="landing_btn_alex", use_container_width=True, type="primary"):
-            emp_acc = login("alex@company.com", "Password123")
-            if emp_acc:
-                st.session_state.user = emp_acc
-                st.session_state.current_page = "Dashboard"
-                st.session_state.auth_view = "landing"
-                st.rerun()
-            else:
-                st.error("Authentication failed. Please verify employee credentials.")
+            st.session_state.auth_view = "login"
+            st.session_state.prefill_email = "alex@company.com"
+            st.rerun()
 
     with col_d3:
         render_html(
@@ -1035,14 +1025,9 @@ def landing_webpage():
             """
         )
         if st.button("Sign In as Ravi Kumar", key="landing_btn_ravi", use_container_width=True, type="primary"):
-            ravi_acc = login("ravi@company.com", "Password123")
-            if ravi_acc:
-                st.session_state.user = ravi_acc
-                st.session_state.current_page = "Dashboard"
-                st.session_state.auth_view = "landing"
-                st.rerun()
-            else:
-                st.error("Authentication failed. Please verify employee credentials.")
+            st.session_state.auth_view = "login"
+            st.session_state.prefill_email = "ravi@company.com"
+            st.rerun()
 
     # HOW IT WORKS (4-STEP WORKFLOW)
     render_html(
@@ -1483,6 +1468,9 @@ def login_page():
 
     with col_right:
         with st.container(border=True):
+            if "reg_success_msg" in st.session_state:
+                st.success(st.session_state.pop("reg_success_msg"), icon=":material/check_circle:")
+
             render_html(
                 f"""
                 <div style="text-align: center; margin-bottom: 1.25rem;">
@@ -1490,52 +1478,29 @@ def login_page():
                         {get_svg_icon("lock", size=24, color="#6366F1")}
                     </div>
                     <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0; letter-spacing: -0.02em;">Sign In to Your Account</h2>
-                    <p style="color: #64748B; font-size: 0.90rem; margin: 0;">Enter your credentials or select an instant demo profile.</p>
-                </div>
-
-                <div style="margin-bottom: 0.75rem;">
-                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">1-Click Instant Demo Access</div>
+                    <p style="color: #64748B; font-size: 0.90rem; margin: 0;">Enter your corporate credentials to securely access your platform dashboard.</p>
                 </div>
                 """
             )
 
-            col_chip1, col_chip2, col_chip3 = st.columns(3)
-            with col_chip1:
-                if st.button("HR Admin", icon=":material/admin_panel_settings:", key="login_chip_admin", use_container_width=True, type="secondary"):
-                    u = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
-                    if u:
-                        st.session_state.user = u
-                        st.session_state.current_page = "Dashboard"
-                        st.session_state.auth_view = "landing"
-                        st.rerun()
-            with col_chip2:
-                if st.button("Employee", icon=":material/badge:", key="login_chip_alex", use_container_width=True, type="secondary"):
-                    u = login("alex@company.com", "Password123")
-                    if u:
-                        st.session_state.user = u
-                        st.session_state.current_page = "Dashboard"
-                        st.session_state.auth_view = "landing"
-                        st.rerun()
-            with col_chip3:
-                if st.button("Individual", icon=":material/person:", key="login_chip_ravi", use_container_width=True, type="secondary"):
-                    u = login("ravi@company.com", "Password123")
-                    if u:
-                        st.session_state.user = u
-                        st.session_state.current_page = "Dashboard"
-                        st.session_state.auth_view = "landing"
-                        st.rerun()
-
-            render_html("<div style='border-top: 1px solid #F1F5F9; margin: 12px 0 16px 0;'></div>")
+            prefill_val = st.session_state.pop("prefill_email", "")
 
             with st.form("dedicated_login_form"):
-                email = st.text_input("Corporate Email Address", placeholder="name@company.com")
+                email = st.text_input("Corporate Email Address", value=prefill_val, placeholder="name@company.com")
                 password = st.text_input("Password", type="password", placeholder="Enter your password")
 
                 c_rem, c_forgot = st.columns([1, 1])
                 with c_rem:
                     remember_me = st.checkbox("Remember me", value=True)
                 with c_forgot:
-                    st.markdown("<div style='text-align: right; font-size: 0.85rem; color: #6366F1; font-weight: 600; padding-top: 4px;'>Forgot password?</div>", unsafe_allow_html=True)
+                    with st.popover("Forgot password?"):
+                        st.markdown(
+                            """
+                            **Password Reset Instructions**
+                            
+                            Please contact your Organization HR Administrator or System Support at `support@talentgrowth.com` to reset your access credentials.
+                            """
+                        )
 
                 submit_login = st.form_submit_button("Sign In", type="primary", use_container_width=True)
 
@@ -1557,11 +1522,6 @@ def login_page():
             render_html("<div style='text-align: center; font-size: 0.86rem; color: #64748B; margin-bottom: 0.5rem;'>Don't have an account yet?</div>")
             if st.button("Create a New Account", key="btn_login_to_register", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "register"
-                st.rerun()
-
-            render_html("<div style='text-align: center; font-size: 0.82rem; color: #94A3B8; margin: 0.75rem 0 0.35rem 0;'>Looking for instant demo access?</div>")
-            if st.button("Try 1-Click Demo on Home Page", key="btn_login_to_demo", use_container_width=True, type="secondary"):
-                st.session_state.auth_view = "landing"
                 st.rerun()
 
 
@@ -1711,16 +1671,12 @@ def register_page():
                             st.error("Registration error: User record could not be confirmed in the active SQLite database.")
                         else:
                             st.session_state["last_registered_verification"] = verified
-                            st.success(f"{msg} (User ID #{verified['id']} verified in active database {get_db_path().name})")
-                            new_user_data = login(clean_email, clean_pwd)
-                            if new_user_data:
-                                st.session_state.user = new_user_data
-                                st.session_state.current_page = "Dashboard"
-                                st.session_state.auth_view = "landing"
-                                st.rerun()
-                            else:
-                                st.session_state.auth_view = "login"
-                                st.rerun()
+                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name}! Please enter your credentials below to sign in."
+                            st.session_state["prefill_email"] = clean_email
+                            st.session_state.user = None
+                            st.session_state.auth_view = "login"
+                            st.session_state.current_page = "Dashboard"
+                            st.rerun()
                     else:
                         st.error(msg)
                 else:
@@ -1761,16 +1717,13 @@ def register_page():
                             st.error("Registration error: User record could not be confirmed in the active SQLite database.")
                         else:
                             st.session_state["last_registered_verification"] = verified
-                            st.success(f"{msg} (User ID #{verified['id']} verified in active database {get_db_path().name})")
-                            new_user_data = login(clean_email, clean_pwd)
-                            if new_user_data:
-                                st.session_state.user = new_user_data
-                                st.session_state.current_page = "Dashboard"
-                                st.session_state.auth_view = "landing"
-                                st.rerun()
-                            else:
-                                st.session_state.auth_view = "login"
-                                st.rerun()
+                            org_role_desc = "organization administrator" if role == "admin" else "employee"
+                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name} as {org_role_desc}! Please sign in below."
+                            st.session_state["prefill_email"] = clean_email
+                            st.session_state.user = None
+                            st.session_state.auth_view = "login"
+                            st.session_state.current_page = "Dashboard"
+                            st.rerun()
                     else:
                         st.error(msg)
 
@@ -2164,29 +2117,82 @@ div[data-testid="stRadio"] label > span:first-child {
     visibility: hidden !important;
 }
 
+/* Ensure no pseudo-element dots anywhere in sidebar radio options */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::after {
+    content: none !important;
+    display: none !important;
+}
+
+/* Flex Row Container inside Label - MUST NOT be styled as a circle */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stRadioOption"] > div {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
 /* Single Radio Circle on Sidebar Navigation Rows */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stRadioOption"] > div > div:first-child,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stRadioOption"] > div > div:first-child {
     width: 13px !important;
     height: 13px !important;
     min-width: 13px !important;
     min-height: 13px !important;
+    max-width: 13px !important;
+    max-height: 13px !important;
     border-radius: 50% !important;
-    background-color: #FFFFFF !important;
     border: 2px solid #FFFFFF !important;
-    box-shadow: 0 0 4px rgba(255, 255, 255, 0.6) !important;
+    background-color: transparent !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     margin-right: 12px !important;
     flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Inactive row radio circle: subtle outline */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) [data-testid="stRadioOption"] > div > div:first-child {
+    border-color: #64748B !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Active row radio circle: solid crisp white circle with glow */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] [data-testid="stRadioOption"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) [data-testid="stRadioOption"] > div > div:first-child {
+    background-color: #FFFFFF !important;
+    border-color: #FFFFFF !important;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.75) !important;
+}
+
+/* Inactive hover: brighten circle border */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover [data-testid="stRadioOption"] > div > div:first-child {
+    border-color: #FFFFFF !important;
 }
 
 /* Hide any nested inner dot inside the radio circle so only the single outer circle is visible */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stRadioOption"] > div > div:first-child div,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child div,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stRadioOption"] > div > div:first-child * {
     display: none !important;
 }
 

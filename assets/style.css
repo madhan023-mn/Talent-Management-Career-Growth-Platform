@@ -2064,29 +2064,82 @@ div[data-testid="stRadio"] label > span:first-child {
     visibility: hidden !important;
 }
 
+/* Ensure no pseudo-element dots anywhere in sidebar radio options */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::after {
+    content: none !important;
+    display: none !important;
+}
+
+/* Flex Row Container inside Label - MUST NOT be styled as a circle */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stRadioOption"] > div {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
 /* Single Radio Circle on Sidebar Navigation Rows */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stRadioOption"] > div > div:first-child,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stRadioOption"] > div > div:first-child {
     width: 13px !important;
     height: 13px !important;
     min-width: 13px !important;
     min-height: 13px !important;
+    max-width: 13px !important;
+    max-height: 13px !important;
     border-radius: 50% !important;
-    background-color: #FFFFFF !important;
     border: 2px solid #FFFFFF !important;
-    box-shadow: 0 0 4px rgba(255, 255, 255, 0.6) !important;
+    background-color: transparent !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     margin-right: 12px !important;
     flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Inactive row radio circle: subtle outline */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) [data-testid="stRadioOption"] > div > div:first-child {
+    border-color: #64748B !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Active row radio circle: solid crisp white circle with glow */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] [data-testid="stRadioOption"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) [data-testid="stRadioOption"] > div > div:first-child {
+    background-color: #FFFFFF !important;
+    border-color: #FFFFFF !important;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.75) !important;
+}
+
+/* Inactive hover: brighten circle border */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover [data-testid="stRadioOption"] > div > div:first-child {
+    border-color: #FFFFFF !important;
 }
 
 /* Hide any nested inner dot inside the radio circle so only the single outer circle is visible */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stRadioOption"] > div > div:first-child div,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child div,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child div {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stRadioOption"] > div > div:first-child * {
     display: none !important;
 }
 
