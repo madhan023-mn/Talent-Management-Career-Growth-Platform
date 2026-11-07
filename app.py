@@ -931,13 +931,13 @@ def landing_webpage():
         f"""
         <div style="margin: 2.4rem 0 1.25rem 0;">
             <div style="display: inline-flex; align-items: center; gap: 6px; background: #EEF2FF; border: 1px solid #C7D2FE; color: #4F46E5; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
-                {get_svg_icon("sparkles", size=13, color="#4F46E5")} Platform Access
+                {get_svg_icon("sparkles", size=13, color="#4F46E5")} 1-Click Instant Demo Launch
             </div>
             <h2 style="font-size: 1.95rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0; letter-spacing: -0.02em;">
-                Role-Based Account Portals
+                1-Click Interactive Demos
             </h2>
             <p style="color: #64748B; font-size: 0.95rem; margin: 0 0 1.35rem 0;">
-                Select your designated role profile below to proceed to the secure sign-in portal.
+                Click any role below to launch directly into the live dashboard without entering any login credentials.
             </p>
         </div>
         """
@@ -968,10 +968,15 @@ def landing_webpage():
             </div>
             """
         )
-        if st.button("Sign In as HR Admin", key="landing_btn_admin", use_container_width=True, type="primary"):
-            st.session_state.auth_view = "login"
-            st.session_state.prefill_email = "admin@talentgrowth.com"
-            st.rerun()
+        if st.button("🚀 Launch HR Admin Demo", key="landing_btn_admin", use_container_width=True, type="primary"):
+            admin_acc = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+            if admin_acc:
+                st.session_state.user = admin_acc
+                st.session_state.current_page = "Dashboard"
+                st.session_state.auth_view = "landing"
+                st.rerun()
+            else:
+                st.error("Authentication failed. Please verify HR Admin credentials.")
 
     with col_d2:
         render_html(
@@ -996,10 +1001,15 @@ def landing_webpage():
             </div>
             """
         )
-        if st.button("Sign In as Alex Morgan", key="landing_btn_alex", use_container_width=True, type="primary"):
-            st.session_state.auth_view = "login"
-            st.session_state.prefill_email = "alex@company.com"
-            st.rerun()
+        if st.button("🚀 Launch Employee Demo", key="landing_btn_alex", use_container_width=True, type="primary"):
+            emp_acc = login("alex@company.com", "Password123")
+            if emp_acc:
+                st.session_state.user = emp_acc
+                st.session_state.current_page = "Dashboard"
+                st.session_state.auth_view = "landing"
+                st.rerun()
+            else:
+                st.error("Authentication failed. Please verify employee credentials.")
 
     with col_d3:
         render_html(
@@ -1024,10 +1034,17 @@ def landing_webpage():
             </div>
             """
         )
-        if st.button("Sign In as Ravi Kumar", key="landing_btn_ravi", use_container_width=True, type="primary"):
-            st.session_state.auth_view = "login"
-            st.session_state.prefill_email = "ravi@company.com"
-            st.rerun()
+        if st.button("🚀 Launch Individual Demo", key="landing_btn_ravi", use_container_width=True, type="primary"):
+            ravi_acc = login("ravi@company.com", "Password123")
+            if ravi_acc:
+                ravi_acc["account_type"] = "Individual"
+                ravi_acc["org_id"] = None
+                st.session_state.user = ravi_acc
+                st.session_state.current_page = "Dashboard"
+                st.session_state.auth_view = "landing"
+                st.rerun()
+            else:
+                st.error("Authentication failed. Please verify employee credentials.")
 
     # HOW IT WORKS (4-STEP WORKFLOW)
     render_html(
@@ -1478,10 +1495,46 @@ def login_page():
                         {get_svg_icon("lock", size=24, color="#6366F1")}
                     </div>
                     <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0; letter-spacing: -0.02em;">Sign In to Your Account</h2>
-                    <p style="color: #64748B; font-size: 0.90rem; margin: 0;">Enter your corporate credentials to securely access your platform dashboard.</p>
+                    <p style="color: #64748B; font-size: 0.90rem; margin: 0;">Enter your credentials or launch an instant 1-click live demo dashboard.</p>
+                </div>
+
+                <div style="margin-bottom: 0.6rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #4F46E5; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+                        1-Click Instant Demo Launch (No Password Required)
+                    </div>
                 </div>
                 """
             )
+
+            col_chip1, col_chip2, col_chip3 = st.columns(3)
+            with col_chip1:
+                if st.button("HR Admin", icon=":material/admin_panel_settings:", key="login_chip_admin", use_container_width=True, type="secondary"):
+                    u = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+                    if u:
+                        st.session_state.user = u
+                        st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
+                        st.rerun()
+            with col_chip2:
+                if st.button("Employee", icon=":material/badge:", key="login_chip_alex", use_container_width=True, type="secondary"):
+                    u = login("alex@company.com", "Password123")
+                    if u:
+                        st.session_state.user = u
+                        st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
+                        st.rerun()
+            with col_chip3:
+                if st.button("Individual", icon=":material/person:", key="login_chip_ravi", use_container_width=True, type="secondary"):
+                    u = login("ravi@company.com", "Password123")
+                    if u:
+                        u["account_type"] = "Individual"
+                        u["org_id"] = None
+                        st.session_state.user = u
+                        st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
+                        st.rerun()
+
+            render_html("<div style='border-top: 1px solid #F1F5F9; margin: 12px 0 16px 0;'></div>")
 
             prefill_val = st.session_state.pop("prefill_email", "")
 
@@ -1522,6 +1575,11 @@ def login_page():
             render_html("<div style='text-align: center; font-size: 0.86rem; color: #64748B; margin-bottom: 0.5rem;'>Don't have an account yet?</div>")
             if st.button("Create a New Account", key="btn_login_to_register", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "register"
+                st.rerun()
+
+            render_html("<div style='text-align: center; font-size: 0.82rem; color: #94A3B8; margin: 0.75rem 0 0.35rem 0;'>Looking for all interactive demos?</div>")
+            if st.button("Explore 1-Click Demos on Home Page", key="btn_login_to_demo", use_container_width=True, type="secondary"):
+                st.session_state.auth_view = "landing"
                 st.rerun()
 
 
