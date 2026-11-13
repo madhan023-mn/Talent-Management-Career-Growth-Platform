@@ -2132,6 +2132,26 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     border: none !important;
     padding: 0 !important;
     margin: 1.2rem 0 !important;
+    list-style: none !important;
+}
+
+/* Ensure no pseudo-element dots anywhere in sidebar radio options */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::after,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label *::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label *::after,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label::after,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::after {
+    content: none !important;
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    border: none !important;
+    background: transparent !important;
 }
 
 /* Radio Button Label */
@@ -2152,6 +2172,7 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
+    list-style: none !important;
     transition: background-color 0.18s ease, color 0.18s ease, transform 0.15s ease !important;
 }
 
@@ -2173,13 +2194,6 @@ div[data-testid="stRadio"] label > span:first-child {
     clip-path: inset(50%) !important;
     pointer-events: none !important;
     visibility: hidden !important;
-}
-
-/* Ensure no pseudo-element dots anywhere in sidebar radio options */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] *::before,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] *::after {
-    content: none !important;
-    display: none !important;
 }
 
 /* Flex Row Container inside Label - MUST NOT be styled as a circle */
@@ -2204,7 +2218,7 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     padding: 0 !important;
 }
 
-/* Single Radio Circle on Sidebar Navigation Rows */
+/* Single Radio Circle on Sidebar Navigation Rows - EXACTLY ONE CIRCLE */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stRadioOption"] > div > div:first-child {
     width: 13px !important;
@@ -2214,19 +2228,21 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
     max-width: 13px !important;
     max-height: 13px !important;
     border-radius: 50% !important;
-    border: 2px solid #FFFFFF !important;
+    border: 2px solid #64748B !important;
     background-color: transparent !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     margin-right: 12px !important;
+    margin-left: 0 !important;
     flex-shrink: 0 !important;
     box-sizing: border-box !important;
+    transition: all 0.18s ease !important;
 }
 
 /* Inactive row radio circle: subtle outline */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) > div > div:first-child,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) [data-testid="stRadioOption"] > div > div:first-child {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]) > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]) [data-testid="stRadioOption"] > div > div:first-child {
     border-color: #64748B !important;
     background-color: transparent !important;
     box-shadow: none !important;
@@ -2235,16 +2251,19 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
 /* Active row radio circle: solid crisp white circle with glow */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] > div > div:first-child,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] [data-selected="true"] label > div > div:first-child,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] [data-testid="stRadioOption"] > div > div:first-child,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) [data-testid="stRadioOption"] > div > div:first-child {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) [data-testid="stRadioOption"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"] [data-testid="stRadioOption"] > div > div:first-child {
     background-color: #FFFFFF !important;
     border-color: #FFFFFF !important;
     box-shadow: 0 0 6px rgba(255, 255, 255, 0.75) !important;
 }
 
 /* Inactive hover: brighten circle border */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover > div > div:first-child,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover [data-testid="stRadioOption"] > div > div:first-child {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]):hover > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]):hover [data-testid="stRadioOption"] > div > div:first-child {
     border-color: #FFFFFF !important;
 }
 
@@ -2252,31 +2271,45 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child *,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stRadioOption"] > div > div:first-child * {
     display: none !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+/* Ensure the text container (the sibling of the circle) never has a circle or border */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:not(:first-child),
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:not(:first-child) * {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
 }
 
 /* Inactive Row Styling */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]) {
     background: transparent !important;
     color: #CBD5E1 !important;
 }
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)) * {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]) * {
     color: #CBD5E1 !important;
     font-weight: 500 !important;
     font-size: 0.93rem !important;
 }
 
 /* Inactive Row Hover */
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]):hover {
     background-color: rgba(255, 255, 255, 0.08) !important;
     transform: translateX(2px) !important;
 }
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):hover * {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]):hover * {
     color: #FFFFFF !important;
 }
 
 /* Active Row Highlight: Vibrant Blue Pill matching Image 1 */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked),
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] [data-selected="true"] label {
     background-color: #2563EB !important;
     background: #2563EB !important;
     color: #FFFFFF !important;
@@ -2288,7 +2321,9 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
 
 /* Active Text: Guaranteed 100% visible pure crisp white across all tags */
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] *,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) * {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"] *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] [data-selected="true"] label * {
     color: #FFFFFF !important;
     font-weight: 700 !important;
     font-size: 0.95rem !important;
