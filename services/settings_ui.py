@@ -43,6 +43,7 @@ from services.settings import (
     get_account_deactivation_status,
 )
 from services.core import check_db_health, export_user_data, get_db_path
+from style import get_svg_icon
 
 
 def _render_html(html_str: str) -> None:
@@ -142,15 +143,15 @@ def render_settings_module(user: Dict[str, Any], is_admin: bool, is_individual: 
 def _render_hr_settings(user: Dict[str, Any], org_id: str) -> None:
     """Renders the 9 dedicated HR settings sub-sections with full interactive tabs."""
     hr_tabs = st.tabs([
-        "🏢 Organization Profile",
-        "👤 HR Account",
-        "👥 Employee Config",
-        "📊 Performance",
-        "🎯 Career Development",
-        "🎓 Training",
-        "📄 PDF Reports",
-        "🔒 Security & Policies",
-        "🔔 Notifications"
+        "Organization Profile",
+        "HR Account",
+        "Employee Config",
+        "Performance",
+        "Career Development",
+        "Training",
+        "PDF Reports",
+        "Security & Policies",
+        "Notifications"
     ])
 
     # 1. Organization Profile
@@ -191,7 +192,7 @@ def _render_hr_settings(user: Dict[str, Any], org_id: str) -> None:
 
 
 def _render_hr_org_profile(user: Dict[str, Any], org_id: str) -> None:
-    st.markdown("### 🏢 Organization Profile & Branding")
+    st.markdown(f"### {get_svg_icon('building', size=22, color='#2563EB')} Organization Profile & Branding", unsafe_allow_html=True)
     st.caption("Maintain your organization's official legal name, contact credentials, physical address, and brand imagery.")
 
     org_data = get_org_profile_settings(org_id)
@@ -273,7 +274,7 @@ def _render_hr_org_profile(user: Dict[str, Any], org_id: str) -> None:
 
 
 def _render_hr_account_settings(user: Dict[str, Any], org_id: str) -> None:
-    st.markdown("### 👤 HR Executive Account Settings")
+    st.markdown(f"### {get_svg_icon('user', size=22, color='#2563EB')} HR Executive Account Settings", unsafe_allow_html=True)
     st.caption("Manage your administrative contact profile, executive photo, and account security credentials.")
 
     uid = user.get("id")
@@ -345,7 +346,7 @@ def _render_hr_account_settings(user: Dict[str, Any], org_id: str) -> None:
 
 
 def _render_hr_employee_config(user: Dict[str, Any], org_id: str) -> None:
-    st.markdown("### 👥 Workforce & Employee Configuration")
+    st.markdown(f"### {get_svg_icon('employees', size=22, color='#2563EB')} Workforce & Employee Configuration", unsafe_allow_html=True)
     st.caption("Standardize departments, official designations, employee categories, employment statuses, and organizational skill categories.")
 
     cfg = get_org_employee_config(org_id)
@@ -397,7 +398,7 @@ def _render_hr_employee_config(user: Dict[str, Any], org_id: str) -> None:
 
 
 def _render_hr_performance_config(user: Dict[str, Any], org_id: str) -> None:
-    st.markdown("### 📊 Performance Evaluation Model & Rating Scale")
+    st.markdown(f"### {get_svg_icon('performance', size=22, color='#2563EB')} Performance Evaluation Model & Rating Scale", unsafe_allow_html=True)
     st.caption("Customize the organizational performance appraisal framework, review cycles, and rating tier definitions.")
 
     cfg = get_org_performance_config(org_id)
@@ -448,7 +449,7 @@ def _render_hr_performance_config(user: Dict[str, Any], org_id: str) -> None:
 
 
 def _render_hr_career_config(user: Dict[str, Any], org_id: str) -> None:
-    st.markdown("### 🎯 Career Development & Job Architecture")
+    st.markdown(f"### {get_svg_icon('goals', size=22, color='#2563EB')} Career Development & Job Architecture", unsafe_allow_html=True)
     st.caption("Standardize organizational career levels, job families, progression ladders, and recommended developmental horizons.")
 
     cfg = get_org_career_config(org_id)
@@ -491,7 +492,7 @@ def _render_hr_career_config(user: Dict[str, Any], org_id: str) -> None:
 
 
 def _render_hr_training_config(user: Dict[str, Any], org_id: str) -> None:
-    st.markdown("### 🎓 Learning, Training & Certification Settings")
+    st.markdown(f"### {get_svg_icon('award', size=22, color='#2563EB')} Learning, Training & Certification Settings", unsafe_allow_html=True)
     st.caption("Manage enterprise training providers, certification standards, completion benchmarks, and learning tracks.")
 
     cfg = get_org_training_config(org_id)
@@ -532,7 +533,7 @@ def _render_hr_training_config(user: Dict[str, Any], org_id: str) -> None:
 
 
 def _render_hr_pdf_customization(user: Dict[str, Any], org_id: str) -> None:
-    st.markdown("### 📄 PDF Report Customization & Branding")
+    st.markdown(f"### {get_svg_icon('reports', size=22, color='#2563EB')} PDF Report Customization & Branding", unsafe_allow_html=True)
     st.caption("Control the executive styling, company typography, color themes, running header/footer, and confidentiality notices on all generated PDF talent dossiers.")
 
     cfg = get_org_pdf_config(org_id)
@@ -615,7 +616,7 @@ def _render_hr_pdf_customization(user: Dict[str, Any], org_id: str) -> None:
 
 
 def _render_hr_security_settings(user: Dict[str, Any], org_id: str) -> None:
-    st.markdown("### 🔒 Security, Password Policies & Database Health")
+    st.markdown(f"### {get_svg_icon('shield', size=22, color='#2563EB')} Security, Password Policies & Database Health", unsafe_allow_html=True)
     st.caption("Configure authentication complexity constraints, session lifetimes, multi-factor preparedness, and verify storage persistence.")
 
     cfg = get_org_security_config(org_id)
@@ -697,7 +698,7 @@ def _render_hr_security_settings(user: Dict[str, Any], org_id: str) -> None:
 
 
 def _render_hr_notification_settings(user: Dict[str, Any], org_id: str) -> None:
-    st.markdown("### 🔔 Organization Notification & Reminder Settings")
+    st.markdown(f"### {get_svg_icon('bell', size=22, color='#2563EB')} Organization Notification & Reminder Settings", unsafe_allow_html=True)
     st.caption("Configure automated notification cadences, review triggers, training deadline dispatches, and milestone alerts.")
 
     cfg = get_org_notification_config(org_id)
@@ -746,12 +747,12 @@ def _render_hr_notification_settings(user: Dict[str, Any], org_id: str) -> None:
 def _render_employee_settings(user: Dict[str, Any], org_id: str, is_individual: bool) -> None:
     """Renders the 6 dedicated Employee settings sub-sections with full interactive tabs."""
     emp_tabs = st.tabs([
-        "👤 Personal Profile",
-        "🔒 Account Security",
-        "🎯 Career Preferences",
-        "🔔 Notifications",
-        "🎨 Appearance",
-        "🛡️ Privacy & Data"
+        "Personal Profile",
+        "Account Security",
+        "Career Preferences",
+        "Notifications",
+        "Appearance",
+        "Privacy & Data"
     ])
 
     uid = user.get("id")
@@ -783,7 +784,7 @@ def _render_employee_settings(user: Dict[str, Any], org_id: str, is_individual: 
 
 
 def _render_employee_personal_profile(user: Dict[str, Any], user_prefs: Dict[str, Any]) -> None:
-    st.markdown("### 👤 Personal Profile & Information")
+    st.markdown(f"### {get_svg_icon('profile', size=22, color='#2563EB')} Personal Profile & Information", unsafe_allow_html=True)
     st.caption("Update your name, public contact coordinates, location, profile avatar, and professional summary.")
 
     uid = user.get("id")
@@ -846,7 +847,7 @@ def _render_employee_personal_profile(user: Dict[str, Any], user_prefs: Dict[str
 
 
 def _render_employee_account_security(user: Dict[str, Any], org_id: str) -> None:
-    st.markdown("### 🔒 Account Security & Password Management")
+    st.markdown(f"### {get_svg_icon('lock', size=22, color='#2563EB')} Account Security & Password Management", unsafe_allow_html=True)
     st.caption("Change your sign-in password and verify your authenticated session attributes.")
 
     uid = user.get("id")
@@ -903,7 +904,7 @@ def _render_employee_account_security(user: Dict[str, Any], org_id: str) -> None
 
 
 def _render_employee_career_preferences(user: Dict[str, Any], user_prefs: Dict[str, Any]) -> None:
-    st.markdown("### 🎯 Career Preferences & Aspirations")
+    st.markdown(f"### {get_svg_icon('target', size=22, color='#2563EB')} Career Preferences & Aspirations", unsafe_allow_html=True)
     st.caption("Tell your career coach and HR about your target designations, interested growth ladders, and priority skill competencies.")
 
     uid = user.get("id")
@@ -941,7 +942,7 @@ def _render_employee_career_preferences(user: Dict[str, Any], user_prefs: Dict[s
 
 
 def _render_employee_notification_preferences(user: Dict[str, Any], user_prefs: Dict[str, Any]) -> None:
-    st.markdown("### 🔔 Notification & Dispatch Preferences")
+    st.markdown(f"### {get_svg_icon('bell', size=22, color='#2563EB')} Notification & Dispatch Preferences", unsafe_allow_html=True)
     st.caption("Customize the frequency of goal deadline alerts, training reminders, and platform achievement dispatches.")
 
     uid = user.get("id")
@@ -987,7 +988,7 @@ def _render_employee_notification_preferences(user: Dict[str, Any], user_prefs: 
 
 
 def _render_employee_appearance(user: Dict[str, Any], user_prefs: Dict[str, Any]) -> None:
-    st.markdown("### 🎨 Interface Appearance & Density")
+    st.markdown(f"### {get_svg_icon('sliders', size=22, color='#2563EB')} Interface Appearance & Density", unsafe_allow_html=True)
     st.caption("Personalize your platform reading comfort, color theme preference, and dashboard layout density.")
 
     uid = user.get("id")
@@ -1039,7 +1040,7 @@ def _render_employee_appearance(user: Dict[str, Any], user_prefs: Dict[str, Any]
 
 
 def _render_employee_privacy(user: Dict[str, Any], user_prefs: Dict[str, Any], is_individual: bool) -> None:
-    st.markdown("### 🛡️ Privacy, Data Governance & Deactivation")
+    st.markdown(f"### {get_svg_icon('shield', size=22, color='#2563EB')} Privacy, Data Governance & Deactivation", unsafe_allow_html=True)
     st.caption("Control your talent profile visibility, download a complete archive of your stored data, or request account deactivation.")
 
     uid = user.get("id")

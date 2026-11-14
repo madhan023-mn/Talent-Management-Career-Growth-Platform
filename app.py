@@ -968,7 +968,7 @@ def landing_webpage():
             </div>
             """
         )
-        if st.button("🚀 Launch HR Admin Demo", key="landing_btn_admin", use_container_width=True, type="primary"):
+        if st.button("Launch HR Admin Demo", icon=":material/rocket_launch:", key="landing_btn_admin", use_container_width=True, type="primary"):
             admin_acc = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
             if admin_acc:
                 st.session_state.user = admin_acc
@@ -1001,7 +1001,7 @@ def landing_webpage():
             </div>
             """
         )
-        if st.button("🚀 Launch Employee Demo", key="landing_btn_alex", use_container_width=True, type="primary"):
+        if st.button("Launch Employee Demo", icon=":material/rocket_launch:", key="landing_btn_alex", use_container_width=True, type="primary"):
             emp_acc = login("alex@company.com", "Password123")
             if emp_acc:
                 st.session_state.user = emp_acc
@@ -1034,7 +1034,7 @@ def landing_webpage():
             </div>
             """
         )
-        if st.button("🚀 Launch Individual Demo", key="landing_btn_ravi", use_container_width=True, type="primary"):
+        if st.button("Launch Individual Demo", icon=":material/rocket_launch:", key="landing_btn_ravi", use_container_width=True, type="primary"):
             ravi_acc = login("ravi@company.com", "Password123")
             if ravi_acc:
                 ravi_acc["account_type"] = "Individual"
