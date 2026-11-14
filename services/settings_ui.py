@@ -217,8 +217,8 @@ def _render_hr_org_profile(user: Dict[str, Any], org_id: str) -> None:
                 key="hr_org_ind"
             )
 
-        address = st.text_area("Physical Headquarters Address", value=org_data.get("address", ""), rows=2, key="hr_org_addr")
-        description = st.text_area("Organization Description / Mission", value=org_data.get("description", ""), rows=3, key="hr_org_desc")
+        address = st.text_area("Physical Headquarters Address", value=org_data.get("address", ""), height=75, key="hr_org_addr")
+        description = st.text_area("Organization Description / Mission", value=org_data.get("description", ""), height=100, key="hr_org_desc")
 
     with col_r:
         _render_html(
@@ -352,25 +352,25 @@ def _render_hr_employee_config(user: Dict[str, Any], org_id: str) -> None:
 
     # 1. Departments Editor
     st.markdown("#### 1. Organizational Departments")
-    dept_str = st.text_area("Departments (comma-separated list)", value=", ".join(cfg.get("departments", [])), rows=2, key="cfg_depts")
+    dept_str = st.text_area("Departments (comma-separated list)", value=", ".join(cfg.get("departments", [])), height=75, key="cfg_depts")
 
     # 2. Designations Editor
     st.markdown("#### 2. Official Designations / Job Titles")
-    desig_str = st.text_area("Designations (comma-separated list)", value=", ".join(cfg.get("designations", [])), rows=3, key="cfg_desigs")
+    desig_str = st.text_area("Designations (comma-separated list)", value=", ".join(cfg.get("designations", [])), height=100, key="cfg_desigs")
 
     # 3. Employee Categories
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("#### 3. Employee Categories")
-        cat_str = st.text_area("Categories (comma-separated)", value=", ".join(cfg.get("employee_categories", [])), rows=2, key="cfg_cats")
+        cat_str = st.text_area("Categories (comma-separated)", value=", ".join(cfg.get("employee_categories", [])), height=75, key="cfg_cats")
 
     with c2:
         st.markdown("#### 4. Employment Status Options")
-        stat_str = st.text_area("Status Options (comma-separated)", value=", ".join(cfg.get("employment_statuses", [])), rows=2, key="cfg_stats")
+        stat_str = st.text_area("Status Options (comma-separated)", value=", ".join(cfg.get("employment_statuses", [])), height=75, key="cfg_stats")
 
     # 5. Skill Categories
     st.markdown("#### 5. Organizational Skill Categories")
-    skill_cat_str = st.text_area("Skill Categories (comma-separated)", value=", ".join(cfg.get("skill_categories", [])), rows=2, key="cfg_skill_cats")
+    skill_cat_str = st.text_area("Skill Categories (comma-separated)", value=", ".join(cfg.get("skill_categories", [])), height=75, key="cfg_skill_cats")
 
     cb1, cb2, _ = st.columns([2.5, 2, 5.5])
     with cb1:
@@ -417,11 +417,11 @@ def _render_hr_performance_config(user: Dict[str, Any], org_id: str) -> None:
     st.markdown("#### Review Periods & Evaluation Dimensions")
     c3, c4 = st.columns(2)
     with c3:
-        periods_str = st.text_area("Review Periods (comma-separated)", value=", ".join(cfg.get("review_periods", [])), rows=2, key="perf_periods")
+        periods_str = st.text_area("Review Periods (comma-separated)", value=", ".join(cfg.get("review_periods", [])), height=75, key="perf_periods")
     with c4:
-        cats_str = st.text_area("Evaluation Competency Dimensions", value=", ".join(cfg.get("performance_categories", [])), rows=2, key="perf_cats")
+        cats_str = st.text_area("Evaluation Competency Dimensions", value=", ".join(cfg.get("performance_categories", [])), height=75, key="perf_cats")
 
-    crit_str = st.text_area("Evaluation Criteria Checklist (comma-separated)", value=", ".join(cfg.get("evaluation_criteria", [])), rows=2, key="perf_crit")
+    crit_str = st.text_area("Evaluation Criteria Checklist (comma-separated)", value=", ".join(cfg.get("evaluation_criteria", [])), height=75, key="perf_crit")
 
     cb1, cb2, _ = st.columns([2.5, 2, 5.5])
     with cb1:
@@ -454,18 +454,18 @@ def _render_hr_career_config(user: Dict[str, Any], org_id: str) -> None:
     cfg = get_org_career_config(org_id)
 
     st.markdown("#### 1. Career Hierarchy Levels")
-    levels_str = st.text_area("Career Levels (ordered ladder, comma-separated)", value=", ".join(cfg.get("career_levels", [])), rows=2, key="car_levels")
+    levels_str = st.text_area("Career Levels (ordered ladder, comma-separated)", value=", ".join(cfg.get("career_levels", [])), height=75, key="car_levels")
 
     st.markdown("#### 2. Active Job Roles Catalog")
-    roles_str = st.text_area("Job Roles (comma-separated)", value=", ".join(cfg.get("job_roles", [])), rows=3, key="car_roles")
+    roles_str = st.text_area("Job Roles (comma-separated)", value=", ".join(cfg.get("job_roles", [])), height=100, key="car_roles")
 
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("#### 3. Standard Career Progression Ladders")
-        paths_str = st.text_area("Progression Paths (comma-separated, e.g. A -> B)", value=", ".join(cfg.get("progression_paths", [])), rows=3, key="car_paths")
+        paths_str = st.text_area("Progression Paths (comma-separated, e.g. A -> B)", value=", ".join(cfg.get("progression_paths", [])), height=100, key="car_paths")
     with c2:
         st.markdown("#### 4. Default Progression Timelines")
-        timelines_str = st.text_area("Milestone Timelines (comma-separated)", value=", ".join(cfg.get("default_timelines", [])), rows=3, key="car_timelines")
+        timelines_str = st.text_area("Milestone Timelines (comma-separated)", value=", ".join(cfg.get("default_timelines", [])), height=100, key="car_timelines")
 
     cb1, cb2, _ = st.columns([2.5, 2, 5.5])
     with cb1:
@@ -499,15 +499,15 @@ def _render_hr_training_config(user: Dict[str, Any], org_id: str) -> None:
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("#### 1. Training Subject Categories")
-        cats_str = st.text_area("Categories (comma-separated)", value=", ".join(cfg.get("training_categories", [])), rows=3, key="tr_cats")
+        cats_str = st.text_area("Categories (comma-separated)", value=", ".join(cfg.get("training_categories", [])), height=100, key="tr_cats")
         st.markdown("#### 3. Approved Certification Types")
-        cert_str = st.text_area("Certification Types (comma-separated)", value=", ".join(cfg.get("certification_types", [])), rows=3, key="tr_certs")
+        cert_str = st.text_area("Certification Types (comma-separated)", value=", ".join(cfg.get("certification_types", [])), height=100, key="tr_certs")
 
     with c2:
         st.markdown("#### 2. Authorized Learning Providers")
-        prov_str = st.text_area("Providers (comma-separated)", value=", ".join(cfg.get("training_providers", [])), rows=3, key="tr_provs")
+        prov_str = st.text_area("Providers (comma-separated)", value=", ".join(cfg.get("training_providers", [])), height=100, key="tr_provs")
         st.markdown("#### 4. Verification & Completion Criteria")
-        crit_str = st.text_area("Completion Benchmarks (comma-separated)", value=", ".join(cfg.get("completion_criteria", [])), rows=3, key="tr_crit")
+        crit_str = st.text_area("Completion Benchmarks (comma-separated)", value=", ".join(cfg.get("completion_criteria", [])), height=100, key="tr_crit")
 
     cb1, cb2, _ = st.columns([2.5, 2, 5.5])
     with cb1:
@@ -561,7 +561,7 @@ def _render_hr_pdf_customization(user: Dict[str, Any], org_id: str) -> None:
 
         header_txt = st.text_input("Running Header Banner Text", value=cfg.get("header_text", "CONFIDENTIAL — TALENT GROWTH ENTERPRISE"), key="pdf_hdr")
         footer_txt = st.text_input("Running Footer Notice", value=cfg.get("footer_text", "Talent Growth Platform · Confidential & Proprietary"), key="pdf_ftr")
-        conf_notice = st.text_area("Confidentiality Notice Text", value=cfg.get("confidentiality_notice", "This document contains confidential talent assessment and career development data. Unauthorized distribution is prohibited."), rows=2, key="pdf_conf")
+        conf_notice = st.text_area("Confidentiality Notice Text", value=cfg.get("confidentiality_notice", "This document contains confidential talent assessment and career development data. Unauthorized distribution is prohibited."), height=75, key="pdf_conf")
 
     with col_r:
         theme_colors = {
@@ -800,7 +800,7 @@ def _render_employee_personal_profile(user: Dict[str, Any], user_prefs: Dict[str
         with c2:
             location = st.text_input("Work Location / City", value=user_prefs.get("location", ""), placeholder="e.g. San Francisco, CA / Remote", key="emp_prof_loc")
 
-        summary = st.text_area("Professional Summary", value=user_prefs.get("summary", ""), rows=3, placeholder="Briefly describe your career background and expertise...", key="emp_prof_summary")
+        summary = st.text_area("Professional Summary", value=user_prefs.get("summary", ""), height=100, placeholder="Briefly describe your career background and expertise...", key="emp_prof_summary")
 
     with col_r:
         _render_html(
@@ -919,8 +919,8 @@ def _render_employee_career_preferences(user: Dict[str, Any], user_prefs: Dict[s
         tl_idx = timeline_opts.index(cur_tl) if cur_tl in timeline_opts else 1
         timeline = st.selectbox("Preferred Developmental Timeline", timeline_opts, index=tl_idx, key="emp_car_tl")
 
-    paths_str = st.text_area("Interested Career Paths (comma-separated, e.g. Technical Leadership, Cloud Engineering)", value=", ".join(career_p.get("interested_paths", [])), rows=2, key="emp_car_paths")
-    skills_str = st.text_area("Target Skills to Master (comma-separated, e.g. Kubernetes, System Design, GraphQL)", value=", ".join(career_p.get("preferred_skills", [])), rows=2, key="emp_car_skills")
+    paths_str = st.text_area("Interested Career Paths (comma-separated, e.g. Technical Leadership, Cloud Engineering)", value=", ".join(career_p.get("interested_paths", [])), height=75, key="emp_car_paths")
+    skills_str = st.text_area("Target Skills to Master (comma-separated, e.g. Kubernetes, System Design, GraphQL)", value=", ".join(career_p.get("preferred_skills", [])), height=75, key="emp_car_skills")
 
     cb1, _, _ = st.columns([2.5, 2, 5.5])
     with cb1:
@@ -1096,7 +1096,7 @@ def _render_employee_privacy(user: Dict[str, Any], user_prefs: Dict[str, Any], i
                 """
             )
         else:
-            reason = st.text_area("Reason for Deactivation Request", placeholder="Please tell us why you are requesting account deactivation...", rows=3, key="emp_deact_reason")
+            reason = st.text_area("Reason for Deactivation Request", placeholder="Please tell us why you are requesting account deactivation...", height=100, key="emp_deact_reason")
             if st.button("Submit Deactivation Request", type="secondary", key="btn_emp_submit_deact"):
                 if not reason.strip():
                     st.warning("Please provide a reason for requesting account deactivation.")
