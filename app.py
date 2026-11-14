@@ -7096,5 +7096,3 @@ elif page in ["Settings", "Settings & System", "Settings & Privacy"]:
     from services.settings_ui import render_settings_module
     render_settings_module(user=user, is_admin=is_admin, is_individual=is_individual, org_id=org_id)
 
-
-        render_html("</div>")
