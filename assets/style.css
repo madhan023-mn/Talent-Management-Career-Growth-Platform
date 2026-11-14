@@ -2005,6 +2005,13 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
 }
 
 /* Ensure no pseudo-element dots anywhere in sidebar radio options */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
+    list-style: none !important;
+    list-style-type: none !important;
+}
+
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::before,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::after,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label *::before,
@@ -2012,7 +2019,8 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
 section[data-testid="stSidebar"] div[data-testid="stRadio"] label::before,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] label::after,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] *::before,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] *::after {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::after,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::marker {
     content: none !important;
     display: none !important;
     width: 0 !important;
@@ -2021,6 +2029,14 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] *::after {
     visibility: hidden !important;
     border: none !important;
     background: transparent !important;
+}
+
+section[data-testid="stSidebar"] .e1dm8mpf5 {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
 }
 
 /* Ensure the native hidden input / span is 100% hidden and takes zero layout space */

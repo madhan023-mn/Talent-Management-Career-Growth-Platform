@@ -29,6 +29,7 @@ try:
 except ImportError:
     from .email_service import send_welcome_email, get_recent_email_logs, send_test_email, get_email_config
 
+
 LEVELS = {
     "Beginner": 1,
     "Intermediate": 2,
@@ -752,6 +753,7 @@ def init_db() -> None:
                 cursor.execute("INSERT OR IGNORE INTO profiles (user_id, job_title, department) VALUES (?, ?, ?)",
                                (admin_uid, "VP of Human Resources", "Human Resources"))
         else:
+            admin_uid = admin_row["id"]
             # Update legacy email to admin@talentgrowth.com
             cursor.execute("UPDATE OR IGNORE users SET email = 'admin@talentgrowth.com' WHERE email = 'admin@talentsphere.com'")
 
@@ -916,9 +918,9 @@ def init_db() -> None:
 
         # Seed sample career goals (guarded against duplicates)
         sample_goals = [
-            (2, "EMP101", "Achieve AWS Solutions Architect Associate", "Senior Software Engineer", "Study official guide and do 5 practice exams.", "2026-12-31", 50, "In Progress"),
-            (2, "EMP101", "Lead System Design for Core Payment Gateway", "Senior Software Engineer", "Design high throughput event-driven microservices.", "2026-11-15", 25, "In Progress"),
-            (1, "EMP001", "Implement Automated Performance Review Cycles", "HR Director", "Digitalize enterprise review workflows with analytics.", "2026-10-30", 75, "In Progress"),
+            (alex_uid, "EMP101", "Achieve AWS Solutions Architect Associate", "Senior Software Engineer", "Study official guide and do 5 practice exams.", "2026-12-31", 50, "In Progress"),
+            (alex_uid, "EMP101", "Lead System Design for Core Payment Gateway", "Senior Software Engineer", "Design high throughput event-driven microservices.", "2026-11-15", 25, "In Progress"),
+            (admin_uid, "EMP001", "Implement Automated Performance Review Cycles", "HR Director", "Digitalize enterprise review workflows with analytics.", "2026-10-30", 75, "In Progress"),
             (ravi_uid, "EMP107", "Transition to Senior Python Developer", "Senior Python Developer", "Master advanced SQL database tuning, clean architecture, and lead technical discussions.", "2026-12-31", 50, "In Progress"),
         ]
         for g in sample_goals:
@@ -1011,6 +1013,13 @@ def init_db() -> None:
                 """,
                 (tc_jane_uid, "TC101", "ORG-TECHCORP-02", "Master Apache Spark & Streaming", "Senior Data Scientist", "Complete internal big data track", "2026-11-30", 50, "In Progress")
             )
+
+        # Initialize all Enterprise Settings tables, columns, and defaults
+        try:
+            from services.settings import init_settings_tables
+            init_settings_tables()
+        except Exception:
+            pass
 
         # Ensure all initial and migration data is checkpointed to disk
         checkpoint_db(conn)
@@ -5659,6 +5668,41 @@ def get_individual_dashboard_stats(user_id: int) -> Dict[str, Any]:
         "assessment_history": formatted_assessments,
         "recent_activities": activities[:8]
     }
+
+# ----------------- Re-export Enterprise Settings API -----------------
+try:
+    from services.settings import (
+        init_settings_tables,
+        get_org_profile_settings,
+        save_org_profile_settings,
+        update_hr_account_profile,
+        change_account_password,
+        get_org_employee_config,
+        save_org_employee_config,
+        get_org_performance_config,
+        save_org_performance_config,
+        get_org_career_config,
+        save_org_career_config,
+        get_org_training_config,
+        save_org_training_config,
+        get_org_pdf_config,
+        save_org_pdf_config,
+        get_org_security_config,
+        save_org_security_config,
+        get_org_notification_config,
+        save_org_notification_config,
+        get_user_preferences,
+        save_employee_personal_profile,
+        save_employee_career_preferences,
+        save_employee_notification_preferences,
+        save_employee_appearance_preferences,
+        save_employee_privacy_preferences,
+        request_account_deactivation,
+        get_account_deactivation_status,
+    )
+except ImportError:
+    pass
+
 
 
 

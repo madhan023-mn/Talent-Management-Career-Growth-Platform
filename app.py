@@ -2136,6 +2136,13 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
 }
 
 /* Ensure no pseudo-element dots anywhere in sidebar radio options */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
+    list-style: none !important;
+    list-style-type: none !important;
+}
+
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::before,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::after,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label *::before,
@@ -2143,7 +2150,8 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
 section[data-testid="stSidebar"] div[data-testid="stRadio"] label::before,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] label::after,
 section[data-testid="stSidebar"] div[data-testid="stRadio"] *::before,
-section[data-testid="stSidebar"] div[data-testid="stRadio"] *::after {
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::after,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::marker {
     content: none !important;
     display: none !important;
     width: 0 !important;
@@ -2152,6 +2160,14 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] *::after {
     visibility: hidden !important;
     border: none !important;
     background: transparent !important;
+}
+
+section[data-testid="stSidebar"] .e1dm8mpf5 {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
 }
 
 /* Radio Button Label */
@@ -5819,7 +5835,8 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
             assessments=assessments,
             progress=progress,
             goals=user_goals,
-            reviews=user_reviews
+            reviews=user_reviews,
+            org_id=org_id
         )
 
         st.download_button(
@@ -7076,140 +7093,8 @@ elif page in ["Career Coach", "AI Career Coach"]:
 # 11. SETTINGS & SYSTEM
 # ==============================================================================
 elif page in ["Settings", "Settings & System", "Settings & Privacy"]:
-    render_html(
-        f"""
-        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 60%, #EFF6FF 100%); border-left: 6px solid #7C3AED;">
-            <div style="display: flex; align-items: center; gap: 16px;">
-                <div class="hero-icon-container" style="background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);">
-                    {get_svg_icon("settings", size=24, color="#FFFFFF")}
-                </div>
-                <div>
-                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
-                        System Settings &amp; Data Governance
-                    </div>
-                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
-                        Manage enterprise credentials, platform visual preferences, data security, and backups.
-                    </div>
-                </div>
-            </div>
-            <div>
-                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #7C3AED, #2563EB);">
-                    ENTERPRISE GOVERNANCE
-                </span>
-            </div>
-        </div>
-        """
-    )
+    from services.settings_ui import render_settings_module
+    render_settings_module(user=user, is_admin=is_admin, is_individual=is_individual, org_id=org_id)
 
-    db_health = check_db_health()
-    db_status_color = "#10B981" if db_health["connected"] else "#EF4444"
-    db_status_text = "OPTIMAL & PERSISTING" if db_health["connected"] else "ATTENTION NEEDED"
-
-    role_color = "#7C3AED" if is_admin else ("#0D9488" if is_individual else "#2563EB")
-    role_badge = "HR EXECUTIVE ADMIN" if is_admin else ("INDEPENDENT PROFESSIONAL" if is_individual else "ORGANIZATION EMPLOYEE")
-    org_label = user.get("org_name") or ("Talent Growth Technologies" if not is_individual else "Independent Professional Network")
-    user_initial = (user.get("name") or "U")[:1].upper()
-
-    render_html(
-        f"""
-        <div style="background: linear-gradient(135deg, #FAF5FF 0%, #EFF6FF 50%, #F0FDFA 100%); border: 1.5px solid #DDD6FE; border-left: 6px solid #7C3AED; border-radius: 16px; padding: 1.4rem 1.8rem; margin-bottom: 1.5rem; box-shadow: 0 4px 16px -2px rgba(124, 58, 237, 0.08);">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
-                <div style="display: flex; align-items: center; gap: 16px;">
-                    <div style="width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%); color: #FFFFFF; font-size: 1.5rem; font-weight: 900; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);">
-                        {user_initial}
-                    </div>
-                    <div>
-                        <div style="font-size: 1.35rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
-                            {user.get('name', 'User')}
-                            <span style="background: {role_color}22; border: 1px solid {role_color}66; color: {role_color}; font-size: 0.74rem; font-weight: 800; padding: 4px 12px; border-radius: 9999px;">
-                                {role_badge}
-                            </span>
-                        </div>
-                        <div style="color: #64748B; font-size: 0.90rem; margin-top: 3px;">
-                            {user.get('email', '')} &bull; {org_label} ({user.get('org_id', 'INDIVIDUAL')})
-                        </div>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; font-size: 0.78rem; font-weight: 800; padding: 6px 14px; border-radius: 9999px;">
-                        AUTHENTICATED SESSION
-                    </span>
-                </div>
-            </div>
-        </div>
-        """
-    )
-
-    c_set1, c_set2 = st.columns(2, gap="large")
-    with c_set1:
-        render_html(
-            f"""
-            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.4rem; height: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
-                <div style="font-size: 1.12rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                    {get_svg_icon("sparkles", size=18, color="#7C3AED")} Platform Experience &amp; Visuals
-                </div>
-                <div style="margin-bottom: 1rem;">
-                    <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #64748B;">Active SaaS Theme</div>
-                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
-                        <span style="font-weight: 800; color: #0F172A; font-size: 0.95rem;">Colorful Career — Modern Talent Growth</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px;">
-                        <span style="width: 14px; height: 14px; border-radius: 50%; background: #7C3AED; display: inline-block;"></span>
-                        <span style="width: 14px; height: 14px; border-radius: 50%; background: #2563EB; display: inline-block;"></span>
-                        <span style="width: 14px; height: 14px; border-radius: 50%; background: #0D9488; display: inline-block;"></span>
-                        <span style="width: 14px; height: 14px; border-radius: 50%; background: #F43F5E; display: inline-block;"></span>
-                        <span style="width: 14px; height: 14px; border-radius: 50%; background: #F97316; display: inline-block;"></span>
-                    </div>
-                </div>
-                <div style="border-top: 1px solid #F1F5F9; padding-top: 12px; margin-bottom: 12px;">
-                    <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #64748B;">Account Notifications</div>
-                    <div style="font-size: 0.88rem; color: #334155; margin-top: 4px;">
-                        Automated Welcome Dispatch: <strong style="color: #10B981;">Active</strong><br/>
-                        Quarterly Evaluation Alerts: <strong style="color: #2563EB;">Enabled</strong>
-                    </div>
-                </div>
-                <div style="border-top: 1px solid #F1F5F9; padding-top: 12px;">
-                    <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #64748B;">Regional Locale &amp; Timezone</div>
-                    <div style="font-size: 0.88rem; color: #334155; margin-top: 4px;">
-                        Language: <strong>English (US)</strong> &bull; UTC System Synchronized
-                    </div>
-                </div>
-            </div>
-            """
-        )
-
-    with c_set2:
-        render_html(
-            f"""
-            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.4rem; height: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
-                <div style="font-size: 1.12rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                    {get_svg_icon("database", size=18, color="#2563EB")} Data Governance &amp; Storage
-                </div>
-                <div style="margin-bottom: 1rem;">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #64748B;">Persistence Engine</span>
-                        <span style="background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 9999px;">{db_status_text}</span>
-                    </div>
-                    <div style="font-size: 0.88rem; color: #334155; margin-top: 4px;">
-                        Storage Engine: <strong>SQLite WAL Mode (ACID Compliant)</strong><br/>
-                        Database Volume: <strong>{db_health['filename']}</strong> ({db_health['size_kb']} KB)
-                    </div>
-                </div>
-                <div style="border-top: 1px solid #F1F5F9; padding-top: 12px; margin-bottom: 12px;">
-                    <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #64748B; margin-bottom: 6px;">System Data Export</div>
-            """
-        )
-        payload = json.dumps(export_user_data(uid), indent=2, default=str).encode("utf-8")
-        st.download_button("Download System Snapshot (JSON)", payload, file_name="talent_growth_snapshot.json", mime="application/json", type="primary", use_container_width=True)
-
-        if is_admin:
-            st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-            db_path = get_db_path()
-            if db_path.is_file():
-                with open(db_path, "rb") as f:
-                    db_bytes = f.read()
-                st.download_button("Download Database Backup (SQLite)", db_bytes, file_name="talentgrowth.db", mime="application/octet-stream", use_container_width=True)
-            if st.button("Run PRAGMA Integrity Check", use_container_width=True):
-                st.success(f"Database Integrity Result: {db_health['integrity'].upper()} · Foreign Keys: ON · ACID Compliant")
 
         render_html("</div>")
