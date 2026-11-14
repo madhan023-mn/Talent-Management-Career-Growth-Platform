@@ -411,3 +411,35 @@ def test_employee_deactivation_request():
     assert req is not None
     assert req["status"] == "Pending"
     assert req["reason"] == "Transitioning to higher education program."
+
+
+def test_safe_index_and_legacy_preference_compatibility():
+    """Verifies that _safe_index handles legacy/unmatched strings without raising ValueError."""
+    from services.settings_ui import _safe_index
+
+    # Exact match
+    opts = ["3 Days Before", "1 Week Before", "2 Weeks Before", "Disabled"]
+    assert _safe_index(opts, "1 Week Before") == 1
+
+    # Legacy default string that previously crashed Streamlit Cloud
+    # "Weekly Digest" matches "week" substring
+    idx = _safe_index(opts, "Weekly Digest", default_idx=1)
+    assert 0 <= idx < len(opts)
+    assert idx == 1  # Matches "1 Week Before"
+
+    # Completely unmatched string safely returns default_idx
+    assert _safe_index(opts, "NonExistentCadence", default_idx=0) == 0
+    assert _safe_index(opts, None, default_idx=2) == 2
+
+    # Case insensitivity
+    theme_opts = ["System Default", "Light Mode", "Dark Mode"]
+    assert _safe_index(theme_opts, "light mode") == 1
+    assert _safe_index(theme_opts, "DARK MODE") == 2
+    assert _safe_index(theme_opts, "light") == 1
+    assert _safe_index(theme_opts, "dark") == 2
+
+    density_opts = ["Comfortable", "Compact"]
+    assert _safe_index(density_opts, "comfortable") == 0
+    assert _safe_index(density_opts, "compact") == 1
+    assert _safe_index(density_opts, "unknown", default_idx=0) == 0
+

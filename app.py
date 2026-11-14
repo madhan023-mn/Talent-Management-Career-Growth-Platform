@@ -5456,10 +5456,12 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
 
         c_flt1, c_flt2 = st.columns([3, 1])
         with c_flt1:
+            cg_sel = st.session_state.get("cg_status_sel", "All Statuses")
+            cg_idx = status_options.index(cg_sel) if cg_sel in status_options else 0
             status_filter = st.selectbox(
                 "Filter Goals by Status",
                 status_options,
-                index=status_options.index(st.session_state.cg_status_sel),
+                index=cg_idx,
                 key="cg_status_sel_box"
             )
             if status_filter != st.session_state.cg_status_sel:
@@ -5543,10 +5545,13 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
                 sel_q_goal = st.selectbox("Select Goal to Update", list(q_map.keys()))
                 q_gid = q_map[sel_q_goal]
             with q2:
-                curr_g_obj = next(g for g in goals_data if g["id"] == q_gid)
+                curr_g_obj = next((g for g in goals_data if g.get("id") == q_gid), {})
+                milestone_opts = [0, 25, 50, 75, 100]
+                cur_prog = curr_g_obj.get("progress", 0)
+                m_idx = milestone_opts.index(cur_prog) if cur_prog in milestone_opts else 0
                 new_prog_val = st.selectbox(
-                    "New Milestone", [0, 25, 50, 75, 100],
-                    index=[0, 25, 50, 75, 100].index(curr_g_obj["progress"])
+                    "New Milestone", milestone_opts,
+                    index=m_idx
                 )
             with q3:
                 st.write("")

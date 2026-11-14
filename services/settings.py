@@ -1157,14 +1157,14 @@ def get_user_preferences(user_id: int) -> Dict[str, Any]:
     pref_row = cursor.fetchone()
     pref_dict = dict(pref_row) if pref_row else {}
 
-    timeline = pref_dict.get("career_timeline") or prof_dict.get("timeline") or "12 Months"
+    timeline = pref_dict.get("career_timeline") or prof_dict.get("timeline") or "6-12 months"
     paths = json.loads(pref_dict.get("interested_career_paths") or "[]")
     skills = json.loads(pref_dict.get("preferred_technical_skills") or "[]")
     goal_reminders = pref_dict.get("goal_reminders") or "Weekly"
-    training_notifications = pref_dict.get("training_notifications") or "Weekly Digest"
-    theme_mode = pref_dict.get("theme_mode") or "light"
-    view_density = pref_dict.get("view_density") or "comfortable"
-    visibility = pref_dict.get("profile_visibility") or "organization"
+    training_notifications = pref_dict.get("training_notifications") or "1 Week Before"
+    theme_mode = pref_dict.get("theme_mode") or "Light Mode"
+    view_density = pref_dict.get("view_density") or "Comfortable"
+    visibility = pref_dict.get("profile_visibility") or "Organization-Wide"
     location = pref_dict.get("location") or prof_dict.get("location") or ""
     summary = pref_dict.get("professional_summary") or prof_dict.get("summary") or ""
 
@@ -1351,7 +1351,7 @@ def save_employee_notification_preferences(
     payload.update(kwargs)
 
     goal_rem = payload.get("goal_reminders", "Weekly")
-    train_notif = payload.get("training_reminders") or payload.get("training_notifications", "Weekly Digest")
+    train_notif = payload.get("training_reminders") or payload.get("training_notifications", "1 Week Before")
     rev_notif = 1 if (payload.get("performance_review_notifications") if "performance_review_notifications" in payload else payload.get("review_notifications", True)) else 0
     plat_notif = 1 if (payload.get("platform_notifications") if "platform_notifications" in payload else payload.get("platform_notifications", True)) else 0
 
@@ -1401,8 +1401,8 @@ def save_employee_appearance_preferences(
         payload.update(appearance_prefs)
     payload.update(kwargs)
 
-    theme_mode = payload.get("theme_mode", "light")
-    view_density = payload.get("density") or payload.get("view_density", "comfortable")
+    theme_mode = payload.get("theme_mode", "Light Mode")
+    view_density = payload.get("density") or payload.get("view_density", "Comfortable")
 
     conn = get_connection()
     with conn:
@@ -1441,7 +1441,7 @@ def save_employee_privacy_preferences(
         payload.update(privacy_prefs)
     payload.update(kwargs)
 
-    visibility = (payload.get("profile_visibility") or "organization").strip()
+    visibility = (payload.get("profile_visibility") or "Organization-Wide").strip()
 
     conn = get_connection()
     with conn:

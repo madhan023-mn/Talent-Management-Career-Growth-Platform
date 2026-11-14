@@ -46,6 +46,39 @@ from services.core import check_db_health, export_user_data, get_db_path
 from style import get_svg_icon
 
 
+def _safe_index(options: List[Any], value: Any, default_idx: int = 0) -> int:
+    """
+    Safely finds the index of a value in options without raising ValueError.
+    Supports case-insensitive matching, prefix/substring matching, and graceful fallback.
+    """
+    if not options:
+        return 0
+    safe_def = default_idx if 0 <= default_idx < len(options) else 0
+    if value is None:
+        return safe_def
+
+    # 1. Exact match
+    try:
+        if value in options:
+            return options.index(value)
+    except Exception:
+        pass
+
+    # 2. Case-insensitive string match
+    str_val = str(value).strip().lower()
+    for idx, opt in enumerate(options):
+        if str(opt).strip().lower() == str_val:
+            return idx
+
+    # 3. Partial / substring match
+    for idx, opt in enumerate(options):
+        opt_str = str(opt).strip().lower()
+        if str_val in opt_str or opt_str in str_val:
+            return idx
+
+    return safe_def
+
+
 def _render_html(html_str: str) -> None:
     """Renders HTML cleanly into Streamlit."""
     clean = "\n".join(line.strip() for line in html_str.splitlines() if line.strip())
@@ -211,10 +244,20 @@ def _render_hr_org_profile(user: Dict[str, Any], org_id: str) -> None:
         with c3:
             website = st.text_input("Official Website URL", value=org_data.get("website", ""), placeholder="https://example.com", key="hr_org_web")
         with c4:
+            ind_options = [
+                "Technology & Software",
+                "Financial Services",
+                "Healthcare & Life Sciences",
+                "Manufacturing & Supply Chain",
+                "Consulting & Professional Services",
+                "Education",
+                "Retail & E-commerce",
+                "Other"
+            ]
             industry = st.selectbox(
                 "Industry / Sector",
-                ["Technology & Software", "Financial Services", "Healthcare & Life Sciences", "Manufacturing & Supply Chain", "Consulting & Professional Services", "Education", "Retail & E-commerce", "Other"],
-                index=0 if not org_data.get("industry") else (["Technology & Software", "Financial Services", "Healthcare & Life Sciences", "Manufacturing & Supply Chain", "Consulting & Professional Services", "Education", "Retail & E-commerce", "Other"].index(org_data["industry"]) if org_data["industry"] in ["Technology & Software", "Financial Services", "Healthcare & Life Sciences", "Manufacturing & Supply Chain", "Consulting & Professional Services", "Education", "Retail & E-commerce", "Other"] else 7),
+                ind_options,
+                index=_safe_index(ind_options, org_data.get("industry"), 0),
                 key="hr_org_ind"
             )
 
@@ -546,17 +589,19 @@ def _render_hr_pdf_customization(user: Dict[str, Any], org_id: str) -> None:
 
         c1, c2 = st.columns(2)
         with c1:
+            theme_options = ["Navy & Teal", "Modern Indigo", "Emerald Executive", "Classic Slate"]
             theme_choice = st.selectbox(
                 "PDF Color Theme",
-                ["Navy & Teal", "Modern Indigo", "Emerald Executive", "Classic Slate"],
-                index=["Navy & Teal", "Modern Indigo", "Emerald Executive", "Classic Slate"].index(cfg.get("theme_color", "Navy & Teal")),
+                theme_options,
+                index=_safe_index(theme_options, cfg.get("theme_color"), 0),
                 key="pdf_theme"
             )
         with c2:
+            date_formats = ["%B %d, %Y", "%Y-%m-%d", "%d/%m/%Y", "%d %b %Y"]
             date_format = st.selectbox(
                 "Report Date Format",
-                ["%B %d, %Y", "%Y-%m-%d", "%d/%m/%Y", "%d %b %Y"],
-                index=["%B %d, %Y", "%Y-%m-%d", "%d/%m/%Y", "%d %b %Y"].index(cfg.get("date_format", "%B %d, %Y")),
+                date_formats,
+                index=_safe_index(date_formats, cfg.get("date_format"), 0),
                 key="pdf_date_fmt"
             )
 
@@ -708,7 +753,13 @@ def _render_hr_notification_settings(user: Dict[str, Any], org_id: str) -> None:
     with c1:
         st.markdown("#### Evaluation & Milestone Alerts")
         review_rem = st.toggle("Performance Review Cycle Reminders", value=cfg.get("review_reminders_enabled", True), key="notif_rev_rem")
-        freq = st.selectbox("Review Reminder Cadence", ["Weekly", "Bi-weekly", "Monthly"], index=["Weekly", "Bi-weekly", "Monthly"].index(cfg.get("reminder_frequency", "Weekly")), key="notif_freq")
+        freq_options = ["Weekly", "Bi-weekly", "Monthly"]
+        freq = st.selectbox(
+            "Review Reminder Cadence",
+            freq_options,
+            index=_safe_index(freq_options, cfg.get("reminder_frequency"), 0),
+            key="notif_freq"
+        )
         training_rem = st.toggle("Training & Course Deadline Reminders", value=cfg.get("training_reminders_enabled", True), key="notif_tr_rem")
 
     with c2:
@@ -916,9 +967,12 @@ def _render_employee_career_preferences(user: Dict[str, Any], user_prefs: Dict[s
         target_desig = st.text_input("Target / Aspirational Designation", value=career_p.get("target_designation", ""), placeholder="e.g. Senior Software Architect", key="emp_target_desig")
     with c2:
         timeline_opts = ["3-6 months", "6-12 months", "1-2 years", "2+ years"]
-        cur_tl = career_p.get("timeline", "6-12 months")
-        tl_idx = timeline_opts.index(cur_tl) if cur_tl in timeline_opts else 1
-        timeline = st.selectbox("Preferred Developmental Timeline", timeline_opts, index=tl_idx, key="emp_car_tl")
+        timeline = st.selectbox(
+            "Preferred Developmental Timeline",
+            timeline_opts,
+            index=_safe_index(timeline_opts, career_p.get("timeline"), 1),
+            key="emp_car_tl"
+        )
 
     paths_str = st.text_area("Interested Career Paths (comma-separated, e.g. Technical Leadership, Cloud Engineering)", value=", ".join(career_p.get("interested_paths", [])), height=75, key="emp_car_paths")
     skills_str = st.text_area("Target Skills to Master (comma-separated, e.g. Kubernetes, System Design, GraphQL)", value=", ".join(career_p.get("preferred_skills", [])), height=75, key="emp_car_skills")
@@ -952,16 +1006,18 @@ def _render_employee_notification_preferences(user: Dict[str, Any], user_prefs: 
 
     with c1:
         st.markdown("#### Goal & Learning Reminders")
+        goal_rem_opts = ["Daily", "Weekly", "Bi-weekly", "Disabled"]
         g_rem = st.selectbox(
             "Career Goal Progress Reminders",
-            ["Daily", "Weekly", "Bi-weekly", "Disabled"],
-            index=["Daily", "Weekly", "Bi-weekly", "Disabled"].index(notif_p.get("goal_reminders", "Weekly")),
+            goal_rem_opts,
+            index=_safe_index(goal_rem_opts, notif_p.get("goal_reminders"), 1),
             key="emp_notif_goals"
         )
+        tr_rem_opts = ["3 Days Before", "1 Week Before", "2 Weeks Before", "Disabled"]
         t_rem = st.selectbox(
             "Training & Certification Deadline Reminders",
-            ["3 Days Before", "1 Week Before", "2 Weeks Before", "Disabled"],
-            index=["3 Days Before", "1 Week Before", "2 Weeks Before", "Disabled"].index(notif_p.get("training_reminders", "1 Week Before")),
+            tr_rem_opts,
+            index=_safe_index(tr_rem_opts, notif_p.get("training_reminders"), 1),
             key="emp_notif_tr"
         )
 
@@ -997,16 +1053,18 @@ def _render_employee_appearance(user: Dict[str, Any], user_prefs: Dict[str, Any]
     c1, c2 = st.columns(2, gap="large")
 
     with c1:
+        theme_opts = ["System Default", "Light Mode", "Dark Mode"]
         theme = st.selectbox(
             "Interface Color Theme",
-            ["System Default", "Light Mode", "Dark Mode"],
-            index=["System Default", "Light Mode", "Dark Mode"].index(app_p.get("theme_mode", "Light Mode")),
+            theme_opts,
+            index=_safe_index(theme_opts, app_p.get("theme_mode"), 1),
             key="emp_theme_mode"
         )
+        density_opts = ["Comfortable", "Compact"]
         density = st.selectbox(
             "Dashboard View Density",
-            ["Comfortable", "Compact"],
-            index=["Comfortable", "Compact"].index(app_p.get("density", "Comfortable")),
+            density_opts,
+            index=_safe_index(density_opts, app_p.get("density"), 0),
             key="emp_density"
         )
 
@@ -1051,9 +1109,12 @@ def _render_employee_privacy(user: Dict[str, Any], user_prefs: Dict[str, Any], i
     with col1:
         st.markdown("#### Profile Visibility Controls")
         vis_opts = ["Organization-Wide", "My Department Only", "Private / HR Only"]
-        cur_vis = priv_p.get("profile_visibility", "Organization-Wide")
-        vis_idx = vis_opts.index(cur_vis) if cur_vis in vis_opts else 0
-        visibility = st.selectbox("Talent Profile Visibility Level", vis_opts, index=vis_idx, key="emp_priv_vis")
+        visibility = st.selectbox(
+            "Talent Profile Visibility Level",
+            vis_opts,
+            index=_safe_index(vis_opts, priv_p.get("profile_visibility"), 0),
+            key="emp_priv_vis"
+        )
 
         if st.button("Save Privacy Settings", type="primary", key="btn_save_emp_priv"):
             ok, msg = save_employee_privacy_preferences(uid, {"profile_visibility": visibility})
