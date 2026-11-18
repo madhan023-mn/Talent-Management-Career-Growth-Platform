@@ -2652,355 +2652,274 @@ div[data-testid="stTable"] {
 
 
 /* ==============================================================================
-   ENTERPRISE COLORED NAVIGATION TABS & SECTION HEADER DESIGN SYSTEM
-   Centralized global styling applied uniformly across all pages:
-   HR Dashboard, Employee Dashboard, Workforce Directory, Employee Management,
-   Career Reports, Performance, Skills, Learning & Development, Resume Studio,
-   Individual Career Hub, and Settings.
+   GLOBAL COLORED ROUNDED-BOX TAB NAVIGATION (ONLY TAB STYLING)
+   Targets Streamlit React Aria (.stTabs / [role="tablist"] / [data-testid="stTab"])
+   and BaseWeb ([data-baseweb="tab-list"] / [data-baseweb="tab"]) globally.
+   Automatically styles every st.tabs() across all pages with zero hardcoded names.
    ============================================================================== */
 
-/* 1. Tab Strip Container */
-.tg-nav-tabs,
-.page-tabs-container,
-div[data-testid="stTabs"] [data-baseweb="tab-list"],
+/* 1. Horizontal Tab Bar Container */
+.stTabs [role="tablist"],
 div[data-testid="stTabs"] [role="tablist"],
-div[data-baseweb="tab-list"],
-[role="tablist"] {
+div[data-testid="stTabs"] [data-baseweb="tab-list"] {
     display: flex !important;
     flex-direction: row !important;
-    align-items: stretch !important;
-    flex-wrap: wrap !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
     gap: 10px !important;
-    padding: 10px 12px !important;
-    background: #FFFFFF !important;
-    border: 1px solid #DCE5F1 !important;
-    border-radius: 16px !important;
-    box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05) !important;
-    margin-top: 0.25rem !important;
-    margin-bottom: 1.5rem !important;
+    padding: 8px 4px 10px 4px !important;
+    background: transparent !important;
+    border: none !important;
+    margin-bottom: 1.15rem !important;
     width: 100% !important;
     box-sizing: border-box !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: #CBD5E1 transparent !important;
+    -webkit-overflow-scrolling: touch !important;
 }
 
-/* Remove Streamlit default bottom border and animated underline indicator */
+.stTabs [role="tablist"]::-webkit-scrollbar,
+div[data-testid="stTabs"] [role="tablist"]::-webkit-scrollbar {
+    height: 5px !important;
+}
+.stTabs [role="tablist"]::-webkit-scrollbar-thumb,
+div[data-testid="stTabs"] [role="tablist"]::-webkit-scrollbar-thumb {
+    background: #CBD5E1 !important;
+    border-radius: 999px !important;
+}
+
+/* Remove old blue moving underline, track border, and selection indicator completely */
+.stTabs [role="tablist"]::after,
+div[data-testid="stTabs"] [role="tablist"]::after,
+.stTabs .react-aria-SelectionIndicator,
+div[data-testid="stTabs"] .react-aria-SelectionIndicator,
 div[data-testid="stTabs"] [data-baseweb="tab-border"],
-div[data-baseweb="tab-border"],
-div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
-div[data-baseweb="tab-highlight"] {
+div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
     display: none !important;
     height: 0 !important;
+    width: 0 !important;
     opacity: 0 !important;
+    background: transparent !important;
 }
 
-/* 2. Individual Rounded Rectangular Tab Box (Equal Height & Alignment) */
-.tg-nav-tab,
-div[data-testid="stTabs"] button[role="tab"],
-div[data-testid="stTabs"] [data-baseweb="tab"],
-div[data-baseweb="tab-list"] button[role="tab"],
-[role="tablist"] button[role="tab"] {
+/* 2. Individual Rounded Rectangular Tab Box (React Aria <div> & BaseWeb <button>) */
+.stTabs [role="tablist"] > [role="tab"],
+div[data-testid="stTabs"] [data-testid="stTab"],
+div[data-testid="stTabs"] [role="tab"],
+div[data-testid="stTabs"] [data-baseweb="tab"] {
     position: relative !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 7px !important;
+    flex-shrink: 0 !important;
+    gap: 8px !important;
     min-height: 44px !important;
     height: 44px !important;
-    padding: 0 18px !important;
+    padding: 0 20px !important;
     margin: 0 !important;
-    border-radius: 12px !important;
-    border-width: 1.5px !important;
-    border-style: solid !important;
-    border-color: #CBD5E1 !important;
-    background-color: #F1F5F9 !important;
-    color: #0F172A !important;
+    border-radius: 14px !important;
+    border: 1.5px solid #BFDBFE !important;
+    background-color: #DBEAFE !important;
+    color: #1E3A8A !important;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    font-size: 0.88rem !important;
+    font-size: 0.90rem !important;
     font-weight: 600 !important;
     line-height: 1.2 !important;
     letter-spacing: -0.01em !important;
     white-space: nowrap !important;
     cursor: pointer !important;
     box-sizing: border-box !important;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
-    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-                transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
-                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
+    transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-/* Guarantee crisp dark text inside nested Streamlit tab label elements */
-div[data-testid="stTabs"] button[role="tab"] p,
-div[data-testid="stTabs"] button[role="tab"] span,
-div[data-testid="stTabs"] button[role="tab"] div,
-div[data-baseweb="tab-list"] button[role="tab"] p,
-div[data-baseweb="tab-list"] button[role="tab"] span,
-div[data-baseweb="tab-list"] button[role="tab"] div {
+/* Ensure crisp, high-contrast label text on all nested nodes inside tabs */
+.stTabs [role="tab"] *,
+div[data-testid="stTabs"] [data-testid="stTab"] *,
+div[data-testid="stTabs"] [role="tab"] *,
+div[data-testid="stTabs"] [data-baseweb="tab"] * {
     margin: 0 !important;
     padding: 0 !important;
     font-size: inherit !important;
     font-weight: inherit !important;
     line-height: 1.2 !important;
     color: inherit !important;
+    background: transparent !important;
 }
 
-/* 3. Soft Enterprise Pastel Color Palette per Tab Position (High-Contrast Dark Ink) */
+/* 3. Dynamic Soft Pastel Backgrounds for Inactive Tabs (Supports Any Number of Tabs) */
 
-/* Tab 1 (Sky Blue Pastel) */
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+1) {
-    background-color: #EFF6FF !important;
-    border-color: #BFDBFE !important;
+/* Position 1 (6, 11, ...): Soft Light Blue (#DBEAFE) */
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+1),
+div[data-testid="stTabs"] [data-testid="stTab"]:nth-child(5n+1),
+div[data-testid="stTabs"] [data-baseweb="tab"]:nth-child(5n+1) {
+    background-color: #DBEAFE !important;
+    border-color: #93C5FD !important;
     color: #1E3A8A !important;
 }
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+1):hover {
-    background-color: #DBEAFE !important;
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+1):hover,
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+1)[data-hovered],
+div[data-testid="stTabs"] [data-testid="stTab"]:nth-child(5n+1):hover {
+    background-color: #BFDBFE !important;
     border-color: #60A5FA !important;
     color: #1E40AF !important;
 }
 
-/* Tab 2 (Soft Indigo Pastel) */
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+2) {
-    background-color: #EEF2FF !important;
-    border-color: #C7D2FE !important;
-    color: #312E81 !important;
+/* Position 2 (7, 12, ...): Soft Light Green (#DCFCE7) */
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+2),
+div[data-testid="stTabs"] [data-testid="stTab"]:nth-child(5n+2),
+div[data-testid="stTabs"] [data-baseweb="tab"]:nth-child(5n+2) {
+    background-color: #DCFCE7 !important;
+    border-color: #86EFAC !important;
+    color: #14532D !important;
 }
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+2):hover {
-    background-color: #E0E7FF !important;
-    border-color: #818CF8 !important;
-    color: #3730A3 !important;
-}
-
-/* Tab 3 (Soft Emerald / Mint Pastel) */
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+3) {
-    background-color: #ECFDF5 !important;
-    border-color: #A7F3D0 !important;
-    color: #065F46 !important;
-}
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+3):hover {
-    background-color: #D1FAE5 !important;
-    border-color: #34D399 !important;
-    color: #064E3B !important;
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+2):hover,
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+2)[data-hovered],
+div[data-testid="stTabs"] [data-testid="stTab"]:nth-child(5n+2):hover {
+    background-color: #BBF7D0 !important;
+    border-color: #4ADE80 !important;
+    color: #14532D !important;
 }
 
-/* Tab 4 (Soft Violet / Lavender Pastel) */
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+4) {
-    background-color: #F5F3FF !important;
-    border-color: #DDD6FE !important;
+/* Position 3 (8, 13, ...): Soft Light Orange (#FFEDD5) */
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+3),
+div[data-testid="stTabs"] [data-testid="stTab"]:nth-child(5n+3),
+div[data-testid="stTabs"] [data-baseweb="tab"]:nth-child(5n+3) {
+    background-color: #FFEDD5 !important;
+    border-color: #FDBA74 !important;
+    color: #7C2D12 !important;
+}
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+3):hover,
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+3)[data-hovered],
+div[data-testid="stTabs"] [data-testid="stTab"]:nth-child(5n+3):hover {
+    background-color: #FED7AA !important;
+    border-color: #FB923C !important;
+    color: #7C2D12 !important;
+}
+
+/* Position 4 (9, 14, ...): Soft Light Purple (#EDE9FE) */
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+4),
+div[data-testid="stTabs"] [data-testid="stTab"]:nth-child(5n+4),
+div[data-testid="stTabs"] [data-baseweb="tab"]:nth-child(5n+4) {
+    background-color: #EDE9FE !important;
+    border-color: #C4B5FD !important;
     color: #4C1D95 !important;
 }
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+4):hover {
-    background-color: #EDE9FE !important;
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+4):hover,
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+4)[data-hovered],
+div[data-testid="stTabs"] [data-testid="stTab"]:nth-child(5n+4):hover {
+    background-color: #DDD6FE !important;
     border-color: #A78BFA !important;
-    color: #5B21B6 !important;
+    color: #4C1D95 !important;
 }
 
-/* Tab 5 (Soft Amber / Warm Sand Pastel) */
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+5) {
-    background-color: #FFFBEB !important;
-    border-color: #FDE68A !important;
-    color: #78350F !important;
+/* Position 5 (10, 15, ...): Soft Light Pink (#FCE7F3) */
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+5),
+div[data-testid="stTabs"] [data-testid="stTab"]:nth-child(5n+5),
+div[data-testid="stTabs"] [data-baseweb="tab"]:nth-child(5n+5) {
+    background-color: #FCE7F3 !important;
+    border-color: #F9A8D4 !important;
+    color: #831843 !important;
 }
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+5):hover {
-    background-color: #FEF3C7 !important;
-    border-color: #FBBF24 !important;
-    color: #713F12 !important;
-}
-
-/* Tab 6 (Soft Teal / Cyan Pastel) */
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+6) {
-    background-color: #F0FDFA !important;
-    border-color: #99F6E4 !important;
-    color: #115E59 !important;
-}
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+6):hover {
-    background-color: #CCFBF1 !important;
-    border-color: #2DD4BF !important;
-    color: #134E4A !important;
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+5):hover,
+.stTabs [role="tablist"] > [role="tab"]:nth-child(5n+5)[data-hovered],
+div[data-testid="stTabs"] [data-testid="stTab"]:nth-child(5n+5):hover {
+    background-color: #FBCFE8 !important;
+    border-color: #F472B6 !important;
+    color: #831843 !important;
 }
 
-/* Tab 7 (Soft Rose Pastel) */
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+7) {
-    background-color: #FFF1F2 !important;
-    border-color: #FECDD3 !important;
-    color: #881337 !important;
-}
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+7):hover {
-    background-color: #FFE4E6 !important;
-    border-color: #FB7185 !important;
-    color: #9F1239 !important;
+/* 4. Subtle Hover Lift & Elevation */
+.stTabs [role="tablist"] > [role="tab"]:hover,
+.stTabs [role="tablist"] > [role="tab"][data-hovered],
+div[data-testid="stTabs"] [data-testid="stTab"]:hover,
+div[data-testid="stTabs"] [data-baseweb="tab"]:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 5px 14px -3px rgba(15, 23, 42, 0.12) !important;
 }
 
-/* Tab 8 (Soft Ice Blue Pastel) */
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+8) {
-    background-color: #F0F9FF !important;
-    border-color: #BAE6FD !important;
-    color: #0C4A6E !important;
-}
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+8):hover {
-    background-color: #E0F2FE !important;
-    border-color: #38BDF8 !important;
-    color: #075985 !important;
-}
-
-/* Tab 9 (Soft Orchid Pastel) */
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+9) {
-    background-color: #FDF4FF !important;
-    border-color: #F5D0FE !important;
-    color: #701A75 !important;
-}
-div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+9):hover {
-    background-color: #FAE8FF !important;
-    border-color: #E879F9 !important;
-    color: #86198F !important;
-}
-
-/* 4. Universal Subtle Hover Lift */
-.tg-nav-tab:hover,
-div[data-testid="stTabs"] button[role="tab"]:hover,
-div[data-baseweb="tab-list"] button[role="tab"]:hover {
-    transform: translateY(-1.5px) !important;
-    box-shadow: 0 5px 14px -3px rgba(15, 23, 42, 0.10) !important;
-}
-
-/* 5. Distinct Active Tab Highlight (Overrides Pastel Base Clearly) */
-.tg-nav-tab.tg-nav-tab-active,
-div[data-testid="stTabs"] button[role="tab"][aria-selected="true"],
-div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"],
-div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"],
-[role="tablist"] button[role="tab"][aria-selected="true"] {
-    background: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%) !important;
+/* 5. Active Tab — Strong Blue (#2563EB) with Crisp White Bold Text (#FFFFFF) */
+.stTabs [role="tablist"] > [role="tab"][aria-selected="true"],
+.stTabs [role="tablist"] > [role="tab"][data-selected="true"],
+.stTabs [role="tablist"] > [role="tab"][data-selected],
+div[data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"],
+div[data-testid="stTabs"] [data-testid="stTab"][data-selected="true"],
+div[data-testid="stTabs"] [data-testid="stTab"][data-selected],
+div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
+    background: #2563EB !important;
     background-color: #2563EB !important;
     border: 1.5px solid #1D4ED8 !important;
     color: #FFFFFF !important;
     font-weight: 700 !important;
     transform: translateY(-1px) !important;
-    box-shadow: 0 6px 16px -3px rgba(37, 99, 235, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+    box-shadow: 0 6px 16px -3px rgba(37, 99, 235, 0.40) !important;
 }
 
-div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p,
-div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] span,
-div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] div,
-div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] p,
-div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] span,
-div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] div {
+.stTabs [role="tablist"] > [role="tab"][aria-selected="true"] *,
+.stTabs [role="tablist"] > [role="tab"][data-selected="true"] *,
+.stTabs [role="tablist"] > [role="tab"][data-selected] *,
+div[data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"] *,
+div[data-testid="stTabs"] [data-testid="stTab"][data-selected] *,
+div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] * {
     color: #FFFFFF !important;
     font-weight: 700 !important;
 }
 
-div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"]:hover {
-    background: linear-gradient(135deg, #1D4ED8 0%, #4338CA 100%) !important;
+.stTabs [role="tablist"] > [role="tab"][aria-selected="true"]:hover,
+.stTabs [role="tablist"] > [role="tab"][data-selected]:hover,
+div[data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"]:hover {
+    background: #1D4ED8 !important;
+    background-color: #1D4ED8 !important;
     border-color: #1E40AF !important;
     color: #FFFFFF !important;
-    box-shadow: 0 8px 20px -3px rgba(37, 99, 235, 0.44) !important;
+    box-shadow: 0 8px 20px -3px rgba(37, 99, 235, 0.48) !important;
 }
 
 /* Focus-visible keyboard accessibility ring */
-div[data-baseweb="tab-list"] button[role="tab"]:focus-visible {
+.stTabs [role="tab"]:focus-visible,
+div[data-testid="stTabs"] [data-testid="stTab"][data-focus-visible] {
     outline: 2px solid #2563EB !important;
     outline-offset: 2px !important;
 }
 
-/* 6. Tab Panel & Unified Section Header Styling */
-div[data-testid="stTabs"] [data-baseweb="tab-panel"] {
-    padding-top: 0.35rem !important;
-}
-
-.tg-section-header,
-div[data-testid="stTabs"] [data-baseweb="tab-panel"] h3 {
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    font-size: 1.18rem !important;
-    font-weight: 800 !important;
-    color: #0F172A !important;
-    letter-spacing: -0.02em !important;
-    padding: 0.65rem 1rem !important;
-    margin: 0.25rem 0 0.85rem 0 !important;
-    background: linear-gradient(90deg, #F8FAFC 0%, #FFFFFF 100%) !important;
-    border: 1px solid #E2E8F0 !important;
-    border-left: 4px solid #2563EB !important;
-    border-radius: 12px !important;
-    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03) !important;
-}
-
-div[data-testid="stTabs"] [data-baseweb="tab-panel"] h4 {
-    font-size: 0.98rem !important;
-    font-weight: 700 !important;
-    color: #1E293B !important;
-    letter-spacing: -0.01em !important;
-    margin-top: 0.85rem !important;
-    margin-bottom: 0.5rem !important;
-    padding-bottom: 0.35rem !important;
-    border-bottom: 1px solid #E2E8F0 !important;
-}
-
-/* 7. Dark Mode Contrast Protection (Ensures Tab Labels Remain Crisp in Dark Mode) */
-@media (prefers-color-scheme: dark) {
-    div[data-testid="stTabs"] [data-baseweb="tab-list"],
-    div[data-baseweb="tab-list"] {
-        background: #FFFFFF !important;
-        border-color: #CBD5E1 !important;
-    }
-    div[data-baseweb="tab-list"] button[role="tab"]:not([aria-selected="true"]),
-    div[data-baseweb="tab-list"] button[role="tab"]:not([aria-selected="true"]) p,
-    div[data-baseweb="tab-list"] button[role="tab"]:not([aria-selected="true"]) span {
-        opacity: 1 !important;
-    }
-    div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"],
-    div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] p,
-    div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] span {
-        color: #FFFFFF !important;
-    }
-}
-
-/* 8. Responsive Layout: Tablet (769px - 1024px) */
+/* 6. Responsive Adjustments (Tablet & Mobile) */
 @media (max-width: 1024px) {
-    div[data-testid="stTabs"] [data-baseweb="tab-list"],
-    div[data-baseweb="tab-list"] {
+    .stTabs [role="tablist"],
+    div[data-testid="stTabs"] [role="tablist"] {
         gap: 8px !important;
-        padding: 8px 10px !important;
-        border-radius: 14px !important;
     }
-    div[data-testid="stTabs"] button[role="tab"],
-    div[data-testid="stTabs"] [data-baseweb="tab"],
-    div[data-baseweb="tab-list"] button[role="tab"] {
+    .stTabs [role="tablist"] > [role="tab"],
+    div[data-testid="stTabs"] [data-testid="stTab"] {
         min-height: 42px !important;
         height: 42px !important;
-        padding: 0 14px !important;
-        font-size: 0.84rem !important;
-        border-radius: 10px !important;
+        padding: 0 16px !important;
+        font-size: 0.85rem !important;
+        border-radius: 12px !important;
     }
 }
 
-/* 9. Responsive Layout: Mobile (<= 768px) */
 @media (max-width: 768px) {
-    div[data-testid="stTabs"] [data-baseweb="tab-list"],
-    div[data-baseweb="tab-list"] {
-        flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        scrollbar-width: none !important;
+    .stTabs [role="tablist"],
+    div[data-testid="stTabs"] [role="tablist"] {
         gap: 8px !important;
-        padding: 8px !important;
-        border-radius: 12px !important;
+        scrollbar-width: none !important;
     }
-    div[data-testid="stTabs"] [data-baseweb="tab-list"]::-webkit-scrollbar,
-    div[data-baseweb="tab-list"]::-webkit-scrollbar {
+    .stTabs [role="tablist"]::-webkit-scrollbar,
+    div[data-testid="stTabs"] [role="tablist"]::-webkit-scrollbar {
         display: none !important;
     }
-    div[data-testid="stTabs"] button[role="tab"],
-    div[data-testid="stTabs"] [data-baseweb="tab"],
-    div[data-baseweb="tab-list"] button[role="tab"] {
-        flex-shrink: 0 !important;
+    .stTabs [role="tablist"] > [role="tab"],
+    div[data-testid="stTabs"] [data-testid="stTab"] {
         min-height: 40px !important;
         height: 40px !important;
-        padding: 0 13px !important;
+        padding: 0 14px !important;
         font-size: 0.82rem !important;
-        border-radius: 10px !important;
-    }
-    div[data-testid="stTabs"] [data-baseweb="tab-panel"] h3 {
-        font-size: 1.04rem !important;
-        padding: 0.55rem 0.8rem !important;
+        border-radius: 12px !important;
     }
 }
