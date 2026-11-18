@@ -1413,152 +1413,10 @@ def render_welcome_email_dispatch_panel():
         st.info("No account creation emails logged yet.")
 
 
-def render_stored_database_table_viewer(context_key: str = "auth", default_expanded: bool = False):
-    """
-    Renders a clean, searchable live database verification table showing all registered
-    user accounts, employee records, and past registration history stored in MySQL/SQLite.
-    Allows immediate confirmation that newly created accounts and historical accounts exist in DB.
-    """
-    diag = get_database_diagnostics() or {}
-    db_engine = diag.get("engine", "MySQL")
-    db_name = diag.get("filename", "talent_growth")
-    total_users = diag.get("total_users", 0)
-    total_emps = diag.get("total_employees", 0)
-
-    st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
-    with st.expander(
-        f"Live Stored Database Records — Verify Created Accounts ({db_engine}: {db_name} · {total_users} Accounts)",
-        expanded=default_expanded,
-        icon=":material/table_view:"
-    ):
-        last_ver = st.session_state.get("last_registered_verification")
-        if last_ver:
-            render_html(
-                f"""
-                <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-left: 4px solid #10B981; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 0.85rem; color: #065F46;">
-                    <strong>Confirmed Stored in {db_engine} ({db_name}):</strong>
-                    ID <code>#{last_ver.get('id')}</code> &bull;
-                    <strong>{last_ver.get('name', '')}</strong> (<code>{last_ver.get('email', '')}</code>) &bull;
-                    Role: <strong>{last_ver.get('role', '')}</strong> ({last_ver.get('account_type', 'Organization')}) &bull;
-                    Org: <code>{last_ver.get('org_id') or 'Personal Hub'}</code>
-                </div>
-                """
-            )
-
-        c_search, c_refresh = st.columns([4.5, 1.2], gap="small")
-        with c_search:
-            search_q = st.text_input(
-                "Filter stored records",
-                placeholder="Search by name, email, role, org ID, department, or date (e.g. 2026-10-16)...",
-                key=f"db_tbl_search_{context_key}",
-                label_visibility="collapsed"
-            )
-        with c_refresh:
-            if st.button("Refresh Table", icon=":material/refresh:", key=f"db_tbl_refresh_{context_key}", use_container_width=True, type="secondary"):
-                st.rerun()
-
-        tab_users, tab_emps, tab_hist = st.tabs([
-            f"Registered Accounts ({total_users})",
-            f"Employee Directory ({total_emps})",
-            "Past Registration & Email History"
-        ])
-
-        with tab_users:
-            stored_users = list_stored_users(search=search_q, limit=250)
-            if stored_users:
-                df_u = pd.DataFrame([
-                    {
-                        "ID": r.get("id"),
-                        "Full Name": r.get("name", ""),
-                        "Email": r.get("email", ""),
-                        "Role": "HR Admin" if r.get("role") == "admin" else "Employee",
-                        "Account Type": r.get("account_type", "Organization"),
-                        "Organization": r.get("org_name") or r.get("org_id") or "Personal Hub",
-                        "Employee ID": r.get("employee_id") or "—",
-                        "Department": r.get("department") or "—",
-                        "Job Title": r.get("job_title") or "—",
-                        "Phone": r.get("phone") or "—",
-                        "Status": r.get("status", "Active"),
-                        "Created At": str(r.get("created_at") or r.get("date_joined") or "")[:19],
-                    }
-                    for r in stored_users
-                ])
-                st.dataframe(df_u, use_container_width=True, hide_index=True)
-            else:
-                st.info("No matching user accounts found in the database.")
-
-        with tab_emps:
-            stored_emps = list_stored_employees_all(limit=250)
-            if search_q.strip():
-                sq_low = search_q.strip().lower()
-                stored_emps = [
-                    e for e in stored_emps
-                    if sq_low in str(e.get("name", "")).lower()
-                    or sq_low in str(e.get("email", "")).lower()
-                    or sq_low in str(e.get("employee_id", "")).lower()
-                    or sq_low in str(e.get("department", "")).lower()
-                    or sq_low in str(e.get("created_at", "")).lower()
-                ]
-            if stored_emps:
-                df_e = pd.DataFrame([
-                    {
-                        "Employee ID": e.get("employee_id", ""),
-                        "Name": e.get("name", ""),
-                        "Email": e.get("email", ""),
-                        "Organization": e.get("org_name") or e.get("org_id", ""),
-                        "Department": e.get("department", ""),
-                        "Designation": e.get("designation", ""),
-                        "Status": e.get("employment_status", "Active"),
-                        "Exp (Yrs)": e.get("years_experience", 0.0),
-                        "Joining Date": e.get("joining_date", ""),
-                        "Stored At": str(e.get("created_at") or "")[:19],
-                    }
-                    for e in stored_emps
-                ])
-                st.dataframe(df_e, use_container_width=True, hide_index=True)
-            else:
-                st.info("No matching employee records found in the database.")
-
-        with tab_hist:
-            logs = get_recent_email_logs(limit=100)
-            if search_q.strip():
-                sq_low = search_q.strip().lower()
-                logs = [
-                    lg for lg in logs
-                    if sq_low in str(lg.get("to_email", "")).lower()
-                    or sq_low in str(lg.get("user_name", "")).lower()
-                    or sq_low in str(lg.get("created_at", "")).lower()
-                ]
-            if logs:
-                df_l = pd.DataFrame([
-                    {
-                        "Log ID": lg.get("id"),
-                        "Account Name": lg.get("user_name", ""),
-                        "Email Address": lg.get("to_email", ""),
-                        "Role": lg.get("role", ""),
-                        "Organization": lg.get("org_name", ""),
-                        "Email Status": lg.get("status", ""),
-                        "Recorded At": str(lg.get("created_at") or "")[:19],
-                    }
-                    for lg in logs
-                ])
-                st.dataframe(df_l, use_container_width=True, hide_index=True)
-            else:
-                st.info("No historical registration email logs recorded.")
-
-
 # ------------------------------------------------------------------------------
 # 2. DEDICATED SIGN IN PAGE (WITH TOP-LEFT BACK BUTTON)
 # ------------------------------------------------------------------------------
 def login_page():
-    # Live database telemetry for authentic platform proof on Sign-In hero
-    _diag = get_database_diagnostics() or {}
-    _db_engine = _diag.get("engine", "MySQL")
-    _db_name = _diag.get("filename", "talent_growth")
-    _total_users = _diag.get("total_users", 0)
-    _total_orgs = _diag.get("total_organizations", 0)
-    _total_emps = _diag.get("total_employees", 0)
-
     # Scoped modern Sign-In UI/UX stylesheet
     render_html(
         """
@@ -1584,30 +1442,22 @@ def login_page():
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            min-height: 615px;
+            min-height: 580px;
         }
         .signin-status-pill {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(16, 185, 129, 0.12);
-            border: 1px solid rgba(52, 211, 153, 0.35);
+            background: rgba(56, 189, 248, 0.14);
+            border: 1px solid rgba(56, 189, 248, 0.35);
             padding: 6px 14px;
             border-radius: 9999px;
             font-size: 0.74rem;
             font-weight: 700;
-            color: #6EE7B7;
+            color: #7DD3FC;
             letter-spacing: 0.04em;
             text-transform: uppercase;
             margin-bottom: 1.4rem;
-        }
-        .signin-status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #10B981;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.28);
-            display: inline-block;
         }
         .signin-hero-title {
             font-size: 2.35rem;
@@ -1622,42 +1472,15 @@ def login_page():
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .signin-kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin: 1.5rem 0 1.65rem 0;
-        }
-        .signin-kpi-box {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.10);
-            border-radius: 14px;
-            padding: 12px 14px;
-            backdrop-filter: blur(8px);
-        }
-        .signin-kpi-val {
-            font-size: 1.35rem;
-            font-weight: 800;
-            color: #FFFFFF;
-            line-height: 1.1;
-        }
-        .signin-kpi-lbl {
-            font-size: 0.72rem;
-            font-weight: 600;
-            color: #94A3B8;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-top: 4px;
-        }
         .signin-feature-card {
             display: flex;
             align-items: flex-start;
             gap: 13px;
-            padding: 12px 14px;
+            padding: 13px 15px;
             border-radius: 14px;
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
         .signin-feature-icon {
             width: 34px;
@@ -1749,31 +1572,16 @@ def login_page():
             <div class="signin-hero-panel">
                 <div>
                     <div class="signin-status-pill">
-                        <span class="signin-status-dot"></span>
-                        <span>{_db_engine} Connected &bull; {_db_name}</span>
+                        {get_svg_icon("sparkles", size=13, color="#38BDF8")}
+                        <span>Enterprise Talent Platform</span>
                     </div>
                     <h1 class="signin-hero-title">
                         Accelerate Careers.<br/>
                         <span class="signin-hero-gradient">Scale Enterprise Talent.</span>
                     </h1>
-                    <p style="color: #CBD5E1; font-size: 0.94rem; line-height: 1.65; margin: 0;">
+                    <p style="color: #CBD5E1; font-size: 0.94rem; line-height: 1.65; margin: 0 0 1.85rem 0;">
                         Unified workforce intelligence combining real-time skill-gap radar, standardized technical assessments, ATS resume studio, and executive career reporting.
                     </p>
-
-                    <div class="signin-kpi-grid">
-                        <div class="signin-kpi-box">
-                            <div class="signin-kpi-val">{_total_orgs}</div>
-                            <div class="signin-kpi-lbl">Organizations</div>
-                        </div>
-                        <div class="signin-kpi-box">
-                            <div class="signin-kpi-val">{_total_users}</div>
-                            <div class="signin-kpi-lbl">Registered Accounts</div>
-                        </div>
-                        <div class="signin-kpi-box">
-                            <div class="signin-kpi-val">{_total_emps}</div>
-                            <div class="signin-kpi-lbl">Active Profiles</div>
-                        </div>
-                    </div>
 
                     <div class="signin-feature-card">
                         <div class="signin-feature-icon" style="background: rgba(56, 189, 248, 0.16); border: 1px solid rgba(56, 189, 248, 0.32);">
@@ -1929,11 +1737,6 @@ def login_page():
             if st.button("Create a New Account", icon=":material/person_add:", key="btn_login_to_register", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "register"
                 st.rerun()
-
-    render_stored_database_table_viewer(
-        context_key="login",
-        default_expanded=bool(st.session_state.get("last_registered_verification"))
-    )
 
 
 # ------------------------------------------------------------------------------
@@ -2156,8 +1959,6 @@ def register_page():
             if st.button("Sign In to Existing Account", key="btn_reg_to_login", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "login"
                 st.rerun()
-
-    render_stored_database_table_viewer(context_key="register", default_expanded=False)
 
 
 # ------------------------------------------------------------------------------

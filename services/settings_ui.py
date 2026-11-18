@@ -12,6 +12,7 @@ import base64
 import json
 from io import BytesIO
 from typing import Any, Dict, List, Optional
+import pandas as pd
 import streamlit as st
 
 from services.settings import (
@@ -42,7 +43,14 @@ from services.settings import (
     request_account_deactivation,
     get_account_deactivation_status,
 )
-from services.core import check_db_health, export_user_data, get_db_path
+from services.core import (
+    check_db_health,
+    export_user_data,
+    get_db_path,
+    list_stored_users,
+    list_stored_employees_all,
+    get_recent_email_logs,
+)
 from style import get_svg_icon
 
 
@@ -752,6 +760,112 @@ def _render_hr_security_settings(user: Dict[str, Any], org_id: str) -> None:
             save_org_security_config(org_id, {}, requesting_role="admin")
             st.info("Reset to default security policies.")
             st.rerun()
+
+    st.markdown("<div style='border-top: 1px solid #E2E8F0; margin: 1.75rem 0 1.25rem 0;'></div>", unsafe_allow_html=True)
+    st.markdown(f"#### {get_svg_icon('shield', size=18, color='#2563EB')} Stored Database Records Explorer", unsafe_allow_html=True)
+    st.caption("Inspect registered accounts, employee directory rows, and historical registration logs stored in your active database.")
+
+    c_search, c_refresh = st.columns([4.5, 1.2], gap="small")
+    with c_search:
+        search_q = st.text_input(
+            "Filter stored records",
+            placeholder="Search by name, email, role, org ID, department, or date (e.g. 2026-10-16)...",
+            key="hr_db_tbl_search",
+            label_visibility="collapsed"
+        )
+    with c_refresh:
+        if st.button("Refresh", icon=":material/refresh:", key="hr_db_tbl_refresh", use_container_width=True, type="secondary"):
+            st.rerun()
+
+    stored_users = list_stored_users(search=search_q, limit=250)
+    stored_emps = list_stored_employees_all(limit=250)
+    if search_q.strip():
+        sq_low = search_q.strip().lower()
+        stored_emps = [
+            e for e in stored_emps
+            if sq_low in str(e.get("name", "")).lower()
+            or sq_low in str(e.get("email", "")).lower()
+            or sq_low in str(e.get("employee_id", "")).lower()
+            or sq_low in str(e.get("department", "")).lower()
+            or sq_low in str(e.get("created_at", "")).lower()
+        ]
+    email_logs = get_recent_email_logs(limit=100)
+    if search_q.strip():
+        sq_low = search_q.strip().lower()
+        email_logs = [
+            lg for lg in email_logs
+            if sq_low in str(lg.get("to_email", "")).lower()
+            or sq_low in str(lg.get("user_name", "")).lower()
+            or sq_low in str(lg.get("created_at", "")).lower()
+        ]
+
+    tab_u, tab_e, tab_h = st.tabs([
+        f"Registered Accounts ({len(stored_users)})",
+        f"Employee Directory ({len(stored_emps)})",
+        "Past Registration & Email History"
+    ])
+
+    with tab_u:
+        if stored_users:
+            df_u = pd.DataFrame([
+                {
+                    "ID": r.get("id"),
+                    "Full Name": r.get("name", ""),
+                    "Email": r.get("email", ""),
+                    "Role": "HR Admin" if r.get("role") == "admin" else "Employee",
+                    "Account Type": r.get("account_type", "Organization"),
+                    "Organization": r.get("org_name") or r.get("org_id") or "Personal Hub",
+                    "Employee ID": r.get("employee_id") or "—",
+                    "Department": r.get("department") or "—",
+                    "Job Title": r.get("job_title") or "—",
+                    "Phone": r.get("phone") or "—",
+                    "Status": r.get("status", "Active"),
+                    "Created At": str(r.get("created_at") or r.get("date_joined") or "")[:19],
+                }
+                for r in stored_users
+            ])
+            st.dataframe(df_u, use_container_width=True, hide_index=True)
+        else:
+            st.info("No matching user accounts found in the database.")
+
+    with tab_e:
+        if stored_emps:
+            df_e = pd.DataFrame([
+                {
+                    "Employee ID": e.get("employee_id", ""),
+                    "Name": e.get("name", ""),
+                    "Email": e.get("email", ""),
+                    "Organization": e.get("org_name") or e.get("org_id", ""),
+                    "Department": e.get("department", ""),
+                    "Designation": e.get("designation", ""),
+                    "Status": e.get("employment_status", "Active"),
+                    "Exp (Yrs)": e.get("years_experience", 0.0),
+                    "Joining Date": e.get("joining_date", ""),
+                    "Stored At": str(e.get("created_at") or "")[:19],
+                }
+                for e in stored_emps
+            ])
+            st.dataframe(df_e, use_container_width=True, hide_index=True)
+        else:
+            st.info("No matching employee records found in the database.")
+
+    with tab_h:
+        if email_logs:
+            df_l = pd.DataFrame([
+                {
+                    "Log ID": lg.get("id"),
+                    "Account Name": lg.get("user_name", ""),
+                    "Email Address": lg.get("to_email", ""),
+                    "Role": lg.get("role", ""),
+                    "Organization": lg.get("org_name", ""),
+                    "Email Status": lg.get("status", ""),
+                    "Recorded At": str(lg.get("created_at") or "")[:19],
+                }
+                for lg in email_logs
+            ])
+            st.dataframe(df_l, use_container_width=True, hide_index=True)
+        else:
+            st.info("No historical registration email logs recorded.")
 
 
 def _render_hr_notification_settings(user: Dict[str, Any], org_id: str) -> None:
