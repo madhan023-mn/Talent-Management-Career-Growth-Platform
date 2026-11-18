@@ -24,10 +24,7 @@ def load_css(custom_path: Path | str | None = None) -> None:
         css = get_css()
 
     if css:
-        if hasattr(st, "html"):
-            st.html(f"<style>\n{css}\n</style>")
-        else:
-            st.markdown(f"<style>\n{css}\n</style>", unsafe_allow_html=True)
+        st.markdown(f"<style>\n{css}\n</style>", unsafe_allow_html=True)
 
 # Aliases for convenience
 apply_css = load_css
