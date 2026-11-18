@@ -141,7 +141,7 @@ def render_settings_module(user: Dict[str, Any], is_admin: bool, is_individual: 
     # Settings Page Header Banner
     role_title = "HR Administrator Settings" if is_admin else "Employee Account & Preferences"
     role_subtitle = (
-        "Configure organization identity, workforce parameters, rating models, career frameworks, PDF branding, and security controls."
+        "Manage your organization profile, brand identity, and HR administrator account credentials."
         if is_admin else
         "Manage your personal profile, account credentials, career targets, notifications, view density, and privacy controls."
     )
@@ -182,17 +182,10 @@ def render_settings_module(user: Dict[str, Any], is_admin: bool, is_individual: 
 # HR SETTINGS SUB-PAGES
 # ==============================================================================
 def _render_hr_settings(user: Dict[str, Any], org_id: str) -> None:
-    """Renders the 9 dedicated HR settings sub-sections with full interactive tabs."""
+    """Renders the HR Settings sub-sections: Organization Profile and HR Account."""
     hr_tabs = st.tabs([
         "Organization Profile",
-        "HR Account",
-        "Employee Config",
-        "Performance",
-        "Career Development",
-        "Training",
-        "PDF Reports",
-        "Security & Policies",
-        "Notifications"
+        "HR Account"
     ])
 
     # 1. Organization Profile
@@ -202,34 +195,6 @@ def _render_hr_settings(user: Dict[str, Any], org_id: str) -> None:
     # 2. HR Account Settings
     with hr_tabs[1]:
         _render_hr_account_settings(user, org_id)
-
-    # 3. Employee Configuration
-    with hr_tabs[2]:
-        _render_hr_employee_config(user, org_id)
-
-    # 4. Performance Settings
-    with hr_tabs[3]:
-        _render_hr_performance_config(user, org_id)
-
-    # 5. Career Development Settings
-    with hr_tabs[4]:
-        _render_hr_career_config(user, org_id)
-
-    # 6. Training Settings
-    with hr_tabs[5]:
-        _render_hr_training_config(user, org_id)
-
-    # 7. PDF Report Customization
-    with hr_tabs[6]:
-        _render_hr_pdf_customization(user, org_id)
-
-    # 8. Security & Policies
-    with hr_tabs[7]:
-        _render_hr_security_settings(user, org_id)
-
-    # 9. Notification Settings
-    with hr_tabs[8]:
-        _render_hr_notification_settings(user, org_id)
 
 
 def _render_hr_org_profile(user: Dict[str, Any], org_id: str) -> None:

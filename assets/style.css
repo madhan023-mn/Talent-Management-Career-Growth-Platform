@@ -2663,7 +2663,9 @@ div[data-testid="stTable"] {
 .tg-nav-tabs,
 .page-tabs-container,
 div[data-testid="stTabs"] [data-baseweb="tab-list"],
-div[data-baseweb="tab-list"] {
+div[data-testid="stTabs"] [role="tablist"],
+div[data-baseweb="tab-list"],
+[role="tablist"] {
     display: flex !important;
     flex-direction: row !important;
     align-items: stretch !important;
@@ -2694,7 +2696,8 @@ div[data-baseweb="tab-highlight"] {
 .tg-nav-tab,
 div[data-testid="stTabs"] button[role="tab"],
 div[data-testid="stTabs"] [data-baseweb="tab"],
-div[data-baseweb="tab-list"] button[role="tab"] {
+div[data-baseweb="tab-list"] button[role="tab"],
+[role="tablist"] button[role="tab"] {
     position: relative !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -2863,7 +2866,8 @@ div[data-baseweb="tab-list"] button[role="tab"]:hover {
 .tg-nav-tab.tg-nav-tab-active,
 div[data-testid="stTabs"] button[role="tab"][aria-selected="true"],
 div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"],
-div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] {
+div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"],
+[role="tablist"] button[role="tab"][aria-selected="true"] {
     background: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%) !important;
     background-color: #2563EB !important;
     border: 1.5px solid #1D4ED8 !important;
