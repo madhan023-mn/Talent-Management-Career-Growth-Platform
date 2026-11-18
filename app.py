@@ -52,6 +52,7 @@ try:
         get_org_dashboard_stats, get_employee_dashboard_data, get_individual_dashboard_stats,
         generate_invitation_code, list_invitation_codes, revoke_invitation_code, validate_invitation_code,
         get_db_path, check_db_health, get_database_diagnostics, verify_user_in_db, checkpoint_db,
+        list_stored_users, list_stored_employees_all, get_recent_email_logs,
         get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
         validate_url, validate_date_range,
         create_membership_request, get_membership_requests,
@@ -152,6 +153,9 @@ except Exception as _core_err:
         get_database_diagnostics = getattr(_core_mod, 'get_database_diagnostics', lambda: {})
         verify_user_in_db = getattr(_core_mod, 'verify_user_in_db', lambda u: None)
         checkpoint_db = getattr(_core_mod, 'checkpoint_db', lambda c=None: (0, 0, 0))
+        list_stored_users = getattr(_core_mod, 'list_stored_users', lambda search="", limit=200: [])
+        list_stored_employees_all = getattr(_core_mod, 'list_stored_employees_all', lambda limit=200: [])
+        get_recent_email_logs = getattr(_core_mod, 'get_recent_email_logs', lambda limit=50: [])
     except Exception as _retry_err:
         import traceback
         st.error(f"### Critical Startup Error: Failed to load services.core\n\n**Error:** `{_retry_err}`")
@@ -1208,7 +1212,7 @@ def landing_webpage():
             <div style="display: flex; gap: 18px;">
                 <span>Security &amp; Governance</span>
                 <span>Role Benchmarks</span>
-                <span>Local SQLite Zero-Cloud</span>
+                <span>Enterprise Relational DB</span>
                 <span>GDPR &amp; SOC2 Aligned</span>
             </div>
         </div>
@@ -1409,75 +1413,402 @@ def render_welcome_email_dispatch_panel():
         st.info("No account creation emails logged yet.")
 
 
+def render_stored_database_table_viewer(context_key: str = "auth", default_expanded: bool = False):
+    """
+    Renders a clean, searchable live database verification table showing all registered
+    user accounts, employee records, and past registration history stored in MySQL/SQLite.
+    Allows immediate confirmation that newly created accounts and historical accounts exist in DB.
+    """
+    diag = get_database_diagnostics() or {}
+    db_engine = diag.get("engine", "MySQL")
+    db_name = diag.get("filename", "talent_growth")
+    total_users = diag.get("total_users", 0)
+    total_emps = diag.get("total_employees", 0)
+
+    st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
+    with st.expander(
+        f"Live Stored Database Records — Verify Created Accounts ({db_engine}: {db_name} · {total_users} Accounts)",
+        expanded=default_expanded,
+        icon=":material/table_view:"
+    ):
+        last_ver = st.session_state.get("last_registered_verification")
+        if last_ver:
+            render_html(
+                f"""
+                <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-left: 4px solid #10B981; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 0.85rem; color: #065F46;">
+                    <strong>Confirmed Stored in {db_engine} ({db_name}):</strong>
+                    ID <code>#{last_ver.get('id')}</code> &bull;
+                    <strong>{last_ver.get('name', '')}</strong> (<code>{last_ver.get('email', '')}</code>) &bull;
+                    Role: <strong>{last_ver.get('role', '')}</strong> ({last_ver.get('account_type', 'Organization')}) &bull;
+                    Org: <code>{last_ver.get('org_id') or 'Personal Hub'}</code>
+                </div>
+                """
+            )
+
+        c_search, c_refresh = st.columns([4.5, 1.2], gap="small")
+        with c_search:
+            search_q = st.text_input(
+                "Filter stored records",
+                placeholder="Search by name, email, role, org ID, department, or date (e.g. 2026-10-16)...",
+                key=f"db_tbl_search_{context_key}",
+                label_visibility="collapsed"
+            )
+        with c_refresh:
+            if st.button("Refresh Table", icon=":material/refresh:", key=f"db_tbl_refresh_{context_key}", use_container_width=True, type="secondary"):
+                st.rerun()
+
+        tab_users, tab_emps, tab_hist = st.tabs([
+            f"Registered Accounts ({total_users})",
+            f"Employee Directory ({total_emps})",
+            "Past Registration & Email History"
+        ])
+
+        with tab_users:
+            stored_users = list_stored_users(search=search_q, limit=250)
+            if stored_users:
+                df_u = pd.DataFrame([
+                    {
+                        "ID": r.get("id"),
+                        "Full Name": r.get("name", ""),
+                        "Email": r.get("email", ""),
+                        "Role": "HR Admin" if r.get("role") == "admin" else "Employee",
+                        "Account Type": r.get("account_type", "Organization"),
+                        "Organization": r.get("org_name") or r.get("org_id") or "Personal Hub",
+                        "Employee ID": r.get("employee_id") or "—",
+                        "Department": r.get("department") or "—",
+                        "Job Title": r.get("job_title") or "—",
+                        "Phone": r.get("phone") or "—",
+                        "Status": r.get("status", "Active"),
+                        "Created At": str(r.get("created_at") or r.get("date_joined") or "")[:19],
+                    }
+                    for r in stored_users
+                ])
+                st.dataframe(df_u, use_container_width=True, hide_index=True)
+            else:
+                st.info("No matching user accounts found in the database.")
+
+        with tab_emps:
+            stored_emps = list_stored_employees_all(limit=250)
+            if search_q.strip():
+                sq_low = search_q.strip().lower()
+                stored_emps = [
+                    e for e in stored_emps
+                    if sq_low in str(e.get("name", "")).lower()
+                    or sq_low in str(e.get("email", "")).lower()
+                    or sq_low in str(e.get("employee_id", "")).lower()
+                    or sq_low in str(e.get("department", "")).lower()
+                    or sq_low in str(e.get("created_at", "")).lower()
+                ]
+            if stored_emps:
+                df_e = pd.DataFrame([
+                    {
+                        "Employee ID": e.get("employee_id", ""),
+                        "Name": e.get("name", ""),
+                        "Email": e.get("email", ""),
+                        "Organization": e.get("org_name") or e.get("org_id", ""),
+                        "Department": e.get("department", ""),
+                        "Designation": e.get("designation", ""),
+                        "Status": e.get("employment_status", "Active"),
+                        "Exp (Yrs)": e.get("years_experience", 0.0),
+                        "Joining Date": e.get("joining_date", ""),
+                        "Stored At": str(e.get("created_at") or "")[:19],
+                    }
+                    for e in stored_emps
+                ])
+                st.dataframe(df_e, use_container_width=True, hide_index=True)
+            else:
+                st.info("No matching employee records found in the database.")
+
+        with tab_hist:
+            logs = get_recent_email_logs(limit=100)
+            if search_q.strip():
+                sq_low = search_q.strip().lower()
+                logs = [
+                    lg for lg in logs
+                    if sq_low in str(lg.get("to_email", "")).lower()
+                    or sq_low in str(lg.get("user_name", "")).lower()
+                    or sq_low in str(lg.get("created_at", "")).lower()
+                ]
+            if logs:
+                df_l = pd.DataFrame([
+                    {
+                        "Log ID": lg.get("id"),
+                        "Account Name": lg.get("user_name", ""),
+                        "Email Address": lg.get("to_email", ""),
+                        "Role": lg.get("role", ""),
+                        "Organization": lg.get("org_name", ""),
+                        "Email Status": lg.get("status", ""),
+                        "Recorded At": str(lg.get("created_at") or "")[:19],
+                    }
+                    for lg in logs
+                ])
+                st.dataframe(df_l, use_container_width=True, hide_index=True)
+            else:
+                st.info("No historical registration email logs recorded.")
+
+
 # ------------------------------------------------------------------------------
 # 2. DEDICATED SIGN IN PAGE (WITH TOP-LEFT BACK BUTTON)
 # ------------------------------------------------------------------------------
 def login_page():
-    # Top Bar: Top-left "Back to Home" button & Logo on right
-    col_back, col_spacer, col_logo = st.columns([2.5, 4.5, 3], gap="small")
-    with col_back:
-        if st.button("Back to Home", key="btn_login_back_home", use_container_width=True, type="secondary"):
-            st.session_state.auth_view = "landing"
-            st.rerun()
-    with col_logo:
+    # Live database telemetry for authentic platform proof on Sign-In hero
+    _diag = get_database_diagnostics() or {}
+    _db_engine = _diag.get("engine", "MySQL")
+    _db_name = _diag.get("filename", "talent_growth")
+    _total_users = _diag.get("total_users", 0)
+    _total_orgs = _diag.get("total_organizations", 0)
+    _total_emps = _diag.get("total_employees", 0)
+
+    # Scoped modern Sign-In UI/UX stylesheet
+    render_html(
+        """
+        <style>
+        /* Modern Sign-In Page Surface & Elevation */
+        [data-testid="stAppViewContainer"] {
+            background: radial-gradient(circle at 12% 10%, rgba(37, 99, 235, 0.06) 0%, transparent 42%),
+                        radial-gradient(circle at 88% 85%, rgba(6, 182, 212, 0.06) 0%, transparent 42%),
+                        #F8FAFC !important;
+        }
+        .signin-hero-panel {
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 85% 15%, rgba(56, 189, 248, 0.24) 0%, transparent 42%),
+                radial-gradient(circle at 15% 88%, rgba(99, 102, 241, 0.30) 0%, transparent 46%),
+                linear-gradient(155deg, #070B19 0%, #0F172A 48%, #1E1B4B 100%);
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            padding: 2.5rem 2.35rem;
+            color: #F8FAFC;
+            box-shadow: 0 24px 60px -15px rgba(15, 23, 42, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 615px;
+        }
+        .signin-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(52, 211, 153, 0.35);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: #6EE7B7;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin-bottom: 1.4rem;
+        }
+        .signin-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10B981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.28);
+            display: inline-block;
+        }
+        .signin-hero-title {
+            font-size: 2.35rem;
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -0.03em;
+            margin: 0 0 0.9rem 0;
+            color: #FFFFFF;
+        }
+        .signin-hero-gradient {
+            background: linear-gradient(90deg, #38BDF8 0%, #818CF8 55%, #C084FC 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .signin-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 1.5rem 0 1.65rem 0;
+        }
+        .signin-kpi-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            border-radius: 14px;
+            padding: 12px 14px;
+            backdrop-filter: blur(8px);
+        }
+        .signin-kpi-val {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            line-height: 1.1;
+        }
+        .signin-kpi-lbl {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #94A3B8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+        .signin-feature-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 13px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 10px;
+        }
+        .signin-feature-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .signin-card-accent {
+            height: 4px;
+            width: 100%;
+            background: linear-gradient(90deg, #2563EB 0%, #6366F1 55%, #06B6D4 100%);
+            border-radius: 999px;
+            margin-bottom: 1.35rem;
+        }
+        .signin-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #94A3B8;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin: 1.15rem 0 0.85rem 0;
+        }
+        .signin-divider::before,
+        .signin-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #E2E8F0;
+        }
+        .signin-divider::before { margin-right: 12px; }
+        .signin-divider::after { margin-left: 12px; }
+        /* Refine right-hand auth container card */
+        [data-testid="stVerticalBlockBorderWrapper"] {
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 22px !important;
+            padding: 0.65rem 0.85rem !important;
+            box-shadow: 0 20px 50px -18px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04) !important;
+        }
+        [data-testid="stForm"] {
+            border: none !important;
+            padding: 0 !important;
+            background: transparent !important;
+        }
+        </style>
+        """
+    )
+
+    # Modern Floating Top Navigation Bar
+    col_brand, col_spacer, col_nav_home, col_nav_reg = st.columns([4.2, 2.2, 1.8, 1.8], gap="small")
+    with col_brand:
         render_html(
             f"""
-            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 4px;">
-                {get_svg_icon("brand_logo", size=28)}
-                <span style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Talent Growth</span>
+            <div style="display: flex; align-items: center; gap: 11px; padding-top: 4px;">
+                <div style="width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);">
+                    {get_svg_icon("brand_logo", size=22, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.22rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">Talent Growth</span>
+                        <span style="font-size: 0.66rem; font-weight: 700; color: #2563EB; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em;">Enterprise</span>
+                    </div>
+                </div>
             </div>
             """
         )
+    with col_nav_home:
+        if st.button("Back to Home", icon=":material/arrow_back:", key="btn_login_back_home", use_container_width=True, type="secondary"):
+            st.session_state.auth_view = "landing"
+            st.rerun()
+    with col_nav_reg:
+        if st.button("Create Account", icon=":material/person_add:", key="btn_login_top_register", use_container_width=True, type="secondary"):
+            st.session_state.auth_view = "register"
+            st.rerun()
 
-    st.markdown("<div style='border-bottom: 1px solid #E2E8F0; margin: 0.75rem 0 1.75rem 0;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 1.15rem;'></div>", unsafe_allow_html=True)
 
-    col_left, col_right = st.columns([1.1, 1.2], gap="large")
+    # Asymmetric Executive Two-Column Layout
+    col_left, col_right = st.columns([1.12, 1.0], gap="large")
+
     with col_left:
         render_html(
             f"""
-            <div style="background: linear-gradient(135deg, #0B1020 0%, #1E1B4B 50%, #312E81 100%); border-radius: 18px; border: 1px solid rgba(139, 92, 246, 0.4); padding: 2.25rem 2.25rem; color: #FFFFFF; height: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.25); display: flex; flex-direction: column; justify-content: space-between;">
+            <div class="signin-hero-panel">
                 <div>
-                    <div style="display: inline-flex; align-items: center; gap: 7px; background: rgba(34, 211, 238, 0.15); border: 1px solid rgba(34, 211, 238, 0.4); padding: 5px 14px; border-radius: 9999px; font-size: 0.76rem; font-weight: 700; color: #22D3EE; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.25rem;">
-                        {get_svg_icon("sparkles", size=13, color="#22D3EE")} Enterprise Talent Platform
+                    <div class="signin-status-pill">
+                        <span class="signin-status-dot"></span>
+                        <span>{_db_engine} Connected &bull; {_db_name}</span>
                     </div>
-                    <h1 style="font-size: 2.15rem; font-weight: 800; color: #FFFFFF; line-height: 1.2; margin-bottom: 0.85rem; letter-spacing: -0.02em;">
-                        Accelerate Careers &amp; Scale Enterprise Talent
+                    <h1 class="signin-hero-title">
+                        Accelerate Careers.<br/>
+                        <span class="signin-hero-gradient">Scale Enterprise Talent.</span>
                     </h1>
-                    <p style="color: #CBD5E1; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.75rem;">
-                        Next-generation workforce development hub combining automated competency radar analysis, standardized MCQ evaluations, ATS resume studio, and AI executive coaching.
+                    <p style="color: #CBD5E1; font-size: 0.94rem; line-height: 1.65; margin: 0;">
+                        Unified workforce intelligence combining real-time skill-gap radar, standardized technical assessments, ATS resume studio, and executive career reporting.
                     </p>
 
-                    <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 2rem;">
-                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.90rem; color: #F8FAFC;">
-                            <div style="width: 22px; height: 22px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); border: 1px solid #10B981; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                {get_svg_icon("check", size=12, color="#10B981")}
-                            </div>
-                            <span><strong>Live AI Career Strategy Coach</strong> with personalized blueprints</span>
+                    <div class="signin-kpi-grid">
+                        <div class="signin-kpi-box">
+                            <div class="signin-kpi-val">{_total_orgs}</div>
+                            <div class="signin-kpi-lbl">Organizations</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.90rem; color: #F8FAFC;">
-                            <div style="width: 22px; height: 22px; border-radius: 50%; background: rgba(99, 102, 241, 0.25); border: 1px solid #6366F1; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                {get_svg_icon("check", size=12, color="#818CF8")}
-                            </div>
-                            <span><strong>Standardized Technical MCQ Assessments</strong> with instant scoring</span>
+                        <div class="signin-kpi-box">
+                            <div class="signin-kpi-val">{_total_users}</div>
+                            <div class="signin-kpi-lbl">Registered Accounts</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.90rem; color: #F8FAFC;">
-                            <div style="width: 22px; height: 22px; border-radius: 50%; background: rgba(34, 211, 238, 0.2); border: 1px solid #22D3EE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                {get_svg_icon("check", size=12, color="#22D3EE")}
-                            </div>
-                            <span><strong>ATS Resume Studio</strong> with automated STAR bullet rewrites</span>
+                        <div class="signin-kpi-box">
+                            <div class="signin-kpi-val">{_total_emps}</div>
+                            <div class="signin-kpi-lbl">Active Profiles</div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 10px; font-size: 0.90rem; color: #F8FAFC;">
-                            <div style="width: 22px; height: 22px; border-radius: 50%; background: rgba(139, 92, 246, 0.25); border: 1px solid #8B5CF6; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                {get_svg_icon("check", size=12, color="#C084FC")}
-                            </div>
-                            <span><strong>Enterprise Workforce Directory</strong> with role gap radar telemetry</span>
+                    </div>
+
+                    <div class="signin-feature-card">
+                        <div class="signin-feature-icon" style="background: rgba(56, 189, 248, 0.16); border: 1px solid rgba(56, 189, 248, 0.32);">
+                            {get_svg_icon("target", size=17, color="#38BDF8")}
+                        </div>
+                        <div>
+                            <div style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Role-Specific Dashboards &amp; Skill Radars</div>
+                            <div style="font-size: 0.79rem; color: #94A3B8; margin-top: 2px;">Automatic workspace routing for HR Administrators, Employees, and Individuals.</div>
+                        </div>
+                    </div>
+
+                    <div class="signin-feature-card">
+                        <div class="signin-feature-icon" style="background: rgba(129, 140, 248, 0.18); border: 1px solid rgba(129, 140, 248, 0.34);">
+                            {get_svg_icon("reports", size=17, color="#A5B4FC")}
+                        </div>
+                        <div>
+                            <div style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Executive Multi-Page PDF Dossiers</div>
+                            <div style="font-size: 0.79rem; color: #94A3B8; margin-top: 2px;">Generate branded career intelligence, promotion readiness, and competency reports.</div>
+                        </div>
+                    </div>
+
+                    <div class="signin-feature-card" style="margin-bottom: 0;">
+                        <div class="signin-feature-icon" style="background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(52, 211, 153, 0.32);">
+                            {get_svg_icon("shield", size=17, color="#34D399")}
+                        </div>
+                        <div>
+                            <div style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Encrypted Credentials &amp; Tenant Isolation</div>
+                            <div style="font-size: 0.79rem; color: #94A3B8; margin-top: 2px;">PBKDF2-HMAC-SHA256 salted hashing with strict organization-scoped RBAC.</div>
                         </div>
                     </div>
                 </div>
 
-                <div style="padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.12); display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; color: #94A3B8;">
-                    <span>Enterprise RBAC &amp; Tenant Isolation</span>
-                    <span>Sub-second Analytics Engine</span>
+                <div style="padding-top: 1.25rem; margin-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.10); display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: #94A3B8;">
+                    <span>PBKDF2-SHA256 Protected</span>
+                    <span>SOC2 &amp; GDPR Aligned</span>
                 </div>
             </div>
             """
@@ -1485,28 +1816,81 @@ def login_page():
 
     with col_right:
         with st.container(border=True):
+            render_html('<div class="signin-card-accent"></div>')
+
             if "reg_success_msg" in st.session_state:
                 st.success(st.session_state.pop("reg_success_msg"), icon=":material/check_circle:")
 
             render_html(
                 f"""
-                <div style="text-align: center; margin-bottom: 1.25rem;">
-                    <div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(99, 102, 241, 0.12); border: 1px solid rgba(99, 102, 241, 0.3); display: inline-flex; align-items: center; justify-content: center; color: #6366F1; margin-bottom: 0.75rem;">
-                        {get_svg_icon("lock", size=24, color="#6366F1")}
-                    </div>
-                    <h2 style="font-size: 1.75rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0; letter-spacing: -0.02em;">Sign In to Your Account</h2>
-                    <p style="color: #64748B; font-size: 0.90rem; margin: 0;">Enter your credentials or launch an instant 1-click live demo dashboard.</p>
-                </div>
-
-                <div style="margin-bottom: 0.6rem;">
-                    <div style="font-size: 0.75rem; font-weight: 700; color: #4F46E5; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
-                        1-Click Instant Demo Launch (No Password Required)
+                <div style="margin-bottom: 1.35rem;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 0.6rem;">
+                        <div style="width: 44px; height: 44px; border-radius: 13px; background: linear-gradient(135deg, #EFF6FF 0%, #EEF2FF 100%); border: 1px solid #C7D2FE; display: inline-flex; align-items: center; justify-content: center;">
+                            {get_svg_icon("lock", size=20, color="#4F46E5")}
+                        </div>
+                        <div>
+                            <h2 style="font-size: 1.55rem; font-weight: 800; color: #0F172A; margin: 0; letter-spacing: -0.025em; line-height: 1.15;">Welcome back</h2>
+                            <p style="color: #64748B; font-size: 0.86rem; margin: 2px 0 0 0;">Sign in to continue to your Talent Growth workspace</p>
+                        </div>
                     </div>
                 </div>
                 """
             )
 
-            col_chip1, col_chip2, col_chip3 = st.columns(3)
+            if "prefill_email" in st.session_state:
+                st.session_state["login_email_input"] = st.session_state.pop("prefill_email")
+
+            with st.form("dedicated_login_form", border=False):
+                email = st.text_input(
+                    "Email Address",
+                    placeholder="name@company.com",
+                    key="login_email_input"
+                )
+                password = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Enter your password",
+                    key="login_pwd_input"
+                )
+
+                c_rem, c_forgot = st.columns([1.1, 1])
+                with c_rem:
+                    remember_me = st.checkbox("Keep me signed in", value=True)
+                with c_forgot:
+                    with st.popover("Forgot password?", use_container_width=True):
+                        st.markdown(
+                            """
+                            **Password Reset Instructions**
+
+                            Contact your Organization HR Administrator or System Support at `support@talentgrowth.com` to reset your credentials.
+                            """
+                        )
+
+                st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+                submit_login = st.form_submit_button(
+                    "Sign In to Workspace",
+                    icon=":material/login:",
+                    type="primary",
+                    use_container_width=True
+                )
+
+            if submit_login:
+                if not (email or "").strip() or not password:
+                    st.error("Please enter both your email address and password.", icon=":material/error:")
+                else:
+                    user_data = login(email.strip(), password)
+                    if user_data:
+                        st.session_state.user = user_data
+                        st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
+                        st.success(f"Welcome back, {user_data['name']}!", icon=":material/check_circle:")
+                        st.rerun()
+                    else:
+                        st.error("Invalid email address or password. Please check your credentials and try again.", icon=":material/gpp_bad:")
+
+            render_html('<div class="signin-divider">Or launch instant demo</div>')
+
+            col_chip1, col_chip2, col_chip3 = st.columns(3, gap="small")
             with col_chip1:
                 if st.button("HR Admin", icon=":material/admin_panel_settings:", key="login_chip_admin", use_container_width=True, type="secondary"):
                     u = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
@@ -1534,53 +1918,22 @@ def login_page():
                         st.session_state.auth_view = "landing"
                         st.rerun()
 
-            render_html("<div style='border-top: 1px solid #F1F5F9; margin: 12px 0 16px 0;'></div>")
-
-            prefill_val = st.session_state.pop("prefill_email", "")
-
-            with st.form("dedicated_login_form"):
-                email = st.text_input("Corporate Email Address", value=prefill_val, placeholder="name@company.com")
-                password = st.text_input("Password", type="password", placeholder="Enter your password")
-
-                c_rem, c_forgot = st.columns([1, 1])
-                with c_rem:
-                    remember_me = st.checkbox("Remember me", value=True)
-                with c_forgot:
-                    with st.popover("Forgot password?"):
-                        st.markdown(
-                            """
-                            **Password Reset Instructions**
-                            
-                            Please contact your Organization HR Administrator or System Support at `support@talentgrowth.com` to reset your access credentials.
-                            """
-                        )
-
-                submit_login = st.form_submit_button("Sign In", type="primary", use_container_width=True)
-
-            if submit_login:
-                if not email.strip() or not password.strip():
-                    st.error("Please enter both email address and password.")
-                else:
-                    user_data = login(email.strip(), password.strip())
-                    if user_data:
-                        st.session_state.user = user_data
-                        st.session_state.current_page = "Dashboard"
-                        st.session_state.auth_view = "landing"
-                        st.success(f"Welcome back, {user_data['name']}!")
-                        st.rerun()
-                    else:
-                        st.error("Authentication failed: Invalid email or password. Please verify your credentials.")
-
-            render_html("<div style='border-top: 1px solid #E2E8F0; margin: 1.25rem 0 0.85rem 0;'></div>")
-            render_html("<div style='text-align: center; font-size: 0.86rem; color: #64748B; margin-bottom: 0.5rem;'>Don't have an account yet?</div>")
-            if st.button("Create a New Account", key="btn_login_to_register", use_container_width=True, type="secondary"):
+            render_html(
+                """
+                <div style="border-top: 1px solid #F1F5F9; margin: 1.25rem 0 0.9rem 0;"></div>
+                <div style="text-align: center; font-size: 0.85rem; color: #64748B; margin-bottom: 0.55rem;">
+                    New to Talent Growth? Create an account stored securely in your database.
+                </div>
+                """
+            )
+            if st.button("Create a New Account", icon=":material/person_add:", key="btn_login_to_register", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "register"
                 st.rerun()
 
-            render_html("<div style='text-align: center; font-size: 0.82rem; color: #94A3B8; margin: 0.75rem 0 0.35rem 0;'>Looking for all interactive demos?</div>")
-            if st.button("Explore 1-Click Demos on Home Page", key="btn_login_to_demo", use_container_width=True, type="secondary"):
-                st.session_state.auth_view = "landing"
-                st.rerun()
+    render_stored_database_table_viewer(
+        context_key="login",
+        default_expanded=bool(st.session_state.get("last_registered_verification"))
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -1621,8 +1974,13 @@ def register_page():
             )
 
             name = st.text_input("Full Legal Name *", placeholder="e.g. Jordan Miller", key="reg_name")
-            new_email = st.text_input("Email Address *", placeholder="jordan.miller@example.com", key="reg_email")
-            new_password = st.text_input("Password (min 8 characters) *", type="password", placeholder="Set a secure password", key="reg_password")
+            c_em1, c_em2 = st.columns([1.4, 1])
+            new_email = c_em1.text_input("Email Address *", placeholder="jordan.miller@example.com", key="reg_email")
+            phone_val = c_em2.text_input("Phone Number (Optional)", placeholder="+91 98765 43210", key="reg_phone")
+
+            c_pw1, c_pw2 = st.columns(2)
+            new_password = c_pw1.text_input("Password (min 8 characters) *", type="password", placeholder="Set a secure password", key="reg_password")
+            confirm_password = c_pw2.text_input("Confirm Password *", type="password", placeholder="Re-enter your password", key="reg_confirm_password")
 
             existing_orgs = list_organizations()
             org_options = [f"{o['name']} ({o['org_id']})" for o in existing_orgs] + [
@@ -1659,6 +2017,7 @@ def register_page():
                 role = c_r1.selectbox(
                     "Account Type *",
                     ["employee", "admin"],
+                    index=1 if is_new_org else 0,
                     format_func=lambda x: "Employee (Self-Service)" if x == "employee" else "HR Administrator",
                     key="reg_role"
                 )
@@ -1696,7 +2055,9 @@ def register_page():
             if submit_reg:
                 clean_name = (name or "").strip()
                 clean_email = (new_email or "").strip().lower()
+                clean_phone = (phone_val or "").strip()
                 clean_pwd = new_password or ""
+                clean_confirm_pwd = confirm_password or ""
                 clean_org_name = (new_org_name_val or "").strip() if is_new_org else ""
 
                 if not clean_name:
@@ -1705,6 +2066,8 @@ def register_page():
                     st.error("A valid email address is required.")
                 elif len(clean_pwd) < 8:
                     st.error("Password must be at least 8 characters long.")
+                elif clean_pwd != clean_confirm_pwd:
+                    st.error("Passwords do not match. Please re-enter the same password in both fields.")
                 elif is_new_org and not clean_org_name:
                     st.error("Organization Name is required when registering a new organization.")
                 elif is_new_org and get_organization_by_name(clean_org_name):
@@ -1718,6 +2081,8 @@ def register_page():
                         name=clean_name,
                         email=clean_email,
                         password=clean_pwd,
+                        confirm_password=clean_confirm_pwd,
+                        phone=clean_phone,
                         primary_skills=skills_val.strip() or "Python, SQL, Communication",
                         years_experience=exp_val,
                         department=dept_val,
@@ -1726,10 +2091,10 @@ def register_page():
                     if ok:
                         verified = verify_user_in_db(clean_email)
                         if not verified:
-                            st.error("Registration error: User record could not be confirmed in the active SQLite database.")
+                            st.error("Registration error: User record could not be confirmed in the active database.")
                         else:
                             st.session_state["last_registered_verification"] = verified
-                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name}! Please enter your credentials below to sign in."
+                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name}! Your details are saved in the database. Please sign in below."
                             st.session_state["prefill_email"] = clean_email
                             st.session_state.user = None
                             st.session_state.auth_view = "login"
@@ -1765,6 +2130,7 @@ def register_page():
                         job_title=title_val.strip() or ("Software Engineer" if role == "employee" else "HR Administrator"),
                         primary_skills=skills_val.strip() or "Python, SQL, Communication",
                         years_experience=exp_val,
+                        contact_number=clean_phone,
                         is_new_org=is_new_org,
                         hr_verification_code="HR2026" if role == "admin" else None,
                         require_hr_approval=False
@@ -1772,11 +2138,11 @@ def register_page():
                     if ok:
                         verified = verify_user_in_db(clean_email)
                         if not verified:
-                            st.error("Registration error: User record could not be confirmed in the active SQLite database.")
+                            st.error("Registration error: User record could not be confirmed in the active database.")
                         else:
                             st.session_state["last_registered_verification"] = verified
                             org_role_desc = "organization administrator" if role == "admin" else "employee"
-                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name} as {org_role_desc}! Please sign in below."
+                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name} as {org_role_desc}! Your details are saved in the database. Please sign in below."
                             st.session_state["prefill_email"] = clean_email
                             st.session_state.user = None
                             st.session_state.auth_view = "login"
@@ -1790,6 +2156,8 @@ def register_page():
             if st.button("Sign In to Existing Account", key="btn_reg_to_login", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "login"
                 st.rerun()
+
+    render_stored_database_table_viewer(context_key="register", default_expanded=False)
 
 
 # ------------------------------------------------------------------------------
@@ -3794,7 +4162,7 @@ elif page in ["Employees", "Employee Management"]:
                             {get_svg_icon("check", size=14, color="#065F46")} Persistence Guarantee
                         </div>
                         <div style="font-size: 0.78rem; color: #334155; margin-top: 3px; line-height: 1.4;">
-                            Committed immediately into SQLite storage engine with parameterized queries and WAL transaction logs.
+                            Committed immediately into relational database storage with parameterized ACID transactions.
                         </div>
                     </div>
                 </div>
@@ -3931,7 +4299,7 @@ elif page in ["Employees", "Employee Management"]:
                     btn_import = st.button("Validate & Ingest Dataset into Database", type="primary", use_container_width=True)
 
                     if btn_import:
-                        with st.spinner("Processing records and enforcing SQLite constraints..."):
+                        with st.spinner("Processing records and enforcing database constraints..."):
                             import_res = bulk_import_employees_df(df_upload, created_by=uid, org_id=org_id)
 
                         render_html(

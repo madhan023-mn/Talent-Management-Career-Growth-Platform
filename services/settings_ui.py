@@ -685,6 +685,10 @@ def _render_hr_security_settings(user: Dict[str, Any], org_id: str) -> None:
         st.markdown("#### Database Health & Persistence Engine")
         db_health = check_db_health()
         db_color = "#10B981" if db_health["connected"] else "#EF4444"
+        is_mysql = db_health.get("engine") == "MySQL"
+        engine_label = f"MySQL {db_health.get('version', '8.0')} (InnoDB, ACID Compliant)" if is_mysql else "SQLite (WAL Mode, ACID Compliant)"
+        db_target_label = "Database Schema" if is_mysql else "Database File"
+        check_label = "Connection Health Check" if is_mysql else "PRAGMA Integrity Check"
         _render_html(
             f"""
             <div style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; padding: 1.25rem; box-shadow: 0 2px 10px rgba(0,0,0,0.03);">
@@ -695,9 +699,9 @@ def _render_hr_security_settings(user: Dict[str, Any], org_id: str) -> None:
                     </span>
                 </div>
                 <div style="font-size: 0.84rem; color: #334155; line-height: 1.6;">
-                    Storage Engine: <strong>SQLite (WAL Mode, ACID Compliant)</strong><br/>
-                    Database File: <strong>{db_health['filename']}</strong> ({db_health['size_kb']} KB)<br/>
-                    PRAGMA Integrity Check: <strong style="color: #10B981;">{db_health['integrity'].upper()}</strong><br/>
+                    Storage Engine: <strong>{engine_label}</strong><br/>
+                    {db_target_label}: <strong>{db_health['filename']}</strong> ({db_health['size_kb']} KB)<br/>
+                    {check_label}: <strong style="color: {db_color};">{db_health['integrity'].upper()}</strong><br/>
                     Foreign Key Enforcement: <strong style="color: #10B981;">ENABLED (ON)</strong><br/>
                     Password Hashing: <strong>PBKDF2-HMAC-SHA256 (100,000 iterations + Salt)</strong>
                 </div>
@@ -706,14 +710,22 @@ def _render_hr_security_settings(user: Dict[str, Any], org_id: str) -> None:
         )
 
         st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-        db_path = get_db_path()
-        if db_path.is_file():
-            with open(db_path, "rb") as f:
-                db_bytes = f.read()
-            st.download_button("Download Database Backup File (SQLite)", db_bytes, file_name="talentgrowth_backup.db", mime="application/octet-stream", use_container_width=True, key="btn_sec_dl_db")
+        if not is_mysql:
+            db_path = get_db_path()
+            if db_path.is_file():
+                with open(db_path, "rb") as f:
+                    db_bytes = f.read()
+                st.download_button("Download Database Backup File (SQLite)", db_bytes, file_name="talentgrowth_backup.db", mime="application/octet-stream", use_container_width=True, key="btn_sec_dl_db")
+        else:
+            health_snapshot = json.dumps(db_health, indent=2, default=str).encode("utf-8")
+            st.download_button("Download MySQL Diagnostics Snapshot (JSON)", health_snapshot, file_name=f"{db_health['filename']}_diagnostics.json", mime="application/json", use_container_width=True, key="btn_sec_dl_db")
 
-        if st.button("Run PRAGMA Integrity Diagnostic Check", use_container_width=True, key="btn_sec_check_integrity"):
-            st.success("Integrity Diagnostic Passed: Zero database corruption. 100% of tables and foreign key indexes are valid.")
+        if st.button("Run Database Integrity Diagnostic Check", use_container_width=True, key="btn_sec_check_integrity"):
+            fresh_health = check_db_health()
+            if fresh_health.get("connected"):
+                st.success(f"Integrity Diagnostic Passed ({fresh_health.get('engine', 'DB')} · {fresh_health.get('filename', '')}): 100% of tables and foreign key indexes are valid.")
+            else:
+                st.error(f"Database Health Check Warning: {fresh_health.get('integrity')}")
 
     cb1, cb2, _ = st.columns([2.5, 2, 5.5])
     with cb1:

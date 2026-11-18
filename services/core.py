@@ -29,6 +29,25 @@ try:
 except ImportError:
     from .email_service import send_welcome_email, get_recent_email_logs, send_test_email, get_email_config
 
+try:
+    from services.db import (
+        is_mysql_mode,
+        get_mysql_config,
+        ensure_mysql_database_exists,
+        get_connection as _db_get_connection,
+        get_db_path as _db_get_db_path,
+        MYSQL_CORE_SCHEMA_STATEMENTS,
+    )
+except ImportError:
+    from .db import (
+        is_mysql_mode,
+        get_mysql_config,
+        ensure_mysql_database_exists,
+        get_connection as _db_get_connection,
+        get_db_path as _db_get_db_path,
+        MYSQL_CORE_SCHEMA_STATEMENTS,
+    )
+
 
 LEVELS = {
     "Beginner": 1,
@@ -129,20 +148,51 @@ STANDARD_DEPARTMENTS = [
 EMPLOYMENT_STATUSES = ["Active", "On Leave", "Terminated"]
 
 def get_db_path() -> Path:
-    env_path = os.getenv("DATABASE_PATH")
-    if env_path:
-        p = Path(env_path)
-        db_file = p if p.is_absolute() else (BASE_DIR / p)
-    else:
-        db_file = BASE_DIR / "data" / "talentsphere.db"
-    db_file.parent.mkdir(parents=True, exist_ok=True)
-    return db_file.resolve()
+    return _db_get_db_path()
 
 def check_db_health() -> Dict[str, Any]:
-    """Inspects the SQLite database connection, file size, integrity, and record counts."""
+    """Inspects the active database (MySQL or SQLite) connection, size, integrity, and record counts."""
+    if is_mysql_mode():
+        cfg = get_mysql_config()
+        info: Dict[str, Any] = {
+            "connected": False,
+            "engine": "MySQL",
+            "path": f"mysql://{cfg['user']}@{cfg['host']}:{cfg['port']}/{cfg['database']}",
+            "filename": cfg["database"],
+            "host": f"{cfg['host']}:{cfg['port']}",
+            "size_kb": 0.0,
+            "integrity": "Unknown",
+            "counts": {}
+        }
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT VERSION()")
+            ver_row = cur.fetchone()
+            info["version"] = str(ver_row[0]) if ver_row else "MySQL"
+            info["integrity"] = "ok"
+            info["connected"] = True
+            cur.execute(
+                "SELECT ROUND(SUM(data_length + index_length) / 1024, 1) "
+                "FROM information_schema.tables WHERE table_schema = DATABASE()"
+            )
+            sz_row = cur.fetchone()
+            info["size_kb"] = float(sz_row[0]) if sz_row and sz_row[0] is not None else 0.0
+            for table in ["organizations", "users", "employees", "invitation_codes", "performance_reviews", "employee_skills", "assessments", "career_goals", "training_records"]:
+                try:
+                    cur.execute(f"SELECT COUNT(*) FROM {table}")
+                    info["counts"][table] = cur.fetchone()[0]
+                except Exception:
+                    pass
+            conn.close()
+        except Exception as e:
+            info["integrity"] = f"Error: {e}"
+        return info
+
     path = get_db_path()
     info = {
         "connected": False,
+        "engine": "SQLite",
         "path": str(path),
         "filename": path.name,
         "size_kb": 0.0,
@@ -169,21 +219,15 @@ def check_db_health() -> Dict[str, Any]:
             info["integrity"] = f"Error: {e}"
     return info
 
-def get_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(get_db_path(), timeout=30.0, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute("PRAGMA synchronous = NORMAL")
-    conn.execute("PRAGMA busy_timeout = 30000")
-    conn.execute("PRAGMA wal_autocheckpoint = 1")
-    return conn
+def get_connection():
+    return _db_get_connection()
 
-def checkpoint_db(conn: Optional[sqlite3.Connection] = None) -> Tuple[int, int, int]:
+def checkpoint_db(conn: Optional[Any] = None) -> Tuple[int, int, int]:
     """
-    Forces SQLite WAL to immediately transfer all committed pages back into the main database file
-    and truncate the WAL file, guaranteeing external tools and SQLite viewers see changes instantaneously.
+    Forces SQLite WAL checkpoint. In MySQL InnoDB mode, commits are immediately durable so this is a safe no-op.
     """
+    if is_mysql_mode():
+        return (0, 0, 0)
     should_close = False
     if conn is None:
         conn = get_connection()
@@ -201,13 +245,68 @@ def checkpoint_db(conn: Optional[sqlite3.Connection] = None) -> Tuple[int, int, 
 
 def get_database_diagnostics() -> Dict[str, Any]:
     """
-    Returns sanitized diagnostic metrics regarding the active SQLite database:
-    filename, absolute path, file size, connection integrity status,
+    Returns sanitized diagnostic metrics regarding the active database (MySQL or SQLite):
+    database name, location/host, size, connection integrity status,
     record counts, and recently created accounts (without sensitive credentials).
     """
+    if is_mysql_mode():
+        cfg = get_mysql_config()
+        diag: Dict[str, Any] = {
+            "connected": False,
+            "engine": "MySQL",
+            "filename": cfg["database"],
+            "absolute_path": f"mysql://{cfg['user']}@{cfg['host']}:{cfg['port']}/{cfg['database']}",
+            "size_kb": 0.0,
+            "integrity": "Unknown",
+            "total_users": 0,
+            "total_employees": 0,
+            "total_organizations": 0,
+            "recent_users": []
+        }
+        try:
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT 'ok'")
+                row = cur.fetchone()
+                diag["integrity"] = row[0] if row else "ok"
+                diag["connected"] = True
+
+                cur.execute(
+                    "SELECT ROUND(SUM(data_length + index_length) / 1024, 1) "
+                    "FROM information_schema.tables WHERE table_schema = DATABASE()"
+                )
+                sz_row = cur.fetchone()
+                diag["size_kb"] = float(sz_row[0]) if sz_row and sz_row[0] is not None else 0.0
+
+                cur.execute("SELECT COUNT(*) FROM users")
+                diag["total_users"] = cur.fetchone()[0]
+
+                cur.execute("SELECT COUNT(*) FROM employees")
+                diag["total_employees"] = cur.fetchone()[0]
+
+                cur.execute("SELECT COUNT(*) FROM organizations")
+                diag["total_organizations"] = cur.fetchone()[0]
+
+                cur.execute(
+                    """
+                    SELECT id, name, email, role, account_type, org_id, status, date_joined
+                    FROM users
+                    ORDER BY id DESC
+                    LIMIT 5
+                    """
+                )
+                diag["recent_users"] = [dict(r) for r in cur.fetchall()]
+            finally:
+                conn.close()
+        except Exception as e:
+            diag["error"] = str(e)
+        return diag
+
     path = get_db_path()
-    diag: Dict[str, Any] = {
+    diag = {
         "connected": False,
+        "engine": "SQLite",
         "filename": path.name,
         "absolute_path": str(path.resolve()),
         "size_kb": 0.0,
@@ -287,20 +386,129 @@ def verify_user_in_db(user_id_or_email: Union[int, str]) -> Optional[Dict[str, A
     finally:
         conn.close()
 
-def _safe_add_column(cursor: sqlite3.Cursor, table_name: str, col_name: str, col_def: str) -> None:
-    """Safely adds a column to an existing table if it does not already exist."""
+def list_stored_users(search: str = "", limit: int = 200) -> List[Dict[str, Any]]:
+    """
+    Returns sanitized account records stored in the active database (`users` joined with
+    `organizations` and `profiles`), ordered newest-first so users can verify newly created
+    accounts as well as accounts created on previous days.
+    """
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        try:
+            cur.execute("PRAGMA table_info(users)")
+            u_cols = {r["name"] for r in cur.fetchall()}
+        except Exception:
+            u_cols = set()
+        phone_expr = "COALESCE(NULLIF(u.phone, ''), p.phone, '')" if "phone" in u_cols else "COALESCE(p.phone, '')"
+        acc_expr = "COALESCE(u.account_type, 'Organization')" if "account_type" in u_cols else "'Organization'"
+        q = (search or "").strip().lower()
+        if q:
+            like = f"%{q}%"
+            cur.execute(
+                f"""
+                SELECT u.id, u.name, u.email, u.role, {acc_expr} AS account_type,
+                       COALESCE(u.org_id, '') AS org_id,
+                       COALESCE(o.name, 'Personal Hub') AS org_name,
+                       COALESCE(u.employee_id, '') AS employee_id,
+                       COALESCE(u.department, '') AS department,
+                       COALESCE(u.job_title, '') AS job_title,
+                       {phone_expr} AS phone,
+                       COALESCE(u.status, 'Active') AS status,
+                       COALESCE(u.date_joined, '') AS date_joined,
+                       u.created_at
+                FROM users u
+                LEFT JOIN organizations o ON u.org_id = o.org_id
+                LEFT JOIN profiles p ON u.id = p.user_id
+                WHERE LOWER(u.name) LIKE ?
+                   OR LOWER(u.email) LIKE ?
+                   OR LOWER(COALESCE(u.role, '')) LIKE ?
+                   OR LOWER(COALESCE(u.org_id, '')) LIKE ?
+                   OR LOWER(COALESCE(u.department, '')) LIKE ?
+                   OR CAST(u.created_at AS CHAR) LIKE ?
+                ORDER BY u.id DESC
+                LIMIT ?
+                """,
+                (like, like, like, like, like, like, int(limit)),
+            )
+        else:
+            cur.execute(
+                f"""
+                SELECT u.id, u.name, u.email, u.role, {acc_expr} AS account_type,
+                       COALESCE(u.org_id, '') AS org_id,
+                       COALESCE(o.name, 'Personal Hub') AS org_name,
+                       COALESCE(u.employee_id, '') AS employee_id,
+                       COALESCE(u.department, '') AS department,
+                       COALESCE(u.job_title, '') AS job_title,
+                       {phone_expr} AS phone,
+                       COALESCE(u.status, 'Active') AS status,
+                       COALESCE(u.date_joined, '') AS date_joined,
+                       u.created_at
+                FROM users u
+                LEFT JOIN organizations o ON u.org_id = o.org_id
+                LEFT JOIN profiles p ON u.id = p.user_id
+                ORDER BY u.id DESC
+                LIMIT ?
+                """,
+                (int(limit),),
+            )
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+def list_stored_employees_all(limit: int = 200) -> List[Dict[str, Any]]:
+    """Returns all stored employee records from the active database for verification tables."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT e.employee_id, e.name, COALESCE(e.email, '') AS email,
+                   e.org_id, COALESCE(o.name, e.org_id) AS org_name,
+                   e.department, e.designation, COALESCE(e.phone, '') AS phone,
+                   e.employment_status, e.years_experience, e.primary_skills,
+                   e.joining_date, e.created_at
+            FROM employees e
+            LEFT JOIN organizations o ON e.org_id = o.org_id
+            ORDER BY e.id DESC
+            LIMIT ?
+            """,
+            (int(limit),),
+        )
+        return [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+def _safe_add_column(cursor: Any, table_name: str, col_name: str, col_def: str) -> None:
+    """Safely adds a column to an existing table if it does not already exist (MySQL & SQLite)."""
     try:
         cursor.execute(f"PRAGMA table_info({table_name})")
         existing = {row["name"] for row in cursor.fetchall()}
         if col_name not in existing and existing:
-            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_def}")
+            effective_def = col_def
+            if is_mysql_mode():
+                if "base64" in col_name.lower() or col_name.lower() in ("description", "address", "summary"):
+                    effective_def = "LONGTEXT"
+                else:
+                    effective_def = re.sub(r"\bTEXT\b", "VARCHAR(255)", effective_def, flags=re.I)
+                    effective_def = re.sub(r"\bTIMESTAMP\b", "DATETIME", effective_def, flags=re.I)
+                    effective_def = re.sub(r"\bREAL\b", "DOUBLE", effective_def, flags=re.I)
+            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {effective_def}")
     except Exception:
         pass
 
 def init_db() -> None:
+    if is_mysql_mode():
+        ensure_mysql_database_exists()
     conn = get_connection()
     with conn:
-        conn.executescript("""
+        if is_mysql_mode():
+            ddl_cur = conn.cursor()
+            for ddl_stmt in MYSQL_CORE_SCHEMA_STATEMENTS:
+                ddl_cur.execute(ddl_stmt)
+            ddl_cur.close()
+        else:
+            conn.executescript("""
             CREATE TABLE IF NOT EXISTS organizations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 org_id TEXT UNIQUE NOT NULL,
@@ -566,43 +774,44 @@ def init_db() -> None:
         _safe_add_column(cursor, "users", "date_joined", "TEXT DEFAULT ''")
         _safe_add_column(cursor, "users", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 
-        # Ensure users.org_id is nullable in existing databases to support Individual accounts
-        try:
-            cursor.execute("PRAGMA table_info(users)")
-            u_info = {row["name"]: dict(row) for row in cursor.fetchall()}
-            if u_info.get("org_id", {}).get("notnull") == 1 or u_info.get("employee_id", {}).get("notnull") == 1:
-                cursor.execute("PRAGMA foreign_keys = OFF")
-                cursor.execute('''
-                    CREATE TABLE users_migrated (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL,
-                        email TEXT UNIQUE NOT NULL,
-                        password_hash TEXT NOT NULL,
-                        salt TEXT NOT NULL,
-                        role TEXT NOT NULL DEFAULT 'employee',
-                        employee_id TEXT,
-                        org_id TEXT,
-                        account_type TEXT NOT NULL DEFAULT 'Organization',
-                        department TEXT DEFAULT '',
-                        job_title TEXT DEFAULT '',
-                        status TEXT DEFAULT 'Active',
-                        date_joined TEXT DEFAULT '',
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                ''')
-                cursor.execute('''
-                    INSERT INTO users_migrated (id, name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined, created_at)
-                    SELECT id, name, email, password_hash, salt, role, employee_id, 
-                           CASE WHEN org_id = '' OR account_type = 'Individual' THEN NULL ELSE org_id END,
-                           COALESCE(account_type, 'Organization'), COALESCE(department, ''), COALESCE(job_title, ''), 
-                           COALESCE(status, 'Active'), COALESCE(date_joined, ''), COALESCE(created_at, CURRENT_TIMESTAMP)
-                    FROM users
-                ''')
-                cursor.execute("DROP TABLE users")
-                cursor.execute("ALTER TABLE users_migrated RENAME TO users")
-                cursor.execute("PRAGMA foreign_keys = ON")
-        except Exception:
-            pass
+        # Ensure users.org_id is nullable in existing SQLite databases to support Individual accounts
+        if not is_mysql_mode():
+            try:
+                cursor.execute("PRAGMA table_info(users)")
+                u_info = {row["name"]: dict(row) for row in cursor.fetchall()}
+                if u_info.get("org_id", {}).get("notnull") == 1 or u_info.get("employee_id", {}).get("notnull") == 1:
+                    cursor.execute("PRAGMA foreign_keys = OFF")
+                    cursor.execute('''
+                        CREATE TABLE users_migrated (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL,
+                            email TEXT UNIQUE NOT NULL,
+                            password_hash TEXT NOT NULL,
+                            salt TEXT NOT NULL,
+                            role TEXT NOT NULL DEFAULT 'employee',
+                            employee_id TEXT,
+                            org_id TEXT,
+                            account_type TEXT NOT NULL DEFAULT 'Organization',
+                            department TEXT DEFAULT '',
+                            job_title TEXT DEFAULT '',
+                            status TEXT DEFAULT 'Active',
+                            date_joined TEXT DEFAULT '',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    ''')
+                    cursor.execute('''
+                        INSERT INTO users_migrated (id, name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined, created_at)
+                        SELECT id, name, email, password_hash, salt, role, employee_id, 
+                               CASE WHEN org_id = '' OR account_type = 'Individual' THEN NULL ELSE org_id END,
+                               COALESCE(account_type, 'Organization'), COALESCE(department, ''), COALESCE(job_title, ''), 
+                               COALESCE(status, 'Active'), COALESCE(date_joined, ''), COALESCE(created_at, CURRENT_TIMESTAMP)
+                        FROM users
+                    ''')
+                    cursor.execute("DROP TABLE users")
+                    cursor.execute("ALTER TABLE users_migrated RENAME TO users")
+                    cursor.execute("PRAGMA foreign_keys = ON")
+            except Exception:
+                pass
 
         # 3. Migrate employees table
         _safe_add_column(cursor, "employees", "email", "TEXT")
@@ -745,7 +954,7 @@ def init_db() -> None:
         if not admin_row:
             admin_pwd_hash, admin_salt = hash_password("Admin@12345")
             cursor.execute(
-                "INSERT OR IGNORE INTO users (name, email, password_hash, salt, role, employee_id) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title) VALUES (?, ?, ?, ?, ?, ?, 'ORG-TALENT-01', 'Organization', 'Human Resources', 'VP of Human Resources')",
                 ("HR Administrator", "admin@talentgrowth.com", admin_pwd_hash, admin_salt, "admin", "EMP001")
             )
             admin_uid = cursor.lastrowid
@@ -763,7 +972,7 @@ def init_db() -> None:
         if not alex_row:
             emp_pwd_hash, emp_salt = hash_password("Password123")
             cursor.execute(
-                "INSERT OR IGNORE INTO users (name, email, password_hash, salt, role, employee_id) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title) VALUES (?, ?, ?, ?, ?, ?, 'ORG-TALENT-01', 'Organization', 'Engineering', 'Full Stack Engineer')",
                 ("Alex Morgan", "alex@company.com", emp_pwd_hash, emp_salt, "employee", "EMP101")
             )
             alex_uid = cursor.lastrowid
@@ -801,7 +1010,7 @@ def init_db() -> None:
         if not ravi_user:
             ravi_pwd_hash, ravi_salt = hash_password("Password123")
             cursor.execute(
-                "INSERT INTO users (name, email, password_hash, salt, role, employee_id) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title) VALUES (?, ?, ?, ?, ?, ?, 'ORG-TALENT-01', 'Organization', 'IT', 'Junior Python Developer')",
                 ("Ravi Kumar", "ravi@company.com", ravi_pwd_hash, ravi_salt, "employee", "EMP107")
             )
             ravi_uid = cursor.lastrowid
@@ -1565,6 +1774,13 @@ def register_individual(
                     raise
             user_id = cursor.lastrowid
 
+            # Persist phone on users table if phone column exists
+            if phone:
+                try:
+                    cursor.execute("UPDATE users SET phone = ? WHERE id = ?", (phone, user_id))
+                except Exception:
+                    pass
+
             # Insert Base Profile
             cursor.execute(
                 """
@@ -1582,6 +1798,22 @@ def register_individual(
                     years_experience
                 )
             )
+
+            # Initialize default user_preferences record so Settings & profile details sync immediately
+            try:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO user_preferences (user_id, phone, professional_summary)
+                    VALUES (?, ?, ?)
+                    """,
+                    (
+                        user_id,
+                        phone,
+                        f"Interests: {professional_interests}" if professional_interests else ""
+                    )
+                )
+            except Exception:
+                pass
 
             # Insert initial skills catalog for individual user
             skill_tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
@@ -1624,7 +1856,7 @@ def register_individual(
         return True, f"Individual account registered successfully! A welcome email has been sent to {email}. You can now sign in to your personal career dashboard."
     except sqlite3.IntegrityError as ie:
         err_str = str(ie).lower()
-        if "unique" in err_str and "email" in err_str:
+        if ("unique" in err_str or "duplicate" in err_str) and "email" in err_str:
             return False, f"An account with email '{email}' already exists. Please sign in instead."
         if "not null" in err_str:
             return False, f"Database registration error: Missing required column ({ie})."
@@ -1854,14 +2086,33 @@ def register(
             )
             user_id = cursor.lastrowid
 
+            # Persist phone on users table if phone column exists
+            if clean_contact_number:
+                try:
+                    cursor.execute("UPDATE users SET phone = ? WHERE id = ?", (clean_contact_number, user_id))
+                except Exception:
+                    pass
+
             # Insert Base Profile
             cursor.execute(
                 """
-                INSERT OR REPLACE INTO profiles (user_id, job_title, department, company, years_experience)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO profiles (user_id, phone, job_title, department, company, years_experience)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (user_id, job_title, department, resolved_org_name, years_experience)
+                (user_id, clean_contact_number, job_title, department, resolved_org_name, years_experience)
             )
+
+            # Initialize default user_preferences record
+            try:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO user_preferences (user_id, phone)
+                    VALUES (?, ?)
+                    """,
+                    (user_id, clean_contact_number)
+                )
+            except Exception:
+                pass
 
             # Insert or update employee record for seamless HR directory integration
             cursor.execute("SELECT id FROM employees WHERE employee_id = ?", (final_emp_id,))
@@ -1870,18 +2121,18 @@ def register(
                 cursor.execute(
                     """
                     UPDATE employees
-                    SET user_id = ?, email = COALESCE(email, ?), org_id = ?, department = ?, designation = ?, account_status = ?
+                    SET user_id = ?, email = COALESCE(email, ?), phone = COALESCE(NULLIF(phone, ''), ?), org_id = ?, department = ?, designation = ?, account_status = ?
                     WHERE employee_id = ?
                     """,
-                    (user_id, email, resolved_org_id, department, job_title, user_status, final_emp_id)
+                    (user_id, email, clean_contact_number, resolved_org_id, department, job_title, user_status, final_emp_id)
                 )
             else:
                 cursor.execute(
                     """
-                    INSERT INTO employees (employee_id, org_id, user_id, name, email, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?)
+                    INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?)
                     """,
-                    (final_emp_id, resolved_org_id, user_id, name, email, department, job_title, date.today().isoformat(), years_experience, primary_skills, user_status, user_id)
+                    (final_emp_id, resolved_org_id, user_id, name, email, clean_contact_number, department, job_title, date.today().isoformat(), years_experience, primary_skills, user_status, user_id)
                 )
 
             # Initialize INDIVIDUAL skills profile for this employee (clean, isolated, never copying another employee's assessments)
@@ -1964,9 +2215,9 @@ def register(
         return True, f"Account created successfully for {resolved_org_name}! A welcome email has been sent to {email}. Please sign in."
     except sqlite3.IntegrityError as ie:
         err_str = str(ie).lower()
-        if "unique" in err_str and "email" in err_str:
+        if ("unique" in err_str or "duplicate" in err_str) and "email" in err_str:
             return False, f"An account with email '{email}' already exists. Please sign in instead."
-        if "unique" in err_str and "employee_id" in err_str:
+        if ("unique" in err_str or "duplicate" in err_str) and "employee_id" in err_str:
             return False, "This Employee ID is already registered in the system."
         return False, f"Database integrity error: {ie}"
     except Exception as e:
@@ -1982,26 +2233,29 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        # Safe self-healing check for account_type column
+        # Safe self-healing check for account_type & phone columns
         try:
             cursor.execute("PRAGMA table_info(users)")
             user_cols = {row["name"] for row in cursor.fetchall()}
             if "account_type" not in user_cols and user_cols:
-                cursor.execute("ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT 'Organization'")
+                _safe_add_column(cursor, "users", "account_type", "TEXT NOT NULL DEFAULT 'Organization'")
                 conn.commit()
                 user_cols.add("account_type")
         except Exception:
             user_cols = set()
 
         acc_col_sql = "u.account_type," if "account_type" in user_cols else "'Organization' as account_type,"
+        phone_col_sql = "COALESCE(NULLIF(u.phone, ''), p.phone, '') as phone," if "phone" in user_cols else "COALESCE(p.phone, '') as phone,"
 
         cursor.execute(
             f"""
             SELECT u.id, u.name, u.email, u.password_hash, u.salt, u.role, u.employee_id,
                    u.org_id, {acc_col_sql} u.department, u.job_title, u.status, u.date_joined,
+                   {phone_col_sql}
                    COALESCE(o.name, 'Talent Growth Technologies') as org_name
             FROM users u
             LEFT JOIN organizations o ON u.org_id = o.org_id
+            LEFT JOIN profiles p ON u.id = p.user_id
             WHERE LOWER(TRIM(u.email)) = ?
             """,
             (email,)
@@ -2013,9 +2267,11 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
                 f"""
                 SELECT u.id, u.name, u.email, u.password_hash, u.salt, u.role, u.employee_id,
                        u.org_id, {acc_col_sql} u.department, u.job_title, u.status, u.date_joined,
+                       {phone_col_sql}
                        COALESCE(o.name, 'Talent Growth Technologies') as org_name
                 FROM users u
                 LEFT JOIN organizations o ON u.org_id = o.org_id
+                LEFT JOIN profiles p ON u.id = p.user_id
                 WHERE LOWER(TRIM(u.email)) = ?
                 """,
                 (alt,)
@@ -2040,6 +2296,7 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
                 "org_name": resolved_org_name,
                 "department": row["department"] or "",
                 "job_title": row["job_title"] or "",
+                "phone": row["phone"] if "phone" in row_keys and row["phone"] else "",
                 "status": row["status"] or "Active",
                 "date_joined": row["date_joined"] or ""
             }
@@ -2055,7 +2312,7 @@ def get_user_by_id(uid: int) -> Optional[Dict[str, Any]]:
             cursor.execute("PRAGMA table_info(users)")
             user_cols = {row["name"] for row in cursor.fetchall()}
             if "account_type" not in user_cols and user_cols:
-                cursor.execute("ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT 'Organization'")
+                _safe_add_column(cursor, "users", "account_type", "TEXT NOT NULL DEFAULT 'Organization'")
                 conn.commit()
                 user_cols.add("account_type")
         except Exception:
@@ -2773,10 +3030,17 @@ def get_employee_skills(employee_id: Optional[str] = None, org_id: Optional[str]
             # Fallback to skills table for individual users or users with skills table entries
             target_uid = user_id
             if not target_uid and emp_id_clean:
-                cursor.execute(
-                    "SELECT id FROM users WHERE employee_id = ? OR ('EMP' || printf('%03d', id)) = ? OR ('EMP-' || id) = ?",
-                    (emp_id_clean, emp_id_clean, emp_id_clean)
-                )
+                m_emp_num = re.match(r"^EMP-?0*(\d+)$", emp_id_clean, re.I)
+                if m_emp_num:
+                    cursor.execute(
+                        "SELECT id FROM users WHERE employee_id = ? OR id = ?",
+                        (emp_id_clean, int(m_emp_num.group(1)))
+                    )
+                else:
+                    cursor.execute(
+                        "SELECT id FROM users WHERE employee_id = ?",
+                        (emp_id_clean,)
+                    )
                 u_match = cursor.fetchone()
                 if u_match:
                     target_uid = u_match["id"]

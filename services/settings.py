@@ -19,180 +19,188 @@ from services.core import (
     verify_password,
     _safe_add_column
 )
+from services.db import is_mysql_mode, MYSQL_SETTINGS_SCHEMA_STATEMENTS
 
 # ------------------------------------------------------------------------------
 # DATABASE SCHEMA INITIALIZATION FOR SETTINGS
 # ------------------------------------------------------------------------------
 def init_settings_tables() -> None:
-    """Initializes all settings tables and safe column migrations in SQLite."""
+    """Initializes all settings tables and safe column migrations (MySQL & SQLite)."""
     conn = get_connection()
-    with conn:
-        cursor = conn.cursor()
+    try:
+        with conn:
+            cursor = conn.cursor()
 
-        # 1. Organization Settings
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS org_settings (
-                org_id TEXT PRIMARY KEY,
-                org_name TEXT NOT NULL,
-                logo_base64 TEXT DEFAULT '',
-                official_email TEXT DEFAULT '',
-                contact_number TEXT DEFAULT '',
-                address TEXT DEFAULT '',
-                website TEXT DEFAULT '',
-                industry TEXT DEFAULT 'Technology',
-                description TEXT DEFAULT '',
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+            if is_mysql_mode():
+                for stmt in MYSQL_SETTINGS_SCHEMA_STATEMENTS:
+                    cursor.execute(stmt)
+            else:
+                # 1. Organization Settings
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS org_settings (
+                        org_id TEXT PRIMARY KEY,
+                        org_name TEXT NOT NULL,
+                        logo_base64 TEXT DEFAULT '',
+                        official_email TEXT DEFAULT '',
+                        contact_number TEXT DEFAULT '',
+                        address TEXT DEFAULT '',
+                        website TEXT DEFAULT '',
+                        industry TEXT DEFAULT 'Technology',
+                        description TEXT DEFAULT '',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
 
-        # 2. Employee Configuration
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS org_employee_config (
-                org_id TEXT PRIMARY KEY,
-                departments TEXT DEFAULT '[]',
-                designations TEXT DEFAULT '[]',
-                employee_categories TEXT DEFAULT '[]',
-                employment_statuses TEXT DEFAULT '[]',
-                skill_categories TEXT DEFAULT '[]',
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+                # 2. Employee Configuration
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS org_employee_config (
+                        org_id TEXT PRIMARY KEY,
+                        departments TEXT DEFAULT '[]',
+                        designations TEXT DEFAULT '[]',
+                        employee_categories TEXT DEFAULT '[]',
+                        employment_statuses TEXT DEFAULT '[]',
+                        skill_categories TEXT DEFAULT '[]',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
 
-        # 3. Performance Settings
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS org_performance_config (
-                org_id TEXT PRIMARY KEY,
-                rating_scale_min INTEGER DEFAULT 1,
-                rating_scale_max INTEGER DEFAULT 5,
-                rating_descriptions TEXT DEFAULT '{}',
-                evaluation_criteria TEXT DEFAULT '[]',
-                review_periods TEXT DEFAULT '[]',
-                performance_categories TEXT DEFAULT '[]',
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+                # 3. Performance Settings
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS org_performance_config (
+                        org_id TEXT PRIMARY KEY,
+                        rating_scale_min INTEGER DEFAULT 1,
+                        rating_scale_max INTEGER DEFAULT 5,
+                        rating_descriptions TEXT DEFAULT '{}',
+                        evaluation_criteria TEXT DEFAULT '[]',
+                        review_periods TEXT DEFAULT '[]',
+                        performance_categories TEXT DEFAULT '[]',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
 
-        # 4. Career Development Settings
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS org_career_config (
-                org_id TEXT PRIMARY KEY,
-                career_levels TEXT DEFAULT '[]',
-                job_roles TEXT DEFAULT '[]',
-                role_skill_requirements TEXT DEFAULT '{}',
-                progression_paths TEXT DEFAULT '{}',
-                default_timelines TEXT DEFAULT '[]',
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+                # 4. Career Development Settings
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS org_career_config (
+                        org_id TEXT PRIMARY KEY,
+                        career_levels TEXT DEFAULT '[]',
+                        job_roles TEXT DEFAULT '[]',
+                        role_skill_requirements TEXT DEFAULT '{}',
+                        progression_paths TEXT DEFAULT '{}',
+                        default_timelines TEXT DEFAULT '[]',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
 
-        # 5. Training Settings
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS org_training_config (
-                org_id TEXT PRIMARY KEY,
-                training_categories TEXT DEFAULT '[]',
-                training_providers TEXT DEFAULT '[]',
-                certification_types TEXT DEFAULT '[]',
-                completion_criteria TEXT DEFAULT '[]',
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+                # 5. Training Settings
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS org_training_config (
+                        org_id TEXT PRIMARY KEY,
+                        training_categories TEXT DEFAULT '[]',
+                        training_providers TEXT DEFAULT '[]',
+                        certification_types TEXT DEFAULT '[]',
+                        completion_criteria TEXT DEFAULT '[]',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
 
-        # 6. PDF Customization Settings
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS org_pdf_config (
-                org_id TEXT PRIMARY KEY,
-                company_name TEXT DEFAULT 'Talent Growth Technologies',
-                logo_base64 TEXT DEFAULT '',
-                header_text TEXT DEFAULT 'Confidential — Enterprise Career & Competency Evaluation Dossier',
-                footer_text TEXT DEFAULT 'Talent Growth Platform · Confidential & Proprietary · Authorized Reviewers Only',
-                theme_color TEXT DEFAULT 'Navy & Teal',
-                report_title TEXT DEFAULT 'Employee Career & Competency Intelligence Report',
-                confidentiality_notice TEXT DEFAULT 'CONFIDENTIAL & PROPRIETARY — FOR AUTHORIZED TALENT EVALUATION ONLY',
-                date_format TEXT DEFAULT '%B %d, %Y',
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+                # 6. PDF Customization Settings
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS org_pdf_config (
+                        org_id TEXT PRIMARY KEY,
+                        company_name TEXT DEFAULT 'Talent Growth Technologies',
+                        logo_base64 TEXT DEFAULT '',
+                        header_text TEXT DEFAULT 'Confidential — Enterprise Career & Competency Evaluation Dossier',
+                        footer_text TEXT DEFAULT 'Talent Growth Platform · Confidential & Proprietary · Authorized Reviewers Only',
+                        theme_color TEXT DEFAULT 'Navy & Teal',
+                        report_title TEXT DEFAULT 'Employee Career & Competency Intelligence Report',
+                        confidentiality_notice TEXT DEFAULT 'CONFIDENTIAL & PROPRIETARY — FOR AUTHORIZED TALENT EVALUATION ONLY',
+                        date_format TEXT DEFAULT '%B %d, %Y',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
 
-        # 7. Security Settings
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS org_security_config (
-                org_id TEXT PRIMARY KEY,
-                min_password_length INTEGER DEFAULT 8,
-                require_uppercase INTEGER DEFAULT 1,
-                require_number INTEGER DEFAULT 1,
-                require_special_char INTEGER DEFAULT 1,
-                session_timeout_minutes INTEGER DEFAULT 60,
-                mfa_enforced INTEGER DEFAULT 0,
-                force_pwd_change INTEGER DEFAULT 0,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+                # 7. Security Settings
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS org_security_config (
+                        org_id TEXT PRIMARY KEY,
+                        min_password_length INTEGER DEFAULT 8,
+                        require_uppercase INTEGER DEFAULT 1,
+                        require_number INTEGER DEFAULT 1,
+                        require_special_char INTEGER DEFAULT 1,
+                        session_timeout_minutes INTEGER DEFAULT 60,
+                        mfa_enforced INTEGER DEFAULT 0,
+                        force_pwd_change INTEGER DEFAULT 0,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
 
-        # 8. Notification Settings
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS org_notification_config (
-                org_id TEXT PRIMARY KEY,
-                review_reminders INTEGER DEFAULT 1,
-                training_reminders INTEGER DEFAULT 1,
-                goal_deadline_reminders INTEGER DEFAULT 1,
-                employee_registration_alerts INTEGER DEFAULT 1,
-                report_generation_alerts INTEGER DEFAULT 1,
-                reminder_frequency TEXT DEFAULT 'Weekly',
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+                # 8. Notification Settings
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS org_notification_config (
+                        org_id TEXT PRIMARY KEY,
+                        review_reminders INTEGER DEFAULT 1,
+                        training_reminders INTEGER DEFAULT 1,
+                        goal_deadline_reminders INTEGER DEFAULT 1,
+                        employee_registration_alerts INTEGER DEFAULT 1,
+                        report_generation_alerts INTEGER DEFAULT 1,
+                        reminder_frequency TEXT DEFAULT 'Weekly',
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
 
-        # 9. Employee & User Preferences
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_preferences (
-                user_id INTEGER PRIMARY KEY,
-                profile_photo TEXT DEFAULT '',
-                phone TEXT DEFAULT '',
-                location TEXT DEFAULT '',
-                professional_summary TEXT DEFAULT '',
-                interested_career_paths TEXT DEFAULT '[]',
-                preferred_technical_skills TEXT DEFAULT '[]',
-                career_timeline TEXT DEFAULT '12 Months',
-                goal_reminders TEXT DEFAULT 'Weekly',
-                training_notifications TEXT DEFAULT 'Weekly Digest',
-                review_notifications INTEGER DEFAULT 1,
-                platform_notifications INTEGER DEFAULT 1,
-                theme_mode TEXT DEFAULT 'light',
-                view_density TEXT DEFAULT 'comfortable',
-                profile_visibility TEXT DEFAULT 'organization',
-                deactivation_requested INTEGER DEFAULT 0,
-                deactivation_reason TEXT DEFAULT '',
-                deactivation_requested_at TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+                # 9. Employee & User Preferences
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS user_preferences (
+                        user_id INTEGER PRIMARY KEY,
+                        profile_photo TEXT DEFAULT '',
+                        phone TEXT DEFAULT '',
+                        location TEXT DEFAULT '',
+                        professional_summary TEXT DEFAULT '',
+                        interested_career_paths TEXT DEFAULT '[]',
+                        preferred_technical_skills TEXT DEFAULT '[]',
+                        career_timeline TEXT DEFAULT '12 Months',
+                        goal_reminders TEXT DEFAULT 'Weekly',
+                        training_notifications TEXT DEFAULT 'Weekly Digest',
+                        review_notifications INTEGER DEFAULT 1,
+                        platform_notifications INTEGER DEFAULT 1,
+                        theme_mode TEXT DEFAULT 'light',
+                        view_density TEXT DEFAULT 'comfortable',
+                        profile_visibility TEXT DEFAULT 'organization',
+                        deactivation_requested INTEGER DEFAULT 0,
+                        deactivation_reason TEXT DEFAULT '',
+                        deactivation_requested_at TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
 
-        # 10. Account Deactivations Audit Table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS account_deactivations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                employee_id TEXT DEFAULT '',
-                org_id TEXT DEFAULT '',
-                user_name TEXT DEFAULT '',
-                user_email TEXT DEFAULT '',
-                reason TEXT DEFAULT '',
-                status TEXT DEFAULT 'Pending' CHECK(status IN ('Pending', 'Approved', 'Rejected', 'Cancelled')),
-                requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                processed_by TEXT DEFAULT '',
-                processed_at TIMESTAMP
-            );
-        """)
+                # 10. Account Deactivations Audit Table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS account_deactivations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        employee_id TEXT DEFAULT '',
+                        org_id TEXT DEFAULT '',
+                        user_name TEXT DEFAULT '',
+                        user_email TEXT DEFAULT '',
+                        reason TEXT DEFAULT '',
+                        status TEXT DEFAULT 'Pending' CHECK(status IN ('Pending', 'Approved', 'Rejected', 'Cancelled')),
+                        requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        processed_by TEXT DEFAULT '',
+                        processed_at TIMESTAMP
+                    );
+                """)
 
-        # Safe Column Additions to existing tables
-        _safe_add_column(cursor, "organizations", "logo_base64", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "organizations", "address", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "organizations", "website", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "organizations", "industry", "TEXT DEFAULT 'Technology'")
-        _safe_add_column(cursor, "organizations", "description", "TEXT DEFAULT ''")
+            # Safe Column Additions to existing tables
+            _safe_add_column(cursor, "organizations", "logo_base64", "TEXT DEFAULT ''")
+            _safe_add_column(cursor, "organizations", "address", "TEXT DEFAULT ''")
+            _safe_add_column(cursor, "organizations", "website", "TEXT DEFAULT ''")
+            _safe_add_column(cursor, "organizations", "industry", "TEXT DEFAULT 'Technology'")
+            _safe_add_column(cursor, "organizations", "description", "TEXT DEFAULT ''")
 
-        _safe_add_column(cursor, "users", "avatar_base64", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "users", "phone", "TEXT DEFAULT ''")
+            _safe_add_column(cursor, "users", "avatar_base64", "TEXT DEFAULT ''")
+            _safe_add_column(cursor, "users", "phone", "TEXT DEFAULT ''")
+    finally:
+        conn.close()
 
 
 # Ensure tables exist at import time
