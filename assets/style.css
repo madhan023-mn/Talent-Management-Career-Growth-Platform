@@ -1906,23 +1906,7 @@ div[data-testid="stToolbar"] {
         gap: 0.5rem !important;
     }
 
-    /* Horizontal Tab Bar with Touch Momentum Scrolling */
-    [data-baseweb="tab-list"] {
-        overflow-x: auto !important;
-        flex-wrap: nowrap !important;
-        white-space: nowrap !important;
-        -webkit-overflow-scrolling: touch !important;
-        scrollbar-width: none !important;
-        padding-bottom: 4px !important;
-    }
-    [data-baseweb="tab-list"]::-webkit-scrollbar {
-        display: none !important;
-    }
-    [data-baseweb="tab"] {
-        padding-left: 12px !important;
-        padding-right: 12px !important;
-        font-size: 0.85rem !important;
-    }
+    /* Mobile Tab Bar handled centrally by Enterprise Colored Navigation Tabs System */
 
     /* Mobile Typography Adjustments */
     .ts-page-header {
@@ -2195,31 +2179,7 @@ section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup
 
 /* Input styles centralized in comprehensive design system below */
 
-/* Streamlit Tabs - Enterprise Underline Style */
-div[data-baseweb="tab-list"] {
-    gap: 8px !important;
-    border-bottom: 1px solid #E2E8F0 !important;
-    margin-bottom: 1.25rem !important;
-}
-
-div[data-baseweb="tab-list"] button[role="tab"] {
-    font-weight: 600 !important;
-    font-size: 0.90rem !important;
-    color: #64748B !important;
-    padding: 10px 18px !important;
-    border-radius: 8px 8px 0 0 !important;
-    transition: all 0.18s ease !important;
-}
-
-div[data-baseweb="tab-list"] button[role="tab"]:hover {
-    color: #4F46E5 !important;
-    background: #F8FAFC !important;
-}
-
-div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] {
-    color: #4F46E5 !important;
-    border-bottom: 2px solid #4F46E5 !important;
-}
+/* Streamlit Tabs centralized in Enterprise Colored Navigation Tabs System below */
 
 /* ==============================================================================
    COLORFUL CAREER - PAGE HERO BANNERS & ACCENT CARD STYLES
@@ -2265,42 +2225,7 @@ div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* Modern Segmented Navigation Tabs */
-div[data-testid="stTabs"] [data-baseweb="tab-list"] {
-    gap: 8px !important;
-    background-color: #F8FAFC !important;
-    padding: 6px !important;
-    border-radius: 12px !important;
-    border: 1px solid #E2E8F0 !important;
-    margin-bottom: 1.25rem !important;
-}
-div[data-testid="stTabs"] [data-baseweb="tab"] {
-    border-radius: 8px !important;
-    padding: 8px 16px !important;
-    font-weight: 600 !important;
-    font-size: 0.90rem !important;
-    color: #64748B !important;
-    border: none !important;
-    background: transparent !important;
-    transition: all 0.2s ease !important;
-}
-div[data-testid="stTabs"] [data-baseweb="tab"]:hover {
-    background-color: #F1F5F9 !important;
-    color: #1E293B !important;
-}
-div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
-    background-color: #FFFFFF !important;
-    color: #2563EB !important;
-    font-weight: 700 !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
-    border: 1px solid #BFDBFE !important;
-}
-div[data-testid="stTabs"] [data-baseweb="tab-border"] {
-    display: none !important;
-}
-div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
-    display: none !important;
-}
+/* Segmented Navigation Tabs superseded by centralized Colored Navigation Tabs System below */
 
 /* Workforce Search & Filter Card */
 .workforce-filter-card {
@@ -2362,60 +2287,7 @@ div[data-testid="stForm"],
     margin-bottom: 1.5rem !important;
 }
 
-/* Modern Bordered Navigation Tabs (Boxed Navigation Component across all pages) */
-.page-tabs-container,
-div[data-testid="stTabs"] [data-baseweb="tab-list"],
-div[data-baseweb="tab-list"] {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    padding: 8px !important;
-    background: #FFFFFF !important;
-    border: 1px solid #DCE5F1 !important;
-    border-radius: 14px !important;
-    box-shadow: 0 3px 12px rgba(30, 64, 175, 0.04) !important;
-    margin-bottom: 1.5rem !important;
-    overflow-x: auto !important;
-    flex-wrap: nowrap !important;
-    border-bottom: 1px solid #DCE5F1 !important;
-}
-
-div[data-testid="stTabs"] [data-baseweb="tab"],
-div[data-baseweb="tab-list"] button[role="tab"] {
-    border-radius: 10px !important;
-    padding: 10px 18px !important;
-    font-weight: 600 !important;
-    font-size: 0.92rem !important;
-    color: #172033 !important;
-    border: 1px solid transparent !important;
-    background: transparent !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    white-space: nowrap !important;
-}
-
-div[data-testid="stTabs"] [data-baseweb="tab"]:hover,
-div[data-baseweb="tab-list"] button[role="tab"]:hover {
-    background: #EFF6FF !important;
-    color: #2563EB !important;
-    border-color: #DCE5F1 !important;
-}
-
-div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"],
-div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] {
-    background: #EFF6FF !important;
-    color: #2563EB !important;
-    border: 1px solid #BFDBFE !important;
-    border-radius: 10px !important;
-    font-weight: 700 !important;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12) !important;
-}
-
-div[data-testid="stTabs"] [data-baseweb="tab-border"],
-div[data-baseweb="tab-border"],
-div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
-div[data-baseweb="tab-highlight"] {
-    display: none !important;
-}
+/* Navigation Tabs superseded by centralized Colored Navigation Tabs System at end of stylesheet */
 
 /* Application-Wide Button System */
 button[kind="primary"],
@@ -2776,4 +2648,355 @@ div[data-testid="stTable"] {
     border-radius: 14px !important;
     padding: 12px !important;
     box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03) !important;
+}
+
+
+/* ==============================================================================
+   ENTERPRISE COLORED NAVIGATION TABS & SECTION HEADER DESIGN SYSTEM
+   Centralized global styling applied uniformly across all pages:
+   HR Dashboard, Employee Dashboard, Workforce Directory, Employee Management,
+   Career Reports, Performance, Skills, Learning & Development, Resume Studio,
+   Individual Career Hub, and Settings.
+   ============================================================================== */
+
+/* 1. Tab Strip Container */
+.tg-nav-tabs,
+.page-tabs-container,
+div[data-testid="stTabs"] [data-baseweb="tab-list"],
+div[data-baseweb="tab-list"] {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+    background: #FFFFFF !important;
+    border: 1px solid #DCE5F1 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05) !important;
+    margin-top: 0.25rem !important;
+    margin-bottom: 1.5rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Remove Streamlit default bottom border and animated underline indicator */
+div[data-testid="stTabs"] [data-baseweb="tab-border"],
+div[data-baseweb="tab-border"],
+div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+div[data-baseweb="tab-highlight"] {
+    display: none !important;
+    height: 0 !important;
+    opacity: 0 !important;
+}
+
+/* 2. Individual Rounded Rectangular Tab Box (Equal Height & Alignment) */
+.tg-nav-tab,
+div[data-testid="stTabs"] button[role="tab"],
+div[data-testid="stTabs"] [data-baseweb="tab"],
+div[data-baseweb="tab-list"] button[role="tab"] {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 7px !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 0 18px !important;
+    margin: 0 !important;
+    border-radius: 12px !important;
+    border-width: 1.5px !important;
+    border-style: solid !important;
+    border-color: #CBD5E1 !important;
+    background-color: #F1F5F9 !important;
+    color: #0F172A !important;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.01em !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Guarantee crisp dark text inside nested Streamlit tab label elements */
+div[data-testid="stTabs"] button[role="tab"] p,
+div[data-testid="stTabs"] button[role="tab"] span,
+div[data-testid="stTabs"] button[role="tab"] div,
+div[data-baseweb="tab-list"] button[role="tab"] p,
+div[data-baseweb="tab-list"] button[role="tab"] span,
+div[data-baseweb="tab-list"] button[role="tab"] div {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    line-height: 1.2 !important;
+    color: inherit !important;
+}
+
+/* 3. Soft Enterprise Pastel Color Palette per Tab Position (High-Contrast Dark Ink) */
+
+/* Tab 1 (Sky Blue Pastel) */
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+1) {
+    background-color: #EFF6FF !important;
+    border-color: #BFDBFE !important;
+    color: #1E3A8A !important;
+}
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+1):hover {
+    background-color: #DBEAFE !important;
+    border-color: #60A5FA !important;
+    color: #1E40AF !important;
+}
+
+/* Tab 2 (Soft Indigo Pastel) */
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+2) {
+    background-color: #EEF2FF !important;
+    border-color: #C7D2FE !important;
+    color: #312E81 !important;
+}
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+2):hover {
+    background-color: #E0E7FF !important;
+    border-color: #818CF8 !important;
+    color: #3730A3 !important;
+}
+
+/* Tab 3 (Soft Emerald / Mint Pastel) */
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+3) {
+    background-color: #ECFDF5 !important;
+    border-color: #A7F3D0 !important;
+    color: #065F46 !important;
+}
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+3):hover {
+    background-color: #D1FAE5 !important;
+    border-color: #34D399 !important;
+    color: #064E3B !important;
+}
+
+/* Tab 4 (Soft Violet / Lavender Pastel) */
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+4) {
+    background-color: #F5F3FF !important;
+    border-color: #DDD6FE !important;
+    color: #4C1D95 !important;
+}
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+4):hover {
+    background-color: #EDE9FE !important;
+    border-color: #A78BFA !important;
+    color: #5B21B6 !important;
+}
+
+/* Tab 5 (Soft Amber / Warm Sand Pastel) */
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+5) {
+    background-color: #FFFBEB !important;
+    border-color: #FDE68A !important;
+    color: #78350F !important;
+}
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+5):hover {
+    background-color: #FEF3C7 !important;
+    border-color: #FBBF24 !important;
+    color: #713F12 !important;
+}
+
+/* Tab 6 (Soft Teal / Cyan Pastel) */
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+6) {
+    background-color: #F0FDFA !important;
+    border-color: #99F6E4 !important;
+    color: #115E59 !important;
+}
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+6):hover {
+    background-color: #CCFBF1 !important;
+    border-color: #2DD4BF !important;
+    color: #134E4A !important;
+}
+
+/* Tab 7 (Soft Rose Pastel) */
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+7) {
+    background-color: #FFF1F2 !important;
+    border-color: #FECDD3 !important;
+    color: #881337 !important;
+}
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+7):hover {
+    background-color: #FFE4E6 !important;
+    border-color: #FB7185 !important;
+    color: #9F1239 !important;
+}
+
+/* Tab 8 (Soft Ice Blue Pastel) */
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+8) {
+    background-color: #F0F9FF !important;
+    border-color: #BAE6FD !important;
+    color: #0C4A6E !important;
+}
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+8):hover {
+    background-color: #E0F2FE !important;
+    border-color: #38BDF8 !important;
+    color: #075985 !important;
+}
+
+/* Tab 9 (Soft Orchid Pastel) */
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+9) {
+    background-color: #FDF4FF !important;
+    border-color: #F5D0FE !important;
+    color: #701A75 !important;
+}
+div[data-baseweb="tab-list"] button[role="tab"]:nth-of-type(9n+9):hover {
+    background-color: #FAE8FF !important;
+    border-color: #E879F9 !important;
+    color: #86198F !important;
+}
+
+/* 4. Universal Subtle Hover Lift */
+.tg-nav-tab:hover,
+div[data-testid="stTabs"] button[role="tab"]:hover,
+div[data-baseweb="tab-list"] button[role="tab"]:hover {
+    transform: translateY(-1.5px) !important;
+    box-shadow: 0 5px 14px -3px rgba(15, 23, 42, 0.10) !important;
+}
+
+/* 5. Distinct Active Tab Highlight (Overrides Pastel Base Clearly) */
+.tg-nav-tab.tg-nav-tab-active,
+div[data-testid="stTabs"] button[role="tab"][aria-selected="true"],
+div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"],
+div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] {
+    background: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%) !important;
+    background-color: #2563EB !important;
+    border: 1.5px solid #1D4ED8 !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 16px -3px rgba(37, 99, 235, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+
+div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p,
+div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] span,
+div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] div,
+div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] p,
+div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] span,
+div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] div {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"]:hover {
+    background: linear-gradient(135deg, #1D4ED8 0%, #4338CA 100%) !important;
+    border-color: #1E40AF !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 8px 20px -3px rgba(37, 99, 235, 0.44) !important;
+}
+
+/* Focus-visible keyboard accessibility ring */
+div[data-baseweb="tab-list"] button[role="tab"]:focus-visible {
+    outline: 2px solid #2563EB !important;
+    outline-offset: 2px !important;
+}
+
+/* 6. Tab Panel & Unified Section Header Styling */
+div[data-testid="stTabs"] [data-baseweb="tab-panel"] {
+    padding-top: 0.35rem !important;
+}
+
+.tg-section-header,
+div[data-testid="stTabs"] [data-baseweb="tab-panel"] h3 {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-size: 1.18rem !important;
+    font-weight: 800 !important;
+    color: #0F172A !important;
+    letter-spacing: -0.02em !important;
+    padding: 0.65rem 1rem !important;
+    margin: 0.25rem 0 0.85rem 0 !important;
+    background: linear-gradient(90deg, #F8FAFC 0%, #FFFFFF 100%) !important;
+    border: 1px solid #E2E8F0 !important;
+    border-left: 4px solid #2563EB !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03) !important;
+}
+
+div[data-testid="stTabs"] [data-baseweb="tab-panel"] h4 {
+    font-size: 0.98rem !important;
+    font-weight: 700 !important;
+    color: #1E293B !important;
+    letter-spacing: -0.01em !important;
+    margin-top: 0.85rem !important;
+    margin-bottom: 0.5rem !important;
+    padding-bottom: 0.35rem !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+}
+
+/* 7. Dark Mode Contrast Protection (Ensures Tab Labels Remain Crisp in Dark Mode) */
+@media (prefers-color-scheme: dark) {
+    div[data-testid="stTabs"] [data-baseweb="tab-list"],
+    div[data-baseweb="tab-list"] {
+        background: #FFFFFF !important;
+        border-color: #CBD5E1 !important;
+    }
+    div[data-baseweb="tab-list"] button[role="tab"]:not([aria-selected="true"]),
+    div[data-baseweb="tab-list"] button[role="tab"]:not([aria-selected="true"]) p,
+    div[data-baseweb="tab-list"] button[role="tab"]:not([aria-selected="true"]) span {
+        opacity: 1 !important;
+    }
+    div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"],
+    div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] p,
+    div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] span {
+        color: #FFFFFF !important;
+    }
+}
+
+/* 8. Responsive Layout: Tablet (769px - 1024px) */
+@media (max-width: 1024px) {
+    div[data-testid="stTabs"] [data-baseweb="tab-list"],
+    div[data-baseweb="tab-list"] {
+        gap: 8px !important;
+        padding: 8px 10px !important;
+        border-radius: 14px !important;
+    }
+    div[data-testid="stTabs"] button[role="tab"],
+    div[data-testid="stTabs"] [data-baseweb="tab"],
+    div[data-baseweb="tab-list"] button[role="tab"] {
+        min-height: 42px !important;
+        height: 42px !important;
+        padding: 0 14px !important;
+        font-size: 0.84rem !important;
+        border-radius: 10px !important;
+    }
+}
+
+/* 9. Responsive Layout: Mobile (<= 768px) */
+@media (max-width: 768px) {
+    div[data-testid="stTabs"] [data-baseweb="tab-list"],
+    div[data-baseweb="tab-list"] {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 8px !important;
+        padding: 8px !important;
+        border-radius: 12px !important;
+    }
+    div[data-testid="stTabs"] [data-baseweb="tab-list"]::-webkit-scrollbar,
+    div[data-baseweb="tab-list"]::-webkit-scrollbar {
+        display: none !important;
+    }
+    div[data-testid="stTabs"] button[role="tab"],
+    div[data-testid="stTabs"] [data-baseweb="tab"],
+    div[data-baseweb="tab-list"] button[role="tab"] {
+        flex-shrink: 0 !important;
+        min-height: 40px !important;
+        height: 40px !important;
+        padding: 0 13px !important;
+        font-size: 0.82rem !important;
+        border-radius: 10px !important;
+    }
+    div[data-testid="stTabs"] [data-baseweb="tab-panel"] h3 {
+        font-size: 1.04rem !important;
+        padding: 0.55rem 0.8rem !important;
+    }
 }
