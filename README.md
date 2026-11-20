@@ -1,5 +1,9 @@
 # Talent Growth — Talent Management & Career Growth Platform
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.40%2B-FF4B4B.svg)](https://streamlit.io/)
+
 Talent Growth is a modern, enterprise-ready Python Streamlit application for **Employee Performance Management, Workforce Competency Tracking, Skill Gap Analysis, and Career Goal Development**. Built with a local-first SQLite persistence architecture, it provides role-based access control (RBAC) for both **HR Administrators** and **Employees**.
 
 ---
@@ -175,4 +179,11 @@ Talent Growth is configured for **24/7 continuous uptime** without inactivity sl
   python scripts/db_backup.py --backup
   python scripts/db_backup.py --list
   ```
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
 

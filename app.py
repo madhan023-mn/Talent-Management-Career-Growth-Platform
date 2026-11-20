@@ -1213,7 +1213,7 @@ def landing_webpage():
                 <span>Security &amp; Governance</span>
                 <span>Role Benchmarks</span>
                 <span>Enterprise Relational DB</span>
-                <span>GDPR &amp; SOC2 Aligned</span>
+                <span>MIT Licensed</span>
             </div>
         </div>
         """
@@ -2630,6 +2630,15 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
             st.session_state.page_to_navigate = "Dashboard"
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div style="text-align: center; font-size: 0.74rem; color: #64748B; margin-top: 1.15rem; line-height: 1.4;">
+                Talent Growth Platform &bull; v2.0<br/>
+                Licensed under the <span style="color: #94A3B8; font-weight: 600;">MIT License</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         return selected_nav
 
