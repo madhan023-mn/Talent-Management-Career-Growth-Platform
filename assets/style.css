@@ -268,11 +268,13 @@ code, kbd, samp, pre {
 .kpi-bubble-purple { background: #F5F3FF; color: #8B5CF6; }
 .kpi-bubble-orange { background: #FFF7ED; color: #F97316; }
 
-/* Vibrant Solid KPI Cards (Matching Image 1) */
+/* ==============================================================================
+   MODERN ENTERPRISE SAAS KPI CARDS (CLEAN WHITE SURFACE + PASTEL ACCENT ICONS)
+   ============================================================================== */
 .kpi-row-grid-vibrant {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1.15rem;
+    gap: 1.25rem;
     margin-bottom: 1.5rem;
 }
 @media (max-width: 900px) {
@@ -280,74 +282,99 @@ code, kbd, samp, pre {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+@media (max-width: 600px) {
+    .kpi-row-grid-vibrant {
+        grid-template-columns: 1fr;
+    }
+}
 .kpi-card-vibrant {
-    border-radius: 14px;
-    padding: 1.35rem 1.45rem;
-    color: #FFFFFF;
-    display: flex;
-    align-items: center;
-    gap: 1.15rem;
-    box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.08);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 1.25rem 1.4rem !important;
+    color: #0F172A !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 1.15rem !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 4px 12px -2px rgba(15, 23, 42, 0.03) !important;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease !important;
+    position: relative !important;
+    overflow: hidden !important;
 }
 .kpi-card-vibrant:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 22px -3px rgba(0, 0, 0, 0.16);
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 24px -4px rgba(15, 23, 42, 0.09) !important;
+    border-color: #CBD5E1 !important;
 }
 .kpi-vibrant-blue {
-    background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 50%, #3B82F6 100%) !important;
-    border: 1px solid rgba(59, 130, 246, 0.45) !important;
-    box-shadow: 0 8px 24px -4px rgba(37, 99, 235, 0.42) !important;
+    border-left: 4px solid #2563EB !important;
+}
+.kpi-vibrant-blue .kpi-vibrant-icon {
+    background: #EFF6FF !important;
+    border: 1px solid #DBEAFE !important;
+    color: #2563EB !important;
 }
 .kpi-vibrant-green {
-    background: linear-gradient(135deg, #0F766E 0%, #0D9488 50%, #14B8A6 100%) !important;
-    border: 1px solid rgba(20, 184, 166, 0.45) !important;
-    box-shadow: 0 8px 24px -4px rgba(13, 148, 136, 0.42) !important;
+    border-left: 4px solid #10B981 !important;
+}
+.kpi-vibrant-green .kpi-vibrant-icon {
+    background: #ECFDF5 !important;
+    border: 1px solid #A7F3D0 !important;
+    color: #059669 !important;
 }
 .kpi-vibrant-purple {
-    background: linear-gradient(135deg, #6D28D9 0%, #7C3AED 50%, #8B5CF6 100%) !important;
-    border: 1px solid rgba(139, 92, 246, 0.45) !important;
-    box-shadow: 0 8px 24px -4px rgba(124, 58, 237, 0.45) !important;
+    border-left: 4px solid #8B5CF6 !important;
+}
+.kpi-vibrant-purple .kpi-vibrant-icon {
+    background: #F5F3FF !important;
+    border: 1px solid #DDD6FE !important;
+    color: #7C3AED !important;
 }
 .kpi-vibrant-orange {
-    background: linear-gradient(135deg, #E11D48 0%, #F43F5E 50%, #F97316 100%) !important;
-    border: 1px solid rgba(244, 63, 94, 0.45) !important;
-    box-shadow: 0 8px 24px -4px rgba(244, 63, 94, 0.42) !important;
+    border-left: 4px solid #F59E0B !important;
+}
+.kpi-vibrant-orange .kpi-vibrant-icon {
+    background: #FFFBEB !important;
+    border: 1px solid #FDE68A !important;
+    color: #D97706 !important;
 }
 
 .kpi-vibrant-icon {
-    width: 52px;
-    height: 52px;
+    width: 48px;
+    height: 48px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.18);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    transition: transform 0.2s ease;
+}
+.kpi-card-vibrant:hover .kpi-vibrant-icon {
+    transform: scale(1.06);
 }
 .kpi-vibrant-title {
-    font-size: 0.82rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: rgba(255, 255, 255, 0.9);
-    margin-bottom: 2px;
+    font-size: 0.76rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: #64748B !important;
+    margin-bottom: 2px !important;
 }
 .kpi-vibrant-number {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #FFFFFF;
-    line-height: 1.15;
+    font-size: 1.85rem !important;
+    font-weight: 800 !important;
+    color: #0F172A !important;
+    line-height: 1.15 !important;
+    letter-spacing: -0.02em !important;
 }
 .kpi-vibrant-sub {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.88);
-    margin-top: 3px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    font-size: 0.78rem !important;
+    font-weight: 500 !important;
+    color: #64748B !important;
+    margin-top: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
 }
 
 /* Pending Reviews List Item (Matching Image 1) */
@@ -710,13 +737,55 @@ button[kind="secondary"]:hover {
     background-color: #F8FAFC !important;
 }
 
-/* Container border card */
-div[data-testid="stVerticalBlock"] > div[data-testid="stContainer"] {
-    background-color: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    border-radius: 14px;
-    padding: 1.25rem;
-    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04);
+/* Container border card & Modern Enterprise Elevation */
+div[data-testid="stVerticalBlock"] > div[data-testid="stContainer"],
+.card,
+.panel-card,
+.dashboard-card,
+.section-container,
+div[data-testid="stForm"] {
+    background-color: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 1.25rem !important;
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.02) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Modern Enterprise Expanders */
+div[data-testid="stExpander"] {
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+    margin: 0.85rem 0 !important;
+    overflow: hidden !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+div[data-testid="stExpander"]:hover {
+    border-color: #CBD5E1 !important;
+    box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.07) !important;
+}
+div[data-testid="stExpander"] details summary {
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    color: #1E293B !important;
+    padding: 12px 18px !important;
+}
+div[data-testid="stExpander"] details summary:hover {
+    color: #2563EB !important;
+    background: #F8FAFC !important;
+}
+
+/* Modern Enterprise Alerts */
+div[data-testid="stAlert"] {
+    border-radius: 10px !important;
+    padding: 12px 16px !important;
+    font-size: 0.88rem !important;
+    font-weight: 500 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    border-width: 1px !important;
+    border-style: solid !important;
 }
 
 /* Landing Webpage Hero Banner */
@@ -2693,15 +2762,26 @@ div[data-testid="stTabs"] [role="tablist"]::-webkit-scrollbar-thumb {
 /* Remove old blue moving underline, track border, and selection indicator completely */
 .stTabs [role="tablist"]::after,
 div[data-testid="stTabs"] [role="tablist"]::after,
+[role="tablist"]::after,
 .stTabs .react-aria-SelectionIndicator,
 div[data-testid="stTabs"] .react-aria-SelectionIndicator,
+[data-testid="stTab"] .react-aria-SelectionIndicator,
+[role="tab"] .react-aria-SelectionIndicator,
+.react-aria-SelectionIndicator,
 div[data-testid="stTabs"] [data-baseweb="tab-border"],
-div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+[data-baseweb="tab-border"],
+[data-baseweb="tab-highlight"],
+.stTabs [role="tablist"] > div:last-child:not([role="tab"]),
+div[data-testid="stTabs"] [role="tablist"] > div:last-child:not([role="tab"]) {
     display: none !important;
     height: 0 !important;
     width: 0 !important;
     opacity: 0 !important;
+    visibility: hidden !important;
     background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 /* 2. Individual Rounded Rectangular Tab Box (Compact Proportions) */
@@ -2867,7 +2947,15 @@ div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] {
 .stTabs [role="tablist"] > [role="tab"][data-selected] *,
 div[data-testid="stTabs"] [data-testid="stTab"][aria-selected="true"] *,
 div[data-testid="stTabs"] [data-testid="stTab"][data-selected] *,
-div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] * {
+div[data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"] *,
+[role="tab"][aria-selected="true"] p,
+[role="tab"][data-selected] p,
+[data-testid="stTab"][aria-selected="true"] p,
+[data-testid="stTab"][data-selected] p,
+[role="tab"][aria-selected="true"] span,
+[role="tab"][data-selected] span,
+[data-testid="stTab"][aria-selected="true"] span,
+[data-testid="stTab"][data-selected] span {
     color: #FFFFFF !important;
     font-weight: 700 !important;
 }

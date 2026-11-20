@@ -205,7 +205,7 @@ except Exception as _ai_err:
     st.code(traceback.format_exc(), language="python")
     st.stop()
 
-from style import load_css
+from style import load_css, apply_saas_chart_theme
 
 # Vercel serverless entrypoint compatibility
 def handler(environ=None, start_response=None):
@@ -2567,6 +2567,38 @@ section[data-testid="stSidebar"] .sidebar-signout-btn button * {
     color: #1E293B !important;
     font-weight: 700 !important;
 }
+
+/* Sidebar Material Icons & Typography */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label .material-symbols-rounded {
+    font-size: 20px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-right: 10px !important;
+    vertical-align: middle !important;
+    color: #94A3B8 !important;
+    transition: all 0.15s ease !important;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover .material-symbols-rounded {
+    color: #FFFFFF !important;
+    transform: scale(1.08) !important;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"] span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] [data-selected="true"] label span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] .material-symbols-rounded,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) .material-symbols-rounded,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"] .material-symbols-rounded,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] [data-selected="true"] label .material-symbols-rounded {
+    color: #FFFFFF !important;
+    transform: scale(1.05) !important;
+}
 </style>
 """
 st.markdown(sidebar_dynamic_css, unsafe_allow_html=True)
@@ -2574,40 +2606,52 @@ st.markdown(sidebar_dynamic_css, unsafe_allow_html=True)
 # ------------------------------------------------------------------------------
 # REUSABLE SIDEBAR COMPONENT (HR ADMINISTRATOR & EMPLOYEE)
 # ------------------------------------------------------------------------------
+_NAV_PAGE_ICONS = {
+    "Dashboard": ":material/dashboard:  Dashboard",
+    "Employees": ":material/badge:  Employees",
+    "Performance": ":material/insights:  Performance",
+    "Skills & Assessment": ":material/psychology:  Skills & Assessment",
+    "Career Goals": ":material/flag:  Career Goals",
+    "Reports": ":material/analytics:  Reports",
+    "Resume Studio": ":material/description:  Resume Studio",
+    "Settings": ":material/settings:  Settings",
+    "My Profile": ":material/person:  My Profile",
+    "Career Direction": ":material/explore:  Career Direction",
+    "Role Match & Gaps": ":material/compare_arrows:  Role Match & Gaps",
+    "Career Coach": ":material/smart_toy:  Career Coach",
+    "Growth Progress": ":material/trending_up:  Growth Progress",
+    "Career Report": ":material/assessment:  Career Report",
+    "Join an Organization": ":material/corporate_fare:  Join an Organization",
+}
+
 def nav_format(page_name: str) -> str:
-    """Clean page title formatted with circular dot matching Image 1."""
-    return page_name
+    """Enterprise page title formatted with crisp Material Icon."""
+    return _NAV_PAGE_ICONS.get(page_name, page_name)
 
 def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
-    """Renders the sidebar component matching Image 1 exactly."""
+    """Renders the modernized Enterprise SaaS sidebar."""
     with st.sidebar:
-        # 1. Branding Header Row: Swirl Logo + Talent Growth (Single Toggle Button is in stSidebarHeader)
+        # 1. Branding Header Row: Swirl Logo + Talent Growth + Version Pill
         st.markdown(
             f"""
-            <div style="display: flex; align-items: center; gap: 12px; padding: 2px 0 10px 0;">
-                {get_svg_icon("brand_logo", size=32)}
-                <div style="display: flex; flex-direction: column; line-height: 1.15;">
-                    <span style="font-weight: 800; font-size: 1.18rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent</span>
-                    <span style="font-weight: 800; font-size: 1.18rem; color: #FFFFFF; letter-spacing: -0.01em;">Growth</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    {get_svg_icon("brand_logo", size=32)}
+                    <div style="display: flex; flex-direction: column; line-height: 1.15;">
+                        <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
+                        <span style="font-size: 0.72rem; font-weight: 600; color: #38BDF8; letter-spacing: 0.02em;">Enterprise SaaS</span>
+                    </div>
                 </div>
+                <span style="font-size: 0.68rem; font-weight: 700; background: rgba(37, 99, 235, 0.25); border: 1px solid rgba(59, 130, 246, 0.4); color: #93C5FD; padding: 2px 7px; border-radius: 9999px;">v2.0</span>
+            </div>
+            <div style="font-size: 0.70rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.08em; padding: 14px 2px 6px 2px;">
+                Platform Navigation
             </div>
             """,
             unsafe_allow_html=True
         )
 
-        # 2. Signed-in User Info & Role Subtitle matching Image 1
-        role_title = "Individual Professional" if is_individual else ("HR Administrator" if is_admin else "Employee")
-        user_name = user.get('name', 'User')
-        st.markdown(
-            f"""
-            <div style="font-size: 0.83rem; color: #94A3B8; margin-top: 1rem; margin-bottom: 0.5rem; padding-left: 2px;">
-                Signed in as <strong style="color: #FFFFFF;">{user_name}</strong> &bull; {role_title}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        # 3. Radio Navigation Rows matching Image 1
+        # 2. Radio Navigation Rows with Material Icons
         selected_nav = st.radio(
             "Navigation",
             active_pages,
@@ -2618,12 +2662,45 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
         )
         st.session_state.current_page = selected_nav
 
-        # 4. Spacing to bottom
-        st.markdown("<div style='margin-top: 2.2rem;'></div>", unsafe_allow_html=True)
+        # 3. Spacing to user card
+        st.markdown("<div style='margin-top: 1.8rem;'></div>", unsafe_allow_html=True)
+
+        # 4. User Profile Section at Bottom
+        role_title = "Individual" if is_individual else ("HR Administrator" if is_admin else "Employee")
+        role_color = "#10B981" if is_individual else ("#6366F1" if is_admin else "#2563EB")
+        role_bg = "rgba(16, 185, 129, 0.15)" if is_individual else ("rgba(99, 102, 241, 0.15)" if is_admin else "rgba(37, 99, 235, 0.15)")
+        role_border = "rgba(16, 185, 129, 0.3)" if is_individual else ("rgba(99, 102, 241, 0.3)" if is_admin else "rgba(37, 99, 235, 0.3)")
+        user_name = user.get('name', 'User')
+        user_initial = (user_name[:1] if user_name else "U").upper()
+        org_title = user.get("org_name", "") or ("Personal Workspace" if is_individual else "Enterprise Workspace")
+
+        st.markdown(
+            f"""
+            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <div style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #FFFFFF; font-weight: 800; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1.5px solid rgba(255, 255, 255, 0.25); box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);">
+                    {user_initial}
+                </div>
+                <div style="display: flex; flex-direction: column; overflow: hidden; min-width: 0; flex: 1;">
+                    <span style="font-weight: 700; font-size: 0.86rem; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {user_name}
+                    </span>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                        <span style="font-size: 0.68rem; font-weight: 700; color: {role_color}; background: {role_bg}; border: 1px solid {role_border}; padding: 1px 6px; border-radius: 4px;">
+                            {role_title}
+                        </span>
+                        <span style="font-size: 0.70rem; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {org_title[:14]}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         # 5. Bottom Action: White Sign out button matching Image 1
         st.markdown('<div class="sidebar-signout-btn">', unsafe_allow_html=True)
-        if st.button("Sign out", use_container_width=True, type="secondary", key="btn_sidebar_sign_out"):
+        if st.button("Sign out", icon=":material/logout:", use_container_width=True, type="secondary", key="btn_sidebar_sign_out"):
             st.session_state.user = None
             st.session_state.auth_view = "landing"
             st.session_state.current_page = "Dashboard"
@@ -2656,7 +2733,7 @@ def analysis_bundle():
 # ------------------------------------------------------------------------------
 col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
 with col_top_home:
-    if st.button("← Back to Home", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+    if st.button("← Back to Home", icon=":material/home:", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
         navigate_to("Dashboard")
 
 with col_top_trail:
@@ -2672,15 +2749,15 @@ with col_top_trail:
                 {get_svg_icon('home', size=13, color='#64748B')} {breadcrumb_trail}
             </span>
             <span style="color: #CBD5E1;">|</span>
-            <span style="display: inline-flex; align-items: center; gap: 6px; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 3px 10px; border-radius: 9999px;">
+            <span style="display: inline-flex; align-items: center; gap: 6px; background: #FFFFFF; border: 1px solid #E2E8F0; padding: 4px 11px; border-radius: 9999px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
                 {get_svg_icon("user", size=13, color="#475569")}
-                <strong>{user.get('name', 'User')}</strong> &bull; {role_label}
+                <strong style="color: #0F172A;">{user.get('name', 'User')}</strong> &bull; <span style="font-size: 0.70rem; font-weight: 700; color: #2563EB;">{role_label}</span>
             </span>
-            <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #F1F5F9; border: 1px solid #E2E8F0; color: #64748B; position: relative;">
+            <span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #FFFFFF; border: 1px solid #E2E8F0; color: #64748B; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
                 {get_svg_icon("bell", size=14, color="#64748B")}
-                <span style="position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: #10B981;"></span>
+                <span style="position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: #10B981;"></span>
             </span>
-            <span style="color: {badge_color}; font-weight: 700; background: {badge_bg}; border: 1px solid {badge_border}; padding: 3px 10px; border-radius: 9999px;">{page}</span>
+            <span style="color: {badge_color}; font-weight: 700; background: {badge_bg}; border: 1px solid {badge_border}; padding: 4px 11px; border-radius: 9999px;">{page}</span>
         </div>
         """
     )
@@ -2872,55 +2949,55 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
         """
     )
 
-    # Row of 4 Solid Vibrant KPI Cards matching Organization Scope
+    # Row of 4 Modern Enterprise KPI Cards
     render_html(
         f"""
         <div class="kpi-row-grid-vibrant">
             <div class="kpi-card-vibrant kpi-vibrant-blue">
                 <div class="kpi-vibrant-icon">
-                    {get_svg_icon("employees", size=26, color="#FFFFFF")}
+                    {get_svg_icon("employees", size=24, color="#2563EB")}
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Organization Workforce</div>
                     <div class="kpi-vibrant-number">{total_emp_count}</div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("building", size=13, color="#FFFFFF")} {org_display_name} ({org_id})
+                        {get_svg_icon("building", size=13, color="#64748B")} <span style="color: #0F172A; font-weight: 600;">{org_display_name}</span> ({org_id})
                     </div>
                 </div>
             </div>
             <div class="kpi-card-vibrant kpi-vibrant-green">
                 <div class="kpi-vibrant-icon">
-                    {get_svg_icon("building", size=26, color="#FFFFFF")}
+                    {get_svg_icon("building", size=24, color="#10B981")}
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Departments</div>
                     <div class="kpi-vibrant-number">{dept_count}</div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} Active divisions
+                        {get_svg_icon("trending_up", size=13, color="#10B981")} <span style="color: #059669; font-weight: 600;">Active divisions</span>
                     </div>
                 </div>
             </div>
             <div class="kpi-card-vibrant kpi-vibrant-purple">
                 <div class="kpi-vibrant-icon">
-                    {get_svg_icon("star", size=26, color="#FFFFFF")}
+                    {get_svg_icon("star", size=24, color="#8B5CF6")}
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Avg Performance</div>
-                    <div class="kpi-vibrant-number">{avg_perf} / 5.0</div>
+                    <div class="kpi-vibrant-number">{avg_perf} <span style="font-size: 1.1rem; color: #94A3B8; font-weight: 600;">/ 5.0</span></div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} Evaluated staff
+                        {get_svg_icon("trending_up", size=13, color="#8B5CF6")} <span style="color: #7C3AED; font-weight: 600;">Evaluated staff</span>
                     </div>
                 </div>
             </div>
             <div class="kpi-card-vibrant kpi-vibrant-orange">
                 <div class="kpi-vibrant-icon">
-                    {get_svg_icon("goals", size=26, color="#FFFFFF")}
+                    {get_svg_icon("goals", size=24, color="#F59E0B")}
                 </div>
                 <div>
-                    <div class="kpi-vibrant-title">Skills & Goals Rate</div>
+                    <div class="kpi-vibrant-title">Skills &amp; Goals Rate</div>
                     <div class="kpi-vibrant-number">{assessment_completion_pct}%</div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("check", size=13, color="#FFFFFF")} {goal_completion_pct}% goals achieved
+                        {get_svg_icon("check", size=13, color="#F59E0B")} <span style="color: #D97706; font-weight: 600;">{goal_completion_pct}% goals achieved</span>
                     </div>
                 </div>
             </div>
@@ -2931,16 +3008,16 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
     # Interactive Quick Actions Bar
     col_qa1, col_qa2, col_qa3, col_qa4 = st.columns(4)
     with col_qa1:
-        if st.button("Add Employee", key="qa_bar_add_emp", use_container_width=True, type="primary"):
+        if st.button("Add Employee", icon=":material/person_add:", key="qa_bar_add_emp", use_container_width=True, type="primary"):
             navigate_to("Employees")
     with col_qa2:
-        if st.button("Record Review", key="qa_bar_rec_rev", use_container_width=True):
+        if st.button("Record Review", icon=":material/rate_review:", key="qa_bar_rec_rev", use_container_width=True):
             navigate_to("Performance")
     with col_qa3:
-        if st.button("Add Skill", key="qa_bar_add_skill", use_container_width=True):
-            navigate_to("Skills")
+        if st.button("Add Skill", icon=":material/psychology:", key="qa_bar_add_skill", use_container_width=True):
+            navigate_to("Skills & Assessment")
     with col_qa4:
-        if st.button("Set Career Goal", key="qa_bar_set_goal", use_container_width=True):
+        if st.button("Set Career Goal", icon=":material/flag:", key="qa_bar_set_goal", use_container_width=True):
             navigate_to("Career Goals")
 
     st.markdown("<div style='margin-bottom: 1.15rem;'></div>", unsafe_allow_html=True)
@@ -2983,14 +3060,7 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                 textposition='auto',
                 hovertemplate="<b>%{x}</b><br>Reviews Count: <b>%{y}</b><extra></extra>"
             ))
-            fig_bar.update_layout(
-                margin=dict(l=15, r=15, t=15, b=15),
-                height=280,
-                plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)",
-                xaxis=dict(gridcolor="#F1F5F9", showgrid=False, tickfont=dict(color="#475569", size=11)),
-                yaxis=dict(gridcolor="#F1F5F9", showgrid=True, dtick=1, tickfont=dict(color="#64748B", size=12))
-            )
+            fig_bar = apply_saas_chart_theme(fig_bar, height=280)
             st.plotly_chart(fig_bar, use_container_width=True)
 
     with col_chart2:
@@ -3009,17 +3079,15 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                 df_dept = pd.DataFrame(dept_dist)
                 fig_donut = px.pie(
                     df_dept, values="count", names="department", hole=0.64,
-                    color_discrete_sequence=['#7C3AED', '#2563EB', '#0D9488', '#F43F5E', '#F97316', '#8B5CF6', '#06B6D4']
+                    color_discrete_sequence=['#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#06B6D4', '#EC4899', '#3B82F6']
                 )
                 fig_donut.update_traces(
                     textinfo='none',
                     hoverinfo='label+percent',
                     hovertemplate="<b>%{label}</b><br>Personnel: <b>%{value}</b> (%{percent})<extra></extra>"
                 )
+                fig_donut = apply_saas_chart_theme(fig_donut, height=280)
                 fig_donut.update_layout(
-                    margin=dict(l=10, r=10, t=10, b=10),
-                    height=280,
-                    showlegend=True,
                     legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02, font=dict(size=11, color="#334155")),
                     annotations=[dict(
                         text=f"<b>{total_emp_count}</b><br><span style='font-size:12px;color:#64748B;'>Employees</span>",
@@ -3206,52 +3274,52 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
             <!-- Profile Completion -->
             <div class="kpi-card-vibrant kpi-vibrant-blue">
                 <div class="kpi-vibrant-icon">
-                    {get_svg_icon("user", size=26, color="#FFFFFF")}
+                    {get_svg_icon("user", size=24, color="#2563EB")}
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Profile Completion</div>
                     <div class="kpi-vibrant-number">{completion}%</div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("check", size=13, color="#FFFFFF")} {comp_sub}
+                        {get_svg_icon("check", size=13, color="#2563EB")} <span style="color: #2563EB; font-weight: 600;">{comp_sub}</span>
                     </div>
                 </div>
             </div>
             <!-- Profile Strength -->
             <div class="kpi-card-vibrant kpi-vibrant-green">
                 <div class="kpi-vibrant-icon">
-                    {get_svg_icon("trending_up", size=26, color="#FFFFFF")}
+                    {get_svg_icon("trending_up", size=24, color="#10B981")}
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Profile Strength</div>
-                    <div class="kpi-vibrant-number">{strength_score} / 100</div>
+                    <div class="kpi-vibrant-number">{strength_score} <span style="font-size: 1.1rem; color: #94A3B8; font-weight: 600;">/ 100</span></div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("trending_up", size=13, color="#FFFFFF")} {strength_sub}
+                        {get_svg_icon("trending_up", size=13, color="#10B981")} <span style="color: #059669; font-weight: 600;">{strength_sub}</span>
                     </div>
                 </div>
             </div>
             <!-- Target Role Match -->
             <div class="kpi-card-vibrant kpi-vibrant-purple">
                 <div class="kpi-vibrant-icon">
-                    {get_svg_icon("target", size=26, color="#FFFFFF")}
+                    {get_svg_icon("target", size=24, color="#8B5CF6")}
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Target Role Match</div>
                     <div class="kpi-vibrant-number">{match_pct}%</div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("sparkles", size=13, color="#FFFFFF")} vs {target_role_str[:16]}
+                        {get_svg_icon("sparkles", size=13, color="#8B5CF6")} <span style="color: #7C3AED; font-weight: 600;">vs {target_role_str[:16]}</span>
                     </div>
                 </div>
             </div>
             <!-- Verified Competencies -->
             <div class="kpi-card-vibrant kpi-vibrant-orange">
                 <div class="kpi-vibrant-icon">
-                    {get_svg_icon("star", size=26, color="#FFFFFF")}
+                    {get_svg_icon("star", size=24, color="#F59E0B")}
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Skills Recorded</div>
                     <div class="kpi-vibrant-number">{skills_cnt}</div>
                     <div class="kpi-vibrant-sub">
-                        {get_svg_icon("check", size=13, color="#FFFFFF")} {skills_sub}
+                        {get_svg_icon("check", size=13, color="#F59E0B")} <span style="color: #D97706; font-weight: 600;">{skills_sub}</span>
                     </div>
                 </div>
             </div>
@@ -3262,16 +3330,16 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
     # 3. Interactive Quick Actions Toolbar
     col_eq1, col_eq2, col_eq3, col_eq4 = st.columns(4)
     with col_eq1:
-        if st.button("Resume Studio", key="emp_bar_resume", use_container_width=True, type="primary"):
+        if st.button("Resume Studio", icon=":material/description:", key="emp_bar_resume", use_container_width=True, type="primary"):
             navigate_to("Resume Studio")
     with col_eq2:
-        if st.button("Skills & Assessment", key="emp_bar_skills", use_container_width=True):
+        if st.button("Skills & Assessment", icon=":material/psychology:", key="emp_bar_skills", use_container_width=True):
             navigate_to("Skills & Assessment")
     with col_eq3:
-        if st.button("Role Match & Gaps", key="emp_bar_gaps", use_container_width=True):
+        if st.button("Role Match & Gaps", icon=":material/compare_arrows:", key="emp_bar_gaps", use_container_width=True):
             navigate_to("Role Match & Gaps")
     with col_eq4:
-        if st.button("AI Career Coach", key="emp_bar_coach", use_container_width=True):
+        if st.button("AI Career Coach", icon=":material/smart_toy:", key="emp_bar_coach", use_container_width=True):
             navigate_to("Career Coach")
 
     st.markdown("<div style='margin-bottom: 1.35rem;'></div>", unsafe_allow_html=True)
@@ -3355,15 +3423,10 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
                     df_skills, x="name", y="years", color="category",
                     title="Skills & Experience Duration",
                     labels={"name": "", "years": "Years Exp", "category": "Category"},
-                    color_discrete_map={"Technical": "#7C3AED", "Soft Skills": "#0D9488", "Domain": "#F97316", "Cloud & DevOps": "#2563EB", "Tools": "#EC4899"}
+                    color_discrete_map={"Technical": "#2563EB", "Soft Skills": "#10B981", "Domain": "#F59E0B", "Cloud & DevOps": "#8B5CF6", "Tools": "#06B6D4"}
                 )
+                fig_s = apply_saas_chart_theme(fig_s, height=240, title="Skills & Experience Duration")
                 fig_s.update_layout(
-                    margin=dict(l=10, r=10, t=35, b=10),
-                    height=240,
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    yaxis=dict(gridcolor="#F1F5F9", title="Years Exp"),
-                    xaxis=dict(gridcolor="#F1F5F9", title=""),
                     legend=dict(orientation="v", yanchor="top", y=1, xanchor="right", x=1.18, font=dict(size=11, color="#334155"))
                 )
                 st.plotly_chart(fig_s, use_container_width=True)
@@ -4662,14 +4725,8 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                         fillcolor="rgba(37, 99, 235, 0.08)",
                         name="Workforce Avg"
                     ))
-                    fig_trend.update_layout(
-                        height=260,
-                        margin=dict(l=10, r=10, t=10, b=10),
-                        yaxis=dict(range=[1.0, 5.0], gridcolor="#F1F5F9"),
-                        xaxis=dict(gridcolor="#F1F5F9"),
-                        paper_bgcolor="#FFFFFF",
-                        plot_bgcolor="#FFFFFF"
-                    )
+                    fig_trend = apply_saas_chart_theme(fig_trend, height=260)
+                    fig_trend.update_yaxes(range=[1.0, 5.0])
                     st.plotly_chart(fig_trend, use_container_width=True)
             else:
                 st.info("No performance evaluations recorded yet.")
@@ -4909,18 +4966,16 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                             line=dict(color='#10B981', width=2),
                             name='Assessment Score'
                         ))
+                        fig_ass = apply_saas_chart_theme(fig_ass, height=270, show_legend=False)
                         fig_ass.update_layout(
                             polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
-                            showlegend=False,
-                            height=270,
-                            margin=dict(l=25, r=25, t=25, b=25),
-                            paper_bgcolor="#FFFFFF"
+                            margin=dict(l=25, r=25, t=25, b=25)
                         )
                         st.plotly_chart(fig_ass, use_container_width=True)
                     else:
                         df_ass_chart = pd.DataFrame({"Capability": chart_skills, "Score": chart_scores})
                         fig_bar_ass = px.bar(df_ass_chart, x="Capability", y="Score", range_y=[0, 100], color_discrete_sequence=["#10B981"])
-                        fig_bar_ass.update_layout(height=240, margin=dict(l=10, r=10, t=10, b=10))
+                        fig_bar_ass = apply_saas_chart_theme(fig_bar_ass, height=240, show_legend=False)
                         st.plotly_chart(fig_bar_ass, use_container_width=True)
                 else:
                     st.info("No assessment scores logged yet. Complete the form to start your assessment baseline.")
@@ -5342,14 +5397,12 @@ elif page in ["Role Match & Gaps", "Role Match & Competency Gaps", "Competency G
                 name='Target Benchmark',
                 line=dict(color='#10B981', width=2, dash='dot')
             ))
+            fig_radar = apply_saas_chart_theme(fig_radar, height=290)
             fig_radar.update_layout(
                 polar=dict(
                     radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
                 ),
-                showlegend=True,
-                height=290,
-                margin=dict(l=25, r=25, t=25, b=25),
-                paper_bgcolor="#FFFFFF"
+                margin=dict(l=25, r=25, t=25, b=25)
             )
             st.plotly_chart(fig_radar, use_container_width=True)
 
@@ -5918,7 +5971,7 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                         title="Skill Portfolio by Proficiency Level",
                         color_discrete_map={"Beginner": "#93C5FD", "Intermediate": "#3B82F6", "Advanced": "#1D4ED8", "Expert": "#1E3A8A"}
                     )
-                    fig_ind_dist.update_layout(height=280, margin=dict(l=10, r=10, t=35, b=10), showlegend=False)
+                    fig_ind_dist = apply_saas_chart_theme(fig_ind_dist, height=280, title="Skill Portfolio by Proficiency Level", show_legend=False)
                     st.plotly_chart(fig_ind_dist, use_container_width=True)
                 else:
                     st.info("Add your skills to see proficiency distribution charts.")
@@ -5932,7 +5985,7 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                         g_counts, values="Count", names="Status", title="Career Goals Completion Status",
                         hole=0.35, color_discrete_sequence=['#10B981', '#F59E0B', '#EF4444', '#64748B']
                     )
-                    fig_g.update_layout(height=280, margin=dict(l=10, r=10, t=35, b=10))
+                    fig_g = apply_saas_chart_theme(fig_g, height=280, title="Career Goals Completion Status")
                     st.plotly_chart(fig_g, use_container_width=True)
                 else:
                     st.info("Set your first career goal to visualize milestone tracking.")
@@ -5956,7 +6009,7 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                         df_status, values="Count", names="Status", title="Employment Status Distribution",
                         hole=0.35, color_discrete_sequence=['#10B981', '#F59E0B', '#64748B']
                     )
-                    fig_st.update_layout(margin=dict(l=10, r=10, t=35, b=10), height=300)
+                    fig_st = apply_saas_chart_theme(fig_st, height=300, title="Employment Status Distribution")
                     st.plotly_chart(fig_st, use_container_width=True)
                 with c_p2:
                     if reviews:
@@ -5966,7 +6019,7 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                             labels={"performance_score": "Rating (1-5)", "department": "Department"},
                             color_discrete_sequence=['#2563EB', '#10B981', '#F59E0B']
                         )
-                        fig_scat.update_layout(margin=dict(l=10, r=10, t=35, b=10), height=300)
+                        fig_scat = apply_saas_chart_theme(fig_scat, height=300, title="Performance Ratings across Departments")
                         st.plotly_chart(fig_scat, use_container_width=True)
 
     with tab_rep_csv:

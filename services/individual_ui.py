@@ -94,49 +94,49 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
         <div class="kpi-row-grid-vibrant" style="margin-bottom: 1.5rem;">
             <div class="kpi-card-vibrant kpi-vibrant-blue">
                 <div class="kpi-vibrant-icon">
-                    {_get_svg_icon("briefcase", size=26, color="#FFFFFF")}
+                    {_get_svg_icon("briefcase", size=24, color="#2563EB")}
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Total Skills Added</div>
                     <div class="kpi-vibrant-number">{stats.get('total_skills', 0)}</div>
                     <div class="kpi-vibrant-sub">
-                        {_get_svg_icon("sparkles", size=13, color="#FFFFFF")} Self-reported portfolio
+                        {_get_svg_icon("sparkles", size=13, color="#2563EB")} <span style="color: #2563EB; font-weight: 600;">Self-reported portfolio</span>
                     </div>
                 </div>
             </div>
             <div class="kpi-card-vibrant kpi-vibrant-green">
                 <div class="kpi-vibrant-icon">
-                    {_get_svg_icon("award", size=26, color="#FFFFFF")}
+                    {_get_svg_icon("award", size=24, color="#10B981")}
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Completed Assessments</div>
                     <div class="kpi-vibrant-number">{stats.get('completed_assessments', 0)}</div>
                     <div class="kpi-vibrant-sub">
-                        {_get_svg_icon("check", size=13, color="#FFFFFF")} Standardized MCQ evals
+                        {_get_svg_icon("check", size=13, color="#10B981")} <span style="color: #059669; font-weight: 600;">Standardized MCQ evals</span>
                     </div>
                 </div>
             </div>
             <div class="kpi-card-vibrant kpi-vibrant-purple">
                 <div class="kpi-vibrant-icon">
-                    {_get_svg_icon("trending_up", size=26, color="#FFFFFF")}
+                    {_get_svg_icon("trending_up", size=24, color="#8B5CF6")}
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Average Assessment Score</div>
                     <div class="kpi-vibrant-number">{avg_score_text}</div>
                     <div class="kpi-vibrant-sub">
-                        {_get_svg_icon("trending_up", size=13, color="#FFFFFF")} {avg_score_sub}
+                        {_get_svg_icon("trending_up", size=13, color="#8B5CF6")} <span style="color: #7C3AED; font-weight: 600;">{avg_score_sub}</span>
                     </div>
                 </div>
             </div>
             <div class="kpi-card-vibrant kpi-vibrant-orange">
                 <div class="kpi-vibrant-icon">
-                    {_get_svg_icon("target", size=26, color="#FFFFFF")}
+                    {_get_svg_icon("target", size=24, color="#F59E0B")}
                 </div>
                 <div>
                     <div class="kpi-vibrant-title">Career Goals Progress</div>
                     <div class="kpi-vibrant-number">{stats.get('goal_avg_progress', stats.get('career_growth_progress', 0))}%</div>
                     <div class="kpi-vibrant-sub">
-                        {_get_svg_icon("check", size=13, color="#FFFFFF")} {stats.get('completed_goals', 0)} / {stats.get('total_goals', 0)} milestones achieved
+                        {_get_svg_icon("check", size=13, color="#F59E0B")} <span style="color: #D97706; font-weight: 600;">{stats.get('completed_goals', 0)} / {stats.get('total_goals', 0)} milestones achieved</span>
                     </div>
                 </div>
             </div>

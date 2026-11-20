@@ -2,6 +2,7 @@ from __future__ import annotations
 import os
 import base64
 from pathlib import Path
+from typing import Any
 import streamlit as st
 
 # Base directory for the project
@@ -29,6 +30,54 @@ def load_css(custom_path: Path | str | None = None) -> None:
 # Aliases for convenience
 apply_css = load_css
 inject_css = load_css
+
+def apply_saas_chart_theme(fig: Any, height: int | None = None, title: str | None = None, show_legend: bool = True) -> Any:
+    """Applies a clean, modern Enterprise SaaS Plotly visual theme."""
+    if fig is None:
+        return fig
+    layout_update: dict[str, Any] = {
+        "paper_bgcolor": "rgba(0,0,0,0)",
+        "plot_bgcolor": "rgba(0,0,0,0)",
+        "font": {
+            "family": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            "color": "#475569",
+            "size": 12,
+        },
+        "colorway": [
+            "#2563EB", "#10B981", "#8B5CF6", "#F59E0B",
+            "#06B6D4", "#EC4899", "#3B82F6", "#14B8A6"
+        ],
+        "margin": dict(l=15, r=15, t=40 if title else 20, b=20),
+    }
+    if height:
+        layout_update["height"] = height
+    if title:
+        layout_update["title"] = {
+            "text": title,
+            "font": {"size": 14, "color": "#0F172A", "family": "'Inter', sans-serif"},
+            "x": 0.02,
+            "y": 0.98,
+        }
+    if not show_legend:
+        layout_update["showlegend"] = False
+
+    try:
+        fig.update_layout(**layout_update)
+        fig.update_xaxes(
+            gridcolor="#F1F5F9",
+            zerolinecolor="#E2E8F0",
+            tickfont={"size": 11, "color": "#64748B"},
+            showline=False,
+        )
+        fig.update_yaxes(
+            gridcolor="#F1F5F9",
+            zerolinecolor="#E2E8F0",
+            tickfont={"size": 11, "color": "#64748B"},
+            showline=False,
+        )
+    except Exception:
+        pass
+    return fig
 
 # ------------------------------------------------------------------------------
 # CLEAN SVG ICON SYSTEM (Zero Emojis, Crisp Vector Icons via Data URIs)
