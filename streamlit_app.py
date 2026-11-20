@@ -14,8 +14,8 @@ try:
 except Exception:
     pass
 
-# Evict stale cached in-memory services modules during hot reload
-for _m in [m for m in list(sys.modules.keys()) if m.startswith("services")]:
+# Evict stale cached in-memory modules during hot reload
+for _m in [m for m in list(sys.modules.keys()) if m.startswith("services") or m in ("style", "app")]:
     sys.modules.pop(_m, None)
 
 def handler(*args, **kwargs):

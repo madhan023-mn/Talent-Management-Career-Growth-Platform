@@ -31,7 +31,17 @@ from services.settings import (
 from services.core import (
     export_user_data,
 )
-from style import get_svg_icon
+try:
+    from style import get_svg_icon
+except Exception:
+    try:
+        import style
+        import importlib
+        importlib.reload(style)
+        get_svg_icon = getattr(style, "get_svg_icon", lambda name, *a, **k: "")
+    except Exception:
+        def get_svg_icon(name: str, size: int = 18, color: str = "#4F46E5", extra_style: str = "") -> str:
+            return ""
 
 
 def _safe_index(options: List[Any], value: Any, default_idx: int = 0) -> int:

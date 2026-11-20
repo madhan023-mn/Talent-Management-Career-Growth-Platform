@@ -205,7 +205,22 @@ except Exception as _ai_err:
     st.code(traceback.format_exc(), language="python")
     st.stop()
 
-from style import load_css, apply_saas_chart_theme
+# Enterprise styling & modern chart theming with hot-reload resilience
+try:
+    import style
+    import importlib
+    if not hasattr(style, "apply_saas_chart_theme"):
+        importlib.reload(style)
+    load_css = getattr(style, "load_css", lambda *a, **k: None)
+    apply_saas_chart_theme = getattr(style, "apply_saas_chart_theme", lambda fig, *a, **k: fig)
+except Exception:
+    try:
+        from style import load_css
+    except Exception:
+        def load_css(*args, **kwargs):
+            pass
+    def apply_saas_chart_theme(fig, *args, **kwargs):
+        return fig
 
 # Vercel serverless entrypoint compatibility
 def handler(environ=None, start_response=None):
