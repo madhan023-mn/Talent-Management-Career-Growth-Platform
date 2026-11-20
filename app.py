@@ -6771,7 +6771,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
 
             # --- GLOBAL SAVE ACTION BAR ---
             st.markdown("<div style='border-top: 2px solid #E2E8F0; margin: 2rem 0 1.25rem 0;'></div>", unsafe_allow_html=True)
-            col_save_btn, col_cancel_btn, col_save_status = st.columns([3, 2, 4])
+            col_save_btn, col_cancel_btn, _ = st.columns([3, 2, 4])
             with col_save_btn:
                 if st.button("Save All Resume Changes", icon=":material/save:", key="btn_rs_save_all", type="primary", use_container_width=True):
                     ok_save, msg_save = save_resume(active_target_uid, res_data, org_id=org_id)
@@ -6789,9 +6789,6 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                     st.session_state[res_session_key] = get_resume(active_target_uid, org_id=org_id) or {}
                     st.info("Reverted unsaved changes to previously saved database state.")
                     st.rerun()
-            with col_save_status:
-                last_updated = res_data.get("updated_at", "Just now")
-                st.caption(f"Status: Database connected &bull; Last synchronized: {last_updated}")
 
     # ==========================================================================
     # TAB 2: ATS RESUME PREVIEW & PDF EXPORT
