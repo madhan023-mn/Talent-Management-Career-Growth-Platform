@@ -2744,38 +2744,36 @@ def analysis_bundle():
     return result
 
 # ------------------------------------------------------------------------------
-# UNIVERSAL TOP BAR WITH BACK TO HOME & BREADCRUMBS
+# UNIVERSAL TOP BAR WITH USER PROFILE CONTEXT
 # ------------------------------------------------------------------------------
-col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
-with col_top_home:
-    if st.button("← Back to Home", icon=":material/home:", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
-        navigate_to("Dashboard")
+badge_color = "#16A34A" if is_individual else ("#4F46E5" if is_admin else "#2563EB")
+badge_bg = "#F0FDF4" if is_individual else ("#EEF2FF" if is_admin else "#EFF6FF")
+badge_border = "#BBF7D0" if is_individual else ("#C7D2FE" if is_admin else "#BFDBFE")
+role_label = "INDIVIDUAL" if is_individual else (user.get('role', 'employee').upper())
 
-with col_top_trail:
-    badge_color = "#16A34A" if is_individual else ("#4F46E5" if is_admin else "#2563EB")
-    badge_bg = "#F0FDF4" if is_individual else ("#EEF2FF" if is_admin else "#EFF6FF")
-    badge_border = "#BBF7D0" if is_individual else ("#C7D2FE" if is_admin else "#BFDBFE")
-    role_label = "INDIVIDUAL" if is_individual else (user.get('role', 'employee').upper())
-    breadcrumb_trail = f"Dashboard &rarr; {page}" if page != "Dashboard" else "Dashboard"
-    render_html(
-        f"""
-        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
-            <span style="color: #64748B; font-size: 0.82rem; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
-                {get_svg_icon('home', size=13, color='#64748B')} {breadcrumb_trail}
-            </span>
-            <span style="color: #CBD5E1;">|</span>
-            <span style="display: inline-flex; align-items: center; gap: 6px; background: #FFFFFF; border: 1px solid #E2E8F0; padding: 4px 11px; border-radius: 9999px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-                {get_svg_icon("user", size=13, color="#475569")}
-                <strong style="color: #0F172A;">{user.get('name', 'User')}</strong> &bull; <span style="font-size: 0.70rem; font-weight: 700; color: #2563EB;">{role_label}</span>
-            </span>
-            <span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #FFFFFF; border: 1px solid #E2E8F0; color: #64748B; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-                {get_svg_icon("bell", size=14, color="#64748B")}
-                <span style="position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: #10B981;"></span>
-            </span>
-            <span style="color: {badge_color}; font-weight: 700; background: {badge_bg}; border: 1px solid {badge_border}; padding: 4px 11px; border-radius: 9999px;">{page}</span>
-        </div>
-        """
-    )
+user_badges_html = f"""
+<div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
+    <span style="display: inline-flex; align-items: center; gap: 6px; background: #FFFFFF; border: 1px solid #E2E8F0; padding: 4px 11px; border-radius: 9999px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+        {get_svg_icon("user", size=13, color="#475569")}
+        <strong style="color: #0F172A;">{user.get('name', 'User')}</strong> &bull; <span style="font-size: 0.70rem; font-weight: 700; color: #2563EB;">{role_label}</span>
+    </span>
+    <span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #FFFFFF; border: 1px solid #E2E8F0; color: #64748B; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+        {get_svg_icon("bell", size=14, color="#64748B")}
+        <span style="position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: #10B981;"></span>
+    </span>
+    <span style="color: {badge_color}; font-weight: 700; background: {badge_bg}; border: 1px solid {badge_border}; padding: 4px 11px; border-radius: 9999px;">{page}</span>
+</div>
+"""
+
+if page != "Dashboard":
+    col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
+    with col_top_home:
+        if st.button("← Back to Home", icon=":material/home:", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+            navigate_to("Dashboard")
+    with col_top_trail:
+        render_html(user_badges_html)
+else:
+    render_html(user_badges_html)
 st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
 
 if is_pending_member:
