@@ -19,6 +19,7 @@ from services.settings import (
     save_org_profile_settings,
     update_hr_account_profile,
     change_account_password,
+    get_org_security_config,
     get_user_preferences,
     save_employee_personal_profile,
     save_employee_career_preferences,
