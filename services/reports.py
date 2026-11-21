@@ -299,6 +299,61 @@ def create_report(
         textColor=colors.HexColor('#64748B')
     )
 
+    # Dedicated styles for beautifully spaced KPI metric cards
+    kpi_label_style = ParagraphStyle(
+        'KpiLabel',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=7.5,
+        leading=10,
+        textColor=colors.HexColor('#475569'),
+        spaceAfter=3
+    )
+    kpi_val_teal = ParagraphStyle(
+        'KpiValTeal',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=15,
+        leading=18,
+        textColor=colors.HexColor(accent_hex),
+        spaceAfter=2
+    )
+    kpi_val_green = ParagraphStyle(
+        'KpiValGreen',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=15,
+        leading=18,
+        textColor=colors.HexColor('#059669'),
+        spaceAfter=2
+    )
+    kpi_val_blue = ParagraphStyle(
+        'KpiValBlue',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=15,
+        leading=18,
+        textColor=colors.HexColor(sub_accent_hex),
+        spaceAfter=2
+    )
+    kpi_val_navy = ParagraphStyle(
+        'KpiValNavy',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=15,
+        leading=18,
+        textColor=colors.HexColor(primary_hex),
+        spaceAfter=2
+    )
+    kpi_sub_style = ParagraphStyle(
+        'KpiSub',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=6.8,
+        leading=9,
+        textColor=colors.HexColor('#64748B')
+    )
+
     elements: List[Any] = []
 
     # --------------------------------------------------------------------------
@@ -399,33 +454,59 @@ def create_report(
     # 3. EXECUTIVE CAREER SUMMARY THIRD
     # --------------------------------------------------------------------------
     elements.append(Paragraph("EXECUTIVE CAREER SUMMARY", h2_style))
+    elements.append(Spacer(1, 3))
 
     completion = int(analysis.get("completion") or 0)
     score = int(analysis.get("score") or 0)
     match = int(analysis.get("match") or 0)
     skill_count = len(skills)
 
-    kpi_data = [
-        [
-            Paragraph(f"<b>Profile Readiness</b><br/><font size=14 color='{accent_hex}'><b>{completion}%</b></font><br/><font size=6.5 color='#64748B'>Comprehensive Data</font>", body_style),
-            Paragraph(f"<b>Competency Score</b><br/><font size=14 color='#10B981'><b>{score} / 100</b></font><br/><font size=6.5 color='#64748B'>Evaluated Index</font>", body_style),
-            Paragraph(f"<b>Target Role Match</b><br/><font size=14 color='{sub_accent_hex}'><b>{match}%</b></font><br/><font size=6.5 color='#64748B'>Readiness Alignment</font>", body_style),
-            Paragraph(f"<b>Skills Cataloged</b><br/><font size=14 color='{primary_hex}'><b>{skill_count} Verified</b></font><br/><font size=6.5 color='#64748B'>Core &amp; Technical</font>", body_style)
-        ]
+    card1 = [
+        Paragraph("Profile Readiness", kpi_label_style),
+        Paragraph(f"{completion}%", kpi_val_teal),
+        Paragraph("Comprehensive Data", kpi_sub_style)
     ]
-    kpi_table = Table(kpi_data, colWidths=[130, 131, 131, 131])
-    kpi_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor(card_bg_hex)),
-        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor(border_hex)),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
-        ('LEFTPADDING', (0,0), (-1,-1), 8),
-        ('RIGHTPADDING', (0,0), (-1,-1), 8),
-    ]))
+    card2 = [
+        Paragraph("Competency Score", kpi_label_style),
+        Paragraph(f"{score} / 100", kpi_val_green),
+        Paragraph("Evaluated Index", kpi_sub_style)
+    ]
+    card3 = [
+        Paragraph("Target Role Match", kpi_label_style),
+        Paragraph(f"{match}%", kpi_val_blue),
+        Paragraph("Readiness Alignment", kpi_sub_style)
+    ]
+    card4 = [
+        Paragraph("Skills Cataloged", kpi_label_style),
+        Paragraph(f"{skill_count} Verified", kpi_val_navy),
+        Paragraph("Core &amp; Technical", kpi_sub_style)
+    ]
+
+    kpi_data = [[card1, '', card2, '', card3, '', card4]]
+    kpi_table = Table(kpi_data, colWidths=[124, 9, 124, 9, 124, 9, 124])
+
+    kpi_t_style = [
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+    ]
+    for col_idx in [0, 2, 4, 6]:
+        kpi_t_style.extend([
+            ('BACKGROUND', (col_idx, 0), (col_idx, 0), colors.HexColor(card_bg_hex)),
+            ('BOX', (col_idx, 0), (col_idx, 0), 0.75, colors.HexColor(border_hex)),
+            ('TOPPADDING', (col_idx, 0), (col_idx, 0), 6),
+            ('BOTTOMPADDING', (col_idx, 0), (col_idx, 0), 6),
+            ('LEFTPADDING', (col_idx, 0), (col_idx, 0), 8),
+            ('RIGHTPADDING', (col_idx, 0), (col_idx, 0), 8),
+        ])
+    for gap_idx in [1, 3, 5]:
+        kpi_t_style.extend([
+            ('TOPPADDING', (gap_idx, 0), (gap_idx, 0), 0),
+            ('BOTTOMPADDING', (gap_idx, 0), (gap_idx, 0), 0),
+            ('LEFTPADDING', (gap_idx, 0), (gap_idx, 0), 0),
+            ('RIGHTPADDING', (gap_idx, 0), (gap_idx, 0), 0),
+        ])
+    kpi_table.setStyle(TableStyle(kpi_t_style))
     elements.append(kpi_table)
-    elements.append(Spacer(1, 4))
+    elements.append(Spacer(1, 5))
 
     summary_text = profile.get("summary")
     if not summary_text or len(str(summary_text).strip()) < 15:
