@@ -5014,11 +5014,10 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
             """
         )
 
-        tab_emp_skills, tab_emp_assessments, tab_emp_mcq, tab_emp_gaps = st.tabs([
+        tab_emp_skills, tab_emp_assessments, tab_emp_mcq = st.tabs([
             "My Competencies & Skills",
             "Self-Evaluation & Evidence",
-            "Technical MCQ Assessments",
-            "My Skill-Gap Analysis"
+            "Technical MCQ Assessments"
         ])
 
         with tab_emp_skills:
@@ -5178,66 +5177,6 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
 
         with tab_emp_mcq:
             render_individual_assessments(user, skills)
-
-        with tab_emp_gaps:
-            st.markdown("#### Individual Skill-Gap Analysis & Benchmark Readiness")
-            all_roles = list(ROLE_CATALOG.keys())
-            def_idx = all_roles.index(profile["target_role"]) if profile.get("target_role") in all_roles else 0
-            target_role_eval = st.selectbox("Select Target Role for Gap Analysis", all_roles, index=def_idx, key="emp_sel_bench_role")
-
-            gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval, org_id=org_id, user_id=uid)
-            c_g1, c_g2 = st.columns([1.1, 1], gap="large")
-            with c_g1:
-                st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
-                st.progress(gap_result['match_percentage'] / 100)
-
-                if gap_result["gaps"]:
-                    top_gaps = gap_result["gaps"][:6]
-                    cat_names = [g["skill"] for g in top_gaps]
-                    c_vals = [g["current_level"] for g in top_gaps]
-                    r_vals = [g["required_level"] for g in top_gaps]
-
-                    fig_radar = go.Figure()
-                    fig_radar.add_trace(go.Scatterpolar(
-                        r=c_vals + [c_vals[0]],
-                        theta=cat_names + [cat_names[0]],
-                        fill='toself',
-                        fillcolor='rgba(37, 99, 235, 0.15)',
-                        name='Current Level',
-                        line=dict(color='#2563EB', width=2)
-                    ))
-                    fig_radar.add_trace(go.Scatterpolar(
-                        r=r_vals + [r_vals[0]],
-                        theta=cat_names + [cat_names[0]],
-                        fill='toself',
-                        fillcolor='rgba(16, 185, 129, 0.10)',
-                        name='Target Benchmark',
-                        line=dict(color='#10B981', width=2, dash='dot')
-                    ))
-                    fig_radar.update_layout(
-                        polar=dict(
-                            radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
-                        ),
-                        showlegend=True,
-                        height=280,
-                        margin=dict(l=25, r=25, t=25, b=25),
-                        paper_bgcolor="#FFFFFF"
-                    )
-                    st.plotly_chart(fig_radar, use_container_width=True)
-
-            with c_g2:
-                st.markdown(f"**Benchmark Role Standard:**")
-                st.info(f"{gap_result['criteria']}")
-
-                if gap_result["gaps"]:
-                    st.markdown("##### Priority Development Areas")
-                    levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
-                    render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
-
-                if gap_result.get("recommended_training"):
-                    st.markdown("##### Recommended Targeted Training Courses")
-                    for t_item in gap_result["recommended_training"]:
-                        st.markdown(f"• **{t_item}** — Focus program to close competency gaps.")
     else:
         # Admin View with Full Organization Competency Matrix Tabs
         render_html(
