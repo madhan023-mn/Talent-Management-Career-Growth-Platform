@@ -3807,23 +3807,6 @@ elif page in ["Employees", "Employee Management"]:
                             st.write(f"**Primary Skills:** {emp['primary_skills'] or 'None recorded'}")
             else:
                 render_html(render_colored_employee_table(emp_results))
-                with st.expander("Spreadsheet Grid View & Raw Data", expanded=False):
-                    df_display = pd.DataFrame(emp_results)[["employee_id", "name", "email", "phone", "department", "designation", "joining_date", "employment_status", "years_experience", "primary_skills", "avg_rating"]]
-                    df_display.columns = ["ID", "Full Name", "Email", "Phone", "Department", "Designation", "Joined", "Status", "Exp (Yrs)", "Primary Skills", "Performance"]
-                    st.dataframe(
-                        df_display,
-                        width="stretch",
-                        hide_index=True,
-                        column_config={
-                            "ID": st.column_config.TextColumn("ID", width="small"),
-                            "Full Name": st.column_config.TextColumn("Employee Name", width="medium"),
-                            "Department": st.column_config.TextColumn("Department", width="medium"),
-                            "Designation": st.column_config.TextColumn("Designation", width="medium"),
-                            "Status": st.column_config.TextColumn("Status", width="small"),
-                            "Exp (Yrs)": st.column_config.NumberColumn("Experience", format="%.1f yrs"),
-                            "Performance": st.column_config.ProgressColumn("Score (1–5)", min_value=1.0, max_value=5.0, format="%.2f"),
-                        }
-                    )
 
             csv_data = pd.DataFrame(emp_results).to_csv(index=False).encode("utf-8")
             st.download_button(
@@ -4661,22 +4644,6 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                         )
                 else:
                     render_html(render_colored_review_table(filtered_reviews))
-                    with st.expander("Spreadsheet Grid View & Raw Data", expanded=False):
-                        df_rev = pd.DataFrame(filtered_reviews)[["employee_id", "employee_name", "department", "designation", "review_period", "performance_score", "achievements", "strengths", "improvements", "manager_feedback", "created_at"]]
-                        df_rev.columns = ["Emp ID", "Employee Name", "Department", "Designation", "Period", "Score (1–5)", "Key Achievements", "Demonstrated Strengths", "Growth Areas", "Manager Feedback", "Recorded On"]
-                        st.dataframe(
-                            df_rev,
-                            width="stretch",
-                            hide_index=True,
-                            column_config={
-                                "Emp ID": st.column_config.TextColumn("ID", width="small"),
-                                "Employee Name": st.column_config.TextColumn("Employee", width="medium"),
-                                "Department": st.column_config.TextColumn("Department", width="medium"),
-                                "Period": st.column_config.TextColumn("Review Period", width="small"),
-                                "Score (1–5)": st.column_config.ProgressColumn("Performance Score", min_value=1.0, max_value=5.0, format="%.2f"),
-                                "Recorded On": st.column_config.DateColumn("Evaluation Date", format="YYYY-MM-DD")
-                            }
-                        )
 
                 # Performance Trajectory Chart
                 st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
