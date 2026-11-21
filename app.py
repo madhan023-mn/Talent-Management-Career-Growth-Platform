@@ -6011,83 +6011,471 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
                                 st.error(msg_gdel)
 
 # ==============================================================================
-# 7. REPORTS & ANALYTICS
+# 7. REPORTS & ANALYTICS / CAREER REPORT
 # ==============================================================================
 elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth Report"]:
-    render_html(
-        f"""
-        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #EEF2FF 60%, #F0F9FF 100%); border-left: 6px solid #4F46E5;">
-            <div style="display: flex; align-items: center; gap: 16px;">
-                <div class="hero-icon-container" style="background: linear-gradient(135deg, #4F46E5 0%, #2563EB 100%);">
-                    {get_svg_icon("reports", size=24, color="#FFFFFF")}
+    if not is_admin:
+        # ----------------------------------------------------------------------
+        # INDIVIDUAL / EMPLOYEE PERSONAL CAREER REPORT & TALENT DOSSIER
+        # ----------------------------------------------------------------------
+        my_emp_id = emp_id or user.get("employee_id") or f"EMP{uid:03d}"
+        my_profile = dict(profile)
+        my_profile["name"] = user.get("name") or "Employee"
+        my_profile["email"] = user.get("email") or ""
+        my_profile["employee_id"] = my_emp_id
+        target_role = my_profile.get("target_role") or "Senior Software Engineer"
+
+        my_skills = list_skills(uid)
+        my_reviews = get_performance_reviews(employee_id=my_emp_id, org_id=org_id) if not is_individual else []
+        my_goals = get_goals(user_id=uid, org_id=org_id) if not is_individual else get_goals(user_id=uid)
+        my_assessments = get_assessments(uid=uid, employee_id=my_emp_id, org_id=org_id) if not is_individual else get_assessments(uid=uid)
+        my_progress = get_progress(uid)
+
+        a = analysis_bundle()
+        gaps = gap_analysis(target_role, my_skills)
+        recs = recommendations(my_profile, my_skills)
+
+        render_html(
+            f"""
+            <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 60%, #F5F3FF 100%); border-left: 6px solid #2563EB;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div class="hero-icon-container" style="background: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%);">
+                        {get_svg_icon("reports", size=24, color="#FFFFFF")}
+                    </div>
+                    <div>
+                        <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                            Personal Career Report &amp; Performance Dossier
+                        </div>
+                        <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                            Individual career trajectory, verified performance evaluations, goal milestones, and competency dossier for <b>{user.get('name', 'Employee')}</b>.
+                        </div>
+                    </div>
                 </div>
                 <div>
-                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
-                        Executive Reports &amp; Data Center
-                    </div>
-                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
-                        Generate publication-grade PDF talent dossiers, structured CSV data exports, and benchmarks.
-                    </div>
+                    <span class="hero-badge-pill" style="background: linear-gradient(135deg, #2563EB, #4F46E5);">
+                        TALENT DOSSIER
+                    </span>
                 </div>
             </div>
-            <div>
-                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #4F46E5, #2563EB);">
-                    REPORTING ENGINE
-                </span>
-            </div>
-        </div>
-        """
-    )
+            """
+        )
 
-    employees = get_employees(org_id=org_id) if not is_individual else []
-    reviews = get_performance_reviews(org_id=org_id) if not is_individual else []
-    goals = get_goals(user_id=uid) if is_individual else get_goals(org_id=org_id)
-    dept_summary = get_department_performance_summary(org_id=org_id) if not is_individual else []
-    tab_rep_overview, tab_rep_csv, tab_rep_pdf = st.tabs(["Analytics Overview", "Download CSV Data Reports", "Generate PDF Dossier"])
+        tab_emp_overview, tab_emp_csv, tab_emp_pdf = st.tabs(["Career Overview & Performance", "Download My Data Reports", "Generate My PDF Dossier"])
 
-    with tab_rep_overview:
-        if is_individual:
-            ind_stats = get_individual_dashboard_stats(uid)
+        with tab_emp_overview:
+            # Metric Calculation
+            match_score = a.get("match", 0)
+            comp_score = a.get("score", 0)
+            comp_profile = a.get("completion", 0)
+            total_sk = len(my_skills)
+            total_g = len(my_goals)
+            comp_g = sum(1 for g in my_goals if g.get("status") == "Completed")
+            avg_prog = round(sum(float(g.get("progress") or 0) for g in my_goals) / total_g) if total_g else 0
+
+            if my_reviews:
+                latest_rev = my_reviews[0]
+                latest_score = float(latest_rev.get("performance_score") or 0.0)
+                rating_text = f"{latest_score:.1f} / 5.0"
+                cycle_text = latest_rev.get("review_period") or "Performance Review"
+                if latest_score >= 4.5:
+                    badge_text = "Top Performer"
+                    badge_bg = "#ECFDF5"
+                    badge_color = "#059669"
+                elif latest_score >= 4.0:
+                    badge_text = "Exceeds Goals"
+                    badge_bg = "#EEF2FF"
+                    badge_color = "#2563EB"
+                elif latest_score >= 3.0:
+                    badge_text = "Meets Expectations"
+                    badge_bg = "#FEF3C7"
+                    badge_color = "#D97706"
+                else:
+                    badge_text = "Needs Development"
+                    badge_bg = "#FEE2E2"
+                    badge_color = "#DC2626"
+            else:
+                rating_text = "Unrated"
+                cycle_text = "No Reviews Recorded"
+                badge_text = "Pending Cycle"
+                badge_bg = "#F1F5F9"
+                badge_color = "#64748B"
+
+            # 4 KPI Cards
             render_html(
                 f"""
-                <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 0.5rem 0 0.85rem 0;">
-                    {get_svg_icon("sparkles", size=20, color="#10B981")} Personal Career & Competency Analytics
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0.5rem 0 1.25rem 0;">
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;">
+                            <span>Target Role Readiness</span>
+                            {get_svg_icon("target", size=16, color="#2563EB")}
+                        </div>
+                        <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 6px 0 2px 0;">{match_score}%</div>
+                        <div style="font-size: 0.82rem; color: #475569; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            Role: <b>{target_role}</b>
+                        </div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;">
+                            <span>Performance Score</span>
+                            {get_svg_icon("award", size=16, color="#059669")}
+                        </div>
+                        <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 6px 0 2px 0; display: flex; align-items: center; gap: 8px;">
+                            <span>{rating_text}</span>
+                            <span style="font-size: 0.75rem; font-weight: 700; background: {badge_bg}; color: {badge_color}; padding: 3px 8px; border-radius: 9999px;">{badge_text}</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #475569; font-weight: 500;">
+                            Cycle: <b>{cycle_text}</b>
+                        </div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;">
+                            <span>Career Goals &amp; Milestones</span>
+                            {get_svg_icon("growth", size=16, color="#F59E0B")}
+                        </div>
+                        <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 6px 0 2px 0;">{avg_prog}% <span style="font-size: 0.95rem; font-weight: 600; color: #64748B;">Avg</span></div>
+                        <div style="font-size: 0.82rem; color: #475569; font-weight: 500;">
+                            <b>{comp_g} of {total_g}</b> milestones achieved
+                        </div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;">
+                            <span>Verified Competencies</span>
+                            {get_svg_icon("skills", size=16, color="#8B5CF6")}
+                        </div>
+                        <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 6px 0 2px 0;">{total_sk} <span style="font-size: 0.95rem; font-weight: 600; color: #64748B;">Skills</span></div>
+                        <div style="font-size: 0.82rem; color: #475569; font-weight: 500;">
+                            Profile Readiness: <b>{comp_profile}%</b>
+                        </div>
+                    </div>
                 </div>
                 """
             )
-            col_ind1, col_ind2 = st.columns(2)
-            with col_ind1:
-                dist = ind_stats.get("proficiency_distribution", {})
-                if any(dist.values()):
-                    dist_df = pd.DataFrame([{"Proficiency": k, "Count": v} for k, v in dist.items()])
-                    fig_ind_dist = px.bar(
-                        dist_df, x="Proficiency", y="Count", color="Proficiency",
-                        title="Skill Portfolio by Proficiency Level",
-                        color_discrete_map={"Beginner": "#93C5FD", "Intermediate": "#3B82F6", "Advanced": "#1D4ED8", "Expert": "#1E3A8A"}
+
+            # Section 1: Performance Evaluation History
+            render_html(
+                f"""
+                <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.85rem 0;">
+                    {get_svg_icon("award", size=20, color="#2563EB")} My Performance Evaluation History
+                </div>
+                """
+            )
+            if my_reviews:
+                for rev in my_reviews:
+                    rev_score = float(rev.get("performance_score") or 0.0)
+                    r_bg = "#ECFDF5" if rev_score >= 4.0 else ("#FEF3C7" if rev_score >= 3.0 else "#FEE2E2")
+                    r_color = "#059669" if rev_score >= 4.0 else ("#D97706" if rev_score >= 3.0 else "#DC2626")
+                    r_tag = "Exceeds Goals" if rev_score >= 4.0 else ("Meets Expectations" if rev_score >= 3.0 else "Needs Improvement")
+                    rev_date = str(rev.get("created_at") or "")[:10]
+                    reviewer = rev.get("reviewer_name") or "HR Administrator"
+
+                    render_html(
+                        f"""
+                        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; border-bottom: 1px solid #F1F5F9; padding-bottom: 12px;">
+                                <div>
+                                    <div style="font-size: 1.1rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
+                                        <span>{rev.get('review_period', 'Annual Review')}</span>
+                                        <span style="font-size: 0.82rem; font-weight: 700; background: {r_bg}; color: {r_color}; padding: 3px 10px; border-radius: 9999px;">
+                                            ★ {rev_score:.1f} / 5.0 · {r_tag}
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 0.83rem; color: #64748B; margin-top: 4px;">
+                                        Evaluated by <b>{reviewer}</b> · Date: {rev_date} · Department: <b>{rev.get('department', 'Engineering')}</b>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+                                    <div style="font-size: 0.78rem; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
+                                        Key Achievements
+                                    </div>
+                                    <div style="font-size: 0.88rem; color: #1E293B; line-height: 1.45;">
+                                        {rev.get('achievements') or 'No achievements logged.'}
+                                    </div>
+                                </div>
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+                                    <div style="font-size: 0.78rem; font-weight: 700; color: #2563EB; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
+                                        Core Strengths
+                                    </div>
+                                    <div style="font-size: 0.88rem; color: #1E293B; line-height: 1.45;">
+                                        {rev.get('strengths') or 'No strengths logged.'}
+                                    </div>
+                                </div>
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+                                    <div style="font-size: 0.78rem; font-weight: 700; color: #D97706; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
+                                        Areas for Growth &amp; Development
+                                    </div>
+                                    <div style="font-size: 0.88rem; color: #1E293B; line-height: 1.45;">
+                                        {rev.get('improvements') or 'No improvement areas logged.'}
+                                    </div>
+                                </div>
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+                                    <div style="font-size: 0.78rem; font-weight: 700; color: #4F46E5; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
+                                        Manager &amp; Leadership Feedback
+                                    </div>
+                                    <div style="font-size: 0.88rem; color: #1E293B; line-height: 1.45;">
+                                        {rev.get('manager_feedback') or 'No manager feedback logged.'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        """
                     )
-                    fig_ind_dist = apply_saas_chart_theme(fig_ind_dist, height=280, title="Skill Portfolio by Proficiency Level", show_legend=False)
-                    st.plotly_chart(fig_ind_dist, use_container_width=True)
-                else:
-                    st.info("Add your skills to see proficiency distribution charts.")
-            with col_ind2:
-                user_goals = get_goals(user_id=uid)
-                if user_goals:
-                    df_goals = pd.DataFrame(user_goals)
-                    g_counts = df_goals["status"].value_counts().reset_index()
-                    g_counts.columns = ["Status", "Count"]
-                    fig_g = px.pie(
-                        g_counts, values="Count", names="Status", title="Career Goals Completion Status",
-                        hole=0.35, color_discrete_sequence=['#10B981', '#F59E0B', '#EF4444', '#64748B']
+            else:
+                st.info("No formal performance evaluations recorded yet for your profile. Official reviews submitted by your evaluator will appear here.")
+
+            # Section 2: Career Goals & Milestone Roadmap
+            render_html(
+                f"""
+                <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.5rem 0 0.85rem 0;">
+                    {get_svg_icon("target", size=20, color="#10B981")} My Career Goals &amp; Milestone Trajectory
+                </div>
+                """
+            )
+            if my_goals:
+                for g in my_goals:
+                    g_prog = int(g.get("progress") or 0)
+                    g_stat = g.get("status") or "In Progress"
+                    if g_stat == "Completed":
+                        s_bg = "#ECFDF5"
+                        s_color = "#059669"
+                    elif g_stat == "In Progress":
+                        s_bg = "#EFF6FF"
+                        s_color = "#2563EB"
+                    elif g_stat == "Overdue":
+                        s_bg = "#FEE2E2"
+                        s_color = "#DC2626"
+                    else:
+                        s_bg = "#F1F5F9"
+                        s_color = "#64748B"
+
+                    target_desig = g.get("target_designation") or "Career Milestone"
+                    t_date = str(g.get("target_date") or "Not set")
+
+                    render_html(
+                        f"""
+                        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px 20px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1rem; font-weight: 800; color: #0F172A;">{g.get('title')}</span>
+                                    <span style="font-size: 0.78rem; font-weight: 700; background: #EEF2FF; color: #4F46E5; padding: 2px 8px; border-radius: 6px;">
+                                        {target_desig}
+                                    </span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; background: {s_bg}; color: {s_color}; padding: 3px 9px; border-radius: 9999px;">
+                                        {g_stat.upper()}
+                                    </span>
+                                    <span style="font-size: 0.88rem; font-weight: 800; color: #0F172A;">{g_prog}% Complete</span>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #475569; margin-bottom: 10px; line-height: 1.45;">
+                                {g.get('description') or 'SMART career objective aligned with milestone trajectory.'}
+                            </div>
+                            <div style="background: #E2E8F0; border-radius: 9999px; height: 8px; overflow: hidden; margin-bottom: 8px;">
+                                <div style="background: linear-gradient(90deg, #2563EB 0%, #10B981 100%); width: {g_prog}%; height: 100%;"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #64748B;">
+                                <span>Target Completion Date: <b>{t_date}</b></span>
+                                <span>Category: <b>{g.get('category', 'Technical Skills')}</b></span>
+                            </div>
+                        </div>
+                        """
                     )
-                    fig_g = apply_saas_chart_theme(fig_g, height=280, title="Career Goals Completion Status")
-                    st.plotly_chart(fig_g, use_container_width=True)
+            else:
+                st.info("No active career goals recorded yet. Set career goals under Growth Progress to track your milestones.")
+
+            # Section 3: Verified Skills & Role Readiness Breakdown
+            render_html(
+                f"""
+                <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.5rem 0 0.85rem 0;">
+                    {get_svg_icon("sparkles", size=20, color="#8B5CF6")} Verified Competencies &amp; Target Role Readiness
+                </div>
+                """
+            )
+            c_sk1, c_sk2 = st.columns(2)
+            with c_sk1:
+                st.markdown(f"**Verified Skill Portfolio ({len(my_skills)} Cataloged)**")
+                if my_skills:
+                    for s in my_skills:
+                        s_name = s.get("name") or s.get("skill_name") or "Skill"
+                        s_prof = s.get("proficiency") or s.get("proficiency_level") or "Intermediate"
+                        s_exp = s.get("years_experience") or 1.0
+                        s_cat = s.get("category") or "Technical"
+                        render_html(
+                            f"""
+                            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <span style="font-weight: 700; color: #0F172A; font-size: 0.92rem;">{s_name}</span>
+                                    <span style="font-size: 0.78rem; color: #64748B; margin-left: 8px;">{s_cat} · {s_exp:g} yrs</span>
+                                </div>
+                                <span style="font-size: 0.75rem; font-weight: 700; background: #EEF2FF; color: #2563EB; padding: 3px 8px; border-radius: 9999px;">
+                                    {s_prof}
+                                </span>
+                            </div>
+                            """
+                        )
                 else:
-                    st.info("Set your first career goal to visualize milestone tracking.")
-        else:
+                    st.info("No skills verified yet. Add skills in Skills & Assessment.")
+            with c_sk2:
+                st.markdown(f"**Competency Fit for Target Role ({target_role})**")
+                if gaps:
+                    gap_df = pd.DataFrame(gaps)[["skill", "current", "required", "priority"]]
+                    gap_df.columns = ["Competency", "Current", "Required", "Priority"]
+                    st.dataframe(gap_df, use_container_width=True, hide_index=True)
+                else:
+                    st.success(f"All competencies for **{target_role}** are fully met or exceeded!")
+
+        with tab_emp_csv:
+            st.markdown("#### Download Personal Data Reports")
+            st.caption(f"Export your individual career data, verified evaluations, goals, and complete talent dossier.")
+            c_csv1, c_csv2 = st.columns(2)
+            with c_csv1:
+                if my_reviews:
+                    csv_rev = pd.DataFrame(my_reviews).to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        "Download My Performance Reviews (CSV)",
+                        csv_rev,
+                        f"talent_growth_my_reviews_{my_emp_id}.csv",
+                        "text/csv",
+                        type="primary",
+                        use_container_width=True
+                    )
+                if my_skills:
+                    st.write("")
+                    csv_sk = pd.DataFrame(my_skills).to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        "Download My Verified Skills (CSV)",
+                        csv_sk,
+                        f"talent_growth_my_skills_{my_emp_id}.csv",
+                        "text/csv",
+                        use_container_width=True
+                    )
+                if my_assessments:
+                    st.write("")
+                    csv_ass = pd.DataFrame(my_assessments).to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        "Download My Assessment History (CSV)",
+                        csv_ass,
+                        f"talent_growth_my_assessments_{my_emp_id}.csv",
+                        "text/csv",
+                        use_container_width=True
+                    )
+            with c_csv2:
+                if my_goals:
+                    csv_goal = pd.DataFrame(my_goals).to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        "Download My Career Goals (CSV)",
+                        csv_goal,
+                        f"talent_growth_my_goals_{my_emp_id}.csv",
+                        "text/csv",
+                        type="primary",
+                        use_container_width=True
+                    )
+                st.write("")
+                payload_json = json.dumps(export_user_data(uid), indent=2, default=str).encode("utf-8")
+                st.download_button(
+                    "Export My Complete Talent Dossier (JSON)",
+                    payload_json,
+                    f"talent_growth_my_dossier_{my_emp_id}.json",
+                    "application/json",
+                    use_container_width=True
+                )
+
+        with tab_emp_pdf:
+            st.markdown("#### Generate Publication-Grade PDF Talent Dossier")
+            st.caption(f"Creates an official multi-page dossier incorporating verified skills, gap metrics, goal milestones, and performance reviews for <b>{user.get('name', 'Employee')}</b>.")
+
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; margin: 12px 0 20px 0;">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; margin-bottom: 6px;">
+                        {user.get('name', 'Employee')} ({my_emp_id})
+                    </div>
+                    <div style="font-size: 0.85rem; color: #64748B; margin-bottom: 12px;">
+                        Department: <b>{my_profile.get('department', 'Engineering')}</b> · Target Role: <b>{target_role}</b> · Organization: <b>{org_name}</b>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <span style="background: #EFF6FF; color: #2563EB; font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">
+                            Readiness Alignment: {a.get('match', 0)}%
+                        </span>
+                        <span style="background: #ECFDF5; color: #059669; font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">
+                            Rating: {rating_text}
+                        </span>
+                        <span style="background: #FAF5FF; color: #8B5CF6; font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">
+                            Verified Skills: {len(my_skills)}
+                        </span>
+                        <span style="background: #FFFBEB; color: #D97706; font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">
+                            Career Goals: {len(my_goals)}
+                        </span>
+                    </div>
+                </div>
+                """
+            )
+
+            pdf_bytes = create_report(
+                profile=my_profile,
+                skills=my_skills,
+                analysis=a,
+                gaps=gaps,
+                recommendations=recs,
+                assessments=my_assessments,
+                progress=my_progress,
+                goals=my_goals,
+                reviews=my_reviews,
+                org_id=org_id
+            )
+
+            safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", user.get("name", "Employee"))
+            st.download_button(
+                f"Download My PDF Talent Dossier ({user.get('name', 'Employee')})",
+                pdf_bytes,
+                file_name=f"talent_growth_dossier_{my_emp_id}_{safe_name}.pdf",
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True
+            )
+
+    else:
+        # ----------------------------------------------------------------------
+        # HR ADMINISTRATOR EXECUTIVE REPORTS & INDIVIDUAL DOSSIER CENTER
+        # ----------------------------------------------------------------------
+        render_html(
+            f"""
+            <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #EEF2FF 60%, #F0F9FF 100%); border-left: 6px solid #4F46E5;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div class="hero-icon-container" style="background: linear-gradient(135deg, #4F46E5 0%, #2563EB 100%);">
+                        {get_svg_icon("reports", size=24, color="#FFFFFF")}
+                    </div>
+                    <div>
+                        <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                            Executive Reports &amp; Data Center
+                        </div>
+                        <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                            Enterprise workforce analytics, company-wide performance benchmarks, and individual employee talent dossiers.
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <span class="hero-badge-pill" style="background: linear-gradient(135deg, #4F46E5, #2563EB);">
+                        HR EXECUTIVE ENGINE
+                    </span>
+                </div>
+            </div>
+            """
+        )
+
+        employees = get_employees(org_id=org_id)
+        reviews = get_performance_reviews(org_id=org_id)
+        goals = get_goals(org_id=org_id)
+        dept_summary = get_department_performance_summary(org_id=org_id)
+        tab_rep_overview, tab_rep_csv, tab_rep_pdf = st.tabs(["Analytics Overview", "Download CSV Data Reports", "Individual & Org PDF Dossiers"])
+
+        with tab_rep_overview:
             render_html(
                 f"""
                 <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 0.5rem 0 0.85rem 0;">
-                    {get_svg_icon("briefcase", size=20, color="#2563EB")} Department Workforce & Performance Breakdown
+                    {get_svg_icon("briefcase", size=20, color="#2563EB")} Department Workforce &amp; Performance Breakdown
                 </div>
                 """
             )
@@ -6134,67 +6522,147 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                         fig_hist.update_layout(bargap=0.25, bargroupgap=0.1)
                         st.plotly_chart(fig_hist, use_container_width=True)
 
-    with tab_rep_csv:
-        st.markdown("#### Download Structured CSV Data Reports")
-        c_csv1, c_csv2 = st.columns(2)
-        with c_csv1:
-            if is_individual:
-                if skills:
-                    csv_sk = pd.DataFrame(skills).to_csv(index=False).encode("utf-8")
-                    st.download_button("Download My Skills (CSV)", csv_sk, "talent_growth_skills.csv", "text/csv", type="primary", use_container_width=True)
-                assessments_ind = get_assessments(uid=uid)
-                if assessments_ind:
-                    st.write("")
-                    csv_ass = pd.DataFrame(assessments_ind).to_csv(index=False).encode("utf-8")
-                    st.download_button("Download Assessment History (CSV)", csv_ass, "talent_growth_assessments.csv", "text/csv", use_container_width=True)
-            else:
+        with tab_rep_csv:
+            st.markdown("#### Download Structured CSV Data Reports")
+            c_csv1, c_csv2 = st.columns(2)
+            with c_csv1:
                 if employees:
                     csv_emp = pd.DataFrame(employees).to_csv(index=False).encode("utf-8")
-                    st.download_button("Download Employees (CSV)", csv_emp, "talent_growth_employees.csv", "text/csv", type="primary", use_container_width=True)
+                    st.download_button("Download All Employees (CSV)", csv_emp, "talent_growth_employees.csv", "text/csv", type="primary", use_container_width=True)
                 if reviews:
                     st.write("")
                     csv_rev = pd.DataFrame(reviews).to_csv(index=False).encode("utf-8")
-                    st.download_button("Download Performance Reviews (CSV)", csv_rev, "talent_growth_performance_reviews.csv", "text/csv", use_container_width=True)
-        with c_csv2:
-            if goals:
-                csv_goal = pd.DataFrame(goals).to_csv(index=False).encode("utf-8")
-                st.download_button("Download Career Goals (CSV)", csv_goal, "talent_growth_career_goals.csv", "text/csv", use_container_width=True)
-            st.write("")
-            payload_json = json.dumps(export_user_data(uid), indent=2, default=str).encode("utf-8")
-            st.download_button("Export System Snapshot (JSON)", payload_json, "talent_growth_snapshot.json", "application/json", use_container_width=True)
+                    st.download_button("Download All Performance Reviews (CSV)", csv_rev, "talent_growth_performance_reviews.csv", "text/csv", use_container_width=True)
+            with c_csv2:
+                if goals:
+                    csv_goal = pd.DataFrame(goals).to_csv(index=False).encode("utf-8")
+                    st.download_button("Download All Career Goals (CSV)", csv_goal, "talent_growth_career_goals.csv", "text/csv", use_container_width=True)
+                st.write("")
+                payload_json = json.dumps(export_user_data(uid), indent=2, default=str).encode("utf-8")
+                st.download_button("Export System Snapshot (JSON)", payload_json, "talent_growth_snapshot.json", "application/json", use_container_width=True)
 
-    with tab_rep_pdf:
-        st.markdown("#### Generate Publication-Grade PDF Talent Dossier")
-        st.caption("Creates an executive multi-page dossier incorporating verified skills, gap metrics, goal milestones, and performance reviews.")
-        a = analysis_bundle()
-        gaps = gap_analysis(profile.get("target_role", ""), skills)
-        recs = recommendations(profile, skills)
-        assessments = get_assessments(uid=uid) if is_individual else get_assessments(uid=uid, employee_id=emp_id, org_id=org_id)
-        progress = get_progress(uid)
-        user_goals = get_goals(user_id=uid) if is_individual else get_goals(user_id=uid, org_id=org_id)
-        user_reviews = [] if is_individual else get_performance_reviews(employee_id=emp_id, org_id=org_id)
+        with tab_rep_pdf:
+            st.markdown("#### Generate Individual Employee Talent Dossier (PDF)")
+            st.caption("Select any individual employee from the roster to generate and download their publication-grade career and performance dossier.")
 
-        pdf_bytes = create_report(
-            profile=profile,
-            skills=skills,
-            analysis=a,
-            gaps=gaps,
-            recommendations=recs,
-            assessments=assessments,
-            progress=progress,
-            goals=user_goals,
-            reviews=user_reviews,
-            org_id=org_id
-        )
+            if employees:
+                emp_map = {
+                    f"{e['name']} ({e['employee_id']} — {e.get('department', 'General')} · {e.get('designation', 'Staff')})": e
+                    for e in employees
+                }
+                sel_emp_label = st.selectbox("Select Employee from Roster", list(emp_map.keys()), key="hr_sel_emp_dossier")
+                sel_emp = emp_map[sel_emp_label]
+                sel_uid = sel_emp.get("user_id")
+                sel_emp_id = sel_emp.get("employee_id")
 
-        st.download_button(
-            "Download PDF Talent Dossier",
-            pdf_bytes,
-            file_name=f"talent_growth_dossier_{emp_id}.pdf",
-            mime="application/pdf",
-            type="primary",
-            use_container_width=True
-        )
+                # Preview card
+                render_html(
+                    f"""
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px 20px; margin: 10px 0 16px 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 1.1rem; font-weight: 800; color: #0F172A;">
+                                    {sel_emp.get('name')} <span style="font-size: 0.85rem; font-weight: 600; color: #64748B;">({sel_emp_id})</span>
+                                </div>
+                                <div style="font-size: 0.85rem; color: #475569; margin-top: 3px;">
+                                    Department: <b>{sel_emp.get('department', 'General')}</b> · Designation: <b>{sel_emp.get('designation', 'Staff')}</b> · Experience: <b>{sel_emp.get('years_experience', 0)} yrs</b>
+                                </div>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.78rem; font-weight: 700; background: #ECFDF5; color: #059669; padding: 4px 10px; border-radius: 9999px;">
+                                    {sel_emp.get('employment_status', 'Active').upper()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    """
+                )
+
+                if sel_uid:
+                    sel_prof = dict(get_profile(sel_uid))
+                    sel_prof["name"] = sel_emp.get("name")
+                    sel_prof["email"] = sel_emp.get("email") or ""
+                    sel_prof["employee_id"] = sel_emp_id
+                    sel_skills = list_skills(sel_uid)
+                    sel_goals = get_goals(user_id=sel_uid, org_id=org_id)
+                    sel_assess = get_assessments(uid=sel_uid, employee_id=sel_emp_id, org_id=org_id)
+                    sel_prog = get_progress(sel_uid)
+                else:
+                    sel_prof = {
+                        "name": sel_emp.get("name"),
+                        "email": sel_emp.get("email") or "",
+                        "employee_id": sel_emp_id,
+                        "job_title": sel_emp.get("designation") or "Staff",
+                        "department": sel_emp.get("department") or "General",
+                        "years_experience": sel_emp.get("years_experience") or 0,
+                        "company": org_name,
+                        "target_role": sel_emp.get("designation") or "Senior Software Engineer"
+                    }
+                    sel_skills = []
+                    if sel_emp.get("primary_skills"):
+                        for s_name in sel_emp["primary_skills"].split(","):
+                            if s_name.strip():
+                                sel_skills.append({"name": s_name.strip(), "skill_name": s_name.strip(), "proficiency": "Intermediate", "years_experience": 2})
+                    sel_goals = []
+                    sel_assess = []
+                    sel_prog = []
+
+                sel_reviews = get_performance_reviews(employee_id=sel_emp_id, org_id=org_id)
+                sel_target = sel_prof.get("target_role") or "Senior Software Engineer"
+                sel_gaps = gap_analysis(sel_target, sel_skills)
+                sel_recs = recommendations(sel_prof, sel_skills)
+                try:
+                    sel_analysis = profile_analysis(sel_prof, sel_skills)
+                except Exception:
+                    sel_analysis = {}
+
+                sel_pdf_bytes = create_report(
+                    profile=sel_prof,
+                    skills=sel_skills,
+                    analysis=sel_analysis,
+                    gaps=sel_gaps,
+                    recommendations=sel_recs,
+                    assessments=sel_assess,
+                    progress=sel_prog,
+                    goals=sel_goals,
+                    reviews=sel_reviews,
+                    org_id=org_id
+                )
+
+                safe_sel_name = re.sub(r"[^a-zA-Z0-9_]", "_", sel_emp.get("name", "Employee"))
+                col_hr_dl1, col_hr_dl2 = st.columns(2)
+                with col_hr_dl1:
+                    st.download_button(
+                        f"Download PDF Dossier for {sel_emp.get('name')}",
+                        sel_pdf_bytes,
+                        file_name=f"talent_growth_dossier_{sel_emp_id}_{safe_sel_name}.pdf",
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True
+                    )
+                with col_hr_dl2:
+                    if sel_reviews:
+                        csv_sel_rev = pd.DataFrame(sel_reviews).to_csv(index=False).encode("utf-8")
+                        st.download_button(
+                            f"Download {sel_emp.get('name')}'s Reviews (CSV)",
+                            csv_sel_rev,
+                            file_name=f"talent_growth_reviews_{sel_emp_id}.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                    elif sel_skills:
+                        csv_sel_sk = pd.DataFrame(sel_skills).to_csv(index=False).encode("utf-8")
+                        st.download_button(
+                            f"Download {sel_emp.get('name')}'s Skills (CSV)",
+                            csv_sel_sk,
+                            file_name=f"talent_growth_skills_{sel_emp_id}.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                    else:
+                        st.info("No separate reviews to export as CSV for this employee.")
+            else:
+                st.info("No employees found in organization roster.")
 
 # ==============================================================================
 # 8. MY PROFILE

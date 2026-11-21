@@ -3732,7 +3732,11 @@ def role_match(target_role: str, skills: List[Dict[str, Any]], years_experience:
     required_skills = role_info["skills"]
     min_exp = role_info["min_exp"]
 
-    user_skills_map = {s["name"].strip().lower(): LEVELS.get(s["proficiency"], 1) for s in skills}
+    user_skills_map = {
+        (s.get("name") or s.get("skill_name") or "").strip().lower(): LEVELS.get(s.get("proficiency") or s.get("proficiency_level") or "Beginner", 1)
+        for s in skills
+        if (s.get("name") or s.get("skill_name"))
+    }
 
     match_scores = []
     for req_name, req_level in required_skills.items():
@@ -3750,7 +3754,11 @@ def gap_analysis(target_role: str, skills: List[Dict[str, Any]]) -> List[Dict[st
     if not target_role or target_role not in ROLE_CATALOG:
         return []
     required_skills = ROLE_CATALOG[target_role]["skills"]
-    user_skills_map = {s["name"].strip().lower(): LEVELS.get(s["proficiency"], 1) for s in skills}
+    user_skills_map = {
+        (s.get("name") or s.get("skill_name") or "").strip().lower(): LEVELS.get(s.get("proficiency") or s.get("proficiency_level") or "Beginner", 1)
+        for s in skills
+        if (s.get("name") or s.get("skill_name"))
+    }
 
     gaps = []
     for req_name, req_level in required_skills.items():
@@ -3780,8 +3788,10 @@ def profile_analysis(profile: Dict[str, Any], skills: List[Dict[str, Any]]) -> D
     match_score = role_match(target, skills, years)
 
     skill_count_factor = min(1.0, len(skills) / 6.0)
-    summary_factor = 1.0 if len(profile.get("summary", "")) > 50 else (0.5 if profile.get("summary") else 0.0)
-    exp_factor = 1.0 if len(profile.get("experience", "")) > 50 else (0.5 if profile.get("experience") else 0.0)
+    sum_val = profile.get("summary") or ""
+    exp_val = profile.get("experience") or ""
+    summary_factor = 1.0 if len(sum_val) > 50 else (0.5 if sum_val else 0.0)
+    exp_factor = 1.0 if len(exp_val) > 50 else (0.5 if exp_val else 0.0)
 
     score = round(
         (completion * 0.40) +
