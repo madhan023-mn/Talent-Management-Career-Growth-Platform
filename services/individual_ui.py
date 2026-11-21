@@ -479,22 +479,16 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
             </div>
             <div>
                 <span class="hero-badge-pill" style="background: linear-gradient(135deg, #7C3AED, #2563EB);">
-                    TESTING ENGINE
+                    AI-POWERED TESTING ENGINE
                 </span>
             </div>
         </div>
         """
     )
 
-    catalog = get_available_assessments()
-
     tab_test, tab_history = st.tabs(["Take Assessment", "Assessment History & Score Tracking"])
 
     with tab_test:
-        if not catalog:
-            st.info("No assessments currently available.")
-            return
-
         # ----------------------------------------------------------------------
         # REQUIREMENT: ONLY GENERATE ASSESSMENTS MATCHING EMPLOYEE'S SKILLS
         # ----------------------------------------------------------------------
@@ -509,22 +503,15 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
         if not emp_skills_list and skills:
             emp_skills_list = skills
 
-        user_skill_names = set()
+        user_skill_names = []
+        user_skill_set = set()
         for s in (emp_skills_list or []):
-            sk = (s.get("name") or s.get("skill_name") or s.get("skill") or "").strip().lower()
-            if sk:
-                user_skill_names.add(sk)
+            sk = (s.get("name") or s.get("skill_name") or s.get("skill") or "").strip()
+            if sk and sk.lower() not in user_skill_set:
+                user_skill_set.add(sk.lower())
+                user_skill_names.append(sk)
 
-        # Match catalog domains with employee's verified competencies
-        matched_catalog = []
-        for c in catalog:
-            c_name = (c.get("skill") or c.get("skill_name") or "").strip()
-            c_lower = c_name.lower()
-            # Match exact or substring (e.g., 'python' matches 'python', 'python 3')
-            if any(c_lower == u or c_lower in u or u in c_lower for u in user_skill_names):
-                matched_catalog.append(c)
-
-        if not matched_catalog:
+        if not user_skill_names:
             _render_html(
                 f"""
                 <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 28px; text-align: center; margin: 1.5rem 0; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);">
@@ -536,17 +523,14 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
                     </div>
                     <div style="font-size: 0.88rem; color: #64748B; max-width: 540px; margin: 0 auto 16px auto; line-height: 1.5;">
                         Standardized technical assessments are generated strictly for competencies verified in your profile.
-                        Add your skills (e.g. Python, SQL, React, Docker, JavaScript, Git, Machine Learning, System Design, Cloud Architecture) in the <strong>My Competencies &amp; Skills</strong> tab to unlock tailored assessments.
-                    </div>
-                    <div style="display: inline-block; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px; padding: 10px 18px; font-size: 0.82rem; color: #475569;">
-                        Assessment Domains Available: Python &bull; SQL &bull; React &bull; JavaScript &bull; Git &bull; Docker &bull; Machine Learning &bull; Data Structures &bull; System Design &bull; Cloud Architecture &bull; CI/CD &bull; Communication &bull; Leadership
+                        Add your skills (e.g. Python, SQL, React, Docker, JavaScript, Git, Machine Learning, System Design, Cloud Architecture) in the <strong>My Competencies &amp; Skills</strong> tab to unlock tailored, AI-generated assessments.
                     </div>
                 </div>
                 """
             )
             return
 
-        skill_options = [c.get("skill") or c.get("skill_name") for c in matched_catalog]
+        skill_options = user_skill_names
 
         col_sel_sk, col_shuf_btn = st.columns([4, 1.6])
         with col_sel_sk:
@@ -554,28 +538,54 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
                 "Select Skill to Evaluate *",
                 options=skill_options,
                 key=f"mcq_sel_skill_{uid}",
-                format_func=lambda x: f"{x} (Matched with your verified skills)"
+                format_func=lambda x: f"{x} (Matched with your verified competencies)"
             )
         with col_shuf_btn:
             st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-            if st.button("New Questions", icon=":material/refresh:", key=f"btn_shuf_mcq_{uid}", help="Loads a fresh randomized question set for this skill", use_container_width=True):
+            if st.button("New Questions", icon=":material/refresh:", key=f"btn_shuf_mcq_{uid}", help="Generates a fresh, non-repeating AI question set for this skill", use_container_width=True):
                 st.session_state.pop(f"mcq_active_q_{uid}_{sel_skill}", None)
                 st.session_state.pop(f"last_assessment_result_{sel_skill}", None)
                 st.rerun()
 
-        st.markdown(f"<div style='margin: 1rem 0; padding: 12px 18px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; font-size: 0.88rem; color: #1E40AF;'>You are attempting the standardized <strong>{sel_skill} Competency Assessment</strong>. Questions are dynamically generated and randomized for your session. Select the best answer for each question and submit for immediate automated scoring.</div>", unsafe_allow_html=True)
+        st.markdown(
+            f"<div style='margin: 1rem 0; padding: 12px 18px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; font-size: 0.88rem; color: #1E40AF; display: flex; align-items: center; justify-content: space-between;'>"
+            f"<div>You are attempting the standardized <strong>{sel_skill} Competency Assessment</strong>. Questions are generated dynamically by <strong>Gemini AI</strong> and tailored uniquely to your profile with zero repetition.</div>"
+            f"<span style='background: #DBEAFE; color: #1D4ED8; font-weight: 700; font-size: 0.75rem; padding: 3px 8px; border-radius: 6px; white-space: nowrap; margin-left: 12px;'>AI Generated</span>"
+            f"</div>",
+            unsafe_allow_html=True
+        )
 
         # ----------------------------------------------------------------------
-        # REQUIREMENT: DYNAMIC & VARYING QUESTIONS ON RELOAD
+        # REQUIREMENT: DYNAMIC AI QUESTIONS THAT NEVER REPEAT & VARY PER EMPLOYEE
         # ----------------------------------------------------------------------
+        asked_key = f"mcq_previously_asked_{uid}_{sel_skill}"
+        if asked_key not in st.session_state:
+            st.session_state[asked_key] = []
+
         q_cache_key = f"mcq_active_q_{uid}_{sel_skill}"
-        if q_cache_key not in st.session_state:
-            st.session_state[q_cache_key] = get_assessment_questions(sel_skill, sample_size=5, shuffle_options=True)
+        if q_cache_key not in st.session_state or not st.session_state[q_cache_key]:
+            with st.spinner(f"AI is generating customized, non-repeating {sel_skill} assessment questions for you..."):
+                from services.ai_coach import generate_ai_assessment_questions
+                user_ctx = {
+                    "user_id": uid,
+                    "employee_id": emp_id,
+                    "name": user.get("name", "Employee"),
+                    "department": user.get("department", "Engineering"),
+                    "role": user.get("designation") or user.get("role") or "Software Engineer"
+                }
+                prev_q = st.session_state.get(asked_key, [])
+                ai_questions = generate_ai_assessment_questions(
+                    skill_name=sel_skill,
+                    count=5,
+                    user_context=user_ctx,
+                    previous_questions=prev_q
+                )
+                st.session_state[q_cache_key] = ai_questions
+                for q_item in ai_questions:
+                    if q_item.get("question") and q_item["question"] not in st.session_state[asked_key]:
+                        st.session_state[asked_key].append(q_item["question"])
 
         questions = st.session_state[q_cache_key]
-        if not questions:
-            questions = get_assessment_questions(sel_skill, sample_size=5, shuffle_options=True)
-            st.session_state[q_cache_key] = questions
 
         # ----------------------------------------------------------------------
         # REQUIREMENT: RADIO NOT BLUE INITIALLY (index=None). TURNS BLUE ON CLICK.
@@ -604,9 +614,9 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
                 if unanswered:
                     st.warning(f"Please select an answer for all questions before submitting. Unanswered: Question {', '.join(map(str, unanswered))}.")
                 else:
-                    result = evaluate_assessment(uid, sel_skill, user_answers)
+                    result = evaluate_assessment(uid, sel_skill, user_answers, employee_id=emp_id, org_id=org_id, active_questions=questions)
                     st.session_state[f"last_assessment_result_{sel_skill}"] = result
-                    # Reset current question cache so subsequent attempts get fresh randomized questions!
+                    # Reset active question cache so the NEXT attempt gets fresh new AI questions!
                     st.session_state.pop(q_cache_key, None)
                     st.rerun()
 

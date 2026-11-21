@@ -540,3 +540,169 @@ def _build_rule_based_resume_audit(
             f"Tailor your Professional Summary at the top to specifically target the '{target_role}' designation."
         ]
     }
+
+
+def generate_ai_assessment_questions(
+    skill_name: str,
+    count: int = 5,
+    user_context: Optional[Dict[str, Any]] = None,
+    previous_questions: Optional[List[str]] = None,
+    api_key: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Generates dynamic, personalized, non-repeating technical multiple-choice questions (MCQs)
+    for an employee using Gemini AI.
+    - Guarantees questions vary for every employee and on reload.
+    - Explicitly commands AI to exclude previously asked questions to prevent repetition.
+    - Shuffles options so correct answer position is randomized.
+    - Falls back gracefully to randomized algorithmic variants if offline.
+    """
+    import uuid
+    import random
+    import re
+    import json
+
+    ctx = user_context or {}
+    user_name = ctx.get("name") or "Employee"
+    role = ctx.get("role") or ctx.get("designation") or "Software Engineer"
+    dept = ctx.get("department") or "Engineering"
+    years_exp = ctx.get("years_experience") or 2.0
+    session_salt = uuid.uuid4().hex[:6]
+
+    avoid_block = ""
+    if previous_questions:
+        clean_prev = [f"- {q.strip()}" for q in previous_questions[-20:] if q and q.strip()]
+        if clean_prev:
+            avoid_block = (
+                "ANTI-REPETITION MANDATE:\n"
+                "Do NOT generate or duplicate any questions similar to these previously answered questions:\n"
+                + "\n".join(clean_prev) + "\n"
+            )
+
+    system_instruction = (
+        "You are an Elite Enterprise Technical Interviewer and Competency Assessment Architect. "
+        "Your mission is to generate original, non-repeating, challenging multiple-choice questions (MCQs) for technical evaluations. "
+        "Return ONLY a valid JSON array of objects. Do not include markdown codeblocks, commentary, or text outside the JSON."
+    )
+
+    prompt = f"""Generate {count} completely NEW, unique, and challenging multiple-choice questions for evaluating verified competency in '{skill_name}'.
+
+TARGET CANDIDATE CONTEXT:
+• Candidate Name: {user_name}
+• Professional Role: {role}
+• Department: {dept}
+• Approximate Experience: {years_exp} years
+• Assessment Session ID: {session_salt}
+
+{avoid_block}
+
+CRITICAL RULES FOR EACH QUESTION:
+1. Real-World Engineering: Test real architecture decisions, performance trade-offs, edge cases, idioms, debugging, or core concepts in {skill_name}.
+2. Unique & Non-Repeating: Do NOT generate trivial boilerplate trivia (e.g., avoid basic syntax or list vs tuple).
+3. Exactly 4 Plausible Options: Provide exactly 4 options in 'options'. Only 1 must be correct; 3 must be realistic distractors.
+4. Exact Match: The 'answer' field MUST exactly match one of the strings in the 'options' list.
+5. In-Depth Explanation: In 'explanation', explain clearly why the answer is correct and why the alternatives are flawed.
+
+JSON SCHEMA:
+[
+  {{
+    "question": "Clear, precise technical question text?",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "answer": "Exact text of the correct option",
+    "explanation": "Clear explanation of the concept and why this choice is correct."
+  }}
+]
+"""
+
+    res = call_gemini_api(
+        prompt=prompt,
+        system_instruction=system_instruction,
+        api_key=api_key,
+        temperature=0.85,
+        max_tokens=2500
+    )
+
+    questions: List[Dict[str, Any]] = []
+    if res.get("success") and res.get("text"):
+        raw_text = res["text"].strip()
+        if "```json" in raw_text:
+            raw_text = raw_text.split("```json", 1)[1].split("```", 1)[0].strip()
+        elif "```" in raw_text:
+            raw_text = raw_text.split("```", 1)[1].split("```", 1)[0].strip()
+        
+        try:
+            parsed = json.loads(raw_text)
+            if isinstance(parsed, list):
+                for item in parsed:
+                    q_text = str(item.get("question", "")).strip()
+                    opts = [str(o).strip() for o in item.get("options", []) if str(o).strip()]
+                    ans = str(item.get("answer", "")).strip()
+                    expl = str(item.get("explanation", "")).strip()
+
+                    if q_text and len(opts) == 4:
+                        if ans not in opts:
+                            matched = next((o for o in opts if o.lower() == ans.lower()), None)
+                            if matched:
+                                ans = matched
+                            else:
+                                opts[0] = ans
+                        shuffled_opts = list(opts)
+                        random.shuffle(shuffled_opts)
+                        clean_slug = re.sub(r"[^a-zA-Z0-9]", "_", skill_name.lower())[:6]
+                        q_id = f"ai_{clean_slug}_{uuid.uuid4().hex[:8]}"
+                        questions.append({
+                            "id": q_id,
+                            "question": q_text,
+                            "options": shuffled_opts,
+                            "answer": ans,
+                            "explanation": expl or f"The verified correct concept is: {ans}"
+                        })
+        except Exception:
+            pass
+
+    # Fallback to randomized bank pool if needed (e.g. offline or partial response)
+    if len(questions) < count:
+        try:
+            from services.core import SKILL_ASSESSMENT_BANK
+            bank_pool = [dict(q) for q in SKILL_ASSESSMENT_BANK.get(skill_name, [])]
+        except Exception:
+            bank_pool = []
+
+        if previous_questions and bank_pool:
+            prev_set = {pq.strip().lower() for pq in previous_questions if pq}
+            unseen = [q for q in bank_pool if q.get("question", "").strip().lower() not in prev_set]
+            if unseen:
+                bank_pool = unseen
+
+        random.shuffle(bank_pool)
+        for q in bank_pool:
+            if len(questions) >= count:
+                break
+            opts = list(q.get("options", []))
+            random.shuffle(opts)
+            questions.append({
+                "id": f"bk_{uuid.uuid4().hex[:8]}",
+                "question": q.get("question", ""),
+                "options": opts,
+                "answer": q.get("answer", ""),
+                "explanation": q.get("explanation", "")
+            })
+
+    # If still fewer than count (e.g. custom skill not in bank and offline):
+    while len(questions) < count:
+        idx = len(questions) + 1
+        q_id = f"gen_{uuid.uuid4().hex[:8]}"
+        questions.append({
+            "id": q_id,
+            "question": f"When implementing enterprise solutions using {skill_name}, what is the recommended practice for maintainability (Scenario #{idx})?",
+            "options": [
+                f"Apply modular separation of concerns and automated unit testing for {skill_name} components",
+                f"Combine all logic into a single monolithic script to eliminate abstraction overhead",
+                f"Disable runtime logging and validation to maximize execution throughput",
+                f"Store credentials and configuration values directly inside source files"
+            ],
+            "answer": f"Apply modular separation of concerns and automated unit testing for {skill_name} components",
+            "explanation": f"In production {skill_name} architectures, modular separation of concerns, test isolation, and decoupling configuration are foundational engineering best practices."
+        })
+
+    return questions[:count]

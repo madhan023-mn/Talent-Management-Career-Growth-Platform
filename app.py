@@ -6446,7 +6446,7 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
         reviews = get_performance_reviews(org_id=org_id)
         goals = get_goals(org_id=org_id)
         dept_summary = get_department_performance_summary(org_id=org_id)
-        tab_rep_overview, tab_rep_csv, tab_rep_pdf = st.tabs(["Analytics Overview", "Download CSV Data Reports", "Individual & Org PDF Dossiers"])
+        tab_rep_overview, tab_rep_pdf = st.tabs(["Analytics Overview", "Individual & Org PDF Dossiers"])
 
         with tab_rep_overview:
             render_html(
@@ -6498,25 +6498,6 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                         fig_hist.update_yaxes(title_text="")
                         fig_hist.update_layout(bargap=0.25, bargroupgap=0.1)
                         st.plotly_chart(fig_hist, use_container_width=True)
-
-        with tab_rep_csv:
-            st.markdown("#### Download Structured CSV Data Reports")
-            c_csv1, c_csv2 = st.columns(2)
-            with c_csv1:
-                if employees:
-                    csv_emp = pd.DataFrame(employees).to_csv(index=False).encode("utf-8")
-                    st.download_button("Download All Employees (CSV)", csv_emp, "talent_growth_employees.csv", "text/csv", type="primary", use_container_width=True)
-                if reviews:
-                    st.write("")
-                    csv_rev = pd.DataFrame(reviews).to_csv(index=False).encode("utf-8")
-                    st.download_button("Download All Performance Reviews (CSV)", csv_rev, "talent_growth_performance_reviews.csv", "text/csv", use_container_width=True)
-            with c_csv2:
-                if goals:
-                    csv_goal = pd.DataFrame(goals).to_csv(index=False).encode("utf-8")
-                    st.download_button("Download All Career Goals (CSV)", csv_goal, "talent_growth_career_goals.csv", "text/csv", use_container_width=True)
-                st.write("")
-                payload_json = json.dumps(export_user_data(uid), indent=2, default=str).encode("utf-8")
-                st.download_button("Export System Snapshot (JSON)", payload_json, "talent_growth_snapshot.json", "application/json", use_container_width=True)
 
         with tab_rep_pdf:
             st.markdown("#### Generate Individual Employee Talent Dossier (PDF)")

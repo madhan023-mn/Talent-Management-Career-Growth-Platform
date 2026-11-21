@@ -6280,14 +6280,20 @@ def evaluate_assessment(
     skill_name: str,
     submitted_answers: Dict[str, Any],
     employee_id: Optional[str] = None,
-    org_id: Optional[str] = None
+    org_id: Optional[str] = None,
+    active_questions: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """
     Evaluates submitted answers for a technical assessment.
     Calculates correct/incorrect scores, displays correct answers and explanations,
     and stores the verified assessment result in the database.
+    Supports dynamically generated AI active_questions as well as static bank questions.
     """
-    questions = SKILL_ASSESSMENT_BANK.get(skill_name, [])
+    if active_questions:
+        questions = active_questions
+    else:
+        questions = SKILL_ASSESSMENT_BANK.get(skill_name, [])
+
     if not questions:
         return {"error": f"No assessment questions found for skill '{skill_name}'."}
 
