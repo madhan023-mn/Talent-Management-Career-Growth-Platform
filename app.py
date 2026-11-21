@@ -4645,9 +4645,9 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                 else:
                     render_html(render_colored_review_table(filtered_reviews))
 
-                # Performance Trajectory Chart (Rectangle Bars)
-                st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
-                st.markdown("#### Performance Evaluation Trajectory & Scores")
+                # Performance Trajectory Chart (Compact Rectangle Bars)
+                st.markdown("<div style='margin-top: 1.25rem;'></div>", unsafe_allow_html=True)
+                st.markdown("##### Performance Evaluation Trajectory & Scores")
                 df_trend = pd.DataFrame(all_reviews)
                 if not df_trend.empty and "review_period" in df_trend.columns:
                     periods = [p for p in df_trend["review_period"].dropna().unique() if str(p).strip()]
@@ -4664,14 +4664,15 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                         fig_trend.add_trace(go.Bar(
                             x=trend_agg["review_period"],
                             y=trend_agg["avg_score"],
-                            text=[f"★ {s:.2f} / 5.0<br>({c} reviews)" for s, c in zip(trend_agg["avg_score"], trend_agg["cnt"])],
+                            text=[f"★ {s:.2f} ({c} revs)" for s, c in zip(trend_agg["avg_score"], trend_agg["cnt"])],
                             textposition="outside",
+                            textfont=dict(size=10.5, color="#334155"),
                             marker=dict(
                                 color=bar_colors,
-                                line=dict(color="#1E293B", width=1),
-                                cornerradius=8
+                                line=dict(color="#1E293B", width=0.8),
+                                cornerradius=6
                             ),
-                            width=0.35 if len(trend_agg) <= 2 else None,
+                            width=0.32 if len(trend_agg) <= 2 else None,
                             name="Cycle Average"
                         ))
                         cycle_avg = df_trend["performance_score"].mean()
@@ -4679,14 +4680,17 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                             y=cycle_avg,
                             line_dash="dash",
                             line_color="#475569",
-                            annotation_text=f"Workforce Avg: {cycle_avg:.2f}",
-                            annotation_position="top right"
+                            line_width=1.2,
+                            annotation_text=f"Avg: {cycle_avg:.2f}",
+                            annotation_position="top right",
+                            annotation_font=dict(size=10, color="#475569")
                         )
                         fig_trend.update_layout(
-                            yaxis=dict(range=[0, 5.5], title="Performance Rating (1.0 - 5.0)", tickvals=[1, 2, 3, 4, 5]),
-                            xaxis=dict(title="Review Cycle"),
-                            bargap=0.3,
-                            height=300
+                            yaxis=dict(range=[0, 5.5], tickvals=[1, 2, 3, 4, 5], tickfont=dict(size=10)),
+                            xaxis=dict(tickfont=dict(size=10.5)),
+                            bargap=0.35,
+                            height=200,
+                            margin=dict(l=10, r=10, t=25, b=15)
                         )
                     else:
                         cycle_label = periods[0] if periods else "Evaluation Cycle"
@@ -4698,14 +4702,15 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                         fig_trend.add_trace(go.Bar(
                             x=df_sorted["employee_name"],
                             y=df_sorted["performance_score"],
-                            text=[f"★ {s:.1f} / 5.0" for s in df_sorted["performance_score"]],
+                            text=[f"★ {s:.1f}" for s in df_sorted["performance_score"]],
                             textposition="outside",
+                            textfont=dict(size=10.5, color="#334155"),
                             marker=dict(
                                 color=bar_colors,
-                                line=dict(color="#1E293B", width=0.8),
-                                cornerradius=8
+                                line=dict(color="#1E293B", width=0.5),
+                                cornerradius=6
                             ),
-                            width=0.45,
+                            width=0.35,
                             name="Employee Score"
                         ))
                         cycle_avg = df_sorted["performance_score"].mean()
@@ -4713,17 +4718,20 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                             y=cycle_avg,
                             line_dash="dash",
                             line_color="#2563EB",
-                            annotation_text=f"{cycle_label} Workforce Avg: {cycle_avg:.2f} / 5.0",
-                            annotation_position="top right"
+                            line_width=1.2,
+                            annotation_text=f"Avg: {cycle_avg:.2f} / 5.0",
+                            annotation_position="top right",
+                            annotation_font=dict(size=10, color="#2563EB")
                         )
                         fig_trend.update_layout(
-                            yaxis=dict(range=[0, 5.5], title="Performance Score (1.0 - 5.0)", tickvals=[1, 2, 3, 4, 5]),
-                            xaxis=dict(title=f"Evaluated Personnel — {cycle_label}"),
-                            bargap=0.25,
-                            height=320
+                            yaxis=dict(range=[0, 5.5], tickvals=[1, 2, 3, 4, 5], tickfont=dict(size=10)),
+                            xaxis=dict(tickfont=dict(size=10.5)),
+                            bargap=0.3,
+                            height=200,
+                            margin=dict(l=10, r=10, t=25, b=15)
                         )
 
-                    fig_trend = apply_saas_chart_theme(fig_trend, height=320)
+                    fig_trend = apply_saas_chart_theme(fig_trend, height=200)
                     st.plotly_chart(fig_trend, use_container_width=True)
             else:
                 st.info("No performance evaluations recorded yet.")
