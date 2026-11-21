@@ -2646,10 +2646,10 @@ def nav_format(page_name: str) -> str:
 def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
     """Renders the modernized Enterprise SaaS sidebar."""
     with st.sidebar:
-        # 1. Branding Header Row: Swirl Logo + Talent Growth + Version Pill
+        # 1. Branding Header Row: Swirl Logo + Talent Growth
         st.markdown(
             f"""
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+            <div style="display: flex; align-items: center; justify-content: flex-start; padding: 4px 0 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     {get_svg_icon("brand_logo", size=32)}
                     <div style="display: flex; flex-direction: column; line-height: 1.15;">
@@ -2657,7 +2657,6 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
                         <span style="font-size: 0.72rem; font-weight: 600; color: #38BDF8; letter-spacing: 0.02em;">Enterprise SaaS</span>
                     </div>
                 </div>
-                <span style="font-size: 0.68rem; font-weight: 700; background: rgba(37, 99, 235, 0.25); border: 1px solid rgba(59, 130, 246, 0.4); color: #93C5FD; padding: 2px 7px; border-radius: 9999px;">v2.0</span>
             </div>
             <div style="font-size: 0.70rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.08em; padding: 14px 2px 6px 2px;">
                 Platform Navigation
@@ -2722,15 +2721,6 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
             st.session_state.page_to_navigate = "Dashboard"
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown(
-            """
-            <div style="text-align: center; font-size: 0.74rem; color: #64748B; margin-top: 1.15rem; line-height: 1.4;">
-                Talent Growth Platform &bull; v2.0<br/>
-                Licensed under the <span style="color: #94A3B8; font-weight: 600;">MIT License</span>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
 
         return selected_nav
 
@@ -2751,30 +2741,20 @@ badge_bg = "#F0FDF4" if is_individual else ("#EEF2FF" if is_admin else "#EFF6FF"
 badge_border = "#BBF7D0" if is_individual else ("#C7D2FE" if is_admin else "#BFDBFE")
 role_label = "INDIVIDUAL" if is_individual else (user.get('role', 'employee').upper())
 
-user_badges_html = f"""
-<div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; color: #64748B; padding-top: 6px;">
-    <span style="display: inline-flex; align-items: center; gap: 6px; background: #FFFFFF; border: 1px solid #E2E8F0; padding: 4px 11px; border-radius: 9999px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-        {get_svg_icon("user", size=13, color="#475569")}
-        <strong style="color: #0F172A;">{user.get('name', 'User')}</strong> &bull; <span style="font-size: 0.70rem; font-weight: 700; color: #2563EB;">{role_label}</span>
-    </span>
-    <span style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #FFFFFF; border: 1px solid #E2E8F0; color: #64748B; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
-        {get_svg_icon("bell", size=14, color="#64748B")}
-        <span style="position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: #10B981;"></span>
-    </span>
-    <span style="color: {badge_color}; font-weight: 700; background: {badge_bg}; border: 1px solid {badge_border}; padding: 4px 11px; border-radius: 9999px;">{page}</span>
-</div>
-"""
-
 if page != "Dashboard":
     col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
     with col_top_home:
         if st.button("← Back to Home", icon=":material/home:", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
             navigate_to("Dashboard")
     with col_top_trail:
-        render_html(user_badges_html)
-else:
-    render_html(user_badges_html)
-st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
+        render_html(
+            f"""
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; padding-top: 6px;">
+                <span style="color: {badge_color}; font-weight: 700; background: {badge_bg}; border: 1px solid {badge_border}; padding: 4px 11px; border-radius: 9999px;">{page}</span>
+            </div>
+            """
+        )
+    st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
 
 if is_pending_member:
     render_html(
@@ -2850,29 +2830,6 @@ if is_individual:
 # 1. ADMIN: EXECUTIVE DASHBOARD
 # ==============================================================================
 if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
-    # Top Search & Profile Bar matching Image 1 & 2
-    render_html(
-        f"""
-        <div class="top-header-bar">
-            <div class="top-search-box">
-                {get_svg_icon("search", size=18, color="#94A3B8")}
-                <span>Search employees, skills, or departments...</span>
-            </div>
-            <div class="top-header-right">
-                <div class="bell-pill" title="2 Unread Notifications">
-                    {get_svg_icon("bell", size=18, color="#475569")}
-                    <span class="dot">2</span>
-                </div>
-                <div class="header-user-badge">
-                    <div class="header-user-avatar">{initials}</div>
-                    <span class="header-user-name">{user.get('name', 'User')}</span>
-                    <span style="font-size: 0.72rem; color: #2563EB; font-weight: 700; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 9999px; padding: 2px 7px;">ADMIN</span>
-                </div>
-            </div>
-        </div>
-        """
-    )
-
     # Professional Career Growth & Milestone Illustration (Replacing SVG shapes)
     career_growth_b64 = get_career_growth_illustration_b64()
 
