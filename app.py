@@ -4518,61 +4518,212 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                     filtered_reviews = [r for r in all_reviews if r["performance_score"] < 3.0]
 
                 if rev_view_mode == "Cards View":
-                    for r in filtered_reviews:
-                        score = r["performance_score"]
-                        tier_label = "TOP PERFORMER" if score >= 4.5 else ("EXCEEDS GOALS" if score >= 4.0 else "MEETS STANDARDS")
-                        render_html(
-                            f"""
-                            <div class="review-card-item">
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    card_cols = st.columns(2, gap="medium")
+                    for i, r in enumerate(filtered_reviews):
+                        with card_cols[i % 2]:
+                            score = float(r.get("performance_score") or 0.0)
+                            if score >= 4.5:
+                                tier_label = "TOP PERFORMER"
+                                tier_border = "#10B981"
+                                tier_bg = "#ECFDF5"
+                                tier_border_light = "#A7F3D0"
+                                tier_text = "#047857"
+                                tier_grad = "linear-gradient(135deg, #059669 0%, #10B981 100%)"
+                                tier_bar = "#10B981"
+                            elif score >= 4.0:
+                                tier_label = "EXCEEDS GOALS"
+                                tier_border = "#2563EB"
+                                tier_bg = "#EFF6FF"
+                                tier_border_light = "#BFDBFE"
+                                tier_text = "#1D4ED8"
+                                tier_grad = "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)"
+                                tier_bar = "#2563EB"
+                            elif score >= 3.0:
+                                tier_label = "MEETS STANDARDS"
+                                tier_border = "#F59E0B"
+                                tier_bg = "#FFFBEB"
+                                tier_border_light = "#FDE68A"
+                                tier_text = "#B45309"
+                                tier_grad = "linear-gradient(135deg, #D97706 0%, #F59E0B 100%)"
+                                tier_bar = "#F59E0B"
+                            else:
+                                tier_label = "NEEDS DEVELOPMENT"
+                                tier_border = "#EF4444"
+                                tier_bg = "#FEF2F2"
+                                tier_border_light = "#FECACA"
+                                tier_text = "#B91C1C"
+                                tier_grad = "linear-gradient(135deg, #DC2626 0%, #EF4444 100%)"
+                                tier_bar = "#EF4444"
+
+                            n_parts = (r.get("employee_name") or "User").strip().split()
+                            init = (n_parts[0][0] + (n_parts[-1][0] if len(n_parts) > 1 else "")).upper()
+                            score_pct = min(max((score / 5.0) * 100, 0), 100)
+
+                            mgr_html = ""
+                            if r.get("manager_feedback"):
+                                mgr_html = f"""
+                                <div style="background: #FAF5FF; border: 1px solid #E9D5FF; border-left: 3px solid #7C3AED; border-radius: 8px; padding: 7px 11px; margin-top: 9px;">
+                                    <div style="font-size: 0.68rem; font-weight: 800; color: #7C3AED; text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                                        {get_svg_icon("user", size=12, color="#7C3AED")} Manager Feedback
+                                    </div>
+                                    <div style="font-size: 0.82rem; color: #4C1D95; line-height: 1.4;">
+                                        {r['manager_feedback']}
+                                    </div>
+                                </div>
+                                """
+
+                            render_html(
+                                f"""
+                                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-top: 4px solid {tier_border}; border-radius: 14px; padding: 1.25rem 1.4rem; margin-bottom: 1.15rem; box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04); min-height: 295px; display: flex; flex-direction: column; justify-content: space-between;">
                                     <div>
-                                        <span style="font-weight: 800; font-size: 1.08rem; color: #0F172A;">{r['employee_name']}</span>
-                                        <span style="font-size: 0.8rem; color: #64748B; margin-left: 8px;">({r['department']} · {r['designation']})</span>
+                                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px;">
+                                            <div style="display: flex; align-items: center; gap: 11px;">
+                                                <div style="width: 42px; height: 42px; border-radius: 12px; background: {tier_grad}; color: #FFFFFF; font-weight: 800; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                                                    {init}
+                                                </div>
+                                                <div>
+                                                    <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A; line-height: 1.25;">{r['employee_name']}</div>
+                                                    <div style="font-size: 0.76rem; color: #475569; font-weight: 600; margin-top: 2px;">
+                                                        <span style="background: #F1F5F9; border: 1px solid #E2E8F0; padding: 1px 7px; border-radius: 5px;">{r['department']}</span>
+                                                        <span style="color: #2563EB; margin-left: 4px;">{r['designation']}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0;">
+                                                <span style="display: inline-flex; align-items: center; gap: 4px; background: {tier_bg}; border: 1px solid {tier_border_light}; color: {tier_text}; font-weight: 800; font-size: 0.78rem; padding: 3px 9px; border-radius: 9999px;">
+                                                    {get_svg_icon("star", size=12, color=tier_text)} {score} / 5.0 &bull; {tier_label}
+                                                </span>
+                                                <span style="font-size: 0.70rem; font-weight: 700; color: #64748B; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 2px 7px; border-radius: 9999px;">
+                                                    {r['review_period']}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div style="margin-bottom: 11px;">
+                                            <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px;">
+                                                <span>Rating Meter</span>
+                                                <span style="color: {tier_text}; font-weight: 800;">{score} / 5.0 ({score_pct:.0f}%)</span>
+                                            </div>
+                                            <div style="background: #F1F5F9; border-radius: 9999px; height: 5px; width: 100%; overflow: hidden;">
+                                                <div style="background: {tier_bar}; height: 100%; width: {score_pct}%; border-radius: 9999px;"></div>
+                                            </div>
+                                        </div>
+
+                                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-left: 3px solid #2563EB; border-radius: 8px; padding: 8px 12px; margin-bottom: 9px;">
+                                            <div style="font-size: 0.66rem; font-weight: 800; color: #2563EB; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                                                {get_svg_icon("sparkles", size=11, color="#2563EB")} Key Achievements &amp; Impact
+                                            </div>
+                                            <div style="font-size: 0.84rem; color: #1E293B; font-style: italic; line-height: 1.4;">
+                                                &ldquo;{r['achievements'] or 'Demonstrated strong commitment to team outcomes and technical delivery.'}&rdquo;
+                                            </div>
+                                        </div>
+
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                            <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 7px 9px;">
+                                                <div style="font-size: 0.66rem; font-weight: 800; color: #16A34A; text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                                                    {get_svg_icon("check_circle", size=11, color="#16A34A")} Strengths
+                                                </div>
+                                                <div style="font-size: 0.78rem; color: #14532D; font-weight: 600; line-height: 1.3;">
+                                                    {r['strengths'] or 'Consistency, technical proficiency'}
+                                                </div>
+                                            </div>
+                                            <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 7px 9px;">
+                                                <div style="font-size: 0.66rem; font-weight: 800; color: #D97706; text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                                                    {get_svg_icon("target", size=11, color="#D97706")} Growth Areas
+                                                </div>
+                                                <div style="font-size: 0.78rem; color: #78350F; font-weight: 600; line-height: 1.3;">
+                                                    {r['improvements'] or 'Leadership and cross-team alignment'}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span class="badge-status badge-progress">{r['review_period']}</span>
-                                        <span class="tbl-rating-pill">{score} / 5.0 · {tier_label}</span>
-                                    </div>
+
+                                    {mgr_html}
                                 </div>
-                                <div class="quote-box">
-                                    "{r['achievements'] or 'Demonstrated strong commitment to team outcomes and technical delivery.'}"
-                                </div>
-                                <div style="display: flex; gap: 14px; margin-top: 10px; font-size: 0.84rem;">
-                                    <div style="flex: 1;">
-                                        <strong style="color: #065F46;">Strengths:</strong>
-                                        <span style="color: #334155;"> {r['strengths'] or 'Consistency, technical proficiency'}</span>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <strong style="color: #9A3412;">Growth Areas:</strong>
-                                        <span style="color: #334155;"> {r['improvements'] or 'Leadership and cross-team alignment'}</span>
-                                    </div>
-                                </div>
-                                {f'<div style="margin-top: 8px; font-size: 0.82rem; color: #475569;"><strong>Manager Feedback:</strong> {r["manager_feedback"]}</div>' if r.get('manager_feedback') else ''}
-                            </div>
-                            """
-                        )
+                                """
+                            )
                 else:
                     render_html(render_colored_review_table(filtered_reviews))
 
-                # Performance Trajectory Chart
+                # Performance Trajectory Chart (Rectangle Bars)
                 st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
-                st.markdown("#### Performance Evaluation Trajectory")
+                st.markdown("#### Performance Evaluation Trajectory & Scores")
                 df_trend = pd.DataFrame(all_reviews)
                 if not df_trend.empty and "review_period" in df_trend.columns:
-                    trend_agg = df_trend.groupby("review_period")["performance_score"].mean().reset_index()
+                    periods = [p for p in df_trend["review_period"].dropna().unique() if str(p).strip()]
                     fig_trend = go.Figure()
-                    fig_trend.add_trace(go.Scatter(
-                        x=trend_agg["review_period"],
-                        y=trend_agg["performance_score"],
-                        mode="lines+markers",
-                        line=dict(color="#2563EB", width=3, shape="spline"),
-                        marker=dict(size=8, color="#1D4ED8", line=dict(width=2, color="#FFFFFF")),
-                        fill="tozeroy",
-                        fillcolor="rgba(37, 99, 235, 0.08)",
-                        name="Workforce Avg"
-                    ))
-                    fig_trend = apply_saas_chart_theme(fig_trend, height=260)
-                    fig_trend.update_yaxes(range=[1.0, 5.0])
+                    if len(periods) > 1:
+                        trend_agg = df_trend.groupby("review_period").agg(
+                            avg_score=("performance_score", "mean"),
+                            cnt=("performance_score", "count")
+                        ).reset_index()
+                        bar_colors = [
+                            "#10B981" if s >= 4.5 else ("#2563EB" if s >= 4.0 else ("#F59E0B" if s >= 3.0 else "#EF4444"))
+                            for s in trend_agg["avg_score"]
+                        ]
+                        fig_trend.add_trace(go.Bar(
+                            x=trend_agg["review_period"],
+                            y=trend_agg["avg_score"],
+                            text=[f"★ {s:.2f} / 5.0<br>({c} reviews)" for s, c in zip(trend_agg["avg_score"], trend_agg["cnt"])],
+                            textposition="outside",
+                            marker=dict(
+                                color=bar_colors,
+                                line=dict(color="#1E293B", width=1),
+                                cornerradius=8
+                            ),
+                            width=0.35 if len(trend_agg) <= 2 else None,
+                            name="Cycle Average"
+                        ))
+                        cycle_avg = df_trend["performance_score"].mean()
+                        fig_trend.add_hline(
+                            y=cycle_avg,
+                            line_dash="dash",
+                            line_color="#475569",
+                            annotation_text=f"Workforce Avg: {cycle_avg:.2f}",
+                            annotation_position="top right"
+                        )
+                        fig_trend.update_layout(
+                            yaxis=dict(range=[0, 5.5], title="Performance Rating (1.0 - 5.0)", tickvals=[1, 2, 3, 4, 5]),
+                            xaxis=dict(title="Review Cycle"),
+                            bargap=0.3,
+                            height=300
+                        )
+                    else:
+                        cycle_label = periods[0] if periods else "Evaluation Cycle"
+                        df_sorted = df_trend.sort_values(by="performance_score", ascending=False).reset_index(drop=True)
+                        bar_colors = [
+                            "#10B981" if s >= 4.5 else ("#2563EB" if s >= 4.0 else ("#F59E0B" if s >= 3.0 else "#EF4444"))
+                            for s in df_sorted["performance_score"]
+                        ]
+                        fig_trend.add_trace(go.Bar(
+                            x=df_sorted["employee_name"],
+                            y=df_sorted["performance_score"],
+                            text=[f"★ {s:.1f} / 5.0" for s in df_sorted["performance_score"]],
+                            textposition="outside",
+                            marker=dict(
+                                color=bar_colors,
+                                line=dict(color="#1E293B", width=0.8),
+                                cornerradius=8
+                            ),
+                            width=0.45,
+                            name="Employee Score"
+                        ))
+                        cycle_avg = df_sorted["performance_score"].mean()
+                        fig_trend.add_hline(
+                            y=cycle_avg,
+                            line_dash="dash",
+                            line_color="#2563EB",
+                            annotation_text=f"{cycle_label} Workforce Avg: {cycle_avg:.2f} / 5.0",
+                            annotation_position="top right"
+                        )
+                        fig_trend.update_layout(
+                            yaxis=dict(range=[0, 5.5], title="Performance Score (1.0 - 5.0)", tickvals=[1, 2, 3, 4, 5]),
+                            xaxis=dict(title=f"Evaluated Personnel — {cycle_label}"),
+                            bargap=0.25,
+                            height=320
+                        )
+
+                    fig_trend = apply_saas_chart_theme(fig_trend, height=320)
                     st.plotly_chart(fig_trend, use_container_width=True)
             else:
                 st.info("No performance evaluations recorded yet.")
