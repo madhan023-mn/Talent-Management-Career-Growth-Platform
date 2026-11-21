@@ -7764,7 +7764,7 @@ elif page in ["Career Coach", "AI Career Coach"]:
     default_q = st.session_state.get("coach_prompt_val", "")
     question = st.text_area("Your Career Strategy Question:", value=default_q, placeholder="e.g. What specific competencies should I master to transition into a Lead Cloud Architect position?")
     
-    if st.button("Generate Executive Strategy Guidance", type="primary", use_container_width=True):
+    if st.button("Generate Career Strategy Guidance", type="primary", use_container_width=True):
         if not question.strip():
             st.warning("Please select a quick prompt above or enter your career question.")
         else:
@@ -7772,7 +7772,7 @@ elif page in ["Career Coach", "AI Career Coach"]:
             gaps_info = gap_analysis(profile.get("target_role", "Software Engineer"), skills)
             target_role = profile.get("target_role", "Senior Engineer")
             
-            with st.spinner("Synthesizing deep AI career strategy guidance at high speed..."):
+            with st.spinner("Generating clear, fast AI career guidance..."):
                 advice_res = generate_ai_coaching_guidance(
                     user_name=user.get("name", "User"),
                     question=question,
@@ -7814,51 +7814,50 @@ elif page in ["Career Coach", "AI Career Coach"]:
             """
         )
 
-        # Advice Header Bar with Word Count and Depth Metrics
+        # Advice Header Bar with Word Count and Quick Response Metrics
         content_text = advice_res.get("content", "")
         word_count = len(content_text.split())
-        read_time = max(1, round(word_count / 200))
-        source_badge = f"Google Gemini ({advice_res.get('model', 'Live AI')})" if advice_res.get("source") == "gemini" else "Deterministic Heuristic Engine"
+        source_badge = f"Google Gemini ({advice_res.get('model', 'Live AI')})" if advice_res.get("source") == "gemini" else "Fast Rule-Based Engine"
 
         render_html(
             f"""
             <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 16px; margin: 1.25rem 0 0.75rem 0; display: flex; align-items: center; justify-content: space-between;">
                 <div style="font-size: 0.88rem; font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 8px;">
-                    <span>Comprehensive Executive Career Strategy Dossier</span>
+                    {get_svg_icon("check", size=16, color="#10B981")}
+                    <span>AI Career Guidance &amp; Action Plan</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 12px; font-size: 0.8rem; color: #64748B;">
                     <span><strong>{word_count:,}</strong> words</span>
                     <span>·</span>
-                    <span><strong>~{read_time}</strong> min read</span>
-                    <span>·</span>
                     <span style="background: #ECFDF5; color: #047857; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 0.75rem;">{source_badge}</span>
+                    <span style="background: #EFF6FF; color: #1D4ED8; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 0.75rem;">Fast Response</span>
                 </div>
             </div>
             """
         )
 
-        # Advice Body (Long-Form Executive Dossier)
+        # Advice Body (Concise, Simple & Clear Action Plan)
         with st.container(border=True):
             st.markdown(content_text)
 
-        # Export & Download Capabilities for Long Dossier
+        # Export & Download Capabilities
         c_dl, c_info = st.columns([1.5, 3.5])
         with c_dl:
             safe_name = "".join(c for c in user.get('name', 'career_plan') if c.isalnum() or c in (' ', '_')).rstrip().replace(' ', '_').lower()
             st.download_button(
-                label="Download Strategy Dossier (.md)", icon=":material/download:",
+                label="Download Action Plan (.md)", icon=":material/download:",
                 data=content_text,
-                file_name=f"career_strategy_dossier_{safe_name}.md",
+                file_name=f"career_action_plan_{safe_name}.md",
                 mime="text/markdown",
                 use_container_width=True
             )
         with c_info:
             if advice_res["source"] == "gemini":
-                st.success(f"Generated live in-depth via Google Gemini (`{advice_res['model']}`) with rapid execution and complete promotional milestones.")
+                st.success(f"Generated rapidly via Google Gemini (`{advice_res['model']}`) with simple, actionable career steps.")
             elif advice_res["source"] == "offline_fallback":
-                st.warning(f"Live Gemini API could not be reached ({advice_res['error']}). Displaying comprehensive rule-based strategic blueprint.")
+                st.warning(f"Live Gemini API could not be reached ({advice_res['error']}). Displaying rule-based strategic blueprint.")
             else:
-                st.info("Displayed in comprehensive heuristic mode. Active Gemini API key generates customized live blueprints.")
+                st.info("Displayed in heuristic mode. Active Gemini API generates customized live advice.")
 
 # ==============================================================================
 # 11. SETTINGS & SYSTEM
