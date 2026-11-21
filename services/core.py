@@ -5301,6 +5301,49 @@ SKILL_ASSESSMENT_BANK: Dict[str, List[Dict[str, Any]]] = {
             "options": ["zip()", "enumerate()", "map()", "filter()"],
             "answer": "zip()",
             "explanation": "zip() aggregates elements from each of the iterables and returns an iterator of tuples."
+        },
+        {
+            "id": "py_9",
+            "question": "What is the primary difference between `copy.deepcopy()` and shallow `copy.copy()` in Python?",
+            "options": [
+                "deepcopy recursively duplicates all nested objects; copy only duplicates the outer reference container",
+                "copy duplicates all nested objects; deepcopy only works on primitive types",
+                "deepcopy converts lists to immutables; copy preserves mutability",
+                "There is no difference in modern Python 3.10+"
+            ],
+            "answer": "deepcopy recursively duplicates all nested objects; copy only duplicates the outer reference container",
+            "explanation": "Deep copy constructs a new compound object and recursively inserts copies of the objects found in the original."
+        },
+        {
+            "id": "py_10",
+            "question": "Which dunder method makes an object instance callable like a standard function (e.g. `instance()`)?",
+            "options": ["__call__", "__init__", "__invoke__", "__exec__"],
+            "answer": "__call__",
+            "explanation": "Implementing `__call__` allows an instance of a class to be invoked directly as a callable object."
+        },
+        {
+            "id": "py_11",
+            "question": "What is the primary architectural purpose of a Python Context Manager (using `with`)?",
+            "options": [
+                "Deterministic resource acquisition and automated cleanup (e.g. closing files or releasing locks)",
+                "Accelerating bytecode interpretation using multiple CPU cores",
+                "Encrypting sensitive memory variables at runtime",
+                "Enforcing static type checking during execution"
+            ],
+            "answer": "Deterministic resource acquisition and automated cleanup (e.g. closing files or releasing locks)",
+            "explanation": "Context managers ensure that cleanup code in `__exit__` runs reliably even if exceptions occur in the block."
+        },
+        {
+            "id": "py_12",
+            "question": "What do `*args` and `**kwargs` represent in a Python function signature?",
+            "options": [
+                "Variable positional arguments (tuple) and variable keyword arguments (dict) respectively",
+                "Pointer addresses and pointer values respectively",
+                "Optional type hints and return values",
+                "Global constants and private instance fields"
+            ],
+            "answer": "Variable positional arguments (tuple) and variable keyword arguments (dict) respectively",
+            "explanation": "`*args` collects extra positional arguments into a tuple, while `**kwargs` collects extra named arguments into a dictionary."
         }
     ],
     "SQL": [
@@ -5360,6 +5403,49 @@ SKILL_ASSESSMENT_BANK: Dict[str, List[Dict[str, Any]]] = {
             ],
             "answer": "Faster SELECT queries but slower INSERT/UPDATE write performance",
             "explanation": "Indexes accelerate search queries but add overhead to write operations because indexes must be updated on modification."
+        },
+        {
+            "id": "sql_7",
+            "question": "What is the key behavioral difference between `SELECT COUNT(*)` and `SELECT COUNT(col)`?",
+            "options": [
+                "COUNT(*) counts all rows; COUNT(col) excludes rows where col is NULL",
+                "COUNT(col) is always faster than COUNT(*)",
+                "COUNT(*) only works on indexed tables",
+                "COUNT(col) automatically computes distinct values"
+            ],
+            "answer": "COUNT(*) counts all rows; COUNT(col) excludes rows where col is NULL",
+            "explanation": "COUNT(*) tallies every record in the table, while COUNT(col) counts only non-null values in that specific column."
+        },
+        {
+            "id": "sql_8",
+            "question": "What is a SQL Common Table Expression (CTE) defined by the WITH clause?",
+            "options": [
+                "A temporary named result set defined within the execution scope of a single query",
+                "A permanent materialized view stored on disk",
+                "A stored procedure compiled into machine code",
+                "A database trigger executing on insert"
+            ],
+            "answer": "A temporary named result set defined within the execution scope of a single query",
+            "explanation": "CTEs improve readability and enable modular or recursive query structures within a single SELECT/INSERT/UPDATE."
+        },
+        {
+            "id": "sql_9",
+            "question": "Which SQL window function assigns consecutive ranks without skipping rank numbers when values tie?",
+            "options": ["DENSE_RANK()", "RANK()", "ROW_NUMBER()", "NTILE()"],
+            "answer": "DENSE_RANK()",
+            "explanation": "DENSE_RANK() assigns sequential ranks without gaps (e.g. 1, 2, 2, 3), whereas RANK() produces gaps (1, 2, 2, 4)."
+        },
+        {
+            "id": "sql_10",
+            "question": "How does `UNION ALL` differ from `UNION` in SQL?",
+            "options": [
+                "UNION ALL preserves duplicate rows and performs faster; UNION de-duplicates results",
+                "UNION preserves duplicates; UNION ALL discards duplicates",
+                "UNION ALL requires both queries to query the same table",
+                "There is no performance difference between them"
+            ],
+            "answer": "UNION ALL preserves duplicate rows and performs faster; UNION de-duplicates results",
+            "explanation": "UNION ALL skips the expensive distinct sort operation, combining queries with complete preservation of duplicates."
         }
     ],
     "React": [
@@ -5405,6 +5491,54 @@ SKILL_ASSESSMENT_BANK: Dict[str, List[Dict[str, Any]]] = {
             "options": ["useMemo", "useCallback", "useRef", "useEffect"],
             "answer": "useMemo",
             "explanation": "useMemo caches calculation results and recomputes only when one of its specified dependencies changes."
+        },
+        {
+            "id": "react_5",
+            "question": "What is the primary purpose of the `useCallback` hook?",
+            "options": [
+                "Memoizes callback function instances to avoid re-triggering child component renders",
+                "Caches asynchronous HTTP responses in localStorage",
+                "Creates mutable DOM references across renders",
+                "Executes after DOM paint synchronously"
+            ],
+            "answer": "Memoizes callback function instances to avoid re-triggering child component renders",
+            "explanation": "useCallback returns a memoized version of the callback that only changes if one of the dependencies has updated."
+        },
+        {
+            "id": "react_6",
+            "question": "What is React Context primarily designed to resolve?",
+            "options": [
+                "Prop drilling through deeply nested components for global state (e.g. auth, theme)",
+                "Direct communication between disparate browser tabs",
+                "Elimination of all local useState hooks",
+                "Server-side rendering hydration mismatches"
+            ],
+            "answer": "Prop drilling through deeply nested components for global state (e.g. auth, theme)",
+            "explanation": "Context provides a way to pass data through the component tree without having to pass props down manually at every level."
+        },
+        {
+            "id": "react_7",
+            "question": "Why is direct state mutation (e.g. `state.count = 5`) strongly discouraged in React?",
+            "options": [
+                "React relies on reference equality to detect state changes and schedule re-renders",
+                "Direct mutations cause instant memory leaks",
+                "JavaScript throws a runtime syntax error",
+                "Browser cookies become invalidated"
+            ],
+            "answer": "React relies on reference equality to detect state changes and schedule re-renders",
+            "explanation": "React checks whether state object references have changed; in-place mutations bypass this comparison and fail to trigger UI updates."
+        },
+        {
+            "id": "react_8",
+            "question": "What does React `StrictMode` do during development?",
+            "options": [
+                "Double-invokes component renders and lifecycles to detect unexpected side effects",
+                "Prevents console.log statements from printing",
+                "Forces all CSS styles to be scoped inline",
+                "Encrypts component props during transit"
+            ],
+            "answer": "Double-invokes component renders and lifecycles to detect unexpected side effects",
+            "explanation": "StrictMode helps find bugs by purposefully rendering components twice in development mode to catch impurities."
         }
     ],
     "JavaScript": [
@@ -5438,6 +5572,66 @@ SKILL_ASSESSMENT_BANK: Dict[str, List[Dict[str, Any]]] = {
             "options": ["'object'", "'null'", "'undefined'", "'boolean'"],
             "answer": "'object'",
             "explanation": "In JavaScript, `typeof null` returning 'object' is a legacy quirk dating back to the language's initial release in 1995."
+        },
+        {
+            "id": "js_4",
+            "question": "What is the role of the Event Loop in JavaScript runtime environments?",
+            "options": [
+                "Continuously checks the call stack and moves pending microtasks and macrotasks to the stack when empty",
+                "Compiles TypeScript into WebAssembly bytecode",
+                "Garbage collects unreachable DOM elements on a fixed timer",
+                "Multi-threads synchronous CPU-intensive operations across cores"
+            ],
+            "answer": "Continuously checks the call stack and moves pending microtasks and macrotasks to the stack when empty",
+            "explanation": "The Event Loop monitors the call stack and task queues, dequeuing tasks to run on the single thread when the stack clears."
+        },
+        {
+            "id": "js_5",
+            "question": "What happens when accessing a `let` or `const` variable before its declaration line?",
+            "options": [
+                "Throws a ReferenceError due to the Temporal Dead Zone (TDZ)",
+                "Returns undefined due to variable hoisting",
+                "Silently initializes to null",
+                "Creates a global window property"
+            ],
+            "answer": "Throws a ReferenceError due to the Temporal Dead Zone (TDZ)",
+            "explanation": "Variables declared with `let` and `const` are hoisted without initialization, remaining in the TDZ until execution reaches the declaration."
+        },
+        {
+            "id": "js_6",
+            "question": "How does `Promise.allSettled()` behave compared to `Promise.all()`?",
+            "options": [
+                "Waits for every promise to settle (fulfill or reject) rather than rejecting immediately on first error",
+                "Only fulfills if every single promise succeeds",
+                "Executes promises in sequential priority order",
+                "Cancels unfinished asynchronous network requests"
+            ],
+            "answer": "Waits for every promise to settle (fulfill or reject) rather than rejecting immediately on first error",
+            "explanation": "`Promise.allSettled()` returns an array of status objects for all promises, regardless of individual resolutions or rejections."
+        },
+        {
+            "id": "js_7",
+            "question": "What is the purpose of the optional chaining operator (`?.`) in modern JavaScript?",
+            "options": [
+                "Prevents throwing a TypeError when accessing properties on null or undefined",
+                "Performs deep cloning of nested data structures",
+                "Conditionally imports dynamic ES modules",
+                "Executes regular expressions with case-insensitivity"
+            ],
+            "answer": "Prevents throwing a TypeError when accessing properties on null or undefined",
+            "explanation": "Optional chaining short-circuits and evaluates to `undefined` if the reference is nullish, preventing runtime errors."
+        },
+        {
+            "id": "js_8",
+            "question": "What is the key functional difference between `Array.prototype.map()` and `Array.prototype.forEach()`?",
+            "options": [
+                "map() returns a new transformed array; forEach() executes for side-effects and returns undefined",
+                "forEach() returns an array; map() mutates the original in place",
+                "map() can be interrupted with a break statement; forEach() cannot",
+                "forEach() only works on arrays of strings"
+            ],
+            "answer": "map() returns a new transformed array; forEach() executes for side-effects and returns undefined",
+            "explanation": "map() is pure and constructs a new array from returned values, while forEach() is purely intended for imperative side-effects."
         }
     ],
     "Git": [
@@ -5459,6 +5653,54 @@ SKILL_ASSESSMENT_BANK: Dict[str, List[Dict[str, Any]]] = {
             "options": ["git restore <file>", "git clean -f", "git revert HEAD", "git commit --amend"],
             "answer": "git restore <file>",
             "explanation": "`git restore <file>` discards working directory changes and restores the file to the index/commit state."
+        },
+        {
+            "id": "git_3",
+            "question": "What does `git cherry-pick <commit>` accomplish?",
+            "options": [
+                "Applies the changes introduced by a specific existing commit from another branch onto current HEAD",
+                "Interactively squashes all commits on the current branch",
+                "Deletes an erroneous commit from remote history",
+                "Clones a single file from an external repository"
+            ],
+            "answer": "Applies the changes introduced by a specific existing commit from another branch onto current HEAD",
+            "explanation": "Cherry-pick selects a commit from another branch and records a duplicate commit on the currently checked-out branch."
+        },
+        {
+            "id": "git_4",
+            "question": "What is the primary utility of `git stash`?",
+            "options": [
+                "Temporarily saves modified tracked files on a stack to leave a clean working directory",
+                "Permanently purges untracked files from disk",
+                "Pushes changes directly to a backup remote branch",
+                "Locks a branch from concurrent team pushes"
+            ],
+            "answer": "Temporarily saves modified tracked files on a stack to leave a clean working directory",
+            "explanation": "Stashing shelves uncommitted changes so you can switch branches or pull updates without conflicts."
+        },
+        {
+            "id": "git_5",
+            "question": "What two operations does `git pull` execute under standard default configuration?",
+            "options": [
+                "git fetch followed by git merge",
+                "git clone followed by git checkout",
+                "git add followed by git commit",
+                "git status followed by git diff"
+            ],
+            "answer": "git fetch followed by git merge",
+            "explanation": "git pull fetches remote changes and immediately integrates them into the current local branch using merge."
+        },
+        {
+            "id": "git_6",
+            "question": "What is the distinction between `git reset --soft` and `git reset --hard`?",
+            "options": [
+                "--soft leaves working tree and staged index untouched; --hard discards all uncommitted and commit changes",
+                "--hard preserves files in the staging area; --soft deletes everything",
+                "--soft only works on the master branch",
+                "There is no difference in modern Git versions"
+            ],
+            "answer": "--soft leaves working tree and staged index untouched; --hard discards all uncommitted and commit changes",
+            "explanation": "Soft reset moves HEAD while keeping changes staged; hard reset forcefully overwrites working directory and index."
         }
     ],
     "Docker": [
@@ -5480,6 +5722,54 @@ SKILL_ASSESSMENT_BANK: Dict[str, List[Dict[str, Any]]] = {
             "options": ["CMD", "RUN", "FROM", "EXPOSE"],
             "answer": "CMD",
             "explanation": "CMD specifies default arguments and commands to execute when a container is run."
+        },
+        {
+            "id": "docker_3",
+            "question": "What is the principal architectural benefit of Docker Multi-stage Builds?",
+            "options": [
+                "Minimizes production image size by separating build tools from the final runtime artifact",
+                "Allows one container to run multiple operating systems concurrently",
+                "Compiles container code into native CPU microcode",
+                "Eliminates the requirement for a Docker daemon"
+            ],
+            "answer": "Minimizes production image size by separating build tools from the final runtime artifact",
+            "explanation": "Multi-stage builds leave build SDKs and intermediate caches in builder stages, copying only lean binaries to the final image."
+        },
+        {
+            "id": "docker_4",
+            "question": "Why are Docker Volumes preferred over bind mounts for database persistence?",
+            "options": [
+                "Volumes are managed entirely by Docker, provide higher I/O throughput, and isolate host paths",
+                "Volumes encrypt all data automatically with RSA keys",
+                "Bind mounts cannot persist data when a container stops",
+                "Volumes do not consume storage on the host drive"
+            ],
+            "answer": "Volumes are managed entirely by Docker, provide higher I/O throughput, and isolate host paths",
+            "explanation": "Docker volumes are isolated from host OS directory structures, easier to back up, and optimized for container engines."
+        },
+        {
+            "id": "docker_5",
+            "question": "What is the difference between `docker run` and `docker exec`?",
+            "options": [
+                "docker run creates and starts a new container; docker exec executes a process inside an already running container",
+                "docker exec builds an image; docker run starts it",
+                "docker run is only for background daemons",
+                "docker exec reboots the host Docker daemon"
+            ],
+            "answer": "docker run creates and starts a new container; docker exec executes a process inside an already running container",
+            "explanation": "Use `docker run` to instantiate new container environments and `docker exec` to inspect or run shells in existing ones."
+        },
+        {
+            "id": "docker_6",
+            "question": "What does a `.dockerignore` file accomplish during `docker build`?",
+            "options": [
+                "Prevents specified files/folders from being transferred to the build context, speeding up builds",
+                "Instructs Docker to ignore compilation errors",
+                "Deletes untracked Git files inside the container",
+                "Bypasses container health checks"
+            ],
+            "answer": "Prevents specified files/folders from being transferred to the build context, speeding up builds",
+            "explanation": "Excluding large files like node_modules or .git prevents multi-gigabyte build context uploads to the Docker daemon."
         }
     ],
     "Machine Learning": [
@@ -5501,6 +5791,54 @@ SKILL_ASSESSMENT_BANK: Dict[str, List[Dict[str, Any]]] = {
             "options": ["F1-Score / PR-AUC", "Accuracy", "Mean Squared Error", "R-squared"],
             "answer": "F1-Score / PR-AUC",
             "explanation": "Accuracy can be deceptively high by always predicting the majority class; F1-score balances precision and recall."
+        },
+        {
+            "id": "ml_3",
+            "question": "What does L1 Regularization (Lasso) uniquely achieve compared to L2 Regularization (Ridge)?",
+            "options": [
+                "Drives redundant feature weights strictly to zero, performing intrinsic feature selection",
+                "Prevents gradient vanishing in deep networks",
+                "Eliminates the need for training validation sets",
+                "Ensures the cost function is strictly linear"
+            ],
+            "answer": "Drives redundant feature weights strictly to zero, performing intrinsic feature selection",
+            "explanation": "L1 penalty encourages weight sparsity, setting non-informative parameters to 0, whereas L2 only shrinks them asymptotically."
+        },
+        {
+            "id": "ml_4",
+            "question": "What is the primary risk of selecting an excessively large learning rate in Gradient Descent?",
+            "options": [
+                "The algorithm can overshoot the global minimum and diverge or oscillate uncontrollably",
+                "The model will train too slowly to converge within epochs",
+                "The loss function will become mathematically non-differentiable",
+                "Parameters will immediately become zero"
+            ],
+            "answer": "The algorithm can overshoot the global minimum and diverge or oscillate uncontrollably",
+            "explanation": "Large steps cause parameter updates to bypass valleys in the loss landscape, preventing convergence."
+        },
+        {
+            "id": "ml_5",
+            "question": "What is the primary objective of k-fold Cross Validation?",
+            "options": [
+                "To rigorously assess model generalizability across diverse validation splits and curb optimistic bias",
+                "To reduce model inference latency in production",
+                "To compress model parameters into smaller binary files",
+                "To replace automated hyperparameter tuning"
+            ],
+            "answer": "To rigorously assess model generalizability across diverse validation splits and curb optimistic bias",
+            "explanation": "k-fold cross-validation evaluates performance across multiple partitioned test folds to ensure robust metric estimations."
+        },
+        {
+            "id": "ml_6",
+            "question": "What causes the Vanishing Gradient problem during Backpropagation in deep networks?",
+            "options": [
+                "Repeated multiplication of small derivatives through activation functions (like sigmoid) shrinks gradients to near-zero",
+                "Excessive learning rates that collapse weights to infinity",
+                "Lack of GPU memory bandwidth during forward pass",
+                "Dropout layers dropping all neurons simultaneously"
+            ],
+            "answer": "Repeated multiplication of small derivatives through activation functions (like sigmoid) shrinks gradients to near-zero",
+            "explanation": "Chain-rule multiplications of fractions cause front layers to receive negligibly small updates, stalling learning."
         }
     ],
     "Data Structures": [
@@ -5517,20 +5855,39 @@ SKILL_ASSESSMENT_BANK: Dict[str, List[Dict[str, Any]]] = {
             "options": ["O(log n)", "O(1)", "O(n)", "O(n^2)"],
             "answer": "O(log n)",
             "explanation": "In a balanced BST, each step halves the remaining elements, yielding O(log n) search time."
-        }
-    ],
-    "Communication": [
+        },
         {
-            "id": "comm_1",
-            "question": "What is the cornerstone of active listening in collaborative technical discussions?",
+            "id": "ds_3",
+            "question": "What is the worst-case time complexity of standard QuickSort when pivot selection is sub-optimal?",
+            "options": ["O(n^2)", "O(n log n)", "O(n)", "O(log n)"],
+            "answer": "O(n^2)",
+            "explanation": "When partitioning on already-sorted data with extreme pivots, QuickSort degenerates to O(n^2) comparisons."
+        },
+        {
+            "id": "ds_4",
+            "question": "Which data structure is optimal for implementing Breadth-First Search (BFS) on a graph?",
+            "options": ["Queue (FIFO)", "Stack (LIFO)", "Priority Queue", "Disjoint Set"],
+            "answer": "Queue (FIFO)",
+            "explanation": "BFS explores graph vertices level-by-level, requiring a first-in, first-out queue structure."
+        },
+        {
+            "id": "ds_5",
+            "question": "What is the time complexity of prepending a node to the head of a Singly Linked List?",
+            "options": ["O(1)", "O(n)", "O(log n)", "O(n^2)"],
+            "answer": "O(1)",
+            "explanation": "Inserting at the head requires simply pointing the new node to the old head and updating the head pointer, taking constant O(1) time."
+        },
+        {
+            "id": "ds_6",
+            "question": "What invariant must hold true for every node in a Min-Heap binary tree?",
             "options": [
-                "Paraphrasing and confirming understanding before formulating a counter-argument",
-                "Interrupting immediately when an inaccurate term is mentioned",
-                "Rehearsing your rebuttal while the other party is speaking",
-                "Documenting minutes instead of engaging in the dialogue"
+                "Every parent node's key must be less than or equal to the keys of its children",
+                "Left child must be less than parent and right child must be greater",
+                "Leaves must strictly be stored in alphabetical order",
+                "All nodes must have exactly two non-null children"
             ],
-            "answer": "Paraphrasing and confirming understanding before formulating a counter-argument",
-            "explanation": "Active listening requires validating and summarizing the speaker's thoughts to establish mutual understanding."
+            "answer": "Every parent node's key must be less than or equal to the keys of its children",
+            "explanation": "The Min-Heap property guarantees that the root always contains the minimum key in the heap."
         }
     ],
     "System Design": [
@@ -5545,6 +5902,314 @@ SKILL_ASSESSMENT_BANK: Dict[str, List[Dict[str, Any]]] = {
             ],
             "answer": "Adding more server instances to distribute load across a pool",
             "explanation": "Horizontal scaling distributes traffic across multiple server nodes rather than relying on a single increasingly powerful machine."
+        },
+        {
+            "id": "sd_2",
+            "question": "In the CAP Theorem, what does Partition Tolerance (P) guarantee?",
+            "options": [
+                "The system continues operating despite arbitrary packet loss or network partitions between nodes",
+                "Transactions complete in sub-millisecond round-trip times",
+                "Every node contains an identical byte-for-byte replica at every microsecond",
+                "Data is backed up across magnetic tape storage"
+            ],
+            "answer": "The system continues operating despite arbitrary packet loss or network partitions between nodes",
+            "explanation": "Partition tolerance means the cluster can sustain communication failures without total outage."
+        },
+        {
+            "id": "sd_3",
+            "question": "What is the core distinction between a Write-Through cache and a Write-Back cache?",
+            "options": [
+                "Write-Through updates cache and database synchronously; Write-Back updates cache and defers DB write",
+                "Write-Back never writes data to persistent storage",
+                "Write-Through can only be read by single-threaded clients",
+                "Write-Back requires two-phase commit on every read"
+            ],
+            "answer": "Write-Through updates cache and database synchronously; Write-Back updates cache and defers DB write",
+            "explanation": "Write-Through prioritizes data consistency; Write-Back offers lower write latency at the cost of potential data loss on crash."
+        },
+        {
+            "id": "sd_4",
+            "question": "What fundamental problem does Consistent Hashing solve in distributed caches?",
+            "options": [
+                "Minimizes the number of keys remapped when cluster nodes are added or removed",
+                "Encrypts data payloads across public transit networks",
+                "Guarantees ACID transactions across multiple SQL engines",
+                "Prevents denial of service attacks at the gateway"
+            ],
+            "answer": "Minimizes the number of keys remapped when cluster nodes are added or removed",
+            "explanation": "Standard modulo hashing remaps almost all keys on node scaling; consistent hashing remaps only K/N keys on average."
+        },
+        {
+            "id": "sd_5",
+            "question": "What is the primary architectural purpose of a Message Broker (e.g. Kafka, RabbitMQ)?",
+            "options": [
+                "Decouples service producers from consumers, buffers burst traffic, and supports asynchronous workflows",
+                "Replaces relational databases with immutable key-value stores",
+                "Generates dynamic client JavaScript bundles at the edge",
+                "Performs DNS load balancing across geo-locations"
+            ],
+            "answer": "Decouples service producers from consumers, buffers burst traffic, and supports asynchronous workflows",
+            "explanation": "Message queues provide asynchronous decoupling, fault-tolerant ingestion buffering, and pub/sub distribution."
+        },
+        {
+            "id": "sd_6",
+            "question": "What is the function of a Reverse Proxy (e.g. NGINX) positioned in front of backend microservices?",
+            "options": [
+                "SSL termination, centralized rate limiting, load balancing, and internal topology shielding",
+                "Executing core database business logic and stored procedures",
+                "Serving as an in-memory distributed session cache",
+                "Automating container orchestration and autoscaling"
+            ],
+            "answer": "SSL termination, centralized rate limiting, load balancing, and internal topology shielding",
+            "explanation": "A reverse proxy acts as an entry facade that terminates TLS, balances traffic, and hides private server addresses."
+        }
+    ],
+    "Communication": [
+        {
+            "id": "comm_1",
+            "question": "What is the cornerstone of active listening in collaborative technical discussions?",
+            "options": [
+                "Paraphrasing and confirming understanding before formulating a counter-argument",
+                "Interrupting immediately when an inaccurate term is mentioned",
+                "Rehearsing your rebuttal while the other party is speaking",
+                "Documenting minutes instead of engaging in the dialogue"
+            ],
+            "answer": "Paraphrasing and confirming understanding before formulating a counter-argument",
+            "explanation": "Active listening requires validating and summarizing the speaker's thoughts to establish mutual understanding."
+        },
+        {
+            "id": "comm_2",
+            "question": "What is the primary objective of an engineering Blameless Postmortem following an outage?",
+            "options": [
+                "Identifying systemic procedural and architectural vulnerabilities without singling out individuals",
+                "Assigning formal reprimands to the engineer who introduced the bug",
+                "Determining company bonus deductions",
+                "Restricting production deployment permissions to senior architects only"
+            ],
+            "answer": "Identifying systemic procedural and architectural vulnerabilities without singling out individuals",
+            "explanation": "Blameless postmortems foster a culture of transparency where engineers openly share incident root causes to strengthen defenses."
+        },
+        {
+            "id": "comm_3",
+            "question": "What does the SBI (Situation-Behavior-Impact) model provide in workplace feedback?",
+            "options": [
+                "An objective framework anchoring feedback to concrete context, observable behavior, and measurable effect",
+                "A strict protocol for annual compensation negotiations",
+                "A grading rubric for technical code reviews",
+                "A script for delivering terminating employment notices"
+            ],
+            "answer": "An objective framework anchoring feedback to concrete context, observable behavior, and measurable effect",
+            "explanation": "SBI anchors feedback to factual situations and tangible impacts, reducing personal defensiveness and facilitating actionable growth."
+        },
+        {
+            "id": "comm_4",
+            "question": "How should an engineering lead communicate architectural disagreements during code reviews?",
+            "options": [
+                "Anchor feedback to objective principles (performance, security, scalability) rather than subjective taste",
+                "Reject the pull request immediately with minimal comments",
+                "Enforce personal formatting preferences without reference to style guides",
+                "Delegate all review commentary to junior contributors"
+            ],
+            "answer": "Anchor feedback to objective principles (performance, security, scalability) rather than subjective taste",
+            "explanation": "Effective technical feedback is educational, objective, and tied to established engineering standards."
+        },
+        {
+            "id": "comm_5",
+            "question": "What is the recommended approach when communicating critical project blockers to non-technical executive leadership?",
+            "options": [
+                "Lead with business impact, timeline risk, customer ramifications, and clear decision options",
+                "Provide detailed low-level stack traces and compiler logs",
+                "Conceal blockers until the launch deadline passes",
+                "Attribute blame to third-party open-source software libraries"
+            ],
+            "answer": "Lead with business impact, timeline risk, customer ramifications, and clear decision options",
+            "explanation": "Executive communication requires framing engineering challenges in terms of ROI, business continuity, and explicit strategic choices."
+        }
+    ],
+    "Leadership": [
+        {
+            "id": "lead_1",
+            "question": "What is the fundamental difference between Servant Leadership and Command-and-Control leadership?",
+            "options": [
+                "Servant leaders focus on empowering the team and removing blockers; command-and-control dictates top-down tasks",
+                "Servant leaders do not track performance metrics or delivery schedules",
+                "Command-and-control leaders grant full implementation autonomy to engineers",
+                "Servant leadership only works in non-profit settings"
+            ],
+            "answer": "Servant leaders focus on empowering the team and removing blockers; command-and-control dictates top-down tasks",
+            "explanation": "Servant leadership prioritizes team enablement, unblocking bottlenecks, and supporting engineers to achieve high velocity."
+        },
+        {
+            "id": "lead_2",
+            "question": "What is Psychological Safety in high-performing engineering teams?",
+            "options": [
+                "A shared belief that team members will not be humiliated or penalized for asking questions, proposing ideas, or admitting errors",
+                "A guarantee that no code reviews will be rejected",
+                "Elimination of all deadlines and delivery milestones",
+                "Restricting feedback to private confidential channels only"
+            ],
+            "answer": "A shared belief that team members will not be humiliated or penalized for asking questions, proposing ideas, or admitting errors",
+            "explanation": "Psychological safety empowers engineers to take calculated technical risks and openly resolve vulnerabilities early."
+        },
+        {
+            "id": "lead_3",
+            "question": "What is effective delegation for an engineering manager or tech lead?",
+            "options": [
+                "Defining clear outcomes, success criteria, and guardrails while granting autonomy over execution details",
+                "Assigning trivial low-value tasks while keeping all meaningful architecture confidential",
+                "Relinquishing all accountability when an assignment misses milestones",
+                "Micromanaging daily Git commit frequency"
+            ],
+            "answer": "Defining clear outcomes, success criteria, and guardrails while granting autonomy over execution details",
+            "explanation": "True delegation transfers ownership of the solution while maintaining alignment on strategic goals and guardrails."
+        },
+        {
+            "id": "lead_4",
+            "question": "How should a technical leader address team burnout during intensive release cycles?",
+            "options": [
+                "Aggressively triage scope, defer non-critical features, enforce rest, and eliminate low-priority meetings",
+                "Offer monetary gift cards while demanding sustained overtime",
+                "Increase daily progress standups to three times per day",
+                "Threaten performance intervention plans"
+            ],
+            "answer": "Aggressively triage scope, defer non-critical features, enforce rest, and eliminate low-priority meetings",
+            "explanation": "Sustainable pace requires active scope negotiation, protecting team capacity, and preventing cognitive fatigue."
+        },
+        {
+            "id": "lead_5",
+            "question": "What is the most constructive approach for a manager conducting a career 1-on-1 with a plateaued engineer?",
+            "options": [
+                "Use open-ended inquiry to discover intrinsic motivations, identify skill bottlenecks, and co-design a roadmap",
+                "Advise them to seek opportunities in other organizations",
+                "Focus exclusively on administrative status updates and backlog tickets",
+                "Compare their performance unfavorably against team peers"
+            ],
+            "answer": "Use open-ended inquiry to discover intrinsic motivations, identify skill bottlenecks, and co-design a roadmap",
+            "explanation": "Coaching 1-on-1s should be employee-driven, focused on long-term aspiration, capability expansion, and sponsorship."
+        }
+    ],
+    "Cloud Architecture": [
+        {
+            "id": "cloud_1",
+            "question": "What is the primary advantage of Infrastructure as Code (IaC) like Terraform?",
+            "options": [
+                "Repeatable, automated, version-controlled, and auditable cloud environment provisioning",
+                "Eliminates the cost of compute instances across public clouds",
+                "Replaces application backend programming languages",
+                "Guarantees 100% cloud uptime without multi-region setup"
+            ],
+            "answer": "Repeatable, automated, version-controlled, and auditable cloud environment provisioning",
+            "explanation": "IaC avoids human configuration drift, provides reviewable pull requests for infrastructure, and enables disaster replication."
+        },
+        {
+            "id": "cloud_2",
+            "question": "What defines a Cloud Availability Zone (AZ)?",
+            "options": [
+                "One or more isolated data centers with independent power, cooling, and low-latency networking within a region",
+                "A single physical server rack in a colocation warehouse",
+                "An entire continent's collection of cloud services",
+                "A virtual private cloud network route table"
+            ],
+            "answer": "One or more isolated data centers with independent power, cooling, and low-latency networking within a region",
+            "explanation": "Availability Zones provide physical fault isolation within a geographic region to safeguard against single data center outages."
+        },
+        {
+            "id": "cloud_3",
+            "question": "What is the Principle of Least Privilege (PoLP) in Cloud IAM?",
+            "options": [
+                "Granting users and service accounts only the absolute minimum permissions required for their specific function",
+                "Granting administrator privileges to all team engineers to minimize ticketing friction",
+                "Disabling multi-factor authentication on root accounts",
+                "Permitting open public ingress on all security group ports"
+            ],
+            "answer": "Granting users and service accounts only the absolute minimum permissions required for their specific function",
+            "explanation": "PoLP limits the blast radius of compromised credentials by strictly constraining identity roles and resource policies."
+        },
+        {
+            "id": "cloud_4",
+            "question": "What responsibility does the cloud customer retain in a Serverless Compute model (e.g. AWS Lambda)?",
+            "options": [
+                "Application code, configuration, business logic, and access permissions",
+                "Physical server hardware and BIOS firmware maintenance",
+                "Hypervisor OS patching and capacity autoscaling",
+                "Cooling system maintenance in the facility"
+            ],
+            "answer": "Application code, configuration, business logic, and access permissions",
+            "explanation": "Under the cloud shared responsibility model for serverless, the provider manages the runtime host while the customer owns code and IAM."
+        },
+        {
+            "id": "cloud_5",
+            "question": "What is an Active-Active Multi-Region deployment primarily chosen for?",
+            "options": [
+                "Near-zero RTO disaster recovery and reduced latency by serving users from their closest geographical cluster",
+                "Minimizing total cloud billing cost",
+                "Eliminating the need for database replication",
+                "Allowing unencrypted public database endpoints"
+            ],
+            "answer": "Near-zero RTO disaster recovery and reduced latency by serving users from their closest geographical cluster",
+            "explanation": "Active-Active runs simultaneous workloads across regions, ensuring seamless failover and optimal geographic proximity."
+        }
+    ],
+    "CI/CD": [
+        {
+            "id": "cicd_1",
+            "question": "What is the primary objective of Continuous Integration (CI)?",
+            "options": [
+                "Frequently merge code into main branch and run automated tests to discover integration defects immediately",
+                "Deploy directly to production without running test suites",
+                "Automate billing invoices for SaaS customers",
+                "Prevent developers from committing code on weekends"
+            ],
+            "answer": "Frequently merge code into main branch and run automated tests to discover integration defects immediately",
+            "explanation": "CI ensures that small code increments are constantly validated against the test suite, preventing integration hell."
+        },
+        {
+            "id": "cicd_2",
+            "question": "What characterizes a Blue-Green Deployment strategy?",
+            "options": [
+                "Two identical production environments exist; router switches traffic instantly from blue to green with zero downtime",
+                "Code is deployed only on alternating Tuesdays",
+                "Database records are split between two cloud vendors",
+                "Users with odd user IDs are routed to test builds"
+            ],
+            "answer": "Two identical production environments exist; router switches traffic instantly from blue to green with zero downtime",
+            "explanation": "Blue-Green deployment allows rapid cutover and immediate instant rollback by pointing the router back to the original environment."
+        },
+        {
+            "id": "cicd_3",
+            "question": "What is the fundamental difference between Continuous Delivery and Continuous Deployment?",
+            "options": [
+                "Continuous Delivery requires manual approval to trigger production release; Continuous Deployment releases automatically",
+                "Continuous Delivery does not include automated unit tests",
+                "Continuous Deployment only runs on staging environments",
+                "There is no difference between the two terms"
+            ],
+            "answer": "Continuous Delivery requires manual approval to trigger production release; Continuous Deployment releases automatically",
+            "explanation": "Both automate builds and testing, but Continuous Deployment deploys every passing commit directly to production without human gates."
+        },
+        {
+            "id": "cicd_4",
+            "question": "What is a Canary Deployment in modern release engineering?",
+            "options": [
+                "Releasing a new version to a small subset (e.g. 5%) of real traffic to monitor metrics before full rollout",
+                "Deploying code only when cloud servers are idle overnight",
+                "Running automated tests using simulated synthetic bots",
+                "Creating a temporary read-only database clone"
+            ],
+            "answer": "Releasing a new version to a small subset (e.g. 5%) of real traffic to monitor metrics before full rollout",
+            "explanation": "Canary releases validate real-world production metrics and error rates on a tiny cohort to prevent widespread user outages."
+        },
+        {
+            "id": "cicd_5",
+            "question": "What is the purpose of Static Application Security Testing (SAST) in a CI pipeline?",
+            "options": [
+                "Analyzes source code for known security vulnerabilities and compliance flaws without executing the program",
+                "Conducts live distributed denial of service attacks against staging",
+                "Penetration tests running containers from the outside",
+                "Verifies user credit card transactions against payment gateways"
+            ],
+            "answer": "Analyzes source code for known security vulnerabilities and compliance flaws without executing the program",
+            "explanation": "SAST inspects codebases early (shift-left security) to catch OWASP vulnerabilities before code is built or shipped."
         }
     ]
 }
@@ -5552,30 +6217,53 @@ SKILL_ASSESSMENT_BANK: Dict[str, List[Dict[str, Any]]] = {
 def get_available_assessments() -> List[Dict[str, Any]]:
     """Returns a list of all available skill assessments with question counts and categories."""
     items = []
+    soft_skills = {"Communication", "Leadership"}
     for skill, qlist in SKILL_ASSESSMENT_BANK.items():
-        cat = "Soft Skill" if skill == "Communication" else "Technical"
+        cat = "Soft Skill" if skill in soft_skills else "Technical"
         items.append({
             "skill": skill,
             "skill_name": skill,
             "category": cat,
             "total_questions": len(qlist),
-            "question_count": len(qlist),
-            "estimated_minutes": max(3, len(qlist) * 2),
+            "question_count": min(5, len(qlist)),
+            "pool_size": len(qlist),
+            "estimated_minutes": max(3, min(5, len(qlist)) * 2),
             "passing_score": 70
         })
     return items
 
-def get_assessment_questions(skill_name: str) -> List[Dict[str, Any]]:
-    """Returns questions for a skill without revealing correct answers."""
-    questions = SKILL_ASSESSMENT_BANK.get(skill_name, [])
-    return [
-        {
+def get_assessment_questions(
+    skill_name: str,
+    sample_size: Optional[int] = 5,
+    seed: Optional[Any] = None,
+    shuffle_options: bool = True
+) -> List[Dict[str, Any]]:
+    """Returns randomized questions for a skill without revealing correct answers."""
+    import random
+    raw_questions = SKILL_ASSESSMENT_BANK.get(skill_name, [])
+    if not raw_questions:
+        return []
+
+    pool = [dict(q) for q in raw_questions]
+    rng = random.Random(seed) if seed is not None else random.Random()
+    rng.shuffle(pool)
+
+    if sample_size and sample_size < len(pool):
+        selected = pool[:sample_size]
+    else:
+        selected = pool
+
+    result = []
+    for q in selected:
+        opts = list(q.get("options", []))
+        if shuffle_options:
+            rng.shuffle(opts)
+        result.append({
             "id": q["id"],
             "question": q["question"],
-            "options": list(q["options"])
-        }
-        for q in questions
-    ]
+            "options": opts
+        })
+    return result
 
 def evaluate_assessment(
     uid: int,
@@ -5593,11 +6281,19 @@ def evaluate_assessment(
     if not questions:
         return {"error": f"No assessment questions found for skill '{skill_name}'."}
 
-    total_questions = len(questions)
+    # Only evaluate the questions that were submitted in this attempt
+    if submitted_answers:
+        eval_questions = [q for q in questions if q["id"] in submitted_answers]
+        if not eval_questions:
+            eval_questions = questions
+    else:
+        eval_questions = questions
+
+    total_questions = len(eval_questions)
     correct_count = 0
     breakdown = []
 
-    for q in questions:
+    for q in eval_questions:
         raw_ans = submitted_answers.get(q["id"])
         # Support either string text answer, index int, or index string
         if isinstance(raw_ans, int) and 0 <= raw_ans < len(q.get("options", [])):
@@ -5622,7 +6318,7 @@ def evaluate_assessment(
             "explanation": q.get("explanation", "")
         })
 
-    score_pct = round((correct_count / total_questions) * 100, 1)
+    score_pct = round((correct_count / total_questions) * 100, 1) if total_questions > 0 else 0.0
     passed = (score_pct >= 70.0)
     prof_rating = "Mastery" if score_pct >= 85 else ("Proficient" if passed else "Developing")
 

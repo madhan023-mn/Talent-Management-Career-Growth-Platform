@@ -495,36 +495,120 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
             st.info("No assessments currently available.")
             return
 
-        skill_options = [c.get("skill") or c.get("skill_name") for c in catalog]
-        sel_skill = st.selectbox(
-            "Select Skill to Evaluate *",
-            options=skill_options,
-            format_func=lambda x: f"{x} ({next((c.get('question_count') or c.get('total_questions', 5) for c in catalog if (c.get('skill') == x or c.get('skill_name') == x)), 5)} Questions Available)"
-        )
+        # ----------------------------------------------------------------------
+        # REQUIREMENT: ONLY GENERATE ASSESSMENTS MATCHING EMPLOYEE'S SKILLS
+        # ----------------------------------------------------------------------
+        emp_skills_list = []
+        emp_id = user.get("employee_id") or f"EMP-{uid}"
+        org_id = user.get("org_id")
+        try:
+            from services.core import get_employee_skills
+            emp_skills_list = get_employee_skills(emp_id, org_id=org_id)
+        except Exception:
+            pass
+        if not emp_skills_list and skills:
+            emp_skills_list = skills
 
-        st.markdown(f"<div style='margin: 1rem 0; padding: 12px 18px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; font-size: 0.88rem; color: #1E40AF;'>You are attempting the standardized <strong>{sel_skill} Competency Assessment</strong>. Select the best answer for each question and submit for immediate automated scoring and concept feedback.</div>", unsafe_allow_html=True)
+        user_skill_names = set()
+        for s in (emp_skills_list or []):
+            sk = (s.get("name") or s.get("skill_name") or s.get("skill") or "").strip().lower()
+            if sk:
+                user_skill_names.add(sk)
 
-        questions = get_assessment_questions(sel_skill)
+        # Match catalog domains with employee's verified competencies
+        matched_catalog = []
+        for c in catalog:
+            c_name = (c.get("skill") or c.get("skill_name") or "").strip()
+            c_lower = c_name.lower()
+            # Match exact or substring (e.g., 'python' matches 'python', 'python 3')
+            if any(c_lower == u or c_lower in u or u in c_lower for u in user_skill_names):
+                matched_catalog.append(c)
 
-        with st.form(f"assessment_form_{sel_skill}"):
+        if not matched_catalog:
+            _render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 28px; text-align: center; margin: 1.5rem 0; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: #FEF3C7; border: 1px solid #FDE68A; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto;">
+                        {_get_svg_icon("check", size=24, color="#D97706")}
+                    </div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 6px;">
+                        No Skill-Matched Assessments Available Yet
+                    </div>
+                    <div style="font-size: 0.88rem; color: #64748B; max-width: 540px; margin: 0 auto 16px auto; line-height: 1.5;">
+                        Standardized technical assessments are generated strictly for competencies verified in your profile.
+                        Add your skills (e.g. Python, SQL, React, Docker, JavaScript, Git, Machine Learning, System Design, Cloud Architecture) in the <strong>My Competencies &amp; Skills</strong> tab to unlock tailored assessments.
+                    </div>
+                    <div style="display: inline-block; background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px; padding: 10px 18px; font-size: 0.82rem; color: #475569;">
+                        Assessment Domains Available: Python &bull; SQL &bull; React &bull; JavaScript &bull; Git &bull; Docker &bull; Machine Learning &bull; Data Structures &bull; System Design &bull; Cloud Architecture &bull; CI/CD &bull; Communication &bull; Leadership
+                    </div>
+                </div>
+                """
+            )
+            return
+
+        skill_options = [c.get("skill") or c.get("skill_name") for c in matched_catalog]
+
+        col_sel_sk, col_shuf_btn = st.columns([4, 1.6])
+        with col_sel_sk:
+            sel_skill = st.selectbox(
+                "Select Skill to Evaluate *",
+                options=skill_options,
+                key=f"mcq_sel_skill_{uid}",
+                format_func=lambda x: f"{x} (Matched with your verified skills)"
+            )
+        with col_shuf_btn:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            if st.button("New Questions", icon=":material/refresh:", key=f"btn_shuf_mcq_{uid}", help="Loads a fresh randomized question set for this skill", use_container_width=True):
+                st.session_state.pop(f"mcq_active_q_{uid}_{sel_skill}", None)
+                st.session_state.pop(f"last_assessment_result_{sel_skill}", None)
+                st.rerun()
+
+        st.markdown(f"<div style='margin: 1rem 0; padding: 12px 18px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; font-size: 0.88rem; color: #1E40AF;'>You are attempting the standardized <strong>{sel_skill} Competency Assessment</strong>. Questions are dynamically generated and randomized for your session. Select the best answer for each question and submit for immediate automated scoring.</div>", unsafe_allow_html=True)
+
+        # ----------------------------------------------------------------------
+        # REQUIREMENT: DYNAMIC & VARYING QUESTIONS ON RELOAD
+        # ----------------------------------------------------------------------
+        q_cache_key = f"mcq_active_q_{uid}_{sel_skill}"
+        if q_cache_key not in st.session_state:
+            st.session_state[q_cache_key] = get_assessment_questions(sel_skill, sample_size=5, shuffle_options=True)
+
+        questions = st.session_state[q_cache_key]
+        if not questions:
+            questions = get_assessment_questions(sel_skill, sample_size=5, shuffle_options=True)
+            st.session_state[q_cache_key] = questions
+
+        # ----------------------------------------------------------------------
+        # REQUIREMENT: RADIO NOT BLUE INITIALLY (index=None). TURNS BLUE ON CLICK.
+        # ----------------------------------------------------------------------
+        with st.form(f"assessment_form_{sel_skill}_{len(questions)}"):
             user_answers: Dict[str, Any] = {}
             for idx, q in enumerate(questions, start=1):
                 st.markdown(f"<div style='font-weight: 700; color: #0F172A; font-size: 1rem; margin-top: 1rem; margin-bottom: 0.5rem;'>Question {idx}: {q.get('question', '')}</div>", unsafe_allow_html=True)
                 opts = q.get("options", [])
+                
+                # index=None ensures no option has a blue dot initially; turns blue only when selected!
                 choice = st.radio(
                     f"Q{idx} Options",
                     options=list(range(len(opts))),
                     format_func=lambda i, options_list=opts: options_list[i] if 0 <= i < len(options_list) else "",
-                    key=f"q_{sel_skill}_{q['id']}",
+                    key=f"q_{sel_skill}_{q['id']}_{q_cache_key}",
+                    index=None,
                     label_visibility="collapsed"
                 )
-                user_answers[q["id"]] = opts[choice] if (0 <= choice < len(opts)) else ""
+                user_answers[q["id"]] = opts[choice] if (choice is not None and 0 <= choice < len(opts)) else None
 
             submit_eval = st.form_submit_button("Submit Assessment for Evaluation", type="primary", use_container_width=True)
 
             if submit_eval:
-                result = evaluate_assessment(uid, sel_skill, user_answers)
-                st.session_state[f"last_assessment_result_{sel_skill}"] = result
+                unanswered = [idx for idx, q in enumerate(questions, start=1) if user_answers.get(q["id"]) is None]
+                if unanswered:
+                    st.warning(f"Please select an answer for all questions before submitting. Unanswered: Question {', '.join(map(str, unanswered))}.")
+                else:
+                    result = evaluate_assessment(uid, sel_skill, user_answers)
+                    st.session_state[f"last_assessment_result_{sel_skill}"] = result
+                    # Reset current question cache so subsequent attempts get fresh randomized questions!
+                    st.session_state.pop(q_cache_key, None)
+                    st.rerun()
 
         # Show Results if available
         last_res = st.session_state.get(f"last_assessment_result_{sel_skill}")
