@@ -6078,7 +6078,7 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
             """
         )
 
-        tab_emp_overview, tab_emp_csv, tab_emp_pdf = st.tabs(["Career Overview & Performance", "Download My Data Reports", "Generate My PDF Dossier"])
+        tab_emp_overview, tab_emp_pdf = st.tabs(["Career Overview & Performance", "Download Report"])
 
         with tab_emp_overview:
             # Metric Calculation
@@ -6134,9 +6134,9 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
             with c_hdr2:
                 if pdf_bytes:
                     st.download_button(
-                        "📄 Download My PDF Dossier",
+                        "📄 Download Report",
                         pdf_bytes,
-                        file_name=f"talent_growth_dossier_{my_emp_id}_{safe_name}.pdf",
+                        file_name=f"talent_growth_report_{my_emp_id}_{safe_name}.pdf",
                         mime="application/pdf",
                         type="primary",
                         use_container_width=True,
@@ -6369,65 +6369,9 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                 else:
                     st.success(f"All competencies for **{target_role}** are fully met or exceeded!")
 
-        with tab_emp_csv:
-            st.markdown("#### Download Personal Data Reports")
-            st.caption(f"Export your individual career data, verified evaluations, goals, and complete talent dossier.")
-            c_csv1, c_csv2 = st.columns(2)
-            with c_csv1:
-                if my_reviews:
-                    csv_rev = pd.DataFrame(my_reviews).to_csv(index=False).encode("utf-8")
-                    st.download_button(
-                        "Download My Performance Reviews (CSV)",
-                        csv_rev,
-                        f"talent_growth_my_reviews_{my_emp_id}.csv",
-                        "text/csv",
-                        type="primary",
-                        use_container_width=True
-                    )
-                if my_skills:
-                    st.write("")
-                    csv_sk = pd.DataFrame(my_skills).to_csv(index=False).encode("utf-8")
-                    st.download_button(
-                        "Download My Verified Skills (CSV)",
-                        csv_sk,
-                        f"talent_growth_my_skills_{my_emp_id}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
-                if my_assessments:
-                    st.write("")
-                    csv_ass = pd.DataFrame(my_assessments).to_csv(index=False).encode("utf-8")
-                    st.download_button(
-                        "Download My Assessment History (CSV)",
-                        csv_ass,
-                        f"talent_growth_my_assessments_{my_emp_id}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
-            with c_csv2:
-                if my_goals:
-                    csv_goal = pd.DataFrame(my_goals).to_csv(index=False).encode("utf-8")
-                    st.download_button(
-                        "Download My Career Goals (CSV)",
-                        csv_goal,
-                        f"talent_growth_my_goals_{my_emp_id}.csv",
-                        "text/csv",
-                        type="primary",
-                        use_container_width=True
-                    )
-                st.write("")
-                payload_json = json.dumps(export_user_data(uid), indent=2, default=str).encode("utf-8")
-                st.download_button(
-                    "Export My Complete Talent Dossier (JSON)",
-                    payload_json,
-                    f"talent_growth_my_dossier_{my_emp_id}.json",
-                    "application/json",
-                    use_container_width=True
-                )
-
         with tab_emp_pdf:
-            st.markdown("#### Generate Publication-Grade PDF Talent Dossier")
-            st.caption(f"Creates an official multi-page dossier incorporating verified skills, gap metrics, goal milestones, and performance reviews for <b>{user.get('name', 'Employee')}</b>.")
+            st.markdown("#### Download Career & Performance Report")
+            st.caption(f"Download your publication-grade PDF talent dossier incorporating verified skills, gap metrics, goal milestones, and performance reviews for <b>{user.get('name', 'Employee')}</b>.")
 
             render_html(
                 f"""
@@ -6458,9 +6402,9 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
 
             if pdf_bytes:
                 st.download_button(
-                    f"Download My PDF Talent Dossier ({user.get('name', 'Employee')})",
+                    f"Download Report ({user.get('name', 'Employee')})",
                     pdf_bytes,
-                    file_name=f"talent_growth_dossier_{my_emp_id}_{safe_name}.pdf",
+                    file_name=f"talent_growth_report_{my_emp_id}_{safe_name}.pdf",
                     mime="application/pdf",
                     type="primary",
                     use_container_width=True,
