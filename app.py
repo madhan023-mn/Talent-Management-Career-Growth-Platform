@@ -4688,7 +4688,7 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                         fig_trend.update_layout(
                             yaxis=dict(range=[0, 5.5], tickvals=[1, 2, 3, 4, 5], tickfont=dict(size=10)),
                             xaxis=dict(tickfont=dict(size=10.5)),
-                            bargap=0.15,
+                            bargap=0.25,
                             height=200,
                             margin=dict(l=10, r=10, t=25, b=15)
                         )
@@ -4725,13 +4725,15 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                         fig_trend.update_layout(
                             yaxis=dict(range=[0, 5.5], tickvals=[1, 2, 3, 4, 5], tickfont=dict(size=10)),
                             xaxis=dict(tickfont=dict(size=10.5)),
-                            bargap=0.10,
+                            bargap=0.25,
                             height=200,
                             margin=dict(l=10, r=10, t=25, b=15)
                         )
 
                     fig_trend = apply_saas_chart_theme(fig_trend, height=200)
-                    st.plotly_chart(fig_trend, use_container_width=True)
+                    col_bar_widget, _ = st.columns([1.4, 1.6], gap="large")
+                    with col_bar_widget:
+                        st.plotly_chart(fig_trend, use_container_width=True)
             else:
                 st.info("No performance evaluations recorded yet.")
 
