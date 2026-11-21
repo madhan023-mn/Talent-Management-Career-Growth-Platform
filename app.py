@@ -6003,14 +6003,32 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                     st.plotly_chart(fig_st, use_container_width=True)
                 with c_p2:
                     if reviews:
-                        fig_scat = px.scatter(
-                            pd.DataFrame(reviews), x="performance_score", y="department", color="review_period",
+                        df_rev = pd.DataFrame(reviews)
+                        df_rev["performance_score"] = pd.to_numeric(df_rev["performance_score"], errors="coerce")
+                        has_multiple_periods = "review_period" in df_rev.columns and df_rev["review_period"].dropna().nunique() > 1
+                        fig_hist = px.histogram(
+                            df_rev,
+                            x="performance_score",
+                            y="department",
+                            color="review_period" if has_multiple_periods else None,
+                            histfunc="avg",
+                            orientation="h",
+                            barmode="group",
+                            text_auto=".1f",
                             title="Performance Ratings across Departments",
-                            labels={"performance_score": "Rating (1-5)", "department": "Department"},
-                            color_discrete_sequence=['#2563EB', '#10B981', '#F59E0B']
+                            labels={"performance_score": "Rating (1-5)", "department": "Department", "review_period": "Review Cycle"},
+                            color_discrete_sequence=['#2563EB', '#10B981', '#F59E0B', '#8B5CF6']
                         )
-                        fig_scat = apply_saas_chart_theme(fig_scat, height=300, title="Performance Ratings across Departments")
-                        st.plotly_chart(fig_scat, use_container_width=True)
+                        fig_hist = apply_saas_chart_theme(fig_hist, height=300, title="Performance Ratings across Departments")
+                        fig_hist.update_traces(
+                            marker_cornerradius=5,
+                            textposition="outside",
+                            textfont=dict(size=11, color="#1E293B")
+                        )
+                        fig_hist.update_xaxes(range=[0, 5.3], dtick=1, title_text="Avg Rating (1–5)")
+                        fig_hist.update_yaxes(title_text="")
+                        fig_hist.update_layout(bargap=0.25, bargroupgap=0.1)
+                        st.plotly_chart(fig_hist, use_container_width=True)
 
     with tab_rep_csv:
         st.markdown("#### Download Structured CSV Data Reports")
