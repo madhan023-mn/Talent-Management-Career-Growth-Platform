@@ -5477,6 +5477,34 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
     goal_user_id = None if is_admin else uid
     goal_stats = get_goal_stats(user_id=goal_user_id, org_id=org_id)
 
+    avg_pct = goal_stats.get("avg_progress", 0)
+    total_g = goal_stats.get("total", 0)
+    comp_g = goal_stats.get("completed", 0)
+    prog_g = goal_stats.get("in_progress", 0)
+    over_g = goal_stats.get("overdue", 0)
+    not_start_g = goal_stats.get("not_started", 0)
+
+    if avg_pct >= 75:
+        vel_status = "Ahead of Target Pace"
+        vel_color = "#10B981"
+        vel_bg = "#ECFDF5"
+        vel_border = "#A7F3D0"
+    elif avg_pct >= 40:
+        vel_status = "Active Flight Momentum"
+        vel_color = "#2563EB"
+        vel_bg = "#EFF6FF"
+        vel_border = "#BFDBFE"
+    elif avg_pct > 0:
+        vel_status = "Early Acceleration"
+        vel_color = "#F59E0B"
+        vel_bg = "#FFFBEB"
+        vel_border = "#FDE68A"
+    else:
+        vel_status = "Planning & Initiation"
+        vel_color = "#64748B"
+        vel_bg = "#F8FAFC"
+        vel_border = "#E2E8F0"
+
     if "cg_status_sel" not in st.session_state:
         st.session_state.cg_status_sel = "All Statuses"
 
