@@ -5482,166 +5482,82 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
 
     curr_filter = st.session_state.cg_status_sel
 
-    # INTERACTIVE 5-CARD EXECUTIVE METRIC ROW
-    c_m1, c_m2, c_m3, c_m4, c_m5 = st.columns(5, gap="small")
-
-    with c_m1:
-        is_act = (curr_filter == "All Statuses")
-        act_cls = "active-filter" if is_act else ""
-        badge_html = '<span class="pro-metric-badge" style="background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE;">SELECTED</span>' if is_act else '<span class="pro-metric-badge" style="background:#F1F5F9; color:#475569;">100% POOL</span>'
-        render_html(f"""
-        <div class="pro-metric-card card-blue {act_cls}">
-            <div class="pro-metric-header">
-                <span class="pro-metric-label">Total Goals</span>
-                <div class="pro-metric-icon-wrap">{get_svg_icon("target", size=18, color="#2563EB")}</div>
-            </div>
-            <div class="pro-metric-value">{goal_stats['total']}</div>
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
-                <span class="pro-metric-sub">Defined career milestones</span>
-                {badge_html}
-            </div>
-        </div>
-        """)
-        if st.button("All Goals" if not is_act else "Active", key="btn_card_all", use_container_width=True, type="primary" if is_act else "secondary"):
-            st.session_state.cg_status_sel = "All Statuses"
-            st.rerun()
-
-    with c_m2:
-        is_act = (curr_filter == "In Progress")
-        act_cls = "active-filter" if is_act else ""
-        badge_html = '<span class="pro-metric-badge" style="background:#FEF3C7; color:#B45309; border:1px solid #FDE68A;">SELECTED</span>' if is_act else '<span class="pro-metric-badge" style="background:#FEF3C7; color:#92400E;">25–75%</span>'
-        render_html(f"""
-        <div class="pro-metric-card card-amber {act_cls}">
-            <div class="pro-metric-header">
-                <span class="pro-metric-label">In Progress (25–75%)</span>
-                <div class="pro-metric-icon-wrap">{get_svg_icon("clock", size=18, color="#D97706")}</div>
-            </div>
-            <div class="pro-metric-value">{goal_stats['in_progress']}</div>
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
-                <span class="pro-metric-sub">Active execution</span>
-                {badge_html}
-            </div>
-        </div>
-        """)
-        if st.button("Filter: In Progress" if not is_act else "Active", key="btn_card_prog", use_container_width=True, type="primary" if is_act else "secondary"):
-            st.session_state.cg_status_sel = "In Progress"
-            st.rerun()
-
-    with c_m3:
-        is_act = (curr_filter == "Completed")
-        act_cls = "active-filter" if is_act else ""
-        badge_html = '<span class="pro-metric-badge" style="background:#ECFDF5; color:#047857; border:1px solid #A7F3D0;">SELECTED</span>' if is_act else '<span class="pro-metric-badge" style="background:#ECFDF5; color:#065F46;">100% DONE</span>'
-        render_html(f"""
-        <div class="pro-metric-card card-emerald {act_cls}">
-            <div class="pro-metric-header">
-                <span class="pro-metric-label">Completed (100%)</span>
-                <div class="pro-metric-icon-wrap">{get_svg_icon("check", size=18, color="#059669")}</div>
-            </div>
-            <div class="pro-metric-value">{goal_stats['completed']}</div>
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
-                <span class="pro-metric-sub">Finished milestones</span>
-                {badge_html}
-            </div>
-        </div>
-        """)
-        if st.button("Filter: Done" if not is_act else "Active", key="btn_card_comp", use_container_width=True, type="primary" if is_act else "secondary"):
-            st.session_state.cg_status_sel = "Completed"
-            st.rerun()
-
-    with c_m4:
-        is_act = (curr_filter == "Overdue")
-        act_cls = "active-filter" if is_act else ""
-        badge_html = '<span class="pro-metric-badge" style="background:#FEF2F2; color:#B91C1C; border:1px solid #FECACA;">SELECTED</span>' if is_act else '<span class="pro-metric-badge" style="background:#FEF2F2; color:#991B1B;">DEADLINE</span>'
-        render_html(f"""
-        <div class="pro-metric-card card-rose {act_cls}">
-            <div class="pro-metric-header">
-                <span class="pro-metric-label">Overdue Goals</span>
-                <div class="pro-metric-icon-wrap">{get_svg_icon("shield", size=18, color="#DC2626")}</div>
-            </div>
-            <div class="pro-metric-value">{goal_stats['overdue']}</div>
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
-                <span class="pro-metric-sub">Past target deadline</span>
-                {badge_html}
-            </div>
-        </div>
-        """)
-        if st.button("Filter: Overdue" if not is_act else "Active", key="btn_card_overdue", use_container_width=True, type="primary" if is_act else "secondary"):
-            st.session_state.cg_status_sel = "Overdue"
-            st.rerun()
-
-    with c_m5:
-        render_html(f"""
-        <div class="pro-metric-card card-purple">
-            <div class="pro-metric-header">
-                <span class="pro-metric-label">Avg Progress</span>
-                <div class="pro-metric-icon-wrap">{get_svg_icon("trending_up", size=18, color="#7C3AED")}</div>
-            </div>
-            <div class="pro-metric-value">{goal_stats['avg_progress']}%</div>
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:4px;">
-                <span class="pro-metric-sub">Milestone completion</span>
-                <span class="pro-metric-badge" style="background:#F5F3FF; color:#6D28D9;">VELOCITY</span>
-            </div>
-        </div>
-        """)
-        if st.button("Reset Filter", key="btn_card_reset", use_container_width=True, type="secondary"):
-            st.session_state.cg_status_sel = "All Statuses"
-            st.rerun()
-
-    # EXECUTIVE OVERALL MILESTONE COMPLETION DASHBOARD BANNER
-    avg_pct = goal_stats["avg_progress"]
-    total_g = goal_stats["total"]
-    comp_g = goal_stats["completed"]
-    prog_g = goal_stats["in_progress"]
-    over_g = goal_stats["overdue"]
-    not_start_g = goal_stats["not_started"]
-
-    if avg_pct >= 75:
-        vel_status = "Velocity: Ahead of Target Pace"
-        vel_badge_cls = "tbl-badge-green"
-        vel_dot_color = "#10B981"
-    elif avg_pct >= 40:
-        vel_status = "Velocity: Active Flight Momentum"
-        vel_badge_cls = "tbl-badge-blue"
-        vel_dot_color = "#2563EB"
-    elif avg_pct > 0:
-        vel_status = "Velocity: Early Acceleration"
-        vel_badge_cls = "tbl-badge-yellow"
-        vel_dot_color = "#F59E0B"
-    else:
-        vel_status = "Velocity: Planning & Initiation"
-        vel_badge_cls = "tbl-badge-yellow"
-        vel_dot_color = "#94A3B8"
-
-    render_html(f"""
-    <div class="milestone-exec-banner">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 0.85rem;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center; color: #2563EB; box-shadow: 0 2px 6px rgba(37,99,235,0.12);">
-                    {get_svg_icon("goals", size=22, color="#2563EB")}
-                </div>
-                <div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 1.25rem; font-weight: 800; color: #0F172A; letter-spacing: -0.01em;">Overall Milestone Completion</span>
-                        <span style="font-size: 1.35rem; font-weight: 900; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 2px 10px; border-radius: 8px;">{avg_pct}%</span>
-                    </div>
-                    <div style="font-size: 0.84rem; color: #64748B; margin-top: 2px;">
-                        <strong>{comp_g} of {total_g}</strong> milestones achieved ({avg_pct}% weighted completion across career roadmap)
+    # 1. Sleek 4-Card Executive KPI Row
+    render_html(
+        f"""
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.15rem;">
+            <div style="background: #FFFFFF; border: 1px solid #DBEAFE; border-top: 4px solid #2563EB; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(37,99,235,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Total Goals</span>
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; color: #2563EB;">
+                        {get_svg_icon("target", size=17, color="#2563EB")}
                     </div>
                 </div>
+                <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{total_g}</div>
+                <div style="margin-top: 8px; font-size: 0.76rem; color: #2563EB; font-weight: 600;">Active Milestone Pool</div>
             </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span class="tbl-badge {vel_badge_cls}" style="font-size: 0.8rem; padding: 5px 12px;">
-                    <span class="tbl-badge-dot" style="background: {vel_dot_color};"></span>
+
+            <div style="background: #FFFFFF; border: 1px solid #BFDBFE; border-top: 4px solid #3B82F6; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(59,130,246,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">In Progress</span>
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; color: #3B82F6;">
+                        {get_svg_icon("clock", size=17, color="#3B82F6")}
+                    </div>
+                </div>
+                <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{prog_g}</div>
+                <div style="margin-top: 8px; font-size: 0.76rem; color: #3B82F6; font-weight: 600;">25% &ndash; 75% Execution</div>
+            </div>
+
+            <div style="background: #FFFFFF; border: 1px solid #BBF7D0; border-top: 4px solid #10B981; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(16,185,129,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Completed</span>
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #ECFDF5; display: flex; align-items: center; justify-content: center; color: #10B981;">
+                        {get_svg_icon("check", size=17, color="#10B981")}
+                    </div>
+                </div>
+                <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{comp_g}</div>
+                <div style="margin-top: 8px; font-size: 0.76rem; color: #10B981; font-weight: 600;">100% Achieved</div>
+            </div>
+
+            <div style="background: #FFFFFF; border: 1px solid #FECACA; border-top: 4px solid #EF4444; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(239,68,68,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Overdue</span>
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #FEF2F2; display: flex; align-items: center; justify-content: center; color: #EF4444;">
+                        {get_svg_icon("shield", size=17, color="#EF4444")}
+                    </div>
+                </div>
+                <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{over_g}</div>
+                <div style="margin-top: 8px; font-size: 0.76rem; color: #EF4444; font-weight: 600;">Past Target Deadline</div>
+            </div>
+        </div>
+
+        <!-- Overall Milestone Completion Banner -->
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.2rem 1.5rem; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 42px; height: 42px; border-radius: 12px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center; color: #2563EB;">
+                        {get_svg_icon("goals", size=20, color="#2563EB")}
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.15rem; font-weight: 800; color: #0F172A;">Overall Milestone Completion</span>
+                            <span style="font-size: 1.1rem; font-weight: 900; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 1px 9px; border-radius: 6px;">{avg_pct}%</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #64748B; margin-top: 2px;">
+                            <strong>{comp_g} of {total_g}</strong> milestones achieved ({avg_pct}% weighted completion across career roadmap)
+                        </div>
+                    </div>
+                </div>
+                <span style="display: inline-flex; align-items: center; gap: 5px; background: {vel_bg}; border: 1px solid {vel_border}; color: {vel_color}; font-weight: 700; font-size: 0.78rem; padding: 4px 11px; border-radius: 9999px;">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: {vel_color};"></span>
                     {vel_status}
                 </span>
             </div>
-        </div>
 
-        <div class="milestone-track-container">
-            <div class="milestone-track-bar">
-                <div class="milestone-track-fill" style="width: {avg_pct}%;"></div>
+            <div style="background: #F1F5F9; border-radius: 9999px; height: 9px; width: 100%; overflow: hidden;">
+                <div style="background: linear-gradient(90deg, #3B82F6 0%, #2563EB 55%, #10B981 100%); height: 100%; width: {avg_pct}%; border-radius: 9999px;"></div>
             </div>
-            <div class="milestone-ticks-row">
+            <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 0.72rem; color: #94A3B8; font-weight: 600;">
                 <span>0% Defined</span>
                 <span>25% Initiated</span>
                 <span>50% Mid-Point</span>
@@ -5649,32 +5565,8 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
                 <span>100% Achieved</span>
             </div>
         </div>
-
-        <div style="border-top: 1px solid #F1F5F9; margin-top: 1rem; padding-top: 0.85rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <span class="milestone-chip">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #3B82F6;"></span>
-                    In Progress: <strong>{prog_g}</strong>
-                </span>
-                <span class="milestone-chip">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #10B981;"></span>
-                    Completed: <strong>{comp_g}</strong>
-                </span>
-                <span class="milestone-chip">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #EF4444;"></span>
-                    Overdue: <strong>{over_g}</strong>
-                </span>
-                <span class="milestone-chip">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: #94A3B8;"></span>
-                    Not Started: <strong>{not_start_g}</strong>
-                </span>
-            </div>
-            <div style="font-size: 0.8rem; color: #64748B;">
-                Click any metric card above to dynamically filter milestones below
-            </div>
-        </div>
-    </div>
-    """)
+        """
+    )
 
     tab_g_view, tab_g_create, tab_g_edit = st.tabs(["Goals Dashboard & Tracking", "Create SMART Career Goal", "Manage Milestones (Edit / Delete)"])
 
@@ -5718,46 +5610,110 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
         if goals_data:
             if goal_view_mode == "Roadmap View":
                 for g in goals_data:
-                    status_bar_cls = "goal-bar-completed" if g["status"] == "Completed" else ("goal-bar-overdue" if g["status"] == "Overdue" else "goal-bar-progress")
-                    badge_cls = "badge-completed" if g["status"] == "Completed" else ("badge-overdue" if g["status"] == "Overdue" else "badge-progress")
-                    
-                    render_html(
-                        f"""
-                        <div class="goal-interactive-card">
-                            <div class="{status_bar_cls}"></div>
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                                <div>
-                                    <span style="font-weight: 800; font-size: 1.1rem; color: #0F172A;">{g['title']}</span>
-                                    <span style="font-size: 0.8rem; color: #2563EB; margin-left: 8px; font-weight: 600;">{g['target_designation'] or 'General Growth'}</span>
+                    status = g.get("status", "In Progress")
+                    progress = int(g.get("progress") or 0)
+
+                    if status == "Completed":
+                        status_color = "#10B981"
+                        status_bg = "#ECFDF5"
+                        status_border = "#A7F3D0"
+                        status_text = "#047857"
+                        card_top_border = "#10B981"
+                        bar_grad = "linear-gradient(90deg, #10B981 0%, #059669 100%)"
+                    elif status == "Overdue":
+                        status_color = "#EF4444"
+                        status_bg = "#FEF2F2"
+                        status_border = "#FECACA"
+                        status_text = "#B91C1C"
+                        card_top_border = "#EF4444"
+                        bar_grad = "linear-gradient(90deg, #F59E0B 0%, #EF4444 100%)"
+                    elif status == "In Progress":
+                        status_color = "#2563EB"
+                        status_bg = "#EFF6FF"
+                        status_border = "#BFDBFE"
+                        status_text = "#1D4ED8"
+                        card_top_border = "#2563EB"
+                        bar_grad = "linear-gradient(90deg, #3B82F6 0%, #2563EB 100%)"
+                    else:
+                        status_color = "#64748B"
+                        status_bg = "#F8FAFC"
+                        status_border = "#E2E8F0"
+                        status_text = "#475569"
+                        card_top_border = "#94A3B8"
+                        bar_grad = "#94A3B8"
+
+                    with st.container(border=True):
+                        render_html(
+                            f"""
+                            <div style="border-top: 3.5px solid {card_top_border}; margin: -0.85rem -0.95rem 0.65rem -0.95rem; border-radius: 12px 12px 0 0;"></div>
+                            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 38px; height: 38px; border-radius: 10px; background: {status_bg}; border: 1px solid {status_border}; display: flex; align-items: center; justify-content: center; color: {status_color}; flex-shrink: 0;">
+                                        {get_svg_icon("target", size=18, color=status_color)}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 800; font-size: 1.10rem; color: #0F172A; line-height: 1.25;">
+                                            {g['title']}
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 3px;">
+                                            <span style="font-size: 0.74rem; font-weight: 700; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 2px 8px; border-radius: 6px;">
+                                                {g['target_designation'] or 'General Growth'}
+                                            </span>
+                                            <span style="font-size: 0.76rem; color: #64748B; font-weight: 500;">
+                                                Target: <strong style="color: #334155;">{g['target_date']}</strong>
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <span class="badge-status {badge_cls}">{g['status'].upper()}</span>
+                                <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                                    <span style="display: inline-flex; align-items: center; gap: 5px; background: {status_bg}; border: 1px solid {status_border}; color: {status_text}; font-weight: 800; font-size: 0.76rem; padding: 3px 9px; border-radius: 9999px; text-transform: uppercase;">
+                                        <span style="width: 6px; height: 6px; border-radius: 50%; background: {status_color};"></span>
+                                        {status}
+                                    </span>
+                                    <span style="font-size: 0.88rem; font-weight: 800; color: #0F172A; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 2px 9px; border-radius: 8px;">
+                                        {progress}%
+                                    </span>
+                                </div>
                             </div>
-                            <div style="font-size: 0.86rem; color: #475569; margin-bottom: 12px;">
-                                {g['description'] or 'Delivering measurable impact toward professional promotion benchmarks.'}
+
+                            <div style="font-size: 0.88rem; color: #475569; line-height: 1.5; margin: 8px 0 12px 0;">
+                                {g['description'] or 'Delivering measurable impact toward professional promotion benchmarks and leadership expectations.'}
                             </div>
-                            <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; color: #64748B; margin-bottom: 4px;">
-                                <span>Target Completion: <strong>{g['target_date']}</strong></span>
-                                <span style="font-weight: 800; color: #0F172A;">{g['progress']}% Complete</span>
+
+                            <div style="margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.70rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
+                                    <span>Milestone Execution</span>
+                                    <span style="color: {status_color}; font-weight: 800;">{progress}% Complete</span>
+                                </div>
+                                <div style="background: #F1F5F9; border-radius: 9999px; height: 7px; width: 100%; overflow: hidden;">
+                                    <div style="background: {bar_grad}; height: 100%; width: {progress}%; border-radius: 9999px;"></div>
+                                </div>
                             </div>
-                        </div>
-                        """
-                    )
-                    st.progress(g["progress"] / 100)
-                    
-                    # Interactive milestone advance buttons
-                    col_act1, col_act2, col_act3 = st.columns([2.5, 1, 1])
-                    with col_act2:
-                        if g["progress"] < 100:
-                            new_val = min(100, g["progress"] + 25)
-                            if st.button(f"Advance +25%", key=f"adv_btn_{g['id']}", use_container_width=True):
-                                update_goal_progress(g["id"], uid, new_val)
-                                st.rerun()
-                    with col_act3:
-                        if g["progress"] < 100:
-                            if st.button("Mark as Completed", key=f"comp_btn_{g['id']}", type="primary", use_container_width=True):
-                                update_goal_progress(g["id"], uid, 100)
-                                st.rerun()
-                    st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
+                            """
+                        )
+
+                        col_lbl, col_adv, col_done = st.columns([3.2, 1.1, 1.1], gap="small")
+                        with col_lbl:
+                            if progress == 100:
+                                st.markdown("<span style='font-size: 0.82rem; font-weight: 700; color: #059669;'>✓ Goal Fully Achieved</span>", unsafe_allow_html=True)
+                            elif status == "Overdue":
+                                st.markdown(f"<span style='font-size: 0.78rem; font-weight: 600; color: #B91C1C;'>⚠️ Deadline passed on {g['target_date']}</span>", unsafe_allow_html=True)
+                            else:
+                                st.markdown(f"<span style='font-size: 0.78rem; font-weight: 600; color: #64748B;'>Target completion scheduled for {g['target_date']}</span>", unsafe_allow_html=True)
+
+                        with col_adv:
+                            if progress < 100:
+                                new_val = min(100, progress + 25)
+                                if st.button(f"Advance +25%", key=f"adv_btn_{g['id']}", use_container_width=True, type="secondary"):
+                                    update_goal_progress(g["id"], uid, new_val)
+                                    st.rerun()
+                        with col_done:
+                            if progress < 100:
+                                if st.button("Complete ✓", key=f"comp_btn_{g['id']}", type="primary", use_container_width=True):
+                                    update_goal_progress(g["id"], uid, 100)
+                                    st.rerun()
+
+                    st.markdown("<div style='margin-bottom: 0.75rem;'></div>", unsafe_allow_html=True)
             else:
                 render_html(render_colored_goals_table(goals_data))
 
@@ -5765,12 +5721,12 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
                 pd.DataFrame(goals_data),
                 x="title", y="progress", color="status",
                 range_y=[0, 100],
-                title="Goal Progress & Milestone Completion (%)",
                 labels={"title": "Career Goal", "progress": "Progress (%)", "status": "Status"},
                 color_discrete_map={"Not Started": "#94A3B8", "In Progress": "#3B82F6", "Completed": "#10B981", "Overdue": "#EF4444"},
-                height=260
+                height=220
             )
-            fig_goals.update_layout(margin=dict(l=10, r=10, t=35, b=10))
+            fig_goals = apply_saas_chart_theme(fig_goals, height=220, title="Goal Progress & Milestone Completion (%)")
+            fig_goals.update_traces(marker_cornerradius=6)
             st.plotly_chart(fig_goals, use_container_width=True)
 
             # Quick Milestone Updater
