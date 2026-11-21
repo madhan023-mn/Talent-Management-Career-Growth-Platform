@@ -134,7 +134,7 @@ def render_settings_module(user: Dict[str, Any], is_admin: bool, is_individual: 
     role_subtitle = (
         "Manage your organization profile, brand identity, and HR administrator account credentials."
         if is_admin else
-        "Manage your personal profile, account credentials, career targets, notifications, view density, and privacy controls."
+        "Manage your personal profile, account credentials, and career preferences."
     )
     badge_text = "HR EXECUTIVE GOVERNANCE" if is_admin else "EMPLOYEE PREFERENCE HUB"
 
@@ -356,14 +356,11 @@ def _render_hr_account_settings(user: Dict[str, Any], org_id: str) -> None:
 # EMPLOYEE SETTINGS SUB-PAGES
 # ==============================================================================
 def _render_employee_settings(user: Dict[str, Any], org_id: str, is_individual: bool) -> None:
-    """Renders the 6 dedicated Employee settings sub-sections with full interactive tabs."""
+    """Renders the dedicated Employee settings sub-sections with interactive tabs."""
     emp_tabs = st.tabs([
         "Personal Profile",
         "Account Security",
-        "Career Preferences",
-        "Notifications",
-        "Appearance",
-        "Privacy & Data"
+        "Career Preferences"
     ])
 
     uid = user.get("id")
@@ -380,18 +377,6 @@ def _render_employee_settings(user: Dict[str, Any], org_id: str, is_individual: 
     # 3. Career Preferences
     with emp_tabs[2]:
         _render_employee_career_preferences(user, user_prefs)
-
-    # 4. Notification Preferences
-    with emp_tabs[3]:
-        _render_employee_notification_preferences(user, user_prefs)
-
-    # 5. Appearance
-    with emp_tabs[4]:
-        _render_employee_appearance(user, user_prefs)
-
-    # 6. Privacy & Data
-    with emp_tabs[5]:
-        _render_employee_privacy(user, user_prefs, is_individual)
 
 
 def _render_employee_personal_profile(user: Dict[str, Any], user_prefs: Dict[str, Any]) -> None:
