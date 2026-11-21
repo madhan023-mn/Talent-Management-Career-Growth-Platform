@@ -15,6 +15,7 @@ except Exception:
 BASE_DIR = Path(__file__).resolve().parent
 
 from typing import Any, Dict, List, Optional, Tuple, Union
+import re
 import json
 import textwrap
 import base64
@@ -6034,6 +6035,23 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
         a = analysis_bundle()
         gaps = gap_analysis(target_role, my_skills)
         recs = recommendations(my_profile, my_skills)
+        safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", str(user.get("name") or "Employee"))
+
+        try:
+            pdf_bytes = create_report(
+                profile=my_profile,
+                skills=my_skills,
+                analysis=a,
+                gaps=gaps,
+                recommendations=recs,
+                assessments=my_assessments,
+                progress=my_progress,
+                goals=my_goals,
+                reviews=my_reviews,
+                org_id=org_id
+            )
+        except Exception:
+            pdf_bytes = None
 
         render_html(
             f"""
@@ -6099,6 +6117,31 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                 badge_text = "Pending Cycle"
                 badge_bg = "#F1F5F9"
                 badge_color = "#64748B"
+
+            # Quick Action & KPI Header
+            c_hdr1, c_hdr2 = st.columns([6.8, 3.2], gap="small")
+            with c_hdr1:
+                render_html(
+                    f"""
+                    <div style="font-size: 1.12rem; font-weight: 800; color: #0F172A; margin: 4px 0 2px 0;">
+                        Personal Career &amp; Competency Intelligence
+                    </div>
+                    <div style="font-size: 0.85rem; color: #64748B;">
+                        Track your performance trajectory, goal progress, and download your publication-grade talent dossier.
+                    </div>
+                    """
+                )
+            with c_hdr2:
+                if pdf_bytes:
+                    st.download_button(
+                        "📄 Download My PDF Dossier",
+                        pdf_bytes,
+                        file_name=f"talent_growth_dossier_{my_emp_id}_{safe_name}.pdf",
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True,
+                        key="btn_emp_quick_pdf_dl"
+                    )
 
             # 4 KPI Cards
             render_html(
@@ -6413,28 +6456,18 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                 """
             )
 
-            pdf_bytes = create_report(
-                profile=my_profile,
-                skills=my_skills,
-                analysis=a,
-                gaps=gaps,
-                recommendations=recs,
-                assessments=my_assessments,
-                progress=my_progress,
-                goals=my_goals,
-                reviews=my_reviews,
-                org_id=org_id
-            )
-
-            safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", user.get("name", "Employee"))
-            st.download_button(
-                f"Download My PDF Talent Dossier ({user.get('name', 'Employee')})",
-                pdf_bytes,
-                file_name=f"talent_growth_dossier_{my_emp_id}_{safe_name}.pdf",
-                mime="application/pdf",
-                type="primary",
-                use_container_width=True
-            )
+            if pdf_bytes:
+                st.download_button(
+                    f"Download My PDF Talent Dossier ({user.get('name', 'Employee')})",
+                    pdf_bytes,
+                    file_name=f"talent_growth_dossier_{my_emp_id}_{safe_name}.pdf",
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True,
+                    key="btn_emp_full_pdf_dl"
+                )
+            else:
+                st.error("Could not compile PDF dossier at this time. Please ensure your profile information is filled out.")
 
     else:
         # ----------------------------------------------------------------------
