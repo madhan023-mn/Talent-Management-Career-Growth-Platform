@@ -4688,7 +4688,7 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                         fig_trend.update_layout(
                             yaxis=dict(range=[0, 5.5], tickvals=[1, 2, 3, 4, 5], tickfont=dict(size=10)),
                             xaxis=dict(tickfont=dict(size=10.5)),
-                            bargap=0.35,
+                            bargap=0.15,
                             height=200,
                             margin=dict(l=10, r=10, t=25, b=15)
                         )
@@ -4710,7 +4710,6 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                                 line=dict(color="#1E293B", width=0.5),
                                 cornerradius=6
                             ),
-                            width=0.35,
                             name="Employee Score"
                         ))
                         cycle_avg = df_sorted["performance_score"].mean()
@@ -4726,7 +4725,7 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                         fig_trend.update_layout(
                             yaxis=dict(range=[0, 5.5], tickvals=[1, 2, 3, 4, 5], tickfont=dict(size=10)),
                             xaxis=dict(tickfont=dict(size=10.5)),
-                            bargap=0.3,
+                            bargap=0.10,
                             height=200,
                             margin=dict(l=10, r=10, t=25, b=15)
                         )
