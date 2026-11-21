@@ -3567,19 +3567,9 @@ elif page in ["Employees", "Employee Management"]:
 
     # --- TAB 1: WORKFORCE DIRECTORY (PRIMARY VIEW) ---
     with tab_dir:
-        # Section 5: Directory Section Header with segmented view controls and export
-        c_title, c_toggle = st.columns([2.5, 1.5], gap="small")
-        with c_title:
-            st.markdown("### Workforce Directory & Talent Profiles")
-            st.caption("Discover employees, review competencies, and manage workforce information.")
-        with c_toggle:
-            view_mode = st.radio(
-                "Display Layout",
-                ["Cards View", "Table View"],
-                horizontal=True,
-                key="emp_view_mode",
-                label_visibility="collapsed"
-            )
+        # Section 5: Directory Section Header
+        st.markdown("### Workforce Directory & Talent Profiles")
+        st.caption("Discover employees, review competencies, and manage workforce information.")
 
         # Section 6: Modern Search & Filter Panel
         with st.container():
@@ -3723,90 +3713,9 @@ elif page in ["Employees", "Employee Management"]:
             """
         )
 
-        # Section 8 & 9: Employee Profile Cards
+        # Section 8 & 9: Employee Profile Table
         if emp_results:
-            if view_mode == "Cards View":
-                avatar_gradients = [
-                    "linear-gradient(135deg, #2563EB 0%, #06B6D4 100%)",
-                    "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)",
-                    "linear-gradient(135deg, #0D9488 0%, #2563EB 100%)",
-                    "linear-gradient(135deg, #7C3AED 0%, #EC4899 100%)",
-                    "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)"
-                ]
-                card_cols = st.columns(3, gap="medium")
-                for i, emp in enumerate(emp_results):
-                    with card_cols[i % 3]:
-                        n_parts = emp["name"].strip().split()
-                        init = (n_parts[0][0] + (n_parts[-1][0] if len(n_parts) > 1 else "")).upper()
-                        grad = avatar_gradients[i % len(avatar_gradients)]
-                        rating_display = f"{emp['avg_rating']} / 5.0" if emp['avg_rating'] else "New Talent"
-
-                        emp_st = emp.get('employment_status', 'Active')
-                        if emp_st == 'Active':
-                            st_badge_html = "<span style='font-size: 0.72rem; font-weight: 700; color: #16A34A; background: #F0FDF4; border: 1px solid #BBF7D0; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase;'>ACTIVE</span>"
-                        elif emp_st in ['On Leave', 'Pending']:
-                            st_badge_html = f"<span style='font-size: 0.72rem; font-weight: 700; color: #D97706; background: #FEF3C7; border: 1px solid #FDE68A; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase;'>{emp_st}</span>"
-                        else:
-                            st_badge_html = f"<span style='font-size: 0.72rem; font-weight: 700; color: #64748B; background: #F1F5F9; border: 1px solid #E2E8F0; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase;'>{emp_st}</span>"
-
-                        skills_list = [s.strip() for s in (emp['primary_skills'] or '').split(',') if s.strip()][:4]
-                        skills_html = ''.join(f"<span class='skill-pill'>{s}</span>" for s in skills_list) if skills_list else "<span style='font-size: 0.75rem; color: #94A3B8;'>No skills listed</span>"
-
-                        render_html(
-                            f"""
-                            <div class="talent-card">
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                    <div style="display: flex; align-items: center; gap: 12px;">
-                                        <div style="width: 46px; height: 46px; border-radius: 12px; background: {grad}; color: #FFFFFF; font-weight: 800; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(37,99,235,0.22);">
-                                            {init}
-                                        </div>
-                                        <div>
-                                            <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A; line-height: 1.2;">{emp['name']}</div>
-                                            <div style="font-size: 0.82rem; color: #2563EB; font-weight: 600; margin-top: 2px;">{emp['designation']}</div>
-                                        </div>
-                                    </div>
-                                    {st_badge_html}
-                                </div>
-                                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px;">
-                                    <span style="font-size: 0.74rem; color: #1E40AF; background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 6px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px;">
-                                        {get_svg_icon("sparkles", size=11, color="#2563EB")} <strong>{emp.get('org_name', org_name)}</strong> ({emp.get('org_id', org_id)})
-                                    </span>
-                                    <span style="font-size: 0.74rem; color: #475569; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px;">
-                                        {get_svg_icon("building", size=11, color="#64748B")} {emp['department']}
-                                    </span>
-                                    <span class="tbl-id-pill">{emp['employee_id']}</span>
-                                </div>
-                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0;">
-                                    <div style="background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 8px; padding: 7px 4px; text-align: center;">
-                                        <div style="font-size: 0.92rem; font-weight: 800; color: #1E40AF;">{emp['years_experience']} yrs</div>
-                                        <div style="font-size: 0.66rem; font-weight: 700; color: #3B82F6; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px;">Experience</div>
-                                    </div>
-                                    <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 7px 4px; text-align: center;">
-                                        <div style="font-size: 0.92rem; font-weight: 800; color: #B45309; display: flex; align-items: center; justify-content: center; gap: 3px;">
-                                            {get_svg_icon("star", size=11, color="#D97706")} {rating_display}
-                                        </div>
-                                        <div style="font-size: 0.66rem; font-weight: 700; color: #D97706; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px;">Performance</div>
-                                    </div>
-                                    <div style="background: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 8px; padding: 7px 4px; text-align: center;">
-                                        <div style="font-size: 0.80rem; font-weight: 800; color: #6D28D9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{emp['joining_date']}</div>
-                                        <div style="font-size: 0.66rem; font-weight: 700; color: #7C3AED; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px;">Joined</div>
-                                    </div>
-                                </div>
-                                <div style="margin-top: 8px;">
-                                    <div style="font-size: 0.70rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Core Competencies</div>
-                                    <div class="talent-skill-pills" style="margin-top: 4px;">{skills_html}</div>
-                                </div>
-                            </div>
-                            """
-                        )
-                        with st.expander(f"Contact & Profile ({emp['employee_id']})"):
-                            st.write(f"**Organization:** {emp.get('org_name', org_name)} (`{emp.get('org_id', org_id)}`)")
-                            st.write(f"**Employment Status:** {emp.get('employment_status', 'Active')} &bull; **Account Status:** {emp.get('account_status', 'Active')}")
-                            st.write(f"**Email:** `{emp['email']}`")
-                            st.write(f"**Phone:** `{emp['phone'] or 'Not provided'}`")
-                            st.write(f"**Primary Skills:** {emp['primary_skills'] or 'None recorded'}")
-            else:
-                render_html(render_colored_employee_table(emp_results))
+            render_html(render_colored_employee_table(emp_results))
 
             csv_data = pd.DataFrame(emp_results).to_csv(index=False).encode("utf-8")
             st.download_button(
