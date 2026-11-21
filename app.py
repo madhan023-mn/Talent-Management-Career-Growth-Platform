@@ -6585,7 +6585,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
             st.markdown("<h3 style='font-size: 1.25rem; font-weight: 800; color: #0F172A; margin: 0.5rem 0 1rem 0;'>Edit Your Resume Sections</h3>", unsafe_allow_html=True)
             
             # --- SECTION A: PROFESSIONAL SUMMARY ---
-            with st.expander("Section A &bull; Professional Summary", expanded=True):
+            with st.expander("Section A &bull; Professional Summary", expanded=False):
                 st.caption("Write a 2-4 sentence executive summary highlighting your domain focus, key technologies, and career trajectory.")
                 current_sum = res_data.get("summary", "")
                 new_summary = st.text_area(
@@ -6610,7 +6610,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                         st.rerun()
 
             # --- SECTION B: SKILLS & COMPETENCIES ---
-            with st.expander(f"Section B &bull; Core Competencies & Skills ({len(skills_list)} added)", expanded=True):
+            with st.expander(f"Section B &bull; Core Competencies & Skills ({len(skills_list)} added)", expanded=False):
                 st.caption("Add technical proficiencies and domain skills. You can also import verified skills from your Skills & Assessment module.")
                 
                 # Render existing skills as tags
@@ -6676,7 +6676,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                     st.caption("Imports your verified employee competencies without overwriting existing manually created resume entries.")
 
             # --- SECTION C: WORK EXPERIENCE ---
-            with st.expander(f"Section C &bull; Work Experience ({len(exp_list)} entries)", expanded=True):
+            with st.expander(f"Section C &bull; Work Experience ({len(exp_list)} entries)", expanded=False):
                 st.caption("Chronological employment history with measurable outcomes, responsibilities, and leadership impact.")
 
                 if exp_list:
@@ -6761,7 +6761,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                                     st.rerun()
 
             # --- SECTION D: EDUCATION ---
-            with st.expander(f"Section D &bull; Education ({len(edu_list)} entries)", expanded=True):
+            with st.expander(f"Section D &bull; Education ({len(edu_list)} entries)", expanded=False):
                 st.caption("Academic degrees, university education, fields of study, and honors.")
                 
                 if edu_list:
@@ -6824,7 +6824,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                                     st.rerun()
 
             # --- SECTION E: CERTIFICATIONS ---
-            with st.expander(f"Section E &bull; Certifications & Credentials ({len(certs_list)} entries)", expanded=True):
+            with st.expander(f"Section E &bull; Certifications & Credentials ({len(certs_list)} entries)", expanded=False):
                 st.caption("Professional licenses, vendor credentials, and technical accreditations.")
 
                 if certs_list:
@@ -6886,7 +6886,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                                 st.rerun()
 
             # --- SECTION F: PROJECTS ---
-            with st.expander(f"Section F &bull; Projects & Key Achievements ({len(projs_list)} entries)", expanded=True):
+            with st.expander(f"Section F &bull; Projects & Key Achievements ({len(projs_list)} entries)", expanded=False):
                 st.caption("Showcase major engineering deliverables, open-source work, and system designs.")
 
                 if projs_list:
@@ -6958,7 +6958,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                                 st.rerun()
 
             # --- SECTION G: PROFESSIONAL LINKS ---
-            with st.expander(f"Section G &bull; Professional Links ({len(links_list)} links)", expanded=True):
+            with st.expander(f"Section G &bull; Professional Links ({len(links_list)} links)", expanded=False):
                 st.caption("Public portfolio, LinkedIn profile, GitHub repositories, or technical blog.")
 
                 if links_list:
