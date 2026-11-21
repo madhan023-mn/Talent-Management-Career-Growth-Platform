@@ -12,6 +12,7 @@ try:
     os.chdir(_ROOT)
 except Exception:
     pass
+BASE_DIR = Path(__file__).resolve().parent
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 import json
@@ -3414,30 +3415,194 @@ elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
     with tab_ed_roadmap:
         c_rm1, c_rm2 = st.columns([1.1, 1], gap="large")
         with c_rm1:
-            st.markdown(f"#### Target Role Readiness: **{emp_dash_data['profile'].get('target_role') or 'Choose target role'}**")
+            target_role = emp_dash_data.get('profile', {}).get('target_role') or 'Target Role Not Selected'
             gaps_info = emp_dash_data.get("skill_gaps", {})
-            st.metric("Readiness Alignment", f"{gaps_info.get('match_percentage', 0)}%")
-            st.progress(gaps_info.get('match_percentage', 0) / 100)
+            match_pct = int(gaps_info.get('match_percentage', 0))
+            
+            # Status styling based on alignment percentage
+            if match_pct >= 75:
+                status_color = "#10B981"
+                status_bg = "#ECFDF5"
+                status_border = "#A7F3D0"
+                status_label = "Optimal Fit"
+                bar_gradient = "linear-gradient(90deg, #10B981 0%, #059669 100%)"
+            elif match_pct >= 40:
+                status_color = "#2563EB"
+                status_bg = "#EFF6FF"
+                status_border = "#BFDBFE"
+                status_label = "In Progress"
+                bar_gradient = "linear-gradient(90deg, #2563EB 0%, #3B82F6 100%)"
+            else:
+                status_color = "#D97706"
+                status_bg = "#FFFBEB"
+                status_border = "#FDE68A"
+                status_label = "Developing Alignment"
+                bar_gradient = "linear-gradient(90deg, #F59E0B 0%, #E11D48 100%)"
 
-            if gaps_info.get("gaps"):
-                st.markdown("##### Priority Competency Recommendations")
-                for g in gaps_info["gaps"][:4]:
-                    st.write(f"• **{g['skill']}**: Required Level {g['required_level']} (Current: {g['current_level']}) &middot; <span style='color: {'#EF4444' if g['priority']=='High' else '#F59E0B'}; font-weight: 700;'>{g['priority']} Priority</span>", unsafe_allow_html=True)
-            if gaps_info.get("recommended_training"):
-                st.markdown("##### Suggested Learning Courses")
-                for tr_item in gaps_info["recommended_training"][:3]:
-                    st.write(f"• **{tr_item}**")
+            # Competency recommendations rows
+            gaps_list = gaps_info.get("gaps", [])
+            gaps_html = ""
+            if gaps_list:
+                for g in gaps_list[:4]:
+                    prio = str(g.get('priority', 'Medium')).capitalize()
+                    is_high = prio.lower() == 'high'
+                    badge_bg = "#FEF2F2" if is_high else "#FFFBEB"
+                    badge_color = "#DC2626" if is_high else "#D97706"
+                    badge_border = "#FCA5A5" if is_high else "#FCD34D"
+                    dot_color = "#EF4444" if is_high else "#F59E0B"
+                    req_lvl = g.get('required_level', 0)
+                    cur_lvl = g.get('current_level', 0)
+                    skill_name = g.get('skill', 'Competency')
+                    
+                    gaps_html += f"""
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                            <div style="width: 8px; height: 8px; border-radius: 50%; background: {dot_color}; flex-shrink: 0;"></div>
+                            <div style="min-width: 0;">
+                                <div style="font-weight: 700; font-size: 0.88rem; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{skill_name}</div>
+                                <div style="font-size: 0.77rem; color: #64748B; margin-top: 1px;">
+                                    Required Level <span style="font-weight: 600; color: #334155;">{req_lvl}</span> &nbsp;&bull;&nbsp; Current: <span style="font-weight: 600; color: #334155;">{cur_lvl}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span style="background: {badge_bg}; color: {badge_color}; border: 1px solid {badge_border}; padding: 3px 9px; border-radius: 9999px; font-size: 0.71rem; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; flex-shrink: 0;">
+                            {prio.upper()} PRIORITY
+                        </span>
+                    </div>
+                    """
+            else:
+                gaps_html = """
+                <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 10px; padding: 12px 14px; color: #166534; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                    All priority competencies are currently aligned with the target role!
+                </div>
+                """
+
+            # Recommended training courses
+            courses = gaps_info.get("recommended_training", [])
+            courses_html = ""
+            if courses:
+                for tr_item in courses[:3]:
+                    courses_html += f"""
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                            <div style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: #EEF2FF; flex-shrink: 0;">
+                                {get_svg_icon("award", size=15, color="#4F46E5")}
+                            </div>
+                            <span style="font-weight: 600; font-size: 0.85rem; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{tr_item}</span>
+                        </div>
+                        <span style="background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; padding: 2px 8px; border-radius: 9999px; font-size: 0.69rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;">
+                            CURATED
+                        </span>
+                    </div>
+                    """
+            else:
+                courses_html = """
+                <div style="background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 10px; padding: 10px 14px; color: #64748B; font-size: 0.82rem;">
+                    No specific course recommendations pending.
+                </div>
+                """
+
+            # Render Target Role Readiness Card
+            card_html = f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04); padding: 22px; position: relative;">
+                <!-- Header -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 38px; height: 38px; border-radius: 10px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center;">
+                            {get_svg_icon("target", size=20, color="#2563EB")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; line-height: 1.2;">Target Role Readiness</div>
+                            <div style="font-size: 0.78rem; color: #64748B; margin-top: 1px;">Capability assessment & benchmark trajectory</div>
+                        </div>
+                    </div>
+                    <span style="background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.01em;">
+                        {target_role}
+                    </span>
+                </div>
+
+                <!-- Readiness Alignment Score & Bar -->
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;">
+                    <div style="display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 8px;">
+                        <div>
+                            <div style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #64748B;">Readiness Alignment</div>
+                            <div style="font-size: 1.75rem; font-weight: 800; color: #0F172A; line-height: 1; margin-top: 2px;">
+                                {match_pct}%
+                            </div>
+                        </div>
+                        <span style="background: {status_bg}; color: {status_color}; border: 1px solid {status_border}; padding: 3px 10px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700;">
+                            {status_label}
+                        </span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #E2E8F0; border-radius: 9999px; overflow: hidden;">
+                        <div style="width: {min(max(match_pct, 4), 100)}%; height: 100%; background: {bar_gradient}; border-radius: 9999px;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.71rem; color: #94A3B8; margin-top: 5px;">
+                        <span>0% Baseline</span>
+                        <span>50% Midpoint</span>
+                        <span>100% Target Alignment</span>
+                    </div>
+                </div>
+
+                <!-- Priority Competency Recommendations -->
+                <div style="margin-bottom: 18px;">
+                    <div style="font-size: 0.86rem; font-weight: 800; color: #1E293B; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
+                        {get_svg_icon("skills", size=16, color="#2563EB")} Priority Competency Recommendations
+                    </div>
+                    {gaps_html}
+                </div>
+
+                <!-- Suggested Learning Courses -->
+                <div>
+                    <div style="font-size: 0.86rem; font-weight: 800; color: #1E293B; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
+                        {get_svg_icon("award", size=16, color="#4F46E5")} Suggested Learning Courses
+                    </div>
+                    {courses_html}
+                </div>
+            </div>
+            """
+            render_html(card_html)
 
         with c_rm2:
-            st.markdown("#### Career Development Tools")
-            st.markdown(
+            render_html(
                 f"""
-                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 12px;">
-                    <div style="font-weight: 800; font-size: 0.98rem; color: #0F172A; margin-bottom: 4px;">{get_svg_icon("reports", size=18, color="#2563EB")} Resume Studio</div>
-                    <div style="font-size: 0.85rem; color: #64748B; margin-bottom: 8px;">Export your verified skills, experience, and achievements into an ATS-optimized professional resume.</div>
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04); padding: 22px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 38px; height: 38px; border-radius: 10px; background: #F5F3FF; border: 1px solid #EDE9FE; display: flex; align-items: center; justify-content: center;">
+                                {get_svg_icon("rocket", size=20, color="#7C3AED")}
+                            </div>
+                            <div>
+                                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; line-height: 1.2;">Career Development Tools</div>
+                                <div style="font-size: 0.78rem; color: #64748B; margin-top: 1px;">Accelerate promotion & career trajectory</div>
+                            </div>
+                        </div>
+                        <span style="background: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE; padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 0.82rem;">
+                            Pro Suite
+                        </span>
+                    </div>
+
+                    <!-- Resume Studio Feature Box -->
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px;">
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            {get_svg_icon("reports", size=18, color="#2563EB")} Resume Studio
+                        </div>
+                        <div style="font-size: 0.82rem; color: #64748B; line-height: 1.45;">
+                            Export verified skills, organizational experience, and performance achievements into an ATS-optimized professional CV.
+                        </div>
+                    </div>
+
+                    <!-- Role Match & Gaps Feature Box -->
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 16px;">
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            {get_svg_icon("skills", size=18, color="#10B981")} Role Match & Benchmark Gaps
+                        </div>
+                        <div style="font-size: 0.82rem; color: #64748B; line-height: 1.45;">
+                            Conduct interactive spider radar evaluations and deep-dive gap analysis against enterprise benchmark role specifications.
+                        </div>
+                    </div>
                 </div>
-                """,
-                unsafe_allow_html=True
+                """
             )
             col_b1, col_b2 = st.columns(2)
             with col_b1:
