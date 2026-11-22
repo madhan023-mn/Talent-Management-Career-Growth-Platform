@@ -32,6 +32,8 @@ except ImportError:
 try:
     from services.db import (
         is_mysql_mode,
+        is_mysql_expected,
+        test_mysql_connection,
         get_mysql_config,
         ensure_mysql_database_exists,
         get_connection as _db_get_connection,
@@ -41,6 +43,8 @@ try:
 except ImportError:
     from .db import (
         is_mysql_mode,
+        is_mysql_expected,
+        test_mysql_connection,
         get_mysql_config,
         ensure_mysql_database_exists,
         get_connection as _db_get_connection,
@@ -358,6 +362,7 @@ def get_database_diagnostics() -> Dict[str, Any]:
 def verify_user_in_db(user_id_or_email: Union[int, str]) -> Optional[Dict[str, Any]]:
     """
     Confirms whether a specific newly created or existing user exists in the active database.
+    Also verifies employee directory record linking.
     Returns public non-sensitive user metadata or None if not found.
     """
     conn = get_connection()
@@ -382,7 +387,18 @@ def verify_user_in_db(user_id_or_email: Union[int, str]) -> Optional[Dict[str, A
                 (str(user_id_or_email).strip().lower(),)
             )
         row = cur.fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        res = dict(row)
+        try:
+            if res.get("employee_id"):
+                cur.execute("SELECT id, employee_id, department, designation FROM employees WHERE employee_id = ?", (res["employee_id"],))
+                emp_row = cur.fetchone()
+                if emp_row:
+                    res["employee_db_id"] = emp_row["id"]
+        except Exception:
+            pass
+        return res
     finally:
         conn.close()
 
@@ -2079,6 +2095,12 @@ def register_individual(
             if not v_user:
                 return False, "Registration transaction failed: User could not be verified in the database after insert."
 
+        # Explicit commit of registration transaction
+        try:
+            conn.commit()
+        except Exception:
+            pass
+
         # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
         checkpoint_db(conn)
 
@@ -2439,6 +2461,12 @@ def register(
             v_user = cursor.fetchone()
             if not v_user:
                 return False, "Registration transaction failed: User could not be verified in the database after insert."
+
+        # Explicit commit of registration transaction
+        try:
+            conn.commit()
+        except Exception:
+            pass
 
         # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
         checkpoint_db(conn)

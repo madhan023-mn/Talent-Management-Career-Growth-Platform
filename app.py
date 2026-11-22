@@ -56,6 +56,7 @@ try:
         generate_invitation_code, list_invitation_codes, revoke_invitation_code, validate_invitation_code,
         get_db_path, check_db_health, get_database_diagnostics, verify_user_in_db, checkpoint_db,
         list_stored_users, list_stored_employees_all, get_recent_email_logs,
+        test_mysql_connection, is_mysql_expected,
         get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
         validate_url, validate_date_range,
         create_membership_request, get_membership_requests,
@@ -159,6 +160,8 @@ except Exception as _core_err:
         list_stored_users = getattr(_core_mod, 'list_stored_users', lambda search="", limit=200: [])
         list_stored_employees_all = getattr(_core_mod, 'list_stored_employees_all', lambda limit=200: [])
         get_recent_email_logs = getattr(_core_mod, 'get_recent_email_logs', lambda limit=50: [])
+        test_mysql_connection = getattr(_core_mod, 'test_mysql_connection', lambda: {"success": False, "message": "Test unavailable"})
+        is_mysql_expected = getattr(_core_mod, 'is_mysql_expected', lambda: False)
     except Exception as _retry_err:
         import traceback
         st.error(f"### Critical Startup Error: Failed to load services.core\n\n**Error:** `{_retry_err}`")
@@ -1299,6 +1302,14 @@ def render_database_diagnostics_panel(key_suffix: str = ""):
             """
         )
 
+        if is_mysql_expected() or diag.get("engine") == "MySQL":
+            if st.button("⚡ Test MySQL Database Connection", key=f"btn_test_mysql_{key_suffix}", use_container_width=True):
+                test_res = test_mysql_connection()
+                if test_res.get("success"):
+                    st.success(f"✅ {test_res.get('message')}")
+                else:
+                    st.error(f"❌ {test_res.get('message')}")
+
         last_v = st.session_state.get("last_registered_verification")
         if last_v:
             render_html(
@@ -1796,6 +1807,25 @@ def register_page():
                 """
             )
 
+            if is_mysql_expected():
+                render_html(
+                    f"""
+                    <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="width: 10px; height: 10px; border-radius: 50%; background: #10B981; display: inline-block; box-shadow: 0 0 8px #10B981;"></span>
+                            <span style="font-size: 0.83rem; font-weight: 700; color: #166534;">Target Database: MySQL (<code>talent_growth</code> @ 127.0.0.1:3306)</span>
+                        </div>
+                        <span style="font-size: 0.70rem; font-weight: 800; background: #DCFCE7; color: #15803D; padding: 2px 8px; border-radius: 4px; border: 1px solid #86EFAC;">LIVE LOCAL MYSQL</span>
+                    </div>
+                    """
+                )
+                if st.button("⚡ Test MySQL Database Connection", key="btn_reg_mysql_test", use_container_width=True, type="secondary"):
+                    t_res = test_mysql_connection()
+                    if t_res.get("success"):
+                        st.success(f"✅ {t_res.get('message')}")
+                    else:
+                        st.error(f"❌ {t_res.get('message')}")
+
             name = st.text_input("Full Legal Name *", placeholder="e.g. Jordan Miller", key="reg_name")
             c_em1, c_em2 = st.columns([1.4, 1])
             new_email = c_em1.text_input("Email Address *", placeholder="jordan.miller@example.com", key="reg_email")
@@ -1914,19 +1944,22 @@ def register_page():
                     if ok:
                         verified = verify_user_in_db(clean_email)
                         if not verified:
-                            st.error("Registration error: User record could not be confirmed in the active database.")
+                            st.error(f"Registration verification failed: Account was created but record could not be confirmed in the database for '{clean_email}'.")
                         else:
-                            st.session_state["last_registered_verification"] = verified
                             db_diag = get_database_diagnostics()
                             db_engine = db_diag.get('engine', 'Database')
-                            db_fname = db_diag.get('filename', 'talentsphere')
-                            emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
-                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name}{emp_badge}! Your details are saved and verified in {db_engine} ({db_fname}). Please sign in below."
-                            st.session_state["prefill_email"] = clean_email
-                            st.session_state.user = None
-                            st.session_state.auth_view = "login"
-                            st.session_state.current_page = "Dashboard"
-                            st.rerun()
+                            db_fname = db_diag.get('database_name') or db_diag.get('filename', 'talent_growth')
+                            if is_mysql_expected() and db_engine != "MySQL":
+                                st.error(f"Configuration warning: Expected MySQL database persistence, but active engine reported {db_engine}.")
+                            else:
+                                st.session_state["last_registered_verification"] = verified
+                                emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
+                                st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname})! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
+                                st.session_state["prefill_email"] = clean_email
+                                st.session_state.user = None
+                                st.session_state.auth_view = "login"
+                                st.session_state.current_page = "Dashboard"
+                                st.rerun()
                     else:
                         st.error(msg)
                 else:
@@ -1965,20 +1998,23 @@ def register_page():
                     if ok:
                         verified = verify_user_in_db(clean_email)
                         if not verified:
-                            st.error("Registration error: User record could not be confirmed in the active database.")
+                            st.error(f"Registration verification failed: Account was created but record could not be confirmed in the database for '{clean_email}'.")
                         else:
-                            st.session_state["last_registered_verification"] = verified
-                            org_role_desc = "organization administrator" if role == "admin" else "employee"
                             db_diag = get_database_diagnostics()
                             db_engine = db_diag.get('engine', 'Database')
-                            db_fname = db_diag.get('filename', 'talentsphere')
-                            emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
-                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name} as {org_role_desc}{emp_badge}! Your details are saved and verified in {db_engine} ({db_fname}). Please sign in below."
-                            st.session_state["prefill_email"] = clean_email
-                            st.session_state.user = None
-                            st.session_state.auth_view = "login"
-                            st.session_state.current_page = "Dashboard"
-                            st.rerun()
+                            db_fname = db_diag.get('database_name') or db_diag.get('filename', 'talent_growth')
+                            if is_mysql_expected() and db_engine != "MySQL":
+                                st.error(f"Configuration warning: Expected MySQL database persistence, but active engine reported {db_engine}.")
+                            else:
+                                st.session_state["last_registered_verification"] = verified
+                                org_role_desc = "organization administrator" if role == "admin" else "employee"
+                                emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
+                                st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname}) for {clean_name} as {org_role_desc}! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
+                                st.session_state["prefill_email"] = clean_email
+                                st.session_state.user = None
+                                st.session_state.auth_view = "login"
+                                st.session_state.current_page = "Dashboard"
+                                st.rerun()
                     else:
                         st.error(msg)
 

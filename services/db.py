@@ -94,6 +94,19 @@ def _is_temp_sqlite_test_override() -> bool:
     return False
 
 
+def is_mysql_expected() -> bool:
+    """Returns True if MySQL is explicitly configured via DB_ENGINE or environment credentials."""
+    if _is_temp_sqlite_test_override():
+        return False
+    engine = _get_db_setting("DB_ENGINE", "").lower()
+    if engine == "sqlite":
+        return False
+    if engine == "mysql":
+        return True
+    cfg = get_mysql_config()
+    return bool(cfg.get("user") and cfg.get("database"))
+
+
 def is_mysql_mode() -> bool:
     """Returns True when MySQL should be used as the active database engine."""
     if not PYMYSQL_AVAILABLE:
@@ -108,6 +121,71 @@ def is_mysql_mode() -> bool:
         return bool(cfg["user"] and cfg["database"])
     # Auto-enable MySQL if DB_USER and DB_NAME are configured
     return bool(cfg["user"] and cfg["database"])
+
+
+def test_mysql_connection() -> Dict[str, Any]:
+    """
+    Tests direct MySQL connectivity and returns non-sensitive status metrics.
+    Never exposes passwords.
+    """
+    if not PYMYSQL_AVAILABLE:
+        return {
+            "success": False,
+            "engine": "MySQL",
+            "error": "The 'pymysql' package is not installed. Run 'pip install pymysql' to enable MySQL connectivity.",
+            "message": "The 'pymysql' package is missing. Please run 'pip install pymysql'."
+        }
+    cfg = get_mysql_config()
+    if not cfg["user"] or not cfg["database"]:
+        return {
+            "success": False,
+            "engine": "MySQL",
+            "host": cfg["host"],
+            "port": cfg["port"],
+            "database": cfg["database"],
+            "error": "MySQL configuration incomplete: DB_USER or DB_NAME is missing.",
+            "message": "MySQL credentials incomplete in .env. Please provide DB_USER and DB_NAME."
+        }
+    try:
+        raw_conn = pymysql.connect(
+            host=cfg["host"],
+            port=cfg["port"],
+            user=cfg["user"],
+            password=cfg["password"],
+            database=cfg["database"],
+            charset="utf8mb4",
+            autocommit=False,
+            connect_timeout=5,
+            read_timeout=10,
+            write_timeout=10,
+        )
+        try:
+            with raw_conn.cursor() as cur:
+                cur.execute("SELECT VERSION(), DATABASE()")
+                row = cur.fetchone()
+                version = row[0] if row else "Unknown"
+                db_name = row[1] if row and len(row) > 1 else cfg["database"]
+            return {
+                "success": True,
+                "engine": "MySQL",
+                "host": cfg["host"],
+                "port": cfg["port"],
+                "database": db_name,
+                "version": version,
+                "message": f"Successfully connected to MySQL database '{db_name}' at {cfg['host']}:{cfg['port']} (MySQL {version})."
+            }
+        finally:
+            raw_conn.close()
+    except Exception as exc:
+        return {
+            "success": False,
+            "engine": "MySQL",
+            "host": cfg["host"],
+            "port": cfg["port"],
+            "database": cfg["database"],
+            "error": str(exc),
+            "message": f"Failed to connect to MySQL database '{cfg['database']}' at {cfg['host']}:{cfg['port']}: {exc}"
+        }
 
 
 def get_db_path() -> Path:
@@ -487,23 +565,46 @@ def ensure_mysql_database_exists() -> None:
 def get_connection() -> Union[MySQLConnectionWrapper, sqlite3.Connection]:
     """
     Returns an active database connection.
-    Uses MySQL when MySQL credentials are configured, otherwise SQLite.
+    Uses MySQL when MySQL is configured. If MySQL is expected (DB_ENGINE=mysql) but fails,
+    raises a meaningful error instead of silently falling back to SQLite.
     """
-    if is_mysql_mode():
+    if _is_temp_sqlite_test_override():
+        conn = sqlite3.connect(get_db_path(), timeout=30.0, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    engine_setting = _get_db_setting("DB_ENGINE", "").lower()
+    if engine_setting == "mysql" or is_mysql_mode():
+        if not PYMYSQL_AVAILABLE:
+            raise RuntimeError(
+                "MySQL engine is configured (DB_ENGINE=mysql), but the 'pymysql' package is not installed. "
+                "Please run 'pip install pymysql' to enable MySQL support."
+            )
         cfg = get_mysql_config()
-        raw_conn = pymysql.connect(
-            host=cfg["host"],
-            port=cfg["port"],
-            user=cfg["user"],
-            password=cfg["password"],
-            database=cfg["database"],
-            charset="utf8mb4",
-            autocommit=False,
-            connect_timeout=10,
-            read_timeout=30,
-            write_timeout=30,
-        )
-        return MySQLConnectionWrapper(raw_conn)
+        if not cfg["user"] or not cfg["database"]:
+            raise RuntimeError(
+                "MySQL engine is configured (DB_ENGINE=mysql), but DB_USER or DB_NAME is missing in configuration (.env). "
+                "Please configure DB_USER and DB_NAME to connect to MySQL."
+            )
+        try:
+            raw_conn = pymysql.connect(
+                host=cfg["host"],
+                port=cfg["port"],
+                user=cfg["user"],
+                password=cfg["password"],
+                database=cfg["database"],
+                charset="utf8mb4",
+                autocommit=False,
+                connect_timeout=10,
+                read_timeout=30,
+                write_timeout=30,
+            )
+            return MySQLConnectionWrapper(raw_conn)
+        except Exception as exc:
+            raise RuntimeError(
+                f"MySQL Connection Error: Failed to connect to MySQL database '{cfg['database']}' at {cfg['host']}:{cfg['port']}. "
+                f"Details: {exc}. Please verify that your local MySQL server is running on port {cfg['port']} and your password is correct."
+            ) from exc
 
     conn = sqlite3.connect(get_db_path(), timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
