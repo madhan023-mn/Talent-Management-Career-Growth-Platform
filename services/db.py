@@ -436,6 +436,12 @@ class MySQLCursorWrapper:
         except Exception:
             pass
 
+    def __enter__(self) -> "MySQLCursorWrapper":
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
     def __iter__(self):
         return iter(self.fetchall())
 

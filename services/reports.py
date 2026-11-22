@@ -640,24 +640,42 @@ def create_report(
     # --- Section 3: Skills Matrix & Competency Gap Analysis ---
     elements.append(Paragraph("3. Skills Matrix &amp; Competency Gap Analysis", h2_style))
     if gaps:
+        matched_kpi = sum(1 for g in gaps if g.get("gap", 0) == 0)
+        total_kpi = len(gaps)
+        elements.append(Paragraph(
+            f"<b>Role Benchmark:</b> {_escape_xml(target_role)} &bull; "
+            f"<b>Readiness Score:</b> {match_score}% &bull; "
+            f"<b>Match Status:</b> {matched_kpi} of {total_kpi} Competencies Matched",
+            body_style
+        ))
+        elements.append(Spacer(1, 3))
+
         gap_rows = [[
             Paragraph("<b>Target Competency Required</b>", table_header_style),
-            Paragraph("<b>Current Level</b>", table_header_style),
             Paragraph("<b>Required Level</b>", table_header_style),
+            Paragraph("<b>Current Level</b>", table_header_style),
+            Paragraph("<b>Match Status</b>", table_header_style),
             Paragraph("<b>Gap Score</b>", table_header_style),
             Paragraph("<b>Priority Level</b>", table_header_style)
         ]]
         for g in gaps:
             pri = str(g.get("priority", "Medium"))
             pri_color = "#DC2626" if pri == "High" else ("#F59E0B" if pri == "Medium" else "#059669")
+            is_matched = (g.get("gap", 0) == 0)
+            if is_matched:
+                status_html = "<font color='#059669'><b>MATCHED</b></font>"
+            else:
+                status_html = f"<font color='#DC2626'><b>NOT MATCHED (-{g.get('gap', 0)})</b></font>"
+
             gap_rows.append([
                 Paragraph(_escape_xml(g.get("skill", "Competency")), body_style),
-                Paragraph(f"Level {g.get('current', 0)}", body_style),
                 Paragraph(f"Level {g.get('required', 0)}", body_style),
+                Paragraph(f"Level {g.get('current', 0)}", body_style),
+                Paragraph(status_html, body_style),
                 Paragraph(str(g.get("gap", 0)), body_style),
                 Paragraph(f"<font color='{pri_color}'><b>{_escape_xml(pri)}</b></font>", body_style)
             ])
-        gap_table = Table(gap_rows, colWidths=[143, 95, 95, 90, 100])
+        gap_table = Table(gap_rows, colWidths=[133, 75, 75, 85, 75, 80])
         gap_style = [
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
             ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
@@ -675,7 +693,10 @@ def create_report(
         gap_table.setStyle(TableStyle(gap_style))
         elements.append(gap_table)
     else:
-        elements.append(Paragraph("All technical and behavioral competencies for the target role are fully met or exceeded.", body_style))
+        if not target_role or target_role == "Target Role Not Selected":
+            elements.append(Paragraph("No target role selected yet for competency benchmark analysis. Please select a target role in the platform to generate role-specific gap evaluations.", body_style))
+        else:
+            elements.append(Paragraph(f"All technical and behavioral competencies for **{_escape_xml(target_role)}** are fully met or exceeded.", body_style))
 
     # Verified Skills Sub-Table
     if skills:

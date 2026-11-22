@@ -1890,8 +1890,8 @@ def register_individual(
     phone: Optional[str] = "",
     educational_qualification: Optional[str] = "",
     professional_interests: Optional[str] = "",
-    primary_skills: Optional[str] = "Python, SQL, Communication",
-    years_experience: float = 1.0,
+    primary_skills: Optional[str] = "",
+    years_experience: float = 0.0,
     app_url: Optional[str] = None,
     education: Optional[str] = None,
     interests: Optional[str] = None,
@@ -1914,10 +1914,10 @@ def register_individual(
     phone = (phone or "").strip()
     educational_qualification = (education or educational_qualification or "").strip()
     professional_interests = (interests or professional_interests or "").strip()
-    primary_skills = (primary_skills or "Python, SQL, Communication").strip()
-    clean_dept = (department or educational_qualification or "Independent Professional").strip()
-    clean_title = (job_title or professional_interests or "Independent Professional").strip()
-    target_role_val = (professional_interests or interests or clean_title or "Junior Python Developer").strip()
+    primary_skills = (primary_skills or "").strip()
+    clean_dept = (department or educational_qualification or "").strip()
+    clean_title = (job_title or professional_interests or "").strip()
+    target_role_val = (professional_interests or interests or clean_title or "").strip()
 
     if not name:
         return False, "Full Name is required."
@@ -2158,10 +2158,10 @@ def register(
     employee_id: Optional[str] = None,
     org_id: Optional[str] = None,
     org_name: Optional[str] = None,
-    department: str = "Engineering",
-    job_title: str = "Software Engineer",
-    primary_skills: str = "Python, SQL, Communication",
-    years_experience: float = 1.0,
+    department: str = "",
+    job_title: str = "",
+    primary_skills: str = "",
+    years_experience: float = 0.0,
     app_url: Optional[str] = None,
     is_new_org: bool = False,
     hr_verification_code: Optional[str] = None,
@@ -2207,9 +2207,9 @@ def register(
     email = (email or "").strip().lower()
     password = password or ""
     role = role if role in ["admin", "employee"] else "employee"
-    department = (department or "Engineering").strip()
-    job_title = (job_title or "Software Engineer").strip()
-    primary_skills = (primary_skills or "Python, SQL, Communication").strip()
+    department = (department or "").strip()
+    job_title = (job_title or "").strip()
+    primary_skills = (primary_skills or "").strip()
     clean_official_email = (official_email or "").strip().lower()
     clean_contact_number = (contact_number or "").strip()
 
@@ -2218,7 +2218,7 @@ def register(
         if years_experience < 0:
             years_experience = 0.0
     except (ValueError, TypeError):
-        years_experience = 1.0
+        years_experience = 0.0
 
     if not name:
         return False, "Full name is required."
@@ -2421,8 +2421,6 @@ def register(
 
             # Initialize INDIVIDUAL skills profile for this employee (clean, isolated, never copying another employee's assessments)
             skill_tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
-            if not skill_tokens:
-                skill_tokens = ["Python", "SQL", "Communication"]
             for sk in skill_tokens:
                 cursor.execute(
                     """

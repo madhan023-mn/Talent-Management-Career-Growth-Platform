@@ -653,11 +653,11 @@ def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[
     for g in gaps_list:
         gap_val = g.get("gap", 0)
         if gap_val == 0:
-            gap_badge = '<span class="tbl-badge tbl-gap-parity">Parity (0)</span>'
+            match_badge = '<span class="tbl-badge" style="background: #ECFDF5; color: #059669; font-weight: 700; border: 1px solid #A7F3D0;">✅ MATCHED (Met)</span>'
         elif gap_val == 1:
-            gap_badge = '<span class="tbl-badge tbl-gap-warning">-1 Level</span>'
+            match_badge = '<span class="tbl-badge" style="background: #FEF3C7; color: #D97706; font-weight: 700; border: 1px solid #FDE68A;">❌ GAP (-1 Level)</span>'
         else:
-            gap_badge = f'<span class="tbl-badge tbl-gap-critical">-{gap_val} Levels</span>'
+            match_badge = f'<span class="tbl-badge" style="background: #FEF2F2; color: #DC2626; font-weight: 700; border: 1px solid #FECACA;">❌ GAP (-{gap_val} Levels)</span>'
         curr_lvl = levels_str.get(g.get("current_level", 0), str(g.get("current_level", 0)))
         req_lvl = levels_str.get(g.get("required_level", 0), str(g.get("required_level", 0)))
         rows.append(
@@ -668,9 +668,9 @@ def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[
                         <span style="font-weight: 700; color: #0F172A;">{g.get('skill', '')}</span>
                     </div>
                 </td>
-                <td>{get_prof_badge_html(curr_lvl)}</td>
                 <td>{get_prof_badge_html(req_lvl)}</td>
-                <td>{gap_badge}</td>
+                <td>{get_prof_badge_html(curr_lvl)}</td>
+                <td>{match_badge}</td>
                 <td>{get_priority_badge_html(g.get('priority', 'Medium'))}</td>
             </tr>"""
         )
@@ -678,10 +678,10 @@ def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[
         <table class="corporate-table">
             <thead>
                 <tr>
-                    <th>Competency</th>
-                    <th>Current Level</th>
+                    <th>Target Competency Required</th>
                     <th>Required Benchmark</th>
-                    <th>Skill Shortfall</th>
+                    <th>Current Verified Level</th>
+                    <th>Match Status &amp; Gap</th>
                     <th>Priority</th>
                 </tr>
             </thead>
@@ -1815,7 +1815,7 @@ def register_page():
             confirm_password = c_pw2.text_input("Confirm Password *", type="password", placeholder="Re-enter your password", key="reg_confirm_password")
 
             existing_orgs = list_organizations()
-            org_options = [f"{o['name']} ({o['org_id']})" for o in existing_orgs] + [
+            org_options = ["-- Choose Organization Membership --"] + [f"{o['name']} ({o['org_id']})" for o in existing_orgs] + [
                 "Register New Organization",
                 "Individual Registration"
             ]
@@ -1848,9 +1848,9 @@ def register_page():
                 c_r1, c_r2 = st.columns(2)
                 role = c_r1.selectbox(
                     "Account Type *",
-                    ["employee", "admin"],
-                    index=1 if is_new_org else 0,
-                    format_func=lambda x: "Employee (Self-Service)" if x == "employee" else "HR Administrator",
+                    ["-- Choose Account Type --", "employee", "admin"],
+                    index=2 if is_new_org else 0,
+                    format_func=lambda x: "Employee (Self-Service)" if x == "employee" else ("HR Administrator" if x == "admin" else "-- Choose Account Type --"),
                     key="reg_role"
                 )
                 emp_code = c_r2.text_input("Employee ID (Optional - auto-assigned if empty)", placeholder="e.g. EMP208", key="reg_emp_code").strip().upper()
@@ -1860,11 +1860,12 @@ def register_page():
 
             c_dep1, c_dep2 = st.columns(2)
             depts_list = [
+                "-- Choose Department --",
                 "Engineering", "Product Management", "Data & Analytics",
                 "Human Resources", "Finance & Operations", "Marketing & Growth",
                 "Design", "Sales & Customer Success"
             ]
-            dept_val = c_dep1.selectbox("Department *", depts_list, key="reg_dept")
+            dept_val = c_dep1.selectbox("Department *", depts_list, index=0, key="reg_dept")
             title_val = c_dep2.text_input(
                 "Job Title / Designation *",
                 placeholder="e.g. Software Engineer / HRBP" if not is_individual else "e.g. Software Developer / Consultant",
@@ -1872,8 +1873,8 @@ def register_page():
             )
 
             c_sk1, c_sk2 = st.columns([2, 1])
-            skills_val = c_sk1.text_input("Primary Skills (Comma-separated)", value="Python, SQL, Communication", placeholder="e.g. Python, SQL, React", key="reg_skills")
-            exp_val = c_sk2.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.0, step=0.5, key="reg_exp")
+            skills_val = c_sk1.text_input("Primary Skills (Comma-separated) *", placeholder="e.g. Python, SQL, React", key="reg_skills")
+            exp_val = c_sk2.number_input("Years Experience", min_value=0.0, max_value=50.0, value=0.0, step=0.5, key="reg_exp")
 
             terms = st.checkbox("I agree to the Enterprise Talent Governance Terms", value=True, key="reg_terms")
             if is_individual:
@@ -1891,6 +1892,8 @@ def register_page():
                 clean_pwd = new_password or ""
                 clean_confirm_pwd = confirm_password or ""
                 clean_org_name = (new_org_name_val or "").strip() if is_new_org else ""
+                clean_title = (title_val or "").strip()
+                clean_skills = (skills_val or "").strip()
 
                 if not clean_name:
                     st.error("Full Legal Name is required.")
@@ -1900,11 +1903,21 @@ def register_page():
                     st.error("Password must be at least 8 characters long.")
                 elif clean_pwd != clean_confirm_pwd:
                     st.error("Passwords do not match. Please re-enter the same password in both fields.")
+                elif sel_org_choice == "-- Choose Organization Membership --":
+                    st.error("Please choose an Organization Membership option.")
                 elif is_new_org and not clean_org_name:
                     st.error("Organization Name is required when registering a new organization.")
                 elif is_new_org and get_organization_by_name(clean_org_name):
                     existing = get_organization_by_name(clean_org_name)
                     st.error(f"An organization named '{existing['name']}' already exists ({existing['org_id']}). Please select it from the dropdown or choose a different name.")
+                elif not is_individual and role == "-- Choose Account Type --":
+                    st.error("Please select an Account Type (Employee or HR Administrator).")
+                elif dept_val == "-- Choose Department --":
+                    st.error("Please select your Department.")
+                elif not clean_title:
+                    st.error("Job Title / Designation is required.")
+                elif not clean_skills:
+                    st.error("Primary Skills are required. Please enter at least one skill (e.g. Python, SQL, React).")
                 elif not terms:
                     st.error("Please agree to the enterprise governance terms to proceed.")
                 elif is_individual:
@@ -1915,10 +1928,10 @@ def register_page():
                         password=clean_pwd,
                         confirm_password=clean_confirm_pwd,
                         phone=clean_phone,
-                        primary_skills=skills_val.strip() or "Python, SQL, Communication",
+                        primary_skills=clean_skills,
                         years_experience=exp_val,
                         department=dept_val,
-                        job_title=title_val.strip() or "Independent Professional"
+                        job_title=clean_title
                     )
                     if ok:
                         verified = verify_user_in_db(clean_email)
@@ -1966,8 +1979,8 @@ def register_page():
                         org_id=chosen_org_id,
                         org_name=chosen_org_name,
                         department=dept_val,
-                        job_title=title_val.strip() or ("Software Engineer" if role == "employee" else "HR Administrator"),
-                        primary_skills=skills_val.strip() or "Python, SQL, Communication",
+                        job_title=clean_title,
+                        primary_skills=clean_skills,
                         years_experience=exp_val,
                         contact_number=clean_phone,
                         is_new_org=is_new_org,
@@ -5367,82 +5380,85 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                 target_gap_code = emp_id
 
             all_roles = list(ROLE_CATALOG.keys())
-            target_role_eval = st.selectbox("Benchmark Target Role", all_roles, key="sel_bench_role")
+            target_role_eval = st.selectbox("Benchmark Target Role", ["-- Choose Benchmark Role --"] + all_roles, key="sel_bench_role")
 
-            gap_result = get_employee_skill_gaps(target_gap_code, target_role_eval, org_id=org_id)
-            
-            c_radar1, c_radar2 = st.columns([1.1, 1])
-            with c_radar1:
-                st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
-                st.progress(gap_result['match_percentage'] / 100)
-
-                # Interactive Spider/Radar Chart
-                if gap_result["gaps"]:
-                    top_gaps = gap_result["gaps"][:6]
-                    cat_names = [g["skill"] for g in top_gaps]
-                    c_vals = [g["current_level"] for g in top_gaps]
-                    r_vals = [g["required_level"] for g in top_gaps]
-
-                    fig_radar = go.Figure()
-                    fig_radar.add_trace(go.Scatterpolar(
-                        r=c_vals + [c_vals[0]],
-                        theta=cat_names + [cat_names[0]],
-                        fill='toself',
-                        fillcolor='rgba(37, 99, 235, 0.15)',
-                        name='Current Level',
-                        line=dict(color='#2563EB', width=2)
-                    ))
-                    fig_radar.add_trace(go.Scatterpolar(
-                        r=r_vals + [r_vals[0]],
-                        theta=cat_names + [cat_names[0]],
-                        fill='toself',
-                        fillcolor='rgba(16, 185, 129, 0.10)',
-                        name='Target Benchmark',
-                        line=dict(color='#10B981', width=2, dash='dot')
-                    ))
-                    fig_radar.update_layout(
-                        polar=dict(
-                            radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
-                        ),
-                        showlegend=True,
-                        height=290,
-                        margin=dict(l=25, r=25, t=25, b=25),
-                        paper_bgcolor="#FFFFFF"
-                    )
-                    st.plotly_chart(fig_radar, use_container_width=True)
-
-            with c_radar2:
-                st.markdown(f"**Benchmark Role Standard:**")
-                st.info(f"{gap_result['criteria']}")
+            if target_role_eval == "-- Choose Benchmark Role --":
+                st.info("🎯 **Please choose a benchmark target role from the dropdown above** to evaluate employee competency match and display the radar gap analysis.")
+            else:
+                gap_result = get_employee_skill_gaps(target_gap_code, target_role_eval, org_id=org_id)
                 
-                # Interactive Skill Growth Simulator
-                st.markdown(f"##### {get_svg_icon('zap', size=16, color='#2563EB')} Interactive Growth Simulator", unsafe_allow_html=True)
-                st.caption("Simulate upgrading a competency to see projected role match improvement:")
+                c_radar1, c_radar2 = st.columns([1.1, 1])
+                with c_radar1:
+                    st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
+                    st.progress(gap_result['match_percentage'] / 100)
+
+                    # Interactive Spider/Radar Chart
+                    if gap_result["gaps"]:
+                        top_gaps = gap_result["gaps"][:6]
+                        cat_names = [g["skill"] for g in top_gaps]
+                        c_vals = [g["current_level"] for g in top_gaps]
+                        r_vals = [g["required_level"] for g in top_gaps]
+
+                        fig_radar = go.Figure()
+                        fig_radar.add_trace(go.Scatterpolar(
+                            r=c_vals + [c_vals[0]],
+                            theta=cat_names + [cat_names[0]],
+                            fill='toself',
+                            fillcolor='rgba(37, 99, 235, 0.15)',
+                            name='Current Level',
+                            line=dict(color='#2563EB', width=2)
+                        ))
+                        fig_radar.add_trace(go.Scatterpolar(
+                            r=r_vals + [r_vals[0]],
+                            theta=cat_names + [cat_names[0]],
+                            fill='toself',
+                            fillcolor='rgba(16, 185, 129, 0.10)',
+                            name='Target Benchmark',
+                            line=dict(color='#10B981', width=2, dash='dot')
+                        ))
+                        fig_radar.update_layout(
+                            polar=dict(
+                                radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
+                            ),
+                            showlegend=True,
+                            height=290,
+                            margin=dict(l=25, r=25, t=25, b=25),
+                            paper_bgcolor="#FFFFFF"
+                        )
+                        st.plotly_chart(fig_radar, use_container_width=True)
+
+                with c_radar2:
+                    st.markdown(f"**Benchmark Role Standard:**")
+                    st.info(f"{gap_result['criteria']}")
+                    
+                    # Interactive Skill Growth Simulator
+                    st.markdown(f"##### {get_svg_icon('zap', size=16, color='#2563EB')} Interactive Growth Simulator", unsafe_allow_html=True)
+                    st.caption("Simulate upgrading a competency to see projected role match improvement:")
+                    if gap_result["gaps"]:
+                        sim_skill = st.selectbox("Select Competency to Boost", [g["skill"] for g in gap_result["gaps"]], key="sim_sk_sel")
+                        sim_level = st.select_slider("Target Simulated Level", options=[1, 2, 3, 4], value=3, format_func=lambda x: ['None', 'Beginner', 'Intermediate', 'Advanced', 'Expert'][x], key="sim_sk_lvl")
+                        old_m = gap_result['match_percentage']
+                        boosted_m = min(100, old_m + (sim_level * 5))
+                        st.markdown(
+                            f"""
+                            <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-top: 8px;">
+                                <span style="font-size: 0.84rem; color: #1E40AF; display: inline-flex; align-items: center; gap: 6px;">
+                                    Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> {get_svg_icon("arrow_right", size=14, color="#1D4ED8")} <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
+                                </span>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
                 if gap_result["gaps"]:
-                    sim_skill = st.selectbox("Select Competency to Boost", [g["skill"] for g in gap_result["gaps"]], key="sim_sk_sel")
-                    sim_level = st.select_slider("Target Simulated Level", options=[1, 2, 3, 4], value=3, format_func=lambda x: ['None', 'Beginner', 'Intermediate', 'Advanced', 'Expert'][x], key="sim_sk_lvl")
-                    old_m = gap_result['match_percentage']
-                    boosted_m = min(100, old_m + (sim_level * 5))
-                    st.markdown(
-                        f"""
-                        <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-top: 8px;">
-                            <span style="font-size: 0.84rem; color: #1E40AF; display: inline-flex; align-items: center; gap: 6px;">
-                                Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> {get_svg_icon("arrow_right", size=14, color="#1D4ED8")} <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
-                            </span>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                    st.markdown("##### Detailed Priority Competency Breakdown")
+                    levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
+                    render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
 
-            if gap_result["gaps"]:
-                st.markdown("##### Detailed Priority Competency Breakdown")
-                levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
-                render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
-
-            if gap_result.get("recommended_training"):
-                st.markdown("##### Recommended Targeted Training Courses")
-                for t_item in gap_result["recommended_training"]:
-                    st.markdown(f"• **{t_item}** — Focus program to close competency gaps.")
+                if gap_result.get("recommended_training"):
+                    st.markdown("##### Recommended Targeted Training Courses")
+                    for t_item in gap_result["recommended_training"]:
+                        st.markdown(f"• **{t_item}** — Focus program to close competency gaps.")
 
         with tab_sk_train:
             st.markdown("#### Training & Course Assignments")
@@ -5501,79 +5517,88 @@ elif page in ["Role Match & Gaps", "Role Match & Competency Gaps", "Competency G
     )
 
     all_roles = list(ROLE_CATALOG.keys())
-    default_role_idx = all_roles.index(profile["target_role"]) if profile.get("target_role") in all_roles else 0
-    target_role_eval = st.selectbox("Benchmark Target Role", all_roles, index=default_role_idx, key="sel_role_match_page")
+    saved_target_role = profile.get("target_role") or ""
+    role_options = ["-- Choose Benchmark Role --"] + all_roles
+    default_role_idx = (role_options.index(saved_target_role)) if saved_target_role in all_roles else 0
+    target_role_eval = st.selectbox("Benchmark Target Role", role_options, index=default_role_idx, key="sel_role_match_page")
 
-    gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval, org_id=org_id, user_id=uid)
+    has_selected_role = (target_role_eval != "-- Choose Benchmark Role --")
 
-    c_radar1, c_radar2 = st.columns([1.1, 1], gap="large")
-    with c_radar1:
-        st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
-        st.progress(gap_result['match_percentage'] / 100)
+    if not has_selected_role:
+        st.info("🎯 **Please choose a benchmark target role from the dropdown above** to evaluate your competency match and visualize your radar gap analysis.")
+    else:
+        gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval, org_id=org_id, user_id=uid)
+
+        c_radar1, c_radar2 = st.columns([1.1, 1], gap="large")
+        with c_radar1:
+            st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
+            st.progress(gap_result['match_percentage'] / 100)
+
+            if gap_result["gaps"]:
+                top_gaps = gap_result["gaps"][:6]
+                cat_names = [g["skill"] for g in top_gaps]
+                c_vals = [g["current_level"] for g in top_gaps]
+                r_vals = [g["required_level"] for g in top_gaps]
+
+                fig_radar = go.Figure()
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=c_vals + [c_vals[0]],
+                    theta=cat_names + [cat_names[0]],
+                    fill='toself',
+                    fillcolor='rgba(37, 99, 235, 0.15)',
+                    name='Current Level',
+                    line=dict(color='#2563EB', width=2)
+                ))
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=r_vals + [r_vals[0]],
+                    theta=cat_names + [cat_names[0]],
+                    fill='toself',
+                    fillcolor='rgba(16, 185, 129, 0.10)',
+                    name='Target Benchmark',
+                    line=dict(color='#10B981', width=2, dash='dot')
+                ))
+                fig_radar = apply_saas_chart_theme(fig_radar, height=290)
+                fig_radar.update_layout(
+                    polar=dict(
+                        radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
+                    ),
+                    margin=dict(l=25, r=25, t=25, b=25)
+                )
+                st.plotly_chart(fig_radar, use_container_width=True)
+
+        with c_radar2:
+            st.markdown(f"**Benchmark Role Standard:**")
+            st.info(f"{gap_result['criteria']}")
+            
+            st.markdown(f"##### {get_svg_icon('zap', size=16, color='#2563EB')} Interactive Growth Simulator", unsafe_allow_html=True)
+            st.caption("Simulate upgrading a competency to see projected role match improvement:")
+            if gap_result["gaps"]:
+                sim_skill = st.selectbox("Select Competency to Boost", [g["skill"] for g in gap_result["gaps"]], key="sim_sk_sel_page")
+                sim_level = st.select_slider("Target Simulated Level", options=[1, 2, 3, 4], value=3, format_func=lambda x: ['None', 'Beginner', 'Intermediate', 'Advanced', 'Expert'][x], key="sim_sk_lvl_page")
+                old_m = gap_result['match_percentage']
+                boosted_m = min(100, old_m + (sim_level * 5))
+                st.markdown(
+                    f"""
+                    <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-top: 8px;">
+                        <span style="font-size: 0.84rem; color: #1E40AF; display: inline-flex; align-items: center; gap: 6px;">
+                            Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> {get_svg_icon("arrow_right", size=14, color="#1D4ED8")} <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
+                        </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
         if gap_result["gaps"]:
-            top_gaps = gap_result["gaps"][:6]
-            cat_names = [g["skill"] for g in top_gaps]
-            c_vals = [g["current_level"] for g in top_gaps]
-            r_vals = [g["required_level"] for g in top_gaps]
+            matched_count = sum(1 for g in gap_result["gaps"] if g.get("gap", 0) == 0)
+            total_count = len(gap_result["gaps"])
+            st.markdown(f"##### Detailed Competency Match & Gap Breakdown ({matched_count} of {total_count} Matched &bull; {gap_result['match_percentage']}%)")
+            levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
+            render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
 
-            fig_radar = go.Figure()
-            fig_radar.add_trace(go.Scatterpolar(
-                r=c_vals + [c_vals[0]],
-                theta=cat_names + [cat_names[0]],
-                fill='toself',
-                fillcolor='rgba(37, 99, 235, 0.15)',
-                name='Current Level',
-                line=dict(color='#2563EB', width=2)
-            ))
-            fig_radar.add_trace(go.Scatterpolar(
-                r=r_vals + [r_vals[0]],
-                theta=cat_names + [cat_names[0]],
-                fill='toself',
-                fillcolor='rgba(16, 185, 129, 0.10)',
-                name='Target Benchmark',
-                line=dict(color='#10B981', width=2, dash='dot')
-            ))
-            fig_radar = apply_saas_chart_theme(fig_radar, height=290)
-            fig_radar.update_layout(
-                polar=dict(
-                    radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
-                ),
-                margin=dict(l=25, r=25, t=25, b=25)
-            )
-            st.plotly_chart(fig_radar, use_container_width=True)
-
-    with c_radar2:
-        st.markdown(f"**Benchmark Role Standard:**")
-        st.info(f"{gap_result['criteria']}")
-        
-        st.markdown(f"##### {get_svg_icon('zap', size=16, color='#2563EB')} Interactive Growth Simulator", unsafe_allow_html=True)
-        st.caption("Simulate upgrading a competency to see projected role match improvement:")
-        if gap_result["gaps"]:
-            sim_skill = st.selectbox("Select Competency to Boost", [g["skill"] for g in gap_result["gaps"]], key="sim_sk_sel_page")
-            sim_level = st.select_slider("Target Simulated Level", options=[1, 2, 3, 4], value=3, format_func=lambda x: ['None', 'Beginner', 'Intermediate', 'Advanced', 'Expert'][x], key="sim_sk_lvl_page")
-            old_m = gap_result['match_percentage']
-            boosted_m = min(100, old_m + (sim_level * 5))
-            st.markdown(
-                f"""
-                <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-top: 8px;">
-                    <span style="font-size: 0.84rem; color: #1E40AF; display: inline-flex; align-items: center; gap: 6px;">
-                        Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> {get_svg_icon("arrow_right", size=14, color="#1D4ED8")} <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
-                    </span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-    if gap_result["gaps"]:
-        st.markdown("##### Detailed Priority Competency Breakdown")
-        levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
-        render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
-
-    if gap_result.get("recommended_training"):
-        st.markdown("##### Recommended Targeted Training Courses")
-        for t_item in gap_result["recommended_training"]:
-            st.markdown(f"• **{t_item}** — Focus program to close competency gaps.")
+        if gap_result.get("recommended_training"):
+            st.markdown("##### Recommended Targeted Training Courses")
+            for t_item in gap_result["recommended_training"]:
+                st.markdown(f"• **{t_item}** — Focus program to close competency gaps.")
 
 # ==============================================================================
 # 6. CAREER DEVELOPMENT & SMART GOALS / GROWTH PROGRESS
@@ -6050,7 +6075,6 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
         my_profile["name"] = user.get("name") or "Employee"
         my_profile["email"] = user.get("email") or ""
         my_profile["employee_id"] = my_emp_id
-        target_role = my_profile.get("target_role") or "Senior Software Engineer"
 
         my_skills = list_skills(uid)
         my_reviews = get_performance_reviews(employee_id=my_emp_id, org_id=org_id) if not is_individual else []
@@ -6058,26 +6082,10 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
         my_assessments = get_assessments(uid=uid, employee_id=my_emp_id, org_id=org_id) if not is_individual else get_assessments(uid=uid)
         my_progress = get_progress(uid)
 
-        a = analysis_bundle()
-        gaps = gap_analysis(target_role, my_skills)
-        recs = recommendations(my_profile, my_skills)
-        safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", str(user.get("name") or "Employee"))
-
-        try:
-            pdf_bytes = create_report(
-                profile=my_profile,
-                skills=my_skills,
-                analysis=a,
-                gaps=gaps,
-                recommendations=recs,
-                assessments=my_assessments,
-                progress=my_progress,
-                goals=my_goals,
-                reviews=my_reviews,
-                org_id=org_id
-            )
-        except Exception:
-            pdf_bytes = None
+        all_catalog_roles = list(ROLE_CATALOG.keys())
+        saved_role = my_profile.get("target_role") or ""
+        role_select_options = ["-- Choose Target Role --"] + all_catalog_roles
+        default_role_idx = (role_select_options.index(saved_role)) if saved_role in all_catalog_roles else 0
 
         render_html(
             f"""
@@ -6104,13 +6112,71 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
             """
         )
 
+        # ----------------------------------------------------------------------
+        # Target Role Selection with non-empty validation
+        # ----------------------------------------------------------------------
+        c_rsel1, c_rsel2 = st.columns([2.8, 1.2], gap="medium")
+        with c_rsel1:
+            chosen_report_role = st.selectbox(
+                "🎯 Benchmark Target Role for Evaluation & Report Dossier:",
+                role_select_options,
+                index=default_role_idx,
+                key="career_report_sel_role",
+                help="Select your target benchmark role to evaluate competency matches and generate your tailored talent dossier."
+            )
+        with c_rsel2:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            if chosen_report_role != "-- Choose Target Role --" and chosen_report_role != saved_role:
+                if st.button("💾 Set as Primary Target Role", key="btn_save_report_role", use_container_width=True, type="secondary"):
+                    save_profile(uid, {"target_role": chosen_report_role})
+                    my_profile["target_role"] = chosen_report_role
+                    st.success(f"Saved '{chosen_report_role}' as primary target role!")
+                    st.rerun()
+
+        has_target_role = (chosen_report_role != "-- Choose Target Role --")
+        if has_target_role:
+            target_role = chosen_report_role
+            my_profile["target_role"] = target_role
+            match_score = role_match(target_role, my_skills, float(my_profile.get("years_experience") or 0))
+            gaps = gap_analysis(target_role, my_skills)
+            recs = recommendations(my_profile, my_skills)
+            comp_profile = profile_completion(my_profile, my_skills)[0]
+            a = {"match": match_score, "score": comp_profile, "completion": comp_profile}
+            safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", str(user.get("name") or "Employee"))
+
+            try:
+                pdf_bytes = create_report(
+                    profile=my_profile,
+                    skills=my_skills,
+                    analysis=a,
+                    gaps=gaps,
+                    recommendations=recs,
+                    assessments=my_assessments,
+                    progress=my_progress,
+                    goals=my_goals,
+                    reviews=my_reviews,
+                    org_id=org_id
+                )
+            except Exception:
+                pdf_bytes = None
+        else:
+            target_role = "Target Role Not Selected"
+            match_score = 0
+            gaps = []
+            recs = []
+            comp_profile = profile_completion(my_profile, my_skills)[0]
+            a = {"match": 0, "score": comp_profile, "completion": comp_profile}
+            safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", str(user.get("name") or "Employee"))
+            pdf_bytes = None
+
         tab_emp_overview, tab_emp_pdf = st.tabs(["Career Overview & Performance", "Download Report"])
 
         with tab_emp_overview:
+            if not has_target_role:
+                st.info("ℹ️ **Choose a Target Role above** to evaluate which competencies match, inspect skill gaps, and unlock your downloadable publication-grade talent dossier.")
+
             # Metric Calculation
-            match_score = a.get("match", 0)
             comp_score = a.get("score", 0)
-            comp_profile = a.get("completion", 0)
             total_sk = len(my_skills)
             total_g = len(my_goals)
             comp_g = sum(1 for g in my_goals if g.get("status") == "Completed")
@@ -6170,6 +6236,8 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                     )
 
             # 4 KPI Cards
+            readiness_disp = f"{match_score}%" if has_target_role else "--"
+            role_disp = target_role if has_target_role else "Choose target role above"
             render_html(
                 f"""
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0.5rem 0 1.25rem 0;">
@@ -6178,9 +6246,9 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                             <span>Target Role Readiness</span>
                             {get_svg_icon("target", size=16, color="#2563EB")}
                         </div>
-                        <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 6px 0 2px 0;">{match_score}%</div>
+                        <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 6px 0 2px 0;">{readiness_disp}</div>
                         <div style="font-size: 0.82rem; color: #475569; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            Role: <b>{target_role}</b>
+                            Role: <b>{role_disp}</b>
                         </div>
                     </div>
                     <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
@@ -6387,13 +6455,28 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                 else:
                     st.info("No skills verified yet. Add skills in Skills & Assessment.")
             with c_sk2:
-                st.markdown(f"**Competency Fit for Target Role ({target_role})**")
-                if gaps:
-                    gap_df = pd.DataFrame(gaps)[["skill", "current", "required", "priority"]]
-                    gap_df.columns = ["Competency", "Current", "Required", "Priority"]
-                    st.dataframe(gap_df, use_container_width=True, hide_index=True)
+                if has_target_role:
+                    matched_ct = sum(1 for g in gaps if g.get("gap", 0) == 0)
+                    total_req = len(gaps)
+                    st.markdown(f"**Competency Fit for Target Role ({target_role}) &mdash; {matched_ct} of {total_req} Matched ({match_score}%)**")
+                    if gaps:
+                        fit_rows = []
+                        for g in gaps:
+                            is_m = (g.get("gap", 0) == 0)
+                            fit_rows.append({
+                                "Competency": g["skill"],
+                                "Required Level": f"Level {g['required']}",
+                                "Current Level": f"Level {g['current']}",
+                                "Match Status": "✅ MATCHED" if is_m else f"❌ GAP (-{g['gap']})",
+                                "Priority": g["priority"]
+                            })
+                        gap_df = pd.DataFrame(fit_rows)
+                        st.dataframe(gap_df, use_container_width=True, hide_index=True)
+                    else:
+                        st.success(f"All competencies for **{target_role}** are fully met or exceeded!")
                 else:
-                    st.success(f"All competencies for **{target_role}** are fully met or exceeded!")
+                    st.markdown("**Competency Fit for Target Role**")
+                    st.info("🎯 **Choose a target role from the dropdown above** to evaluate your competency fit and see which skills match.")
 
         with tab_emp_pdf:
             st.markdown("#### Download Career & Performance Report")
@@ -6426,7 +6509,7 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                 """
             )
 
-            if pdf_bytes:
+            if has_target_role and pdf_bytes:
                 st.download_button(
                     f"Download Report ({user.get('name', 'Employee')})",
                     pdf_bytes,
@@ -6436,6 +6519,8 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                     use_container_width=True,
                     key="btn_emp_full_pdf_dl"
                 )
+            elif not has_target_role:
+                st.warning("⚠️ **Target Role Required for Report:** Please choose a target role from the dropdown above to evaluate competency matches and generate your tailored talent dossier.")
             else:
                 st.error("Could not compile PDF dossier at this time. Please ensure your profile information is filled out.")
 
@@ -6592,38 +6677,52 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                     sel_prog = []
 
                 sel_reviews = get_performance_reviews(employee_id=sel_emp_id, org_id=org_id)
-                sel_target = sel_prof.get("target_role") or "Senior Software Engineer"
-                sel_gaps = gap_analysis(sel_target, sel_skills)
-                sel_recs = recommendations(sel_prof, sel_skills)
-                try:
-                    sel_analysis = profile_analysis(sel_prof, sel_skills)
-                except Exception:
-                    sel_analysis = {}
+                hr_roles_list = ["-- Choose Benchmark Target Role --"] + list(ROLE_CATALOG.keys())
+                hr_saved_target = sel_prof.get("target_role") or ""
+                hr_def_idx = (hr_roles_list.index(hr_saved_target)) if hr_saved_target in ROLE_CATALOG else 0
+                sel_target_role = st.selectbox("Benchmark Target Role for Employee Dossier:", hr_roles_list, index=hr_def_idx, key="hr_dossier_bench_role")
 
-                sel_pdf_bytes = create_report(
-                    profile=sel_prof,
-                    skills=sel_skills,
-                    analysis=sel_analysis,
-                    gaps=sel_gaps,
-                    recommendations=sel_recs,
-                    assessments=sel_assess,
-                    progress=sel_prog,
-                    goals=sel_goals,
-                    reviews=sel_reviews,
-                    org_id=org_id
-                )
+                has_hr_target_role = (sel_target_role != "-- Choose Benchmark Target Role --")
+                if has_hr_target_role:
+                    sel_prof["target_role"] = sel_target_role
+                    sel_gaps = gap_analysis(sel_target_role, sel_skills)
+                    sel_recs = recommendations(sel_prof, sel_skills)
+                    try:
+                        sel_analysis = profile_analysis(sel_prof, sel_skills)
+                    except Exception:
+                        sel_analysis = {}
+
+                    sel_pdf_bytes = create_report(
+                        profile=sel_prof,
+                        skills=sel_skills,
+                        analysis=sel_analysis,
+                        gaps=sel_gaps,
+                        recommendations=sel_recs,
+                        assessments=sel_assess,
+                        progress=sel_prog,
+                        goals=sel_goals,
+                        reviews=sel_reviews,
+                        org_id=org_id
+                    )
+                else:
+                    sel_pdf_bytes = None
 
                 safe_sel_name = re.sub(r"[^a-zA-Z0-9_]", "_", sel_emp.get("name", "Employee"))
                 col_hr_dl1, col_hr_dl2 = st.columns(2)
                 with col_hr_dl1:
-                    st.download_button(
-                        f"Download PDF Dossier for {sel_emp.get('name')}",
-                        sel_pdf_bytes,
-                        file_name=f"talent_growth_dossier_{sel_emp_id}_{safe_sel_name}.pdf",
-                        mime="application/pdf",
-                        type="primary",
-                        use_container_width=True
-                    )
+                    if has_hr_target_role and sel_pdf_bytes:
+                        st.download_button(
+                            f"Download PDF Dossier for {sel_emp.get('name')}",
+                            sel_pdf_bytes,
+                            file_name=f"talent_growth_dossier_{sel_emp_id}_{safe_sel_name}.pdf",
+                            mime="application/pdf",
+                            type="primary",
+                            use_container_width=True
+                        )
+                    elif not has_hr_target_role:
+                        st.warning("⚠️ **Target Role Required:** Select a benchmark target role above to evaluate matches and download the talent dossier.")
+                    else:
+                        st.error("Could not compile dossier at this time.")
                 with col_hr_dl2:
                     if sel_reviews:
                         csv_sel_rev = pd.DataFrame(sel_reviews).to_csv(index=False).encode("utf-8")
@@ -7701,35 +7800,45 @@ elif page in ["Career Direction", "Career Direction & Gaps"]:
     )
 
     with st.form("career_direction_form"):
-        current = st.text_input("Current role", value=profile.get("job_title", ""))
-        roles_list = ["Choose a role"] + list(ROLE_CATALOG.keys())
-        curr_role_idx = (roles_list.index(profile["target_role"])) if profile.get("target_role") in ROLE_CATALOG else 0
-        target = st.selectbox("Target role", roles_list, index=curr_role_idx)
+        current = st.text_input("Current role", value=profile.get("job_title", ""), placeholder="e.g. Software Engineer")
+        roles_list = ["-- Choose Target Role --"] + list(ROLE_CATALOG.keys())
+        saved_role = profile.get("target_role") or ""
+        curr_role_idx = (roles_list.index(saved_role)) if saved_role in ROLE_CATALOG else 0
+        target = st.selectbox("Target role *", roles_list, index=curr_role_idx)
 
-        levels = ["Senior", "Lead", "Manager", "Director", "Principal", "Individual contributor"]
-        curr_lvl_idx = levels.index(profile.get("target_level")) if profile.get("target_level") in levels else 0
-        level = st.selectbox("Target level", levels, index=curr_lvl_idx)
+        levels = ["-- Choose Target Level --", "Senior", "Lead", "Manager", "Director", "Principal", "Individual contributor"]
+        saved_lvl = profile.get("target_level") or ""
+        curr_lvl_idx = (levels.index(saved_lvl)) if saved_lvl in levels else 0
+        level = st.selectbox("Target level *", levels, index=curr_lvl_idx)
 
-        timelines = ["3–6 months", "6–12 months", "1–2 years", "Exploring"]
-        curr_time_idx = timelines.index(profile.get("timeline")) if profile.get("timeline") in timelines else 0
-        timeline = st.selectbox("Target timeline", timelines, index=curr_time_idx)
+        timelines = ["-- Choose Target Timeline --", "3–6 months", "6–12 months", "1–2 years", "Exploring"]
+        saved_time = profile.get("timeline") or ""
+        curr_time_idx = (timelines.index(saved_time)) if saved_time in timelines else 0
+        timeline = st.selectbox("Target timeline *", timelines, index=curr_time_idx)
 
-        industry = st.text_input("Target industry", value=profile.get("target_industry", ""))
+        industry = st.text_input("Target industry", value=profile.get("target_industry", ""), placeholder="e.g. Technology & Software Solutions")
         goal = st.text_area("What does career growth mean to you?", value=profile.get("career_goal", ""), height=100)
 
         submit_dir = st.form_submit_button("Save career direction", type="primary")
 
         if submit_dir:
-            save_profile(uid, {
-                "job_title": current,
-                "target_role": "" if target == "Choose a role" else target,
-                "target_level": level,
-                "timeline": timeline,
-                "target_industry": industry,
-                "career_goal": goal
-            })
-            st.success("Career direction saved successfully!")
-            st.rerun()
+            if target == "-- Choose Target Role --":
+                st.error("Please choose a target benchmark role.")
+            elif level == "-- Choose Target Level --":
+                st.error("Please choose a target level.")
+            elif timeline == "-- Choose Target Timeline --":
+                st.error("Please choose a target timeline.")
+            else:
+                save_profile(uid, {
+                    "job_title": current,
+                    "target_role": target,
+                    "target_level": level,
+                    "timeline": timeline,
+                    "target_industry": industry,
+                    "career_goal": goal
+                })
+                st.success("Career direction saved successfully!")
+                st.rerun()
 
     if profile.get("target_role") and profile.get("target_role") in ROLE_CATALOG:
         st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
