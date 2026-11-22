@@ -10,6 +10,12 @@ while _ROOT in sys.path:
 sys.path.insert(0, _ROOT)
 
 try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(_ROOT) / ".env")
+except Exception:
+    pass
+
+try:
     os.chdir(_ROOT)
 except Exception:
     pass

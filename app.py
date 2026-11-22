@@ -26,6 +26,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from dotenv import load_dotenv
+load_dotenv(BASE_DIR / ".env")
 from pypdf import PdfReader
 from docx import Document
 
@@ -1755,6 +1756,8 @@ def login_page():
                 st.session_state.auth_view = "register"
                 st.rerun()
 
+        render_database_diagnostics_panel(key_suffix="login")
+
 
 # ------------------------------------------------------------------------------
 # 3. DEDICATED CREATE ACCOUNT PAGE (WITH TOP-LEFT BACK BUTTON)
@@ -1914,7 +1917,11 @@ def register_page():
                             st.error("Registration error: User record could not be confirmed in the active database.")
                         else:
                             st.session_state["last_registered_verification"] = verified
-                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name}! Your details are saved in the database. Please sign in below."
+                            db_diag = get_database_diagnostics()
+                            db_engine = db_diag.get('engine', 'Database')
+                            db_fname = db_diag.get('filename', 'talentsphere')
+                            emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
+                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name}{emp_badge}! Your details are saved and verified in {db_engine} ({db_fname}). Please sign in below."
                             st.session_state["prefill_email"] = clean_email
                             st.session_state.user = None
                             st.session_state.auth_view = "login"
@@ -1962,7 +1969,11 @@ def register_page():
                         else:
                             st.session_state["last_registered_verification"] = verified
                             org_role_desc = "organization administrator" if role == "admin" else "employee"
-                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name} as {org_role_desc}! Your details are saved in the database. Please sign in below."
+                            db_diag = get_database_diagnostics()
+                            db_engine = db_diag.get('engine', 'Database')
+                            db_fname = db_diag.get('filename', 'talentsphere')
+                            emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
+                            st.session_state["reg_success_msg"] = f"Account created successfully for {clean_name} as {org_role_desc}{emp_badge}! Your details are saved and verified in {db_engine} ({db_fname}). Please sign in below."
                             st.session_state["prefill_email"] = clean_email
                             st.session_state.user = None
                             st.session_state.auth_view = "login"
@@ -1976,6 +1987,8 @@ def register_page():
             if st.button("Sign In to Existing Account", key="btn_reg_to_login", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "login"
                 st.rerun()
+
+        render_database_diagnostics_panel(key_suffix="register")
 
 
 # ------------------------------------------------------------------------------
@@ -2723,6 +2736,22 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
             st.session_state.page_to_navigate = "Dashboard"
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
+
+        try:
+            db_diag = get_database_diagnostics()
+            engine_name = db_diag.get('engine', 'DB')
+            db_name = db_diag.get('filename', '')
+            st.markdown(
+                f"""
+                <div style="font-size: 0.68rem; color: #94A3B8; text-align: center; padding-top: 8px; letter-spacing: 0.02em;">
+                    <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10B981; margin-right: 4px;"></span>
+                    Database: <strong>{engine_name}</strong> ({db_name})
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        except Exception:
+            pass
 
         return selected_nav
 

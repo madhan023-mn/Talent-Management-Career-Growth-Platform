@@ -1673,6 +1673,199 @@ def verify_password(password: str, stored_hash: str, salt: str) -> bool:
     hashed, _ = hash_password(password, salt)
     return secrets.compare_digest(hashed, stored_hash)
 
+
+def _mirror_account(
+    user_id: int,
+    name: str,
+    email: str,
+    pwd_hash: str,
+    salt: str,
+    role: str,
+    employee_id: Optional[str],
+    org_id: Optional[str],
+    account_type: str,
+    department: str,
+    job_title: str,
+    phone: str,
+    years_experience: float,
+    primary_skills: str,
+    educational_qualification: str = "",
+    professional_interests: str = "",
+    target_role: str = "",
+    user_status: str = "Active"
+) -> None:
+    """
+    Safely mirrors account and employee registration across both SQLite and MySQL engines
+    so that newly created user details can ALWAYS be found regardless of which database
+    or database client (MySQL Workbench, phpMyAdmin, DB Browser for SQLite, or app) the user inspects.
+    """
+    date_now = date.today().isoformat()
+    clean_phone = phone or ""
+    clean_emp_id = employee_id or ""
+    clean_org_id = org_id or "ORG-TALENT-01"
+
+    # 1. If currently connected to MySQL, mirror to SQLite (data/talentsphere.db)
+    if is_mysql_mode():
+        try:
+            sq_path = get_db_path()
+            if not sq_path.parent.exists():
+                sq_path.parent.mkdir(parents=True, exist_ok=True)
+            sq_conn = sqlite3.connect(str(sq_path), timeout=10.0)
+            sq_conn.row_factory = sqlite3.Row
+            try:
+                with sq_conn:
+                    sc = sq_conn.cursor()
+                    # Check if user already exists in SQLite by email
+                    sc.execute("SELECT id FROM users WHERE LOWER(TRIM(email)) = ?", (email.lower().strip(),))
+                    existing = sc.fetchone()
+                    if existing:
+                        sq_user_id = existing["id"]
+                        sc.execute(
+                            """
+                            UPDATE users
+                            SET name = ?, password_hash = ?, salt = ?, role = ?, employee_id = COALESCE(NULLIF(?, ''), employee_id),
+                                org_id = COALESCE(NULLIF(?, ''), org_id), account_type = ?, department = ?, job_title = ?, status = ?
+                            WHERE id = ?
+                            """,
+                            (name, pwd_hash, salt, role, clean_emp_id, clean_org_id, account_type, department, job_title, user_status, sq_user_id)
+                        )
+                    else:
+                        sc.execute(
+                            """
+                            INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            (name, email, pwd_hash, salt, role, clean_emp_id, clean_org_id, account_type, department, job_title, user_status, date_now)
+                        )
+                        sq_user_id = sc.lastrowid
+
+                    if clean_phone:
+                        try:
+                            sc.execute("UPDATE users SET phone = ? WHERE id = ?", (clean_phone, sq_user_id))
+                        except Exception:
+                            pass
+
+                    # Insert/Update profile
+                    sc.execute(
+                        """
+                        INSERT OR REPLACE INTO profiles (user_id, phone, education, summary, target_role, job_title, company, department, years_experience)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (sq_user_id, clean_phone, educational_qualification, f"Interests: {professional_interests}" if professional_interests else "", target_role or job_title, job_title, clean_org_id, department, years_experience)
+                    )
+
+                    # Insert/Update employee in SQLite
+                    if clean_emp_id:
+                        sc.execute("SELECT id FROM employees WHERE employee_id = ?", (clean_emp_id,))
+                        emp_row = sc.fetchone()
+                        if emp_row:
+                            sc.execute(
+                                """
+                                UPDATE employees
+                                SET user_id = ?, name = ?, email = ?, phone = ?, org_id = ?, department = ?, designation = ?, account_status = ?
+                                WHERE employee_id = ?
+                                """,
+                                (sq_user_id, name, email, clean_phone, clean_org_id, department, job_title, user_status, clean_emp_id)
+                            )
+                        else:
+                            sc.execute(
+                                """
+                                INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?)
+                                """,
+                                (clean_emp_id, clean_org_id, sq_user_id, name, email, clean_phone, department, job_title, date_now, years_experience, primary_skills, user_status, sq_user_id)
+                            )
+
+                    # Insert skills in SQLite
+                    tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
+                    for sk in tokens:
+                        sc.execute(
+                            "INSERT OR IGNORE INTO skills (user_id, name, category, proficiency, years) VALUES (?, ?, 'Technical', 'Intermediate', ?)",
+                            (sq_user_id, sk, years_experience)
+                        )
+                        if clean_emp_id:
+                            sc.execute(
+                                "INSERT OR IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp) VALUES (?, ?, ?, ?, 'Technical', 'Intermediate', ?)",
+                                (clean_emp_id, clean_org_id, sq_user_id, sk, years_experience)
+                            )
+            finally:
+                sq_conn.close()
+        except Exception:
+            pass
+    else:
+        # SQLite active, try mirror to MySQL if pymysql is installed and credentials exist
+        try:
+            from services.db import get_mysql_config, PYMYSQL_AVAILABLE
+            if PYMYSQL_AVAILABLE:
+                cfg = get_mysql_config()
+                if cfg.get("host") and cfg.get("user") and cfg.get("database"):
+                    import pymysql
+                    import pymysql.cursors
+                    m_conn = pymysql.connect(
+                        host=cfg["host"],
+                        port=cfg["port"],
+                        user=cfg["user"],
+                        password=cfg["password"],
+                        database=cfg["database"],
+                        charset="utf8mb4",
+                        autocommit=False,
+                        connect_timeout=3,
+                    )
+                    try:
+                        with m_conn.cursor() as mc:
+                            mc.execute(
+                                """
+                                INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                ON DUPLICATE KEY UPDATE name=VALUES(name), password_hash=VALUES(password_hash), salt=VALUES(salt), employee_id=VALUES(employee_id), org_id=VALUES(org_id)
+                                """,
+                                (name, email, pwd_hash, salt, role, clean_emp_id, clean_org_id, account_type, department, job_title, user_status, date_now)
+                            )
+                            mc.execute("SELECT id FROM users WHERE LOWER(TRIM(email)) = %s", (email.lower().strip(),))
+                            my_row = mc.fetchone()
+                            my_uid = my_row[0] if my_row else user_id
+
+                            if clean_phone:
+                                try:
+                                    mc.execute("UPDATE users SET phone = %s WHERE id = %s", (clean_phone, my_uid))
+                                except Exception:
+                                    pass
+
+                            mc.execute(
+                                """
+                                REPLACE INTO profiles (user_id, phone, education, summary, target_role, job_title, company, department, years_experience)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                """,
+                                (my_uid, clean_phone, educational_qualification, f"Interests: {professional_interests}" if professional_interests else "", target_role or job_title, job_title, clean_org_id, department, years_experience)
+                            )
+
+                            if clean_emp_id:
+                                mc.execute(
+                                    """
+                                    INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
+                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Active', %s, %s, %s, %s)
+                                    ON DUPLICATE KEY UPDATE user_id=VALUES(user_id), name=VALUES(name), email=VALUES(email), phone=VALUES(phone), org_id=VALUES(org_id), department=VALUES(department), designation=VALUES(designation), account_status=VALUES(account_status)
+                                    """,
+                                    (clean_emp_id, clean_org_id, my_uid, name, email, clean_phone, department, job_title, date_now, years_experience, primary_skills, user_status, my_uid)
+                                )
+
+                            tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
+                            for sk in tokens:
+                                mc.execute(
+                                    "INSERT IGNORE INTO skills (user_id, name, category, proficiency, years) VALUES (%s, %s, 'Technical', 'Intermediate', %s)",
+                                    (my_uid, sk, years_experience)
+                                )
+                                if clean_emp_id:
+                                    mc.execute(
+                                        "INSERT IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp) VALUES (%s, %s, %s, %s, 'Technical', 'Intermediate', %s)",
+                                        (clean_emp_id, clean_org_id, my_uid, sk, years_experience)
+                                    )
+                        m_conn.commit()
+                    finally:
+                        m_conn.close()
+        except Exception:
+            pass
+
 def register_individual(
     name: str,
     email: str,
@@ -1735,18 +1928,33 @@ def register_individual(
             if cursor.fetchone():
                 return False, f"An account with email '{email}' already exists. Please sign in instead."
 
-            # Automatically assign account_type='Individual', org_id=None, role='employee'
+            # Auto-assign or determine unique employee_id for individual professional
+            cursor.execute("SELECT COUNT(*) FROM employees")
+            cnt_row = cursor.fetchone()
+            cnt = (cnt_row[0] if cnt_row else 0) + 1
+            cand = f"EMP{cnt:03d}"
+            cursor.execute("SELECT id FROM employees WHERE employee_id = ?", (cand,))
+            while cursor.fetchone():
+                cnt += 1
+                cand = f"EMP{cnt:03d}"
+                cursor.execute("SELECT id FROM employees WHERE employee_id = ?", (cand,))
+            final_emp_id = cand
+            assigned_org_id = "ORG-TALENT-01"
+
+            # Automatically assign account_type='Individual', org_id='ORG-TALENT-01', role='employee'
             try:
                 cursor.execute(
                     """
                     INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
-                    VALUES (?, ?, ?, ?, 'employee', NULL, NULL, 'Individual', ?, ?, 'Active', ?)
+                    VALUES (?, ?, ?, ?, 'employee', ?, ?, 'Individual', ?, ?, 'Active', ?)
                     """,
                     (
                         name,
                         email,
                         pwd_hash,
                         salt,
+                        final_emp_id,
+                        assigned_org_id,
                         clean_dept,
                         clean_title,
                         date.today().isoformat()
@@ -1758,13 +1966,15 @@ def register_individual(
                     cursor.execute(
                         """
                         INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
-                        VALUES (?, ?, ?, ?, 'employee', NULL, '', 'Individual', ?, ?, 'Active', ?)
+                        VALUES (?, ?, ?, ?, 'employee', ?, ?, 'Individual', ?, ?, 'Active', ?)
                         """,
                         (
                             name,
                             email,
                             pwd_hash,
                             salt,
+                            final_emp_id,
+                            assigned_org_id,
                             clean_dept,
                             clean_title,
                             date.today().isoformat()
@@ -1785,7 +1995,7 @@ def register_individual(
             cursor.execute(
                 """
                 INSERT OR REPLACE INTO profiles (user_id, phone, education, summary, target_role, job_title, company, department, years_experience)
-                VALUES (?, ?, ?, ?, ?, ?, '', ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     user_id,
@@ -1794,6 +2004,7 @@ def register_individual(
                     f"Interests: {professional_interests}" if professional_interests else "",
                     target_role_val,
                     clean_title,
+                    assigned_org_id,
                     clean_dept,
                     years_experience
                 )
@@ -1815,6 +2026,28 @@ def register_individual(
             except Exception:
                 pass
 
+            # Insert employee record for seamless directory & database visibility
+            cursor.execute(
+                """
+                INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, 'Active', ?)
+                """,
+                (
+                    final_emp_id,
+                    assigned_org_id,
+                    user_id,
+                    name,
+                    email,
+                    phone or "",
+                    clean_dept,
+                    clean_title,
+                    date.today().isoformat(),
+                    years_experience,
+                    primary_skills,
+                    user_id
+                )
+            )
+
             # Insert initial skills catalog for individual user
             skill_tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
             for sk in skill_tokens:
@@ -1824,6 +2057,13 @@ def register_individual(
                     VALUES (?, ?, 'Technical', 'Intermediate', ?)
                     """,
                     (user_id, sk, years_experience)
+                )
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp)
+                    VALUES (?, ?, ?, ?, 'Technical', 'Intermediate', ?)
+                    """,
+                    (final_emp_id, assigned_org_id, user_id, sk, years_experience)
                 )
 
             # Explicit verification query within database connection
@@ -1841,6 +2081,28 @@ def register_individual(
 
         # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
         checkpoint_db(conn)
+
+        # Cross-engine database sync: ensure both SQLite and MySQL contain the registered user details
+        _mirror_account(
+            user_id=user_id,
+            name=name,
+            email=email,
+            pwd_hash=pwd_hash,
+            salt=salt,
+            role="employee",
+            employee_id=final_emp_id,
+            org_id=assigned_org_id,
+            account_type="Individual",
+            department=clean_dept,
+            job_title=clean_title,
+            phone=phone,
+            years_experience=years_experience,
+            primary_skills=primary_skills,
+            educational_qualification=educational_qualification,
+            professional_interests=professional_interests,
+            target_role=target_role_val,
+            user_status="Active"
+        )
 
         try:
             send_welcome_email(
@@ -2180,6 +2442,28 @@ def register(
 
         # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
         checkpoint_db(conn)
+
+        # Cross-engine database sync: ensure both SQLite and MySQL contain the registered user details
+        _mirror_account(
+            user_id=user_id,
+            name=name,
+            email=email,
+            pwd_hash=pwd_hash,
+            salt=salt,
+            role=role,
+            employee_id=final_emp_id,
+            org_id=resolved_org_id,
+            account_type=account_type_val,
+            department=department,
+            job_title=job_title,
+            phone=clean_contact_number,
+            years_experience=years_experience,
+            primary_skills=primary_skills,
+            educational_qualification=education or "",
+            professional_interests=interests or "",
+            target_role=job_title,
+            user_status=user_status
+        )
 
         # Trigger welcome email safely outside the database write transaction
         try:
