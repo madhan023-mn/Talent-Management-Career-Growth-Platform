@@ -57,6 +57,10 @@ def make_numbered_canvas(company_name: str, employee_name: str):
     Two-pass canvas that computes total page count dynamically
     and draws professional running headers and footers with Page X of Y.
     """
+    clean_company = company_name.strip() if company_name else ""
+    if not clean_company or "INNOTIQ" in clean_company.upper():
+        clean_company = "TALENT GROWTH TECHNOLOGIES"
+
     class NumberedCanvas(canvas.Canvas):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -84,7 +88,7 @@ def make_numbered_canvas(company_name: str, employee_name: str):
                 self.setStrokeColor(colors.HexColor("#E2E8F0"))
                 self.setLineWidth(0.5)
                 self.line(36, A4[1] - 28, A4[0] - 36, A4[1] - 28)
-                hdr_left = f"{company_name} · EMPLOYEE CAREER & COMPETENCY REPORT"
+                hdr_left = f"{clean_company} · EMPLOYEE CAREER & COMPETENCY REPORT"
                 self.drawString(36, A4[1] - 23, hdr_left.upper())
                 self.drawRightString(A4[0] - 36, A4[1] - 23, employee_name)
 
@@ -93,7 +97,7 @@ def make_numbered_canvas(company_name: str, employee_name: str):
             self.setLineWidth(0.5)
             self.line(36, 32, A4[0] - 36, 32)
 
-            footer_left = f"{company_name.upper()} | CONFIDENTIAL & PROPRIETARY"
+            footer_left = f"{clean_company.upper()} | CONFIDENTIAL & PROPRIETARY"
             page_str = f"Page {self._pageNumber} of {page_count}"
             self.drawString(36, 20, footer_left)
             self.drawRightString(A4[0] - 36, 20, page_str)
@@ -144,11 +148,14 @@ def create_report(
             pdf_config = {}
 
     cfg = pdf_config or {}
-    company_name = (
+    raw_company = (
         cfg.get("company_name")
         or profile.get("company")
         or "TALENT GROWTH TECHNOLOGIES"
     ).strip()
+    if not raw_company or "INNOTIQ" in raw_company.upper():
+        raw_company = "TALENT GROWTH TECHNOLOGIES"
+    company_name = raw_company
 
     theme_name = cfg.get("theme_color", "Navy & Teal")
     palette = THEME_PALETTES.get(theme_name, THEME_PALETTES["Navy & Teal"])
@@ -456,30 +463,50 @@ def create_report(
     elements.append(Paragraph("EXECUTIVE CAREER SUMMARY", h2_style))
     elements.append(Spacer(1, 3))
 
-    completion = int(analysis.get("completion") or 0)
-    score = int(analysis.get("score") or 0)
-    match = int(analysis.get("match") or 0)
-    skill_count = len(skills)
+    match_score = int(analysis.get("match") or 0)
+    comp_profile = int(analysis.get("completion") or 0)
+    total_sk = len(skills)
+    total_g = len(goals) if goals else 0
+    comp_g = sum(1 for g in goals if g.get("status") == "Completed") if goals else 0
+    avg_prog = round(sum(float(g.get("progress") or 0) for g in goals) / total_g) if total_g else 0
+
+    if reviews:
+        latest_rev = reviews[0]
+        latest_score = float(latest_rev.get("performance_score") or 0.0)
+        rating_text = f"{latest_score:.1f} / 5.0"
+        cycle_text = str(latest_rev.get("review_period") or "Performance Review")
+        if latest_score >= 4.5:
+            badge_text = "Top Performer"
+        elif latest_score >= 4.0:
+            badge_text = "Exceeds Goals"
+        elif latest_score >= 3.0:
+            badge_text = "Meets Expectations"
+        else:
+            badge_text = "Needs Development"
+    else:
+        rating_text = "Unrated"
+        cycle_text = "No Reviews Recorded"
+        badge_text = "Pending Cycle"
 
     card1 = [
-        Paragraph("Profile Readiness", kpi_label_style),
-        Paragraph(f"{completion}%", kpi_val_teal),
-        Paragraph("Comprehensive Data", kpi_sub_style)
+        Paragraph("Target Role Readiness", kpi_label_style),
+        Paragraph(f"{match_score}%", kpi_val_blue),
+        Paragraph(f"Role: <b>{_escape_xml(target_role)}</b>", kpi_sub_style)
     ]
     card2 = [
-        Paragraph("Competency Score", kpi_label_style),
-        Paragraph(f"{score} / 100", kpi_val_green),
-        Paragraph("Evaluated Index", kpi_sub_style)
+        Paragraph("Performance Score", kpi_label_style),
+        Paragraph(f"{rating_text}", kpi_val_green),
+        Paragraph(f"{badge_text} · {_escape_xml(cycle_text)}", kpi_sub_style)
     ]
     card3 = [
-        Paragraph("Target Role Match", kpi_label_style),
-        Paragraph(f"{match}%", kpi_val_blue),
-        Paragraph("Readiness Alignment", kpi_sub_style)
+        Paragraph("Goals &amp; Milestones", kpi_label_style),
+        Paragraph(f"{avg_prog}% <font size='9'>Avg</font>", kpi_val_navy),
+        Paragraph(f"<b>{comp_g} of {total_g}</b> achieved", kpi_sub_style)
     ]
     card4 = [
-        Paragraph("Skills Cataloged", kpi_label_style),
-        Paragraph(f"{skill_count} Verified", kpi_val_navy),
-        Paragraph("Core &amp; Technical", kpi_sub_style)
+        Paragraph("Verified Competencies", kpi_label_style),
+        Paragraph(f"{total_sk} <font size='9'>Skills</font>", kpi_val_teal),
+        Paragraph(f"Profile Readiness: <b>{comp_profile}%</b>", kpi_sub_style)
     ]
 
     kpi_data = [[card1, '', card2, '', card3, '', card4]]
@@ -512,9 +539,10 @@ def create_report(
     if not summary_text or len(str(summary_text).strip()) < 15:
         summary_text = (
             f"{user_name} is currently serving as {current_role} within the {dept} department with {years_str} "
-            f"of professional experience. Comprehensive career analytics reflect a competency index of {score}/100 "
-            f"and a {match}% readiness alignment for the target designation of {target_role}. "
-            f"The candidate maintains active growth momentum with {skill_count} verified competencies."
+            f"of professional experience. Current target role alignment reflects a {match_score}% readiness score "
+            f"for {target_role}. Verified performance status is {rating_text} ({badge_text}, {cycle_text}). "
+            f"The candidate maintains active growth momentum with {total_sk} verified competencies and "
+            f"{comp_g} of {total_g} strategic milestones achieved."
         )
     elements.append(Paragraph(f"<b>Executive Career Assessment:</b> {_escape_xml(summary_text)}", body_style))
     elements.append(Spacer(1, 6))
@@ -769,54 +797,12 @@ def create_report(
         train_table.setStyle(TableStyle(tr_style))
         elements.append(train_table)
     else:
-        # Professional curated curriculum table tailored to target role
-        rec_train_rows = [
-            [
-                Paragraph("<b>Curriculum Program</b>", table_header_style),
-                Paragraph("<b>Domain Track</b>", table_header_style),
-                Paragraph("<b>Target Proficiency</b>", table_header_style),
-                Paragraph("<b>Curriculum Priority</b>", table_header_style)
-            ],
-            [
-                Paragraph("Enterprise System Design &amp; Microservices", body_style),
-                Paragraph("Architecture", body_style),
-                Paragraph("Level 3 · Advanced", body_style),
-                Paragraph("<font color='#DC2626'><b>High Priority</b></font>", body_style)
-            ],
-            [
-                Paragraph("Cloud Infrastructure &amp; Kubernetes Architecture", body_style),
-                Paragraph("Cloud Engineering", body_style),
-                Paragraph("Level 2 · Intermediate", body_style),
-                Paragraph("<font color='#D97706'><b>Medium Priority</b></font>", body_style)
-            ],
-            [
-                Paragraph("CI/CD Automation &amp; Production Reliability", body_style),
-                Paragraph("DevOps &amp; SRE", body_style),
-                Paragraph("Level 2 · Intermediate", body_style),
-                Paragraph("<font color='#2563EB'><b>Core Track</b></font>", body_style)
-            ],
-            [
-                Paragraph("Engineering Leadership &amp; Technical Mentorship", body_style),
-                Paragraph("Leadership", body_style),
-                Paragraph("Level 2 · Foundational", body_style),
-                Paragraph("<font color='#059669'><b>Leadership Track</b></font>", body_style)
-            ]
-        ]
-        train_table = Table(rec_train_rows, colWidths=[173, 110, 120, 120])
-        train_table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
-            ('BACKGROUND', (0,1), (-1,1), colors.HexColor('#FFFFFF')),
-            ('BACKGROUND', (0,2), (-1,2), colors.HexColor('#F8FAFC')),
-            ('BACKGROUND', (0,3), (-1,3), colors.HexColor('#FFFFFF')),
-            ('BACKGROUND', (0,4), (-1,4), colors.HexColor('#F8FAFC')),
-            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-            ('TOPPADDING', (0,0), (-1,-1), 3),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-            ('LEFTPADDING', (0,0), (-1,-1), 5),
-            ('RIGHTPADDING', (0,0), (-1,-1), 5),
-        ]))
-        elements.append(train_table)
+        elements.append(Paragraph(
+            "No formal training or assessment records logged yet for this evaluation cycle. "
+            "When the candidate completes skill assessments or HR-assigned curriculum modules, "
+            "verified records and evaluation scores will appear here.",
+            body_style
+        ))
     elements.append(Spacer(1, 6))
 
     # --- Section 6: Achievements & Strengths ---

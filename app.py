@@ -2750,22 +2750,6 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-        try:
-            db_diag = get_database_diagnostics()
-            engine_name = db_diag.get('engine', 'DB')
-            db_name = db_diag.get('filename', '')
-            st.markdown(
-                f"""
-                <div style="font-size: 0.68rem; color: #94A3B8; text-align: center; padding-top: 8px; letter-spacing: 0.02em;">
-                    <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10B981; margin-right: 4px;"></span>
-                    Database: <strong>{engine_name}</strong> ({db_name})
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        except Exception:
-            pass
-
         return selected_nav
 
 page = render_app_sidebar(is_admin, user, active_pages)
