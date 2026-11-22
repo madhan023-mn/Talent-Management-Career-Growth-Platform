@@ -1767,8 +1767,6 @@ def login_page():
                 st.session_state.auth_view = "register"
                 st.rerun()
 
-        render_database_diagnostics_panel(key_suffix="login")
-
 
 # ------------------------------------------------------------------------------
 # 3. DEDICATED CREATE ACCOUNT PAGE (WITH TOP-LEFT BACK BUTTON)
@@ -1806,25 +1804,6 @@ def register_page():
                 </div>
                 """
             )
-
-            if is_mysql_expected():
-                render_html(
-                    f"""
-                    <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="width: 10px; height: 10px; border-radius: 50%; background: #10B981; display: inline-block; box-shadow: 0 0 8px #10B981;"></span>
-                            <span style="font-size: 0.83rem; font-weight: 700; color: #166534;">Target Database: MySQL (<code>talent_growth</code> @ 127.0.0.1:3306)</span>
-                        </div>
-                        <span style="font-size: 0.70rem; font-weight: 800; background: #DCFCE7; color: #15803D; padding: 2px 8px; border-radius: 4px; border: 1px solid #86EFAC;">LIVE LOCAL MYSQL</span>
-                    </div>
-                    """
-                )
-                if st.button("⚡ Test MySQL Database Connection", key="btn_reg_mysql_test", use_container_width=True, type="secondary"):
-                    t_res = test_mysql_connection()
-                    if t_res.get("success"):
-                        st.success(f"✅ {t_res.get('message')}")
-                    else:
-                        st.error(f"❌ {t_res.get('message')}")
 
             name = st.text_input("Full Legal Name *", placeholder="e.g. Jordan Miller", key="reg_name")
             c_em1, c_em2 = st.columns([1.4, 1])
@@ -2023,8 +2002,6 @@ def register_page():
             if st.button("Sign In to Existing Account", key="btn_reg_to_login", use_container_width=True, type="secondary"):
                 st.session_state.auth_view = "login"
                 st.rerun()
-
-        render_database_diagnostics_panel(key_suffix="register")
 
 
 # ------------------------------------------------------------------------------
