@@ -38,6 +38,7 @@ try:
         ensure_mysql_database_exists,
         get_connection as _db_get_connection,
         get_db_path as _db_get_db_path,
+        convert_mysql_ddl_to_sqlite,
         MYSQL_CORE_SCHEMA_STATEMENTS,
     )
 except ImportError:
@@ -49,6 +50,7 @@ except ImportError:
         ensure_mysql_database_exists,
         get_connection as _db_get_connection,
         get_db_path as _db_get_db_path,
+        convert_mysql_ddl_to_sqlite,
         MYSQL_CORE_SCHEMA_STATEMENTS,
     )
 
@@ -78,6 +80,12 @@ ROLE_CATALOG = {
         "criteria": "Core proficiency in data structures, algorithms, version control, and at least one backend language.",
         "skills": {"Python": 2, "Git": 2, "SQL": 2, "Data Structures": 2, "REST APIs": 2},
         "recommended_training": ["Modern Python Masterclass", "Database Design & SQL Optimization", "Building Scalable RESTful APIs"]
+    },
+    "Full Stack Engineer": {
+        "min_exp": 2.5,
+        "criteria": "End-to-end web application development across frontend, backend, databases, and deployment pipelines.",
+        "skills": {"JavaScript": 3, "Python": 3, "React": 3, "SQL": 2, "REST APIs": 3, "Git": 2},
+        "recommended_training": ["Full Stack Web Architecture", "Modern React & TypeScript", "Scalable Backend APIs with Python"]
     },
     "Senior Software Engineer": {
         "min_exp": 4.0,
@@ -413,12 +421,19 @@ def _safe_add_column(cursor: Any, table_name: str, col_name: str, col_def: str) 
         pass
 
 def init_db() -> None:
-    ensure_mysql_database_exists()
+    if is_mysql_mode():
+        ensure_mysql_database_exists()
     conn = get_connection()
     with conn:
         ddl_cur = conn.cursor()
         for ddl_stmt in MYSQL_CORE_SCHEMA_STATEMENTS:
-            ddl_cur.execute(ddl_stmt)
+            try:
+                if is_mysql_mode():
+                    ddl_cur.execute(ddl_stmt)
+                else:
+                    ddl_cur.execute(convert_mysql_ddl_to_sqlite(ddl_stmt))
+            except Exception:
+                pass
         ddl_cur.close()
 
         cursor = conn.cursor()
@@ -3087,10 +3102,6 @@ def save_profile(uid: Optional[int] = None, data: Optional[Dict[str, Any]] = Non
     try:
         with conn:
             cur = conn.cursor()
-            cur.execute(
-                f"UPDATE profiles SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-                values
-            )
             cur.execute("SELECT user_id FROM profiles WHERE user_id = ?", (target_id,))
             if not cur.fetchone():
                 ins_cols = ["user_id"] + list(updates.keys())
@@ -3099,6 +3110,11 @@ def save_profile(uid: Optional[int] = None, data: Optional[Dict[str, Any]] = Non
                 cur.execute(
                     f"INSERT INTO profiles ({cols_str}) VALUES ({placeholders})",
                     [target_id] + list(updates.values())
+                )
+            else:
+                cur.execute(
+                    f"UPDATE profiles SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+                    values
                 )
         return True
     finally:

@@ -761,7 +761,9 @@ def render_individual_skill_gaps(user: Dict[str, Any], skills: List[Dict[str, An
     )
 
     roles_list = ["-- Select Target Role --"] + list(ROLE_CATALOG.keys())
-    saved_target_role = profile.get("target_role") or ""
+    saved_target_role = (profile.get("target_role") or "").strip()
+    if saved_target_role and saved_target_role not in roles_list and saved_target_role != "-- Select Target Role --":
+        roles_list.append(saved_target_role)
     default_idx = roles_list.index(saved_target_role) if saved_target_role in roles_list else 0
 
     target_role = st.selectbox("Target Career / Job Role *", roles_list, index=default_idx)

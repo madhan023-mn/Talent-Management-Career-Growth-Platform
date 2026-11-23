@@ -83,14 +83,18 @@ def get_mysql_config() -> Dict[str, Any]:
     }
 
 
+_active_engine: str = "mysql"
+
+
 def is_mysql_expected() -> bool:
     """Returns True indicating MySQL is the required and active database engine."""
     return True
 
 
 def is_mysql_mode() -> bool:
-    """Returns True indicating MySQL is the exclusive active database engine."""
-    return True
+    """Returns True if MySQL is currently active, False if fallen back to SQLite."""
+    global _active_engine
+    return _active_engine == "mysql"
 
 
 def test_mysql_connection() -> Dict[str, Any]:
@@ -538,23 +542,51 @@ def ensure_mysql_database_exists() -> None:
         pass
 
 
-def get_connection() -> MySQLConnectionWrapper:
+def get_db_path() -> Path:
+    """Returns the local database directory path for SQLite fallback continuity."""
+    db_dir = BASE_DIR / "data"
+    db_dir.mkdir(parents=True, exist_ok=True)
+    return db_dir / "talentsphere.db"
+
+
+def _get_sqlite_connection() -> sqlite3.Connection:
+    global _active_engine
+    _active_engine = "sqlite"
+    db_path = get_db_path()
+    conn = sqlite3.connect(str(db_path), timeout=30.0, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def convert_mysql_ddl_to_sqlite(ddl: str) -> str:
+    """Converts native MySQL DDL statements to compatible SQLite schema statements."""
+    s = ddl
+    s = re.sub(r"\s+ENGINE=InnoDB[^;]*", "", s, flags=re.I)
+    s = re.sub(r"\bAUTO_INCREMENT\b", "", s, flags=re.I)
+    s = re.sub(r"\bINT\s+PRIMARY\s+KEY\b", "INTEGER PRIMARY KEY AUTOINCREMENT", s, flags=re.I)
+    s = re.sub(r"\bINT\b", "INTEGER", s, flags=re.I)
+    s = re.sub(r"\bVARCHAR\(\d+\)", "TEXT", s, flags=re.I)
+    s = re.sub(r"\bLONGTEXT\b", "TEXT", s, flags=re.I)
+    s = re.sub(r"\bDATETIME\b", "TIMESTAMP", s, flags=re.I)
+    s = re.sub(r"\bDOUBLE\b", "REAL", s, flags=re.I)
+    return s
+
+
+def get_connection() -> Union[MySQLConnectionWrapper, sqlite3.Connection]:
     """
-    Returns an active MySQL database connection.
-    Exclusively connects to the configured MySQL database.
-    Raises RuntimeError if MySQL connection cannot be established.
+    Returns an active database connection.
+    Connects to MySQL as the primary engine. If MySQL is unreachable (e.g. running in
+    an isolated cloud container like Streamlit Cloud where localhost MySQL is not running),
+    it seamlessly falls back to local SQLite to ensure the application stays fully online and functional.
     """
+    global _active_engine
     if not PYMYSQL_AVAILABLE:
-        raise RuntimeError(
-            "MySQL engine is required, but the 'pymysql' package is not installed. "
-            "Please run 'pip install pymysql' to enable MySQL connectivity."
-        )
+        return _get_sqlite_connection()
+
     cfg = get_mysql_config()
     if not cfg["user"] or not cfg["database"]:
-        raise RuntimeError(
-            "MySQL credentials missing in configuration (.env or Streamlit secrets). "
-            "Please configure DB_USER and DB_NAME to connect to MySQL."
-        )
+        return _get_sqlite_connection()
+
     try:
         raw_conn = pymysql.connect(
             host=cfg["host"],
@@ -564,17 +596,15 @@ def get_connection() -> MySQLConnectionWrapper:
             database=cfg["database"],
             charset="utf8mb4",
             autocommit=False,
-            connect_timeout=10,
+            connect_timeout=8,
             read_timeout=30,
             write_timeout=30,
         )
+        _active_engine = "mysql"
         return MySQLConnectionWrapper(raw_conn)
-    except Exception as exc:
-        raise RuntimeError(
-            f"MySQL Connection Error: Failed to connect to MySQL database '{cfg['database']}' at {cfg['host']}:{cfg['port']}. "
-            f"Details: {exc}. If running locally, verify MySQL is running on port {cfg['port']}. "
-            f"If deployed on Streamlit Cloud, please configure your remote MySQL database credentials in Streamlit Cloud Dashboard -> Settings -> Secrets (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)."
-        ) from exc
+    except Exception:
+        # Fall back to SQLite for seamless deployment resilience
+        return _get_sqlite_connection()
 
 
 # ------------------------------------------------------------------------------

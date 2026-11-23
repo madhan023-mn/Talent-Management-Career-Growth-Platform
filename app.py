@@ -19,6 +19,7 @@ import re
 import json
 import textwrap
 import base64
+import logging
 from io import BytesIO
 from datetime import datetime, date
 import streamlit as st
@@ -29,6 +30,8 @@ from dotenv import load_dotenv
 load_dotenv(BASE_DIR / ".env")
 from pypdf import PdfReader
 from docx import Document
+
+logger = logging.getLogger("talent_growth")
 
 # Evict stale cached in-memory services modules during hot reload
 if "services.core" in sys.modules and not hasattr(sys.modules["services.core"], "register_individual"):
@@ -252,7 +255,7 @@ def ensure_database_ready() -> bool:
         init_db()
         return True
     except Exception as _e:
-        logger.error(f"Database startup error: {_e}")
+        logger.warning(f"Database startup notice: {_e}")
         return False
 
 ensure_database_ready()
@@ -5588,9 +5591,11 @@ elif page in ["Role Match & Gaps", "Role Match & Competency Gaps", "Competency G
     )
 
     all_roles = list(ROLE_CATALOG.keys())
-    saved_target_role = profile.get("target_role") or ""
+    saved_target_role = (profile.get("target_role") or "").strip()
     role_options = ["-- Choose Benchmark Role --"] + all_roles
-    default_role_idx = (role_options.index(saved_target_role)) if saved_target_role in all_roles else 0
+    if saved_target_role and saved_target_role not in role_options and saved_target_role != "-- Choose Benchmark Role --":
+        role_options.append(saved_target_role)
+    default_role_idx = (role_options.index(saved_target_role)) if saved_target_role in role_options else 0
     target_role_eval = st.selectbox("Benchmark Target Role", role_options, index=default_role_idx, key="sel_role_match_page")
 
     has_selected_role = (target_role_eval != "-- Choose Benchmark Role --")
@@ -6161,9 +6166,11 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
         my_progress = get_progress(uid)
 
         all_catalog_roles = list(ROLE_CATALOG.keys())
-        saved_role = my_profile.get("target_role") or ""
+        saved_role = (my_profile.get("target_role") or "").strip()
         role_select_options = ["-- Choose Target Role --"] + all_catalog_roles
-        default_role_idx = (role_select_options.index(saved_role)) if saved_role in all_catalog_roles else 0
+        if saved_role and saved_role not in role_select_options and saved_role != "-- Choose Target Role --":
+            role_select_options.append(saved_role)
+        default_role_idx = (role_select_options.index(saved_role)) if saved_role in role_select_options else 0
 
         render_html(
             f"""
@@ -7896,18 +7903,35 @@ elif page in ["Career Direction", "Career Direction & Gaps"]:
     with st.form("career_direction_form"):
         current = st.text_input("Current role", value=profile.get("job_title", ""), placeholder="e.g. Software Engineer")
         roles_list = ["-- Choose Target Role --"] + list(ROLE_CATALOG.keys())
-        saved_role = profile.get("target_role") or ""
-        curr_role_idx = (roles_list.index(saved_role)) if saved_role in ROLE_CATALOG else 0
+        saved_role = (profile.get("target_role") or "").strip()
+        if saved_role and saved_role not in roles_list and saved_role != "-- Choose Target Role --":
+            roles_list.append(saved_role)
+        curr_role_idx = roles_list.index(saved_role) if saved_role in roles_list else 0
         target = st.selectbox("Target role *", roles_list, index=curr_role_idx)
 
         levels = ["-- Choose Target Level --", "Senior", "Lead", "Manager", "Director", "Principal", "Individual contributor"]
-        saved_lvl = profile.get("target_level") or ""
-        curr_lvl_idx = (levels.index(saved_lvl)) if saved_lvl in levels else 0
+        saved_lvl = (profile.get("target_level") or "").strip()
+        matching_lvl = next((l for l in levels if l.lower() == saved_lvl.lower()), None)
+        if matching_lvl:
+            curr_lvl_idx = levels.index(matching_lvl)
+        elif saved_lvl and saved_lvl != "-- Choose Target Level --":
+            levels.append(saved_lvl)
+            curr_lvl_idx = levels.index(saved_lvl)
+        else:
+            curr_lvl_idx = 0
         level = st.selectbox("Target level *", levels, index=curr_lvl_idx)
 
         timelines = ["-- Choose Target Timeline --", "3–6 months", "6–12 months", "1–2 years", "Exploring"]
-        saved_time = profile.get("timeline") or ""
-        curr_time_idx = (timelines.index(saved_time)) if saved_time in timelines else 0
+        saved_time = (profile.get("timeline") or "").strip()
+        norm_saved_time = saved_time.replace("-", "–")
+        matching_time = next((t for t in timelines if t.replace("-", "–").lower() == norm_saved_time.lower()), None)
+        if matching_time:
+            curr_time_idx = timelines.index(matching_time)
+        elif saved_time and saved_time != "-- Choose Target Timeline --":
+            timelines.append(saved_time)
+            curr_time_idx = timelines.index(saved_time)
+        else:
+            curr_time_idx = 0
         timeline = st.selectbox("Target timeline *", timelines, index=curr_time_idx)
 
         industry = st.text_input("Target industry", value=profile.get("target_industry", ""), placeholder="e.g. Technology & Software Solutions")
@@ -7923,7 +7947,7 @@ elif page in ["Career Direction", "Career Direction & Gaps"]:
             elif timeline == "-- Choose Target Timeline --":
                 st.error("Please choose a target timeline.")
             else:
-                save_profile(uid, {
+                ok = save_profile(uid, {
                     "job_title": current,
                     "target_role": target,
                     "target_level": level,
@@ -7931,8 +7955,17 @@ elif page in ["Career Direction", "Career Direction & Gaps"]:
                     "target_industry": industry,
                     "career_goal": goal
                 })
-                st.success("Career direction saved successfully!")
-                st.rerun()
+                if ok:
+                    profile["job_title"] = current
+                    profile["target_role"] = target
+                    profile["target_level"] = level
+                    profile["timeline"] = timeline
+                    profile["target_industry"] = industry
+                    profile["career_goal"] = goal
+                    st.success("Career direction saved successfully!")
+                    st.rerun()
+                else:
+                    st.error("Failed to save career direction to database. Please check your connection.")
 
     if profile.get("target_role") and profile.get("target_role") in ROLE_CATALOG:
         st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)

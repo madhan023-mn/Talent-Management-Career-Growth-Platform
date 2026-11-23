@@ -19,13 +19,13 @@ from services.core import (
     verify_password,
     _safe_add_column
 )
-from services.db import is_mysql_mode, MYSQL_SETTINGS_SCHEMA_STATEMENTS
+from services.db import is_mysql_mode, MYSQL_SETTINGS_SCHEMA_STATEMENTS, convert_mysql_ddl_to_sqlite
 
 # ------------------------------------------------------------------------------
 # DATABASE SCHEMA INITIALIZATION FOR SETTINGS
 # ------------------------------------------------------------------------------
 def init_settings_tables() -> None:
-    """Initializes all settings tables and safe column migrations in MySQL."""
+    """Initializes all settings tables and safe column migrations in MySQL or SQLite fallback."""
     try:
         conn = get_connection()
     except Exception:
@@ -36,7 +36,10 @@ def init_settings_tables() -> None:
 
             for stmt in MYSQL_SETTINGS_SCHEMA_STATEMENTS:
                 try:
-                    cursor.execute(stmt)
+                    if is_mysql_mode():
+                        cursor.execute(stmt)
+                    else:
+                        cursor.execute(convert_mysql_ddl_to_sqlite(stmt))
                 except Exception:
                     pass
 
