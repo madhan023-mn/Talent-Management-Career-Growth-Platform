@@ -155,164 +155,62 @@ def get_db_path() -> Path:
     return _db_get_db_path()
 
 def check_db_health() -> Dict[str, Any]:
-    """Inspects the active database (MySQL or SQLite) connection, size, integrity, and record counts."""
-    if is_mysql_mode():
-        cfg = get_mysql_config()
-        info: Dict[str, Any] = {
-            "connected": False,
-            "engine": "MySQL",
-            "path": f"mysql://{cfg['user']}@{cfg['host']}:{cfg['port']}/{cfg['database']}",
-            "filename": cfg["database"],
-            "host": f"{cfg['host']}:{cfg['port']}",
-            "size_kb": 0.0,
-            "integrity": "Unknown",
-            "counts": {}
-        }
-        try:
-            conn = get_connection()
-            cur = conn.cursor()
-            cur.execute("SELECT VERSION()")
-            ver_row = cur.fetchone()
-            info["version"] = str(ver_row[0]) if ver_row else "MySQL"
-            info["integrity"] = "ok"
-            info["connected"] = True
-            cur.execute(
-                "SELECT ROUND(SUM(data_length + index_length) / 1024, 1) "
-                "FROM information_schema.tables WHERE table_schema = DATABASE()"
-            )
-            sz_row = cur.fetchone()
-            info["size_kb"] = float(sz_row[0]) if sz_row and sz_row[0] is not None else 0.0
-            for table in ["organizations", "users", "employees", "invitation_codes", "performance_reviews", "employee_skills", "assessments", "career_goals", "training_records"]:
-                try:
-                    cur.execute(f"SELECT COUNT(*) FROM {table}")
-                    info["counts"][table] = cur.fetchone()[0]
-                except Exception:
-                    pass
-            conn.close()
-        except Exception as e:
-            info["integrity"] = f"Error: {e}"
-        return info
-
-    path = get_db_path()
-    info = {
+    """Inspects the active MySQL database connection, size, integrity, and record counts."""
+    cfg = get_mysql_config()
+    info: Dict[str, Any] = {
         "connected": False,
-        "engine": "SQLite",
-        "path": str(path),
-        "filename": path.name,
+        "engine": "MySQL",
+        "path": f"mysql://{cfg['user']}@{cfg['host']}:{cfg['port']}/{cfg['database']}",
+        "filename": cfg["database"],
+        "host": f"{cfg['host']}:{cfg['port']}",
         "size_kb": 0.0,
         "integrity": "Unknown",
         "counts": {}
     }
-    if path.is_file():
-        info["size_kb"] = round(path.stat().st_size / 1024, 1)
-        try:
-            conn = get_connection()
-            cur = conn.cursor()
-            cur.execute("PRAGMA integrity_check")
-            row = cur.fetchone()
-            info["integrity"] = row[0] if row else "ok"
-            info["connected"] = (info["integrity"].lower() == "ok")
-            for table in ["organizations", "users", "employees", "invitation_codes", "performance_reviews", "employee_skills", "assessments", "career_goals", "training_records"]:
-                try:
-                    cur.execute(f"SELECT COUNT(*) FROM {table}")
-                    info["counts"][table] = cur.fetchone()[0]
-                except Exception:
-                    pass
-            conn.close()
-        except Exception as e:
-            info["integrity"] = f"Error: {e}"
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT VERSION()")
+        ver_row = cur.fetchone()
+        info["version"] = str(ver_row[0]) if ver_row else "MySQL"
+        info["integrity"] = "ok"
+        info["connected"] = True
+        cur.execute(
+            "SELECT ROUND(SUM(data_length + index_length) / 1024, 1) "
+            "FROM information_schema.tables WHERE table_schema = DATABASE()"
+        )
+        sz_row = cur.fetchone()
+        info["size_kb"] = float(sz_row[0]) if sz_row and sz_row[0] is not None else 0.0
+        for table in ["organizations", "users", "employees", "invitation_codes", "performance_reviews", "employee_skills", "assessments", "career_goals", "training_records"]:
+            try:
+                cur.execute(f"SELECT COUNT(*) FROM {table}")
+                info["counts"][table] = cur.fetchone()[0]
+            except Exception:
+                pass
+        conn.close()
+    except Exception as e:
+        info["integrity"] = f"Error: {e}"
     return info
 
 def get_connection():
     return _db_get_connection()
 
 def checkpoint_db(conn: Optional[Any] = None) -> Tuple[int, int, int]:
-    """
-    Forces SQLite WAL checkpoint. In MySQL InnoDB mode, commits are immediately durable so this is a safe no-op.
-    """
-    if is_mysql_mode():
-        return (0, 0, 0)
-    should_close = False
-    if conn is None:
-        conn = get_connection()
-        should_close = True
-    try:
-        cur = conn.cursor()
-        cur.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-        res = cur.fetchone()
-        return (res[0], res[1], res[2]) if res else (0, 0, 0)
-    except Exception:
-        return (-1, -1, -1)
-    finally:
-        if should_close:
-            conn.close()
+    """Forces database checkpoint. In exclusive MySQL mode, this is a safe no-op."""
+    return (0, 0, 0)
 
 def get_database_diagnostics() -> Dict[str, Any]:
     """
-    Returns sanitized diagnostic metrics regarding the active database (MySQL or SQLite):
-    database name, location/host, size, connection integrity status,
+    Returns sanitized diagnostic metrics regarding the active MySQL database:
+    database name, host/port, size, connection integrity status,
     record counts, and recently created accounts (without sensitive credentials).
     """
-    if is_mysql_mode():
-        cfg = get_mysql_config()
-        diag: Dict[str, Any] = {
-            "connected": False,
-            "engine": "MySQL",
-            "filename": cfg["database"],
-            "absolute_path": f"mysql://{cfg['user']}@{cfg['host']}:{cfg['port']}/{cfg['database']}",
-            "size_kb": 0.0,
-            "integrity": "Unknown",
-            "total_users": 0,
-            "total_employees": 0,
-            "total_organizations": 0,
-            "recent_users": []
-        }
-        try:
-            conn = get_connection()
-            try:
-                cur = conn.cursor()
-                cur.execute("SELECT 'ok'")
-                row = cur.fetchone()
-                diag["integrity"] = row[0] if row else "ok"
-                diag["connected"] = True
-
-                cur.execute(
-                    "SELECT ROUND(SUM(data_length + index_length) / 1024, 1) "
-                    "FROM information_schema.tables WHERE table_schema = DATABASE()"
-                )
-                sz_row = cur.fetchone()
-                diag["size_kb"] = float(sz_row[0]) if sz_row and sz_row[0] is not None else 0.0
-
-                cur.execute("SELECT COUNT(*) FROM users")
-                diag["total_users"] = cur.fetchone()[0]
-
-                cur.execute("SELECT COUNT(*) FROM employees")
-                diag["total_employees"] = cur.fetchone()[0]
-
-                cur.execute("SELECT COUNT(*) FROM organizations")
-                diag["total_organizations"] = cur.fetchone()[0]
-
-                cur.execute(
-                    """
-                    SELECT id, name, email, role, account_type, org_id, status, date_joined
-                    FROM users
-                    ORDER BY id DESC
-                    LIMIT 5
-                    """
-                )
-                diag["recent_users"] = [dict(r) for r in cur.fetchall()]
-            finally:
-                conn.close()
-        except Exception as e:
-            diag["error"] = str(e)
-        return diag
-
-    path = get_db_path()
-    diag = {
+    cfg = get_mysql_config()
+    diag: Dict[str, Any] = {
         "connected": False,
-        "engine": "SQLite",
-        "filename": path.name,
-        "absolute_path": str(path.resolve()),
+        "engine": "MySQL",
+        "filename": cfg["database"],
+        "absolute_path": f"mysql://{cfg['user']}@{cfg['host']}:{cfg['port']}/{cfg['database']}",
         "size_kb": 0.0,
         "integrity": "Unknown",
         "total_users": 0,
@@ -320,19 +218,21 @@ def get_database_diagnostics() -> Dict[str, Any]:
         "total_organizations": 0,
         "recent_users": []
     }
-    if not path.is_file():
-        diag["error"] = "Database file does not exist on disk"
-        return diag
-
     try:
-        diag["size_kb"] = round(path.stat().st_size / 1024, 1)
         conn = get_connection()
         try:
             cur = conn.cursor()
-            cur.execute("PRAGMA integrity_check")
+            cur.execute("SELECT 'ok'")
             row = cur.fetchone()
             diag["integrity"] = row[0] if row else "ok"
-            diag["connected"] = (diag["integrity"].lower() == "ok")
+            diag["connected"] = True
+
+            cur.execute(
+                "SELECT ROUND(SUM(data_length + index_length) / 1024, 1) "
+                "FROM information_schema.tables WHERE table_schema = DATABASE()"
+            )
+            sz_row = cur.fetchone()
+            diag["size_kb"] = float(sz_row[0]) if sz_row and sz_row[0] is not None else 0.0
 
             cur.execute("SELECT COUNT(*) FROM users")
             diag["total_users"] = cur.fetchone()[0]
@@ -356,7 +256,6 @@ def get_database_diagnostics() -> Dict[str, Any]:
             conn.close()
     except Exception as e:
         diag["error"] = str(e)
-
     return diag
 
 def verify_user_in_db(user_id_or_email: Union[int, str]) -> Optional[Dict[str, Any]]:
@@ -514,416 +413,15 @@ def _safe_add_column(cursor: Any, table_name: str, col_name: str, col_def: str) 
         pass
 
 def init_db() -> None:
-    if is_mysql_mode():
-        ensure_mysql_database_exists()
+    ensure_mysql_database_exists()
     conn = get_connection()
     with conn:
-        if is_mysql_mode():
-            ddl_cur = conn.cursor()
-            for ddl_stmt in MYSQL_CORE_SCHEMA_STATEMENTS:
-                ddl_cur.execute(ddl_stmt)
-            ddl_cur.close()
-        else:
-            conn.executescript("""
-            CREATE TABLE IF NOT EXISTS organizations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                org_id TEXT UNIQUE NOT NULL,
-                name TEXT NOT NULL,
-                official_email TEXT DEFAULT '',
-                contact_number TEXT DEFAULT '',
-                status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Pending', 'Suspended')),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
+        ddl_cur = conn.cursor()
+        for ddl_stmt in MYSQL_CORE_SCHEMA_STATEMENTS:
+            ddl_cur.execute(ddl_stmt)
+        ddl_cur.close()
 
-            CREATE TABLE IF NOT EXISTS invitation_codes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                org_id TEXT NOT NULL,
-                code_hash TEXT UNIQUE NOT NULL,
-                code_prefix TEXT NOT NULL,
-                expires_at TIMESTAMP NOT NULL,
-                max_uses INTEGER NOT NULL DEFAULT 1,
-                used_count INTEGER NOT NULL DEFAULT 0,
-                status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Revoked', 'Expired', 'Depleted')),
-                created_by TEXT DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS membership_requests (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                org_id TEXT NOT NULL,
-                user_name TEXT NOT NULL,
-                user_email TEXT NOT NULL,
-                department TEXT DEFAULT '',
-                designation TEXT DEFAULT '',
-                status TEXT NOT NULL DEFAULT 'Pending' CHECK(status IN ('Pending', 'Approved', 'Rejected')),
-                reviewed_by INTEGER,
-                reviewed_at TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-                FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                salt TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'employee',
-                employee_id TEXT,
-                org_id TEXT,
-                account_type TEXT NOT NULL DEFAULT 'Organization',
-                department TEXT DEFAULT '',
-                job_title TEXT DEFAULT '',
-                status TEXT DEFAULT 'Active',
-                date_joined TEXT DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS employees (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id TEXT UNIQUE NOT NULL,
-                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
-                user_id INTEGER,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE,
-                phone TEXT DEFAULT '',
-                department TEXT NOT NULL,
-                designation TEXT NOT NULL,
-                joining_date TEXT DEFAULT '',
-                employment_status TEXT NOT NULL DEFAULT 'Active' CHECK(employment_status IN ('Active', 'On Leave', 'Terminated')),
-                years_experience REAL NOT NULL DEFAULT 0.0 CHECK(years_experience >= 0),
-                primary_skills TEXT NOT NULL,
-                account_status TEXT NOT NULL DEFAULT 'Active',
-                created_by INTEGER,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS performance_reviews (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id TEXT NOT NULL,
-                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
-                review_period TEXT NOT NULL,
-                performance_score REAL NOT NULL CHECK(performance_score >= 1.0 AND performance_score <= 5.0),
-                achievements TEXT DEFAULT '',
-                strengths TEXT DEFAULT '',
-                improvements TEXT DEFAULT '',
-                manager_feedback TEXT DEFAULT '',
-                reviewer_id INTEGER,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE,
-                FOREIGN KEY(reviewer_id) REFERENCES users(id) ON DELETE SET NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS employee_skills (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id TEXT NOT NULL,
-                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
-                user_id INTEGER,
-                skill_name TEXT NOT NULL,
-                category TEXT DEFAULT 'Technical',
-                proficiency_level TEXT NOT NULL CHECK(proficiency_level IN ('Beginner', 'Intermediate', 'Advanced', 'Expert')),
-                years_exp REAL DEFAULT 0.0,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS career_goals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                employee_id TEXT,
-                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
-                title TEXT NOT NULL,
-                target_designation TEXT DEFAULT '',
-                description TEXT DEFAULT '',
-                target_date TEXT NOT NULL,
-                progress INTEGER NOT NULL DEFAULT 0 CHECK(progress IN (0, 25, 50, 75, 100)),
-                status TEXT NOT NULL DEFAULT 'Not Started' CHECK(status IN ('Not Started', 'In Progress', 'Completed', 'Overdue')),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS training_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                employee_id TEXT NOT NULL,
-                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
-                course_name TEXT NOT NULL,
-                provider TEXT DEFAULT 'Internal Academy',
-                target_skill TEXT NOT NULL,
-                target_completion_date TEXT DEFAULT '',
-                status TEXT NOT NULL DEFAULT 'Enrolled' CHECK(status IN ('Enrolled', 'In Progress', 'Completed')),
-                score REAL DEFAULT 0.0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS profiles (
-                user_id INTEGER PRIMARY KEY,
-                phone TEXT DEFAULT '',
-                location TEXT DEFAULT '',
-                job_title TEXT DEFAULT '',
-                company TEXT DEFAULT '',
-                department TEXT DEFAULT '',
-                industry TEXT DEFAULT '',
-                employment_type TEXT DEFAULT 'Full-time',
-                years_experience REAL DEFAULT 0.0,
-                linkedin TEXT DEFAULT '',
-                github TEXT DEFAULT '',
-                portfolio TEXT DEFAULT '',
-                education TEXT DEFAULT '',
-                certifications TEXT DEFAULT '',
-                summary TEXT DEFAULT '',
-                experience TEXT DEFAULT '',
-                projects TEXT DEFAULT '',
-                resume_text TEXT DEFAULT '',
-                target_role TEXT DEFAULT '',
-                target_level TEXT DEFAULT 'Senior',
-                timeline TEXT DEFAULT '6–12 months',
-                target_industry TEXT DEFAULT '',
-                career_goal TEXT DEFAULT '',
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS skills (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                category TEXT NOT NULL,
-                proficiency TEXT NOT NULL,
-                years REAL DEFAULT 0.0,
-                description TEXT DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS assessments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                employee_id TEXT DEFAULT '',
-                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
-                category TEXT NOT NULL,
-                skill_name TEXT DEFAULT '',
-                score REAL NOT NULL,
-                notes TEXT DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS progress (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                item TEXT NOT NULL,
-                percent REAL NOT NULL DEFAULT 0.0,
-                status TEXT NOT NULL DEFAULT 'In Progress',
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS goals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                employee_id TEXT,
-                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
-                title TEXT NOT NULL,
-                description TEXT DEFAULT '',
-                target_date TEXT NOT NULL,
-                progress INTEGER NOT NULL DEFAULT 0 CHECK(progress IN (0, 25, 50, 75, 100)),
-                status TEXT NOT NULL DEFAULT 'Not Started',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS resumes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL UNIQUE,
-                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
-                summary TEXT DEFAULT '',
-                skills_json TEXT DEFAULT '[]',
-                experience_json TEXT DEFAULT '[]',
-                education_json TEXT DEFAULT '[]',
-                certifications_json TEXT DEFAULT '[]',
-                projects_json TEXT DEFAULT '[]',
-                links_json TEXT DEFAULT '[]',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS email_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                to_email TEXT NOT NULL,
-                user_name TEXT DEFAULT '',
-                role TEXT DEFAULT '',
-                org_name TEXT DEFAULT '',
-                subject TEXT DEFAULT '',
-                status TEXT NOT NULL DEFAULT 'Sent',
-                error_message TEXT DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-
-
-        # Auto-migrate existing database tables if columns are missing
         cursor = conn.cursor()
-
-        # 1. Migrate organizations table FIRST before any inserts
-        _safe_add_column(cursor, "organizations", "official_email", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "organizations", "contact_number", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "organizations", "status", "TEXT NOT NULL DEFAULT 'Active'")
-
-        # 2. Migrate users table
-        _safe_add_column(cursor, "users", "account_type", "TEXT NOT NULL DEFAULT 'Organization'")
-        _safe_add_column(cursor, "users", "role", "TEXT NOT NULL DEFAULT 'employee'")
-        _safe_add_column(cursor, "users", "employee_id", "TEXT")
-        _safe_add_column(cursor, "users", "org_id", "TEXT DEFAULT NULL")
-        _safe_add_column(cursor, "users", "department", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "users", "job_title", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "users", "status", "TEXT DEFAULT 'Active'")
-        _safe_add_column(cursor, "users", "date_joined", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "users", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-
-        # Ensure users.org_id is nullable in existing SQLite databases to support Individual accounts
-        if not is_mysql_mode():
-            try:
-                cursor.execute("PRAGMA table_info(users)")
-                u_info = {row["name"]: dict(row) for row in cursor.fetchall()}
-                if u_info.get("org_id", {}).get("notnull") == 1 or u_info.get("employee_id", {}).get("notnull") == 1:
-                    cursor.execute("PRAGMA foreign_keys = OFF")
-                    cursor.execute('''
-                        CREATE TABLE users_migrated (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            name TEXT NOT NULL,
-                            email TEXT UNIQUE NOT NULL,
-                            password_hash TEXT NOT NULL,
-                            salt TEXT NOT NULL,
-                            role TEXT NOT NULL DEFAULT 'employee',
-                            employee_id TEXT,
-                            org_id TEXT,
-                            account_type TEXT NOT NULL DEFAULT 'Organization',
-                            department TEXT DEFAULT '',
-                            job_title TEXT DEFAULT '',
-                            status TEXT DEFAULT 'Active',
-                            date_joined TEXT DEFAULT '',
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        )
-                    ''')
-                    cursor.execute('''
-                        INSERT INTO users_migrated (id, name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined, created_at)
-                        SELECT id, name, email, password_hash, salt, role, employee_id, 
-                               CASE WHEN org_id = '' OR account_type = 'Individual' THEN NULL ELSE org_id END,
-                               COALESCE(account_type, 'Organization'), COALESCE(department, ''), COALESCE(job_title, ''), 
-                               COALESCE(status, 'Active'), COALESCE(date_joined, ''), COALESCE(created_at, CURRENT_TIMESTAMP)
-                        FROM users
-                    ''')
-                    cursor.execute("DROP TABLE users")
-                    cursor.execute("ALTER TABLE users_migrated RENAME TO users")
-                    cursor.execute("PRAGMA foreign_keys = ON")
-            except Exception:
-                pass
-
-        # 3. Migrate employees table
-        _safe_add_column(cursor, "employees", "email", "TEXT")
-        _safe_add_column(cursor, "employees", "phone", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "employees", "joining_date", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "employees", "employment_status", "TEXT NOT NULL DEFAULT 'Active'")
-        _safe_add_column(cursor, "employees", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-        _safe_add_column(cursor, "employees", "user_id", "INTEGER")
-        _safe_add_column(cursor, "employees", "account_status", "TEXT NOT NULL DEFAULT 'Active'")
-
-        # 4. Migrate employee_skills table
-        _safe_add_column(cursor, "employee_skills", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-        _safe_add_column(cursor, "employee_skills", "user_id", "INTEGER")
-
-        # 5. Migrate skills table
-        _safe_add_column(cursor, "skills", "description", "TEXT DEFAULT ''")
-
-        # 6. Migrate assessments table
-        _safe_add_column(cursor, "assessments", "employee_id", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "assessments", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-        _safe_add_column(cursor, "assessments", "skill_name", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "assessments", "notes", "TEXT DEFAULT ''")
-
-        # 7. Migrate performance_reviews table
-        _safe_add_column(cursor, "performance_reviews", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-
-        # 8. Migrate career_goals table
-        _safe_add_column(cursor, "career_goals", "target_designation", "TEXT DEFAULT ''")
-        _safe_add_column(cursor, "career_goals", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-
-        # 9. Migrate training_records table
-        _safe_add_column(cursor, "training_records", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-
-        # 10. Migrate resumes table
-        _safe_add_column(cursor, "resumes", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-
-        # 11. Migrate invitation_codes table if legacy schema exists or columns are missing
-        try:
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='invitation_codes'")
-            if cursor.fetchone():
-                cursor.execute("PRAGMA table_info(invitation_codes)")
-                inv_cols = {row["name"]: row for row in cursor.fetchall()}
-                if "code_hash" not in inv_cols:
-                    # Legacy schema with plaintext code - safely migrate to hashed schema
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS invitation_codes_v2 (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            org_id TEXT NOT NULL,
-                            code_hash TEXT UNIQUE NOT NULL,
-                            code_prefix TEXT NOT NULL,
-                            expires_at TIMESTAMP NOT NULL,
-                            max_uses INTEGER NOT NULL DEFAULT 1,
-                            used_count INTEGER NOT NULL DEFAULT 0,
-                            status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Revoked', 'Expired', 'Depleted')),
-                            created_by TEXT DEFAULT '',
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
-                        )
-                    ''')
-                    cursor.execute("SELECT * FROM invitation_codes")
-                    for row in cursor.fetchall():
-                        r = dict(row)
-                        raw_code = str(r.get("code") or "")
-                        c_hash = hash_invitation_code(raw_code) if raw_code else secrets.token_hex(16)
-                        c_prefix = raw_code[:8] if raw_code else "INV-MIGR"
-                        c_exp = r.get("expires_at") or "2099-12-31 23:59:59"
-                        c_max = r.get("max_uses", 1) or 1
-                        c_used = r.get("used_count", 0) or 0
-                        c_stat = r.get("status", "Active")
-                        if c_stat not in ("Active", "Revoked", "Expired", "Depleted"):
-                            c_stat = "Active"
-                        c_by = str(r.get("created_by") or "")
-                        c_at = r.get("created_at") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-                        cursor.execute('''
-                            INSERT OR IGNORE INTO invitation_codes_v2
-                            (id, org_id, code_hash, code_prefix, expires_at, max_uses, used_count, status, created_by, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (r.get("id"), r.get("org_id", "ORG-TALENT-01"), c_hash, c_prefix, c_exp, c_max, c_used, c_stat, c_by, c_at))
-                    cursor.execute("DROP TABLE invitation_codes")
-                    cursor.execute("ALTER TABLE invitation_codes_v2 RENAME TO invitation_codes")
-        except Exception:
-            pass
-
-        # Guarantee all columns exist in invitation_codes even for legacy databases
-        try:
-            _safe_add_column(cursor, "invitation_codes", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
-            _safe_add_column(cursor, "invitation_codes", "code_hash", "TEXT DEFAULT ''")
-            _safe_add_column(cursor, "invitation_codes", "code_prefix", "TEXT NOT NULL DEFAULT 'INV-0000'")
-            _safe_add_column(cursor, "invitation_codes", "expires_at", "TIMESTAMP NOT NULL DEFAULT '2099-12-31 23:59:59'")
-            _safe_add_column(cursor, "invitation_codes", "max_uses", "INTEGER NOT NULL DEFAULT 1")
-            _safe_add_column(cursor, "invitation_codes", "used_count", "INTEGER NOT NULL DEFAULT 0")
-            _safe_add_column(cursor, "invitation_codes", "status", "TEXT NOT NULL DEFAULT 'Active'")
-            _safe_add_column(cursor, "invitation_codes", "created_by", "TEXT DEFAULT ''")
-            _safe_add_column(cursor, "invitation_codes", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-        except Exception:
-            pass
 
         # Seed default organizations (now guaranteed to have official_email, contact_number, status)
         try:
@@ -1697,190 +1195,22 @@ def _mirror_account(
     pwd_hash: str,
     salt: str,
     role: str,
-    employee_id: Optional[str],
-    org_id: Optional[str],
-    account_type: str,
-    department: str,
-    job_title: str,
-    phone: str,
-    years_experience: float,
-    primary_skills: str,
+    employee_id: Optional[str] = None,
+    org_id: Optional[str] = None,
+    account_type: str = "Organization",
+    department: str = "",
+    job_title: str = "",
+    phone: str = "",
+    years_experience: float = 0.0,
+    primary_skills: str = "",
     educational_qualification: str = "",
     professional_interests: str = "",
     target_role: str = "",
     user_status: str = "Active"
 ) -> None:
-    """
-    Safely mirrors account and employee registration across both SQLite and MySQL engines
-    so that newly created user details can ALWAYS be found regardless of which database
-    or database client (MySQL Workbench, phpMyAdmin, DB Browser for SQLite, or app) the user inspects.
-    """
-    date_now = date.today().isoformat()
-    clean_phone = phone or ""
-    clean_emp_id = employee_id or ""
-    clean_org_id = org_id or "ORG-TALENT-01"
+    """No-op: Exclusive MySQL database mode (secondary SQLite mirroring eliminated)."""
+    return None
 
-    # 1. If currently connected to MySQL, mirror to SQLite (data/talentsphere.db)
-    if is_mysql_mode():
-        try:
-            sq_path = get_db_path()
-            if not sq_path.parent.exists():
-                sq_path.parent.mkdir(parents=True, exist_ok=True)
-            sq_conn = sqlite3.connect(str(sq_path), timeout=10.0)
-            sq_conn.row_factory = sqlite3.Row
-            try:
-                with sq_conn:
-                    sc = sq_conn.cursor()
-                    # Check if user already exists in SQLite by email
-                    sc.execute("SELECT id FROM users WHERE LOWER(TRIM(email)) = ?", (email.lower().strip(),))
-                    existing = sc.fetchone()
-                    if existing:
-                        sq_user_id = existing["id"]
-                        sc.execute(
-                            """
-                            UPDATE users
-                            SET name = ?, password_hash = ?, salt = ?, role = ?, employee_id = COALESCE(NULLIF(?, ''), employee_id),
-                                org_id = COALESCE(NULLIF(?, ''), org_id), account_type = ?, department = ?, job_title = ?, status = ?
-                            WHERE id = ?
-                            """,
-                            (name, pwd_hash, salt, role, clean_emp_id, clean_org_id, account_type, department, job_title, user_status, sq_user_id)
-                        )
-                    else:
-                        sc.execute(
-                            """
-                            INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """,
-                            (name, email, pwd_hash, salt, role, clean_emp_id, clean_org_id, account_type, department, job_title, user_status, date_now)
-                        )
-                        sq_user_id = sc.lastrowid
-
-                    if clean_phone:
-                        try:
-                            sc.execute("UPDATE users SET phone = ? WHERE id = ?", (clean_phone, sq_user_id))
-                        except Exception:
-                            pass
-
-                    # Insert/Update profile
-                    sc.execute(
-                        """
-                        INSERT OR REPLACE INTO profiles (user_id, phone, education, summary, target_role, job_title, company, department, years_experience)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (sq_user_id, clean_phone, educational_qualification, f"Interests: {professional_interests}" if professional_interests else "", target_role or job_title, job_title, clean_org_id, department, years_experience)
-                    )
-
-                    # Insert/Update employee in SQLite
-                    if clean_emp_id:
-                        sc.execute("SELECT id FROM employees WHERE employee_id = ?", (clean_emp_id,))
-                        emp_row = sc.fetchone()
-                        if emp_row:
-                            sc.execute(
-                                """
-                                UPDATE employees
-                                SET user_id = ?, name = ?, email = ?, phone = ?, org_id = ?, department = ?, designation = ?, account_status = ?
-                                WHERE employee_id = ?
-                                """,
-                                (sq_user_id, name, email, clean_phone, clean_org_id, department, job_title, user_status, clean_emp_id)
-                            )
-                        else:
-                            sc.execute(
-                                """
-                                INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?)
-                                """,
-                                (clean_emp_id, clean_org_id, sq_user_id, name, email, clean_phone, department, job_title, date_now, years_experience, primary_skills, user_status, sq_user_id)
-                            )
-
-                    # Insert skills in SQLite
-                    tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
-                    for sk in tokens:
-                        sc.execute(
-                            "INSERT OR IGNORE INTO skills (user_id, name, category, proficiency, years) VALUES (?, ?, 'Technical', 'Intermediate', ?)",
-                            (sq_user_id, sk, years_experience)
-                        )
-                        if clean_emp_id:
-                            sc.execute(
-                                "INSERT OR IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp) VALUES (?, ?, ?, ?, 'Technical', 'Intermediate', ?)",
-                                (clean_emp_id, clean_org_id, sq_user_id, sk, years_experience)
-                            )
-            finally:
-                sq_conn.close()
-        except Exception:
-            pass
-    else:
-        # SQLite active, try mirror to MySQL if pymysql is installed and credentials exist
-        try:
-            from services.db import get_mysql_config, PYMYSQL_AVAILABLE
-            if PYMYSQL_AVAILABLE:
-                cfg = get_mysql_config()
-                if cfg.get("host") and cfg.get("user") and cfg.get("database"):
-                    import pymysql
-                    import pymysql.cursors
-                    m_conn = pymysql.connect(
-                        host=cfg["host"],
-                        port=cfg["port"],
-                        user=cfg["user"],
-                        password=cfg["password"],
-                        database=cfg["database"],
-                        charset="utf8mb4",
-                        autocommit=False,
-                        connect_timeout=3,
-                    )
-                    try:
-                        with m_conn.cursor() as mc:
-                            mc.execute(
-                                """
-                                INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                ON DUPLICATE KEY UPDATE name=VALUES(name), password_hash=VALUES(password_hash), salt=VALUES(salt), employee_id=VALUES(employee_id), org_id=VALUES(org_id)
-                                """,
-                                (name, email, pwd_hash, salt, role, clean_emp_id, clean_org_id, account_type, department, job_title, user_status, date_now)
-                            )
-                            mc.execute("SELECT id FROM users WHERE LOWER(TRIM(email)) = %s", (email.lower().strip(),))
-                            my_row = mc.fetchone()
-                            my_uid = my_row[0] if my_row else user_id
-
-                            if clean_phone:
-                                try:
-                                    mc.execute("UPDATE users SET phone = %s WHERE id = %s", (clean_phone, my_uid))
-                                except Exception:
-                                    pass
-
-                            mc.execute(
-                                """
-                                REPLACE INTO profiles (user_id, phone, education, summary, target_role, job_title, company, department, years_experience)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                """,
-                                (my_uid, clean_phone, educational_qualification, f"Interests: {professional_interests}" if professional_interests else "", target_role or job_title, job_title, clean_org_id, department, years_experience)
-                            )
-
-                            if clean_emp_id:
-                                mc.execute(
-                                    """
-                                    INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
-                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Active', %s, %s, %s, %s)
-                                    ON DUPLICATE KEY UPDATE user_id=VALUES(user_id), name=VALUES(name), email=VALUES(email), phone=VALUES(phone), org_id=VALUES(org_id), department=VALUES(department), designation=VALUES(designation), account_status=VALUES(account_status)
-                                    """,
-                                    (clean_emp_id, clean_org_id, my_uid, name, email, clean_phone, department, job_title, date_now, years_experience, primary_skills, user_status, my_uid)
-                                )
-
-                            tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
-                            for sk in tokens:
-                                mc.execute(
-                                    "INSERT IGNORE INTO skills (user_id, name, category, proficiency, years) VALUES (%s, %s, 'Technical', 'Intermediate', %s)",
-                                    (my_uid, sk, years_experience)
-                                )
-                                if clean_emp_id:
-                                    mc.execute(
-                                        "INSERT IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp) VALUES (%s, %s, %s, %s, 'Technical', 'Intermediate', %s)",
-                                        (clean_emp_id, clean_org_id, my_uid, sk, years_experience)
-                                    )
-                        m_conn.commit()
-                    finally:
-                        m_conn.close()
-        except Exception:
-            pass
 
 def register_individual(
     name: str,
@@ -2101,30 +1431,8 @@ def register_individual(
         except Exception:
             pass
 
-        # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
-        checkpoint_db(conn)
-
-        # Cross-engine database sync: ensure both SQLite and MySQL contain the registered user details
-        _mirror_account(
-            user_id=user_id,
-            name=name,
-            email=email,
-            pwd_hash=pwd_hash,
-            salt=salt,
-            role="employee",
-            employee_id=final_emp_id,
-            org_id=assigned_org_id,
-            account_type="Individual",
-            department=clean_dept,
-            job_title=clean_title,
-            phone=phone,
-            years_experience=years_experience,
-            primary_skills=primary_skills,
-            educational_qualification=educational_qualification,
-            professional_interests=professional_interests,
-            target_role=target_role_val,
-            user_status="Active"
-        )
+        # Registration committed directly to MySQL
+        pass
 
         try:
             send_welcome_email(
@@ -2473,30 +1781,8 @@ def register(
         except Exception:
             pass
 
-        # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
-        checkpoint_db(conn)
-
-        # Cross-engine database sync: ensure both SQLite and MySQL contain the registered user details
-        _mirror_account(
-            user_id=user_id,
-            name=name,
-            email=email,
-            pwd_hash=pwd_hash,
-            salt=salt,
-            role=role,
-            employee_id=final_emp_id,
-            org_id=resolved_org_id,
-            account_type=account_type_val,
-            department=department,
-            job_title=job_title,
-            phone=clean_contact_number,
-            years_experience=years_experience,
-            primary_skills=primary_skills,
-            educational_qualification=education or "",
-            professional_interests=interests or "",
-            target_role=job_title,
-            user_status=user_status
-        )
+        # Registration committed directly to MySQL
+        pass
 
         # Trigger welcome email safely outside the database write transaction
         try:

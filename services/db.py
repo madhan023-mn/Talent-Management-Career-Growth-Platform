@@ -1,7 +1,7 @@
 """
-Enterprise Dual-Engine Database Layer (MySQL 8.0 Primary + SQLite Fallback)
-Provides seamless transparent MySQL connectivity for Talent Growth Platform
-while preserving full compatibility with existing SQLite-style queries and tests.
+Enterprise Database Layer (Exclusive MySQL 8.0)
+Provides native MySQL connectivity for the Talent Growth Platform.
+All application data is saved and managed exclusively in the MySQL database.
 """
 
 from __future__ import annotations
@@ -77,50 +77,14 @@ def get_mysql_config() -> Dict[str, Any]:
     }
 
 
-def _is_temp_sqlite_test_override() -> bool:
-    """
-    Detects when unit tests explicitly override DATABASE_PATH to a temporary
-    SQLite file so SQLite-specific unit tests remain isolated from production MySQL.
-    """
-    if os.getenv("FORCE_MYSQL_TESTS") == "1":
-        return False
-    db_path = os.getenv("DATABASE_PATH", "")
-    if not db_path:
-        return False
-    norm = os.path.normcase(os.path.abspath(db_path))
-    tmp_root = os.path.normcase(os.path.abspath(tempfile.gettempdir()))
-    if norm.startswith(tmp_root) or "test_" in Path(db_path).name.lower():
-        return True
-    return False
-
-
 def is_mysql_expected() -> bool:
-    """Returns True if MySQL is explicitly configured via DB_ENGINE or environment credentials."""
-    if _is_temp_sqlite_test_override():
-        return False
-    engine = _get_db_setting("DB_ENGINE", "").lower()
-    if engine == "sqlite":
-        return False
-    if engine == "mysql":
-        return True
-    cfg = get_mysql_config()
-    return bool(cfg.get("user") and cfg.get("database"))
+    """Returns True indicating MySQL is the required and active database engine."""
+    return True
 
 
 def is_mysql_mode() -> bool:
-    """Returns True when MySQL should be used as the active database engine."""
-    if not PYMYSQL_AVAILABLE:
-        return False
-    if _is_temp_sqlite_test_override():
-        return False
-    engine = _get_db_setting("DB_ENGINE", "").lower()
-    if engine == "sqlite":
-        return False
-    cfg = get_mysql_config()
-    if engine == "mysql":
-        return bool(cfg["user"] and cfg["database"])
-    # Auto-enable MySQL if DB_USER and DB_NAME are configured
-    return bool(cfg["user"] and cfg["database"])
+    """Returns True indicating MySQL is the exclusive active database engine."""
+    return True
 
 
 def test_mysql_connection() -> Dict[str, Any]:
@@ -568,58 +532,42 @@ def ensure_mysql_database_exists() -> None:
         pass
 
 
-def get_connection() -> Union[MySQLConnectionWrapper, sqlite3.Connection]:
+def get_connection() -> MySQLConnectionWrapper:
     """
-    Returns an active database connection.
-    Uses MySQL when MySQL is configured. If MySQL is expected (DB_ENGINE=mysql) but fails,
-    raises a meaningful error instead of silently falling back to SQLite.
+    Returns an active MySQL database connection.
+    Exclusively connects to the configured MySQL database.
+    Raises RuntimeError if MySQL connection cannot be established.
     """
-    if _is_temp_sqlite_test_override():
-        conn = sqlite3.connect(get_db_path(), timeout=30.0, check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-    engine_setting = _get_db_setting("DB_ENGINE", "").lower()
-    if engine_setting == "mysql" or is_mysql_mode():
-        if not PYMYSQL_AVAILABLE:
-            raise RuntimeError(
-                "MySQL engine is configured (DB_ENGINE=mysql), but the 'pymysql' package is not installed. "
-                "Please run 'pip install pymysql' to enable MySQL support."
-            )
-        cfg = get_mysql_config()
-        if not cfg["user"] or not cfg["database"]:
-            raise RuntimeError(
-                "MySQL engine is configured (DB_ENGINE=mysql), but DB_USER or DB_NAME is missing in configuration (.env). "
-                "Please configure DB_USER and DB_NAME to connect to MySQL."
-            )
-        try:
-            raw_conn = pymysql.connect(
-                host=cfg["host"],
-                port=cfg["port"],
-                user=cfg["user"],
-                password=cfg["password"],
-                database=cfg["database"],
-                charset="utf8mb4",
-                autocommit=False,
-                connect_timeout=10,
-                read_timeout=30,
-                write_timeout=30,
-            )
-            return MySQLConnectionWrapper(raw_conn)
-        except Exception as exc:
-            raise RuntimeError(
-                f"MySQL Connection Error: Failed to connect to MySQL database '{cfg['database']}' at {cfg['host']}:{cfg['port']}. "
-                f"Details: {exc}. Please verify that your local MySQL server is running on port {cfg['port']} and your password is correct."
-            ) from exc
-
-    conn = sqlite3.connect(get_db_path(), timeout=30.0, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute("PRAGMA synchronous = NORMAL")
-    conn.execute("PRAGMA busy_timeout = 30000")
-    conn.execute("PRAGMA wal_autocheckpoint = 1")
-    return conn
+    if not PYMYSQL_AVAILABLE:
+        raise RuntimeError(
+            "MySQL engine is required, but the 'pymysql' package is not installed. "
+            "Please run 'pip install pymysql' to enable MySQL connectivity."
+        )
+    cfg = get_mysql_config()
+    if not cfg["user"] or not cfg["database"]:
+        raise RuntimeError(
+            "MySQL credentials missing in configuration (.env). "
+            "Please configure DB_USER and DB_NAME to connect to MySQL."
+        )
+    try:
+        raw_conn = pymysql.connect(
+            host=cfg["host"],
+            port=cfg["port"],
+            user=cfg["user"],
+            password=cfg["password"],
+            database=cfg["database"],
+            charset="utf8mb4",
+            autocommit=False,
+            connect_timeout=10,
+            read_timeout=30,
+            write_timeout=30,
+        )
+        return MySQLConnectionWrapper(raw_conn)
+    except Exception as exc:
+        raise RuntimeError(
+            f"MySQL Connection Error: Failed to connect to MySQL database '{cfg['database']}' at {cfg['host']}:{cfg['port']}. "
+            f"Details: {exc}. Please verify that your local MySQL server is running on port {cfg['port']} and credentials are valid."
+        ) from exc
 
 
 # ------------------------------------------------------------------------------

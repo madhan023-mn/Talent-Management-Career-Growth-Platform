@@ -1241,7 +1241,7 @@ def landing_webpage():
     )
 
 def render_database_diagnostics_panel(key_suffix: str = ""):
-    """Renders active SQLite database diagnostics & storage inspector with modern colorful cards and zero truncation."""
+    """Renders active MySQL database diagnostics & storage inspector with modern colorful cards and zero truncation."""
     diag = get_database_diagnostics()
     if not diag:
         return
@@ -1259,7 +1259,7 @@ def render_database_diagnostics_panel(key_suffix: str = ""):
                         </div>
                     </div>
                     <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A; line-height: 1.2; word-break: break-all;">
-                        {diag.get('filename', 'talentsphere.db')}
+                        {diag.get('filename', 'talent_growth')}
                     </div>
                     <div style="font-size: 0.76rem; color: #475569; margin-top: 8px; line-height: 1.4;">
                         <strong>Path:</strong> <span style="font-family: monospace; background: #FFFFFF; padding: 2px 6px; border-radius: 4px; border: 1px solid #E2E8F0; font-size: 0.74rem; word-break: break-all; color: #0D9488;">{diag.get('absolute_path', '')}</span>
@@ -4120,7 +4120,7 @@ elif page in ["Employees", "Employee Management"]:
                         </div>
                         <div>
                             <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Bulk Employee Dataset Ingestion</div>
-                            <div style="color: #64748B; font-size: 0.88rem;">Batch upload structured CSV or Excel spreadsheets to ingest multiple personnel profiles into SQLite instantly.</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Batch upload structured CSV or Excel spreadsheets to ingest multiple personnel profiles into the MySQL database instantly.</div>
                         </div>
                     </div>
                     <span style="background: #F0FDFA; border: 1px solid #99F6E4; color: #0F766E; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
@@ -7491,7 +7491,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                         with col_pr1:
                             new_p_title = st.text_input("Project Title*", placeholder="Cloud-Native Talent Platform")
                             new_p_role = st.text_input("Your Role", placeholder="Lead Architect / Developer")
-                            new_p_tech = st.text_input("Technologies Used*", placeholder="Python, React, SQLite, Docker")
+                            new_p_tech = st.text_input("Technologies Used*", placeholder="Python, React, MySQL, Docker")
                         with col_pr2:
                             new_p_purl = st.text_input("Project / Demo URL", placeholder="https://example.com/demo")
                             new_p_ghurl = st.text_input("GitHub URL", placeholder="https://github.com/example/project")
