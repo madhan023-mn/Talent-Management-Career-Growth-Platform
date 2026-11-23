@@ -2174,6 +2174,13 @@ def register(
     interests: Optional[str] = None,
     **kwargs: Any
 ) -> Tuple[bool, str]:
+    if kwargs.get("org_choice") == "-- Choose Organization Membership --":
+        return False, "Please choose a valid Organization Membership option."
+    if role in ["-- Choose Account Type --", "-- Select an option --"]:
+        return False, "Please select an Account Type (Employee or HR Administrator)."
+    if department in ["-- Choose Department --", "-- Select Department --"]:
+        return False, "Please select a valid Department."
+
     # Route Option 3: Individual Registration
     if registration_type == "individual" or role == "individual":
         # Only override department/title if not default or if no interests provided
@@ -3793,10 +3800,20 @@ def save_profile(uid: Optional[int] = None, data: Optional[Dict[str, Any]] = Non
     conn = get_connection()
     try:
         with conn:
-            conn.execute(
+            cur = conn.cursor()
+            cur.execute(
                 f"UPDATE profiles SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
                 values
             )
+            cur.execute("SELECT user_id FROM profiles WHERE user_id = ?", (target_id,))
+            if not cur.fetchone():
+                ins_cols = ["user_id"] + list(updates.keys())
+                placeholders = ", ".join("?" for _ in ins_cols)
+                cols_str = ", ".join(ins_cols)
+                cur.execute(
+                    f"INSERT INTO profiles ({cols_str}) VALUES ({placeholders})",
+                    [target_id] + list(updates.values())
+                )
         return True
     finally:
         conn.close()

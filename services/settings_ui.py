@@ -209,6 +209,7 @@ def _render_hr_org_profile(user: Dict[str, Any], org_id: str) -> None:
             website = st.text_input("Official Website URL", value=org_data.get("website", ""), placeholder="https://example.com", key="hr_org_web")
         with c4:
             ind_options = [
+                "-- Select Industry / Sector --",
                 "Technology & Software",
                 "Financial Services",
                 "Healthcare & Life Sciences",
@@ -263,7 +264,7 @@ def _render_hr_org_profile(user: Dict[str, Any], org_id: str) -> None:
                 contact_number=contact_num,
                 address=address,
                 website=website,
-                industry=industry,
+                industry="" if industry == "-- Select Industry / Sector --" else industry,
                 description=description,
                 logo_base64=final_logo,
                 requesting_role="admin"
@@ -511,11 +512,11 @@ def _render_employee_career_preferences(user: Dict[str, Any], user_prefs: Dict[s
         curr_desig = st.text_input("Current Official Designation", value=career_p.get("current_designation", user.get("job_title", "")), key="emp_curr_desig")
         target_desig = st.text_input("Target / Aspirational Designation", value=career_p.get("target_designation", ""), placeholder="e.g. Senior Software Architect", key="emp_target_desig")
     with c2:
-        timeline_opts = ["3-6 months", "6-12 months", "1-2 years", "2+ years"]
+        timeline_opts = ["-- Select Preferred Timeline --", "3-6 months", "6-12 months", "1-2 years", "2+ years"]
         timeline = st.selectbox(
             "Preferred Developmental Timeline",
             timeline_opts,
-            index=_safe_index(timeline_opts, career_p.get("timeline"), 1),
+            index=_safe_index(timeline_opts, career_p.get("timeline"), 0),
             key="emp_car_tl"
         )
 
@@ -528,7 +529,7 @@ def _render_employee_career_preferences(user: Dict[str, Any], user_prefs: Dict[s
             new_car = {
                 "current_designation": curr_desig,
                 "target_designation": target_desig,
-                "timeline": timeline,
+                "timeline": "" if timeline == "-- Select Preferred Timeline --" else timeline,
                 "interested_paths": [p.strip() for p in paths_str.split(",") if p.strip()],
                 "preferred_skills": [s.strip() for s in skills_str.split(",") if s.strip()]
             }
@@ -551,18 +552,18 @@ def _render_employee_notification_preferences(user: Dict[str, Any], user_prefs: 
 
     with c1:
         st.markdown("#### Goal & Learning Reminders")
-        goal_rem_opts = ["Daily", "Weekly", "Bi-weekly", "Disabled"]
+        goal_rem_opts = ["-- Select Frequency --", "Daily", "Weekly", "Bi-weekly", "Disabled"]
         g_rem = st.selectbox(
             "Career Goal Progress Reminders",
             goal_rem_opts,
-            index=_safe_index(goal_rem_opts, notif_p.get("goal_reminders"), 1),
+            index=_safe_index(goal_rem_opts, notif_p.get("goal_reminders"), 0),
             key="emp_notif_goals"
         )
-        tr_rem_opts = ["3 Days Before", "1 Week Before", "2 Weeks Before", "Disabled"]
+        tr_rem_opts = ["-- Select Frequency --", "3 Days Before", "1 Week Before", "2 Weeks Before", "Disabled"]
         t_rem = st.selectbox(
             "Training & Certification Deadline Reminders",
             tr_rem_opts,
-            index=_safe_index(tr_rem_opts, notif_p.get("training_reminders"), 1),
+            index=_safe_index(tr_rem_opts, notif_p.get("training_reminders"), 0),
             key="emp_notif_tr"
         )
 
@@ -575,8 +576,8 @@ def _render_employee_notification_preferences(user: Dict[str, Any], user_prefs: 
     with cb1:
         if st.button("Save Notification Preferences", type="primary", key="btn_save_emp_notif"):
             new_notif = {
-                "goal_reminders": g_rem,
-                "training_reminders": t_rem,
+                "goal_reminders": "" if g_rem == "-- Select Frequency --" else g_rem,
+                "training_reminders": "" if t_rem == "-- Select Frequency --" else t_rem,
                 "performance_review_notifications": rev_notif,
                 "platform_notifications": plat_notif
             }

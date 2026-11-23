@@ -379,22 +379,29 @@ def render_individual_skills(user: Dict[str, Any], skills: List[Dict[str, Any]],
         with st.form("form_add_individual_skill"):
             c_s1, c_s2 = st.columns(2)
             skill_name = c_s1.text_input("Skill Name *", placeholder="e.g. Python, Docker, React.js, SQL")
-            category = c_s2.selectbox("Skill Category", ["Technical", "Soft Skills", "Domain & Leadership", "Cloud & DevOps"])
+            category = c_s2.selectbox("Skill Category *", ["-- Select Category --", "Technical", "Soft Skills", "Domain & Leadership", "Cloud & DevOps"], index=0)
 
             c_s3, c_s4 = st.columns(2)
-            prof_level = c_s3.selectbox("Proficiency Level *", ["Beginner", "Intermediate", "Advanced", "Expert"], index=1)
-            years_exp = c_s4.number_input("Years of Practical Experience", min_value=0.0, max_value=50.0, value=1.0, step=0.5)
+            prof_level = c_s3.selectbox("Proficiency Level *", ["-- Select Proficiency Level --", "Beginner", "Intermediate", "Advanced", "Expert"], index=0)
+            years_exp = c_s4.number_input("Years of Practical Experience", min_value=0.0, max_value=50.0, value=0.0, step=0.5)
 
             desc = st.text_area("Practical Experience & Project Application Notes (Optional)", placeholder="Summarize hands-on projects, tools, frameworks, and practical experience with this skill.")
             submit_skill = st.form_submit_button("Add Skill to Portfolio", type="primary", use_container_width=True)
 
             if submit_skill:
-                ok, msg = add_skill(uid, skill_name, category, prof_level, years_exp, description=desc)
-                if ok:
-                    st.success(msg)
-                    st.rerun()
+                if not skill_name.strip():
+                    st.error("Validation Error: Skill Name is mandatory.")
+                elif category == "-- Select Category --":
+                    st.error("Validation Error: Please select a Skill Category.")
+                elif prof_level == "-- Select Proficiency Level --":
+                    st.error("Validation Error: Please select a Proficiency Level.")
                 else:
-                    st.error(msg)
+                    ok, msg = add_skill(uid, skill_name, category, prof_level, years_exp, description=desc)
+                    if ok:
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.error(msg)
 
     # Skills List & Management
     st.markdown(f"<h3 style='font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-top: 1.5rem; margin-bottom: 0.85rem;'>Your Skills Portfolio ({len(skills)})</h3>", unsafe_allow_html=True)
@@ -530,7 +537,7 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
             )
             return
 
-        skill_options = user_skill_names
+        skill_options = ["-- Select Skill to Evaluate --"] + user_skill_names
 
         col_sel_sk, col_shuf_btn = st.columns([4, 1.6])
         with col_sel_sk:
@@ -538,14 +545,18 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
                 "Select Skill to Evaluate *",
                 options=skill_options,
                 key=f"mcq_sel_skill_{uid}",
-                format_func=lambda x: f"{x} (Matched with your verified competencies)"
+                format_func=lambda x: x if x == "-- Select Skill to Evaluate --" else f"{x} (Matched with your verified competencies)"
             )
         with col_shuf_btn:
             st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-            if st.button("New Questions", icon=":material/refresh:", key=f"btn_shuf_mcq_{uid}", help="Generates a fresh, non-repeating AI question set for this skill", use_container_width=True):
+            if st.button("New Questions", icon=":material/refresh:", key=f"btn_shuf_mcq_{uid}", help="Generates a fresh, non-repeating AI question set for this skill", use_container_width=True, disabled=(sel_skill == "-- Select Skill to Evaluate --")):
                 st.session_state.pop(f"mcq_active_q_{uid}_{sel_skill}", None)
                 st.session_state.pop(f"last_assessment_result_{sel_skill}", None)
                 st.rerun()
+
+        if sel_skill == "-- Select Skill to Evaluate --":
+            st.info("👤 Please select a verified skill from the dropdown above to begin your adaptive competency evaluation.")
+            return
 
         st.markdown(
             f"<div style='margin: 1rem 0; padding: 12px 18px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; font-size: 0.88rem; color: #1E40AF; display: flex; align-items: center; justify-content: space-between;'>"
@@ -749,11 +760,15 @@ def render_individual_skill_gaps(user: Dict[str, Any], skills: List[Dict[str, An
         """
     )
 
-    roles_list = list(ROLE_CATALOG.keys())
-    default_role = profile.get("target_role") or "Junior Python Developer"
-    default_idx = roles_list.index(default_role) if default_role in roles_list else 0
+    roles_list = ["-- Select Target Role --"] + list(ROLE_CATALOG.keys())
+    saved_target_role = profile.get("target_role") or ""
+    default_idx = roles_list.index(saved_target_role) if saved_target_role in roles_list else 0
 
     target_role = st.selectbox("Target Career / Job Role *", roles_list, index=default_idx)
+
+    if target_role == "-- Select Target Role --":
+        st.info("🎯 Please select a Target Career Role above to analyze competency gaps, radar alignment, and study roadmaps.")
+        return
 
     role_info = ROLE_CATALOG[target_role]
     required_skills = role_info["skills"]
