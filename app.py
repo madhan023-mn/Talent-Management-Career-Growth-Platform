@@ -2685,7 +2685,7 @@ def nav_format(page_name: str) -> str:
     return _NAV_PAGE_ICONS.get(page_name, page_name)
 
 def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
-    """Renders the modernized Enterprise SaaS sidebar."""
+    """Renders the modernized sidebar."""
     with st.sidebar:
         # 1. Branding Header Row: Swirl Logo + Talent Growth
         st.markdown(
@@ -2693,10 +2693,7 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
             <div style="display: flex; align-items: center; justify-content: flex-start; padding: 4px 0 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     {get_svg_icon("brand_logo", size=32)}
-                    <div style="display: flex; flex-direction: column; line-height: 1.15;">
-                        <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
-                        <span style="font-size: 0.72rem; font-weight: 600; color: #38BDF8; letter-spacing: 0.02em;">Enterprise SaaS</span>
-                    </div>
+                    <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
                 </div>
             </div>
             <div style="font-size: 0.70rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.08em; padding: 14px 2px 6px 2px;">
@@ -6840,7 +6837,7 @@ elif page == "My Profile":
             company = st.text_input("Company / Organization", value=profile.get("company", org_display_name), placeholder="e.g. Talent Growth Technologies")
         with col_r2:
             department = st.text_input("Department / Business Unit", value=profile.get("department", ""), placeholder="e.g. Engineering & Product")
-            industry = st.text_input("Industry Domain", value=profile.get("industry", ""), placeholder="e.g. Enterprise Software / SaaS")
+            industry = st.text_input("Industry Domain", value=profile.get("industry", ""), placeholder="e.g. Technology & Software Solutions")
         render_html("</div>")
 
         # Section 3: Employment Details & Experience Boundary

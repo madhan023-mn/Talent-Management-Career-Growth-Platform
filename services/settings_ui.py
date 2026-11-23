@@ -1,5 +1,5 @@
 """
-Settings UI Module — Enterprise SaaS Configuration & Preference Center
+Settings UI Module — Enterprise Configuration & Preference Center
 Supports two user roles:
   1. HR Administrator: Organization Profile and HR Account settings.
   2. Employee: Personal Profile, Account Security, Career Preferences, Notifications,

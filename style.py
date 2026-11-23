@@ -41,7 +41,7 @@ apply_css = load_css
 inject_css = load_css
 
 def apply_saas_chart_theme(fig: Any, height: int | None = None, title: str | None = None, show_legend: bool = True) -> Any:
-    """Applies a clean, modern Enterprise SaaS Plotly visual theme."""
+    """Applies a clean, modern Enterprise Plotly visual theme."""
     if fig is None:
         return fig
     layout_update: dict[str, Any] = {
