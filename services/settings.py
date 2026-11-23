@@ -26,13 +26,19 @@ from services.db import is_mysql_mode, MYSQL_SETTINGS_SCHEMA_STATEMENTS
 # ------------------------------------------------------------------------------
 def init_settings_tables() -> None:
     """Initializes all settings tables and safe column migrations in MySQL."""
-    conn = get_connection()
+    try:
+        conn = get_connection()
+    except Exception:
+        return
     try:
         with conn:
             cursor = conn.cursor()
 
             for stmt in MYSQL_SETTINGS_SCHEMA_STATEMENTS:
-                cursor.execute(stmt)
+                try:
+                    cursor.execute(stmt)
+                except Exception:
+                    pass
 
             # Safe Column Additions to existing tables
             _safe_add_column(cursor, "organizations", "logo_base64", "TEXT DEFAULT ''")
@@ -43,12 +49,20 @@ def init_settings_tables() -> None:
 
             _safe_add_column(cursor, "users", "avatar_base64", "TEXT DEFAULT ''")
             _safe_add_column(cursor, "users", "phone", "TEXT DEFAULT ''")
+    except Exception:
+        pass
     finally:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
-# Ensure tables exist at import time
-init_settings_tables()
+# Safe initialization on module load (does not fail if database is offline or unconfigured)
+try:
+    init_settings_tables()
+except Exception:
+    pass
 
 
 # ------------------------------------------------------------------------------

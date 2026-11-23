@@ -1246,6 +1246,16 @@ def render_database_diagnostics_panel(key_suffix: str = ""):
     if not diag:
         return
 
+    is_conn = bool(diag.get("connected", False))
+    conn_text = "Connected (OK)" if is_conn else "Disconnected"
+    conn_text_color = "#065F46" if is_conn else "#991B1B"
+    conn_dot_color = "#10B981" if is_conn else "#EF4444"
+    conn_badge_bg = "#DCFCE7" if is_conn else "#FEE2E2"
+    conn_border_left = "#10B981" if is_conn else "#EF4444"
+    conn_border = "#BBF7D0" if is_conn else "#FECACA"
+    conn_bg = "#F0FDF4" if is_conn else "#FEF2F2"
+    conn_icon = "check" if is_conn else "lock"
+
     with st.expander("Active Database Diagnostics & Storage Inspector", expanded=(key_suffix == "settings")):
         render_html(
             f"""
@@ -1267,19 +1277,19 @@ def render_database_diagnostics_panel(key_suffix: str = ""):
                 </div>
 
                 <!-- Card 2: Connection Status -->
-                <div style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%); border: 1.5px solid #BBF7D0; border-left: 5px solid #10B981; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(16,185,129,0.06);">
+                <div style="background: linear-gradient(135deg, #FFFFFF 0%, {conn_bg} 100%); border: 1.5px solid {conn_border}; border-left: 5px solid {conn_border_left}; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(16,185,129,0.06);">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="font-size: 0.74rem; font-weight: 800; color: #065F46; text-transform: uppercase; letter-spacing: 0.05em;">Connection Status</span>
-                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #DCFCE7; display: flex; align-items: center; justify-content: center;">
-                            {get_svg_icon("check", size=16, color="#10B981")}
+                        <span style="font-size: 0.74rem; font-weight: 800; color: {conn_text_color}; text-transform: uppercase; letter-spacing: 0.05em;">Connection Status</span>
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: {conn_badge_bg}; display: flex; align-items: center; justify-content: center;">
+                            {get_svg_icon(conn_icon, size=16, color=conn_border_left)}
                         </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #10B981; display: inline-block; box-shadow: 0 0 10px #10B981;"></span>
-                        <span style="font-size: 1.25rem; font-weight: 800; color: #065F46;">Connected (OK)</span>
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: {conn_dot_color}; display: inline-block; box-shadow: 0 0 10px {conn_dot_color};"></span>
+                        <span style="font-size: 1.25rem; font-weight: 800; color: {conn_text_color};">{conn_text}</span>
                     </div>
-                    <div style="font-size: 0.78rem; color: #047857; margin-top: 8px;">
-                        Integrity: <strong>{diag.get('integrity', 'ok').upper()}</strong> &bull; Size: <strong>{diag.get('size_kb', 0)} KB</strong>
+                    <div style="font-size: 0.78rem; color: #475569; margin-top: 8px;">
+                        Integrity: <strong>{diag.get('integrity', 'Unknown').upper()}</strong> &bull; Size: <strong>{diag.get('size_kb', 0)} KB</strong>
                     </div>
                 </div>
 
@@ -1301,6 +1311,13 @@ def render_database_diagnostics_panel(key_suffix: str = ""):
             </div>
             """
         )
+
+        if not is_conn and diag.get("error"):
+            st.warning(
+                f"⚠️ **MySQL Connection Offline:** `{diag.get('error')}`\n\n"
+                "• **Running locally:** Verify your local MySQL service is running on port 3306 and database `talent_growth` is created.\n"
+                "• **Running on Streamlit Cloud:** Please configure your cloud MySQL database credentials in **Streamlit Cloud Dashboard -> Settings -> Secrets** (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`)."
+            )
 
         if is_mysql_expected() or diag.get("engine") == "MySQL":
             if st.button("⚡ Test MySQL Database Connection", key=f"btn_test_mysql_{key_suffix}", use_container_width=True):

@@ -42,16 +42,22 @@ def _get_db_setting(key: str, default: str = "") -> str:
         return str(val).strip()
     try:
         import streamlit as st
-        if key in st.secrets and str(st.secrets[key]).strip() != "":
-            return str(st.secrets[key]).strip()
-        if key.lower() in st.secrets and str(st.secrets[key.lower()]).strip() != "":
-            return str(st.secrets[key.lower()]).strip()
-        for section in ("mysql", "database", "db"):
-            if section in st.secrets:
-                sec = st.secrets[section]
-                sub_key = key.replace("DB_", "").replace("MYSQL_", "").lower()
-                if sub_key in sec and str(sec[sub_key]).strip() != "":
-                    return str(sec[sub_key]).strip()
+        secrets_obj = getattr(st, "secrets", None)
+        if secrets_obj is not None:
+            if key in secrets_obj and str(secrets_obj[key]).strip() != "":
+                return str(secrets_obj[key]).strip()
+            if key.lower() in secrets_obj and str(secrets_obj[key.lower()]).strip() != "":
+                return str(secrets_obj[key.lower()]).strip()
+            for section in ("mysql", "database", "db", "connections"):
+                if section in secrets_obj:
+                    sec = secrets_obj[section]
+                    if key in sec and str(sec[key]).strip() != "":
+                        return str(sec[key]).strip()
+                    if key.lower() in sec and str(sec[key.lower()]).strip() != "":
+                        return str(sec[key.lower()]).strip()
+                    sub_key = key.replace("DB_", "").replace("MYSQL_", "").lower()
+                    if sub_key in sec and str(sec[sub_key]).strip() != "":
+                        return str(sec[sub_key]).strip()
     except Exception:
         pass
     return default
@@ -65,9 +71,9 @@ def get_mysql_config() -> Dict[str, Any]:
         port = int(port_str)
     except (ValueError, TypeError):
         port = 3306
-    user = _get_db_setting("DB_USER", _get_db_setting("MYSQL_USER", ""))
-    password = _get_db_setting("DB_PASSWORD", _get_db_setting("MYSQL_PASSWORD", ""))
-    database = _get_db_setting("DB_NAME", _get_db_setting("MYSQL_DATABASE", ""))
+    user = _get_db_setting("DB_USER", _get_db_setting("MYSQL_USER", "taskssqls"))
+    password = _get_db_setting("DB_PASSWORD", _get_db_setting("MYSQL_PASSWORD", "@madhan23"))
+    database = _get_db_setting("DB_NAME", _get_db_setting("MYSQL_DATABASE", "talent_growth"))
     return {
         "host": host,
         "port": port,
@@ -546,7 +552,7 @@ def get_connection() -> MySQLConnectionWrapper:
     cfg = get_mysql_config()
     if not cfg["user"] or not cfg["database"]:
         raise RuntimeError(
-            "MySQL credentials missing in configuration (.env). "
+            "MySQL credentials missing in configuration (.env or Streamlit secrets). "
             "Please configure DB_USER and DB_NAME to connect to MySQL."
         )
     try:
@@ -566,7 +572,8 @@ def get_connection() -> MySQLConnectionWrapper:
     except Exception as exc:
         raise RuntimeError(
             f"MySQL Connection Error: Failed to connect to MySQL database '{cfg['database']}' at {cfg['host']}:{cfg['port']}. "
-            f"Details: {exc}. Please verify that your local MySQL server is running on port {cfg['port']} and credentials are valid."
+            f"Details: {exc}. If running locally, verify MySQL is running on port {cfg['port']}. "
+            f"If deployed on Streamlit Cloud, please configure your remote MySQL database credentials in Streamlit Cloud Dashboard -> Settings -> Secrets (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)."
         ) from exc
 
 
