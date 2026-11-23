@@ -9,14 +9,14 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, HRFlowable, Image
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, HRFlowable, Image, PageBreak
 )
 
 THEME_PALETTES = {
     "Navy & Teal": {
         "primary": "#0F172A",
-        "accent": "#0D9488",
-        "sub_accent": "#1E3A8A",
+        "accent": "#2563EB",
+        "sub_accent": "#0D9488",
         "card_bg": "#F8FAFC",
         "border": "#CBD5E1"
     },
@@ -80,27 +80,30 @@ def make_numbered_canvas(company_name: str, employee_name: str):
 
         def draw_page_decorations(self, page_count):
             self.saveState()
-            self.setFont("Helvetica", 7.5)
+            self.setFont("Helvetica-Bold", 7)
             self.setFillColor(colors.HexColor("#64748B"))
 
             # Running Header on page 2+
             if self._pageNumber > 1:
                 self.setStrokeColor(colors.HexColor("#E2E8F0"))
                 self.setLineWidth(0.5)
-                self.line(36, A4[1] - 28, A4[0] - 36, A4[1] - 28)
-                hdr_left = f"{clean_company} · EMPLOYEE CAREER & COMPETENCY REPORT"
-                self.drawString(36, A4[1] - 23, hdr_left.upper())
-                self.drawRightString(A4[0] - 36, A4[1] - 23, employee_name)
+                self.line(36, A4[1] - 20, A4[0] - 36, A4[1] - 20)
+                hdr_left = f"{clean_company} · EMPLOYEE CAREER & PERFORMANCE REPORT"
+                self.drawString(36, A4[1] - 16, hdr_left.upper())
+                self.setFont("Helvetica", 7)
+                self.drawRightString(A4[0] - 36, A4[1] - 16, employee_name)
 
             # Running Footer on all pages
             self.setStrokeColor(colors.HexColor("#CBD5E1"))
             self.setLineWidth(0.5)
-            self.line(36, 32, A4[0] - 36, 32)
+            self.line(36, 24, A4[0] - 36, 24)
 
+            self.setFont("Helvetica-Bold", 6.8)
             footer_left = f"{clean_company.upper()} | CONFIDENTIAL & PROPRIETARY"
             page_str = f"Page {self._pageNumber} of {page_count}"
-            self.drawString(36, 20, footer_left)
-            self.drawRightString(A4[0] - 36, 20, page_str)
+            self.drawString(36, 14, footer_left)
+            self.setFont("Helvetica", 6.8)
+            self.drawRightString(A4[0] - 36, 14, page_str)
             self.restoreState()
 
     return NumberedCanvas
@@ -112,8 +115,8 @@ def create_report(
     analysis: Dict[str, Any],
     gaps: List[Dict[str, Any]],
     recommendations: List[Dict[str, Any]],
-    assessments: List[Dict[str, Any]],
-    progress: List[Dict[str, Any]],
+    assessments: Optional[List[Dict[str, Any]]] = None,
+    progress: Optional[List[Dict[str, Any]]] = None,
     goals: Optional[List[Dict[str, Any]]] = None,
     reviews: Optional[List[Dict[str, Any]]] = None,
     trainings: Optional[List[Dict[str, Any]]] = None,
@@ -121,21 +124,18 @@ def create_report(
     org_id: Optional[str] = None
 ) -> bytes:
     """
-    Renders an executive, publication-grade corporate talent dossier adhering strictly to:
-      1. Organization Name First
-      2. Employee Information Second
-      3. Executive Career Summary Third (4 KPI cards + status summary)
-      4. Professional Sequential Report Sections (1 through 9):
-         1. Professional Profile & Role Trajectory
-         2. Performance Reviews & Evaluation History
-         3. Skills Matrix & Competency Gap Analysis
-         4. Career Development Goals & Milestones
-         5. Training & Development History
-         6. Achievements & Strengths
-         7. Strategic Recommendations & Next Moves
-         8. Career Growth Roadmap
-         9. HR Assessment and Comments, where authorized
-      5. Running headers, footers with 'Page X of Y', and final-page confidentiality notice.
+    Renders an executive, publication-grade 2-page corporate talent report:
+      Page 1: Employee Performance & Competency
+        A. Employee Information
+        B. Career Readiness Overview (4 key metrics)
+        C. Skills Gap Analysis
+        D. Performance Summary
+      Page 2: Career Development Plan
+        A. Verified Competencies
+        B. Development Priorities
+        C. Career Growth Roadmap
+        D. Goals and Achievements
+        E. Review and Acknowledgement (Sign-off)
     """
     # --------------------------------------------------------------------------
     # 0. RESOLVE BRANDING & CONFIGURATION
@@ -154,8 +154,9 @@ def create_report(
         or "TALENT GROWTH TECHNOLOGIES"
     ).strip()
     if not raw_company or "INNOTIQ" in raw_company.upper():
-        raw_company = "TALENT GROWTH TECHNOLOGIES"
-    company_name = raw_company
+        company_name = "TALENT GROWTH TECHNOLOGIES"
+    else:
+        company_name = raw_company
 
     theme_name = cfg.get("theme_color", "Navy & Teal")
     palette = THEME_PALETTES.get(theme_name, THEME_PALETTES["Navy & Teal"])
@@ -166,29 +167,32 @@ def create_report(
     card_bg_hex = palette.get("card_bg", "#F8FAFC")
     border_hex = palette.get("border", "#CBD5E1")
 
-    # Employee Data Resolution
-    user_name = profile.get("name") or "Sarah Connor"
+    # Employee Information Fields
+    user_name = (profile.get("name") or "Employee").strip()
     emp_id = (
         profile.get("employee_id")
         or profile.get("emp_id")
-        or (f"EMP{profile.get('user_id', 1):03d}" if profile.get("user_id") else "EMP-101")
+        or (f"EMP{profile.get('user_id', 1):03d}" if profile.get("user_id") else "Not recorded")
     )
-    current_role = profile.get("job_title") or profile.get("designation") or "Full Stack Engineer"
-    target_role = profile.get("target_role") or "Senior Software Engineer"
-    dept = profile.get("department") or "Engineering"
-    years_val = profile.get("years_experience") or 0
-    years_str = f"{float(years_val):g} Years" if years_val else "Early Career"
-    target_level = profile.get("target_level") or "Senior"
-    timeline = profile.get("timeline") or "6–12 Months"
+    current_role = profile.get("job_title") or profile.get("designation") or "Not recorded"
+    target_role = profile.get("target_role") or "Not selected"
+    if target_role in ["-- Choose Target Role --", "-- Choose Benchmark Role --", "-- Select Target Role --"]:
+        target_role = "Not selected"
+
+    dept = profile.get("department") or "Not recorded"
+    years_val = profile.get("years_experience")
+    years_str = f"{float(years_val):g} Years" if (years_val is not None and float(years_val) > 0) else "Not recorded"
+    target_level = profile.get("target_level") or "Not specified"
+    if target_level in ["-- Choose Target Level --", "-- Select Target Level --"]:
+        target_level = "Not specified"
 
     # Reporting Period Resolution
-    report_period = "2025 Annual Review"
+    report_period = "2025–2026 Annual Review"
     if reviews:
         first_rev = reviews[0]
         if first_rev.get("review_period"):
             report_period = str(first_rev["review_period"])
 
-    # Generated Date Resolution
     now = datetime.now()
     date_format = cfg.get("date_format") or "%B %d, %Y"
     try:
@@ -203,169 +207,143 @@ def create_report(
         pagesize=A4,
         leftMargin=36,
         rightMargin=36,
-        topMargin=36,
-        bottomMargin=36
+        topMargin=26,
+        bottomMargin=28
     )
 
     styles = getSampleStyleSheet()
 
-    # Typography & Styles
+    # Corporate Typography & Styling
     org_title_style = ParagraphStyle(
         'OrgHeader',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=13,
-        leading=16,
+        fontSize=11,
+        leading=13,
         textColor=colors.HexColor(accent_hex),
         spaceAfter=1
-    )
-    dossier_subtitle_style = ParagraphStyle(
-        'DossierSubtitle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=7.5,
-        leading=10,
-        textColor=colors.HexColor('#64748B'),
-        spaceAfter=3
     )
     doc_title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
-        fontSize=17,
-        leading=21,
+        fontSize=14,
+        leading=16,
         textColor=colors.HexColor(primary_hex),
-        spaceAfter=4
+        spaceAfter=2
     )
-    emp_banner_style = ParagraphStyle(
-        'EmpBanner',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=12,
-        leading=15,
-        textColor=colors.HexColor(primary_hex),
-        spaceBefore=4,
-        spaceAfter=4
-    )
-    h2_style = ParagraphStyle(
-        'SectionHeader',
-        parent=styles['Heading2'],
-        fontName='Helvetica-Bold',
-        fontSize=10,
-        leading=13,
-        textColor=colors.HexColor(primary_hex),
-        spaceBefore=9,
-        spaceAfter=4
-    )
-    body_style = ParagraphStyle(
-        'BodyDark',
+    subtitle_style = ParagraphStyle(
+        'DossierSubtitle',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=7.5,
-        leading=10.5,
-        textColor=colors.HexColor('#1E293B')
+        fontSize=7,
+        leading=9,
+        textColor=colors.HexColor('#64748B'),
+        spaceAfter=1
     )
-    bold_style = ParagraphStyle(
-        'BodyBold',
-        parent=styles['Normal'],
+    section_h1_style = ParagraphStyle(
+        'SectionH1',
+        parent=styles['Heading2'],
         fontName='Helvetica-Bold',
-        fontSize=7.5,
-        leading=10.5,
-        textColor=colors.HexColor(primary_hex)
-    )
-    table_header_style = ParagraphStyle(
-        'TableHeader',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=7.5,
-        leading=10.5,
-        textColor=colors.HexColor('#0F172A')
+        fontSize=8.5,
+        leading=11,
+        textColor=colors.HexColor(primary_hex),
+        spaceBefore=4,
+        spaceAfter=3
     )
     meta_label_style = ParagraphStyle(
         'MetaLabel',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=7.5,
-        leading=10,
+        fontSize=7,
+        leading=9.5,
         textColor=colors.HexColor('#475569')
     )
     meta_val_style = ParagraphStyle(
         'MetaVal',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=7.5,
-        leading=10,
+        fontSize=7,
+        leading=9.5,
         textColor=colors.HexColor('#0F172A')
     )
-    conf_notice_style = ParagraphStyle(
-        'ConfNotice',
+    body_style = ParagraphStyle(
+        'BodyDark',
         parent=styles['Normal'],
         fontName='Helvetica',
         fontSize=7,
-        leading=10,
+        leading=9.5,
+        textColor=colors.HexColor('#1E293B')
+    )
+    bold_style = ParagraphStyle(
+        'BodyBold',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=7,
+        leading=9.5,
+        textColor=colors.HexColor(primary_hex)
+    )
+    table_header_style = ParagraphStyle(
+        'TableHeader',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=7,
+        leading=9.5,
+        textColor=colors.HexColor('#0F172A')
+    )
+    not_recorded_style = ParagraphStyle(
+        'NotRecorded',
+        parent=styles['Normal'],
+        fontName='Helvetica-Oblique',
+        fontSize=7,
+        leading=9.5,
         textColor=colors.HexColor('#64748B')
     )
 
-    # Dedicated styles for beautifully spaced KPI metric cards
-    kpi_label_style = ParagraphStyle(
-        'KpiLabel',
+    # KPI Card Styles
+    kpi_title_style = ParagraphStyle(
+        'KpiTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=7.5,
-        leading=10,
+        fontSize=6.8,
+        leading=8.5,
         textColor=colors.HexColor('#475569'),
-        spaceAfter=3
+        spaceAfter=2
     )
-    kpi_val_teal = ParagraphStyle(
-        'KpiValTeal',
+    kpi_metric_style = ParagraphStyle(
+        'KpiMetric',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=15,
-        leading=18,
+        fontSize=13,
+        leading=15,
         textColor=colors.HexColor(accent_hex),
-        spaceAfter=2
+        spaceAfter=1
     )
-    kpi_val_green = ParagraphStyle(
-        'KpiValGreen',
+    kpi_metric_green = ParagraphStyle(
+        'KpiMetricGreen',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=15,
-        leading=18,
+        fontSize=13,
+        leading=15,
         textColor=colors.HexColor('#059669'),
-        spaceAfter=2
-    )
-    kpi_val_blue = ParagraphStyle(
-        'KpiValBlue',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=15,
-        leading=18,
-        textColor=colors.HexColor(sub_accent_hex),
-        spaceAfter=2
-    )
-    kpi_val_navy = ParagraphStyle(
-        'KpiValNavy',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=15,
-        leading=18,
-        textColor=colors.HexColor(primary_hex),
-        spaceAfter=2
+        spaceAfter=1
     )
     kpi_sub_style = ParagraphStyle(
         'KpiSub',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=6.8,
-        leading=9,
+        fontSize=6.2,
+        leading=8,
         textColor=colors.HexColor('#64748B')
     )
 
     elements: List[Any] = []
 
-    # --------------------------------------------------------------------------
-    # 1. ORGANIZATION NAME FIRST
-    # --------------------------------------------------------------------------
+    # ==========================================================================
+    # PAGE 1: EMPLOYEE PERFORMANCE & COMPETENCY
+    # ==========================================================================
+
+    # --- Header & Corporate Branding ---
     logo_img = None
     logo_base64 = cfg.get("logo_base64")
     if logo_base64 and "," in logo_base64:
@@ -373,7 +351,7 @@ def create_report(
             raw_b64 = logo_base64.split(",", 1)[1]
             img_bytes = base64.b64decode(raw_b64)
             img_buf = BytesIO(img_bytes)
-            logo_img = Image(img_buf, width=110, height=34)
+            logo_img = Image(img_buf, width=95, height=26)
         except Exception:
             logo_img = None
 
@@ -382,13 +360,13 @@ def create_report(
             [
                 [
                     Paragraph(f"<b>{_escape_xml(company_name.upper())}</b>", org_title_style),
-                    Paragraph("CONFIDENTIAL — ENTERPRISE CAREER &amp; COMPETENCY EVALUATION DOSSIER", dossier_subtitle_style),
-                    Paragraph("EMPLOYEE CAREER &amp; COMPETENCY REPORT", doc_title_style)
+                    Paragraph("EMPLOYEE CAREER &amp; PERFORMANCE REPORT", doc_title_style),
+                    Paragraph("ENTERPRISE TALENT EVALUATION &amp; DEVELOPMENT DOSSIER", subtitle_style)
                 ],
                 logo_img
             ]
         ]
-        hdr_table = Table(hdr_table_data, colWidths=[403, 120])
+        hdr_table = Table(hdr_table_data, colWidths=[413, 110])
         hdr_table.setStyle(TableStyle([
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
             ('ALIGN', (1,0), (1,-1), 'RIGHT'),
@@ -400,558 +378,455 @@ def create_report(
         elements.append(hdr_table)
     else:
         elements.append(Paragraph(f"<b>{_escape_xml(company_name.upper())}</b>", org_title_style))
-        elements.append(Paragraph("CONFIDENTIAL — ENTERPRISE CAREER &amp; COMPETENCY EVALUATION DOSSIER", dossier_subtitle_style))
-        elements.append(Paragraph("EMPLOYEE CAREER &amp; COMPETENCY REPORT", doc_title_style))
+        elements.append(Paragraph("EMPLOYEE CAREER &amp; PERFORMANCE REPORT", doc_title_style))
+        elements.append(Paragraph("ENTERPRISE TALENT EVALUATION &amp; DEVELOPMENT DOSSIER", subtitle_style))
 
-    # Corporate Accent Separator Line
-    elements.append(HRFlowable(width="100%", thickness=2.0, color=colors.HexColor(accent_hex), spaceAfter=6, spaceBefore=2))
+    elements.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor(accent_hex), spaceAfter=4, spaceBefore=2))
 
-    # --------------------------------------------------------------------------
-    # 2. EMPLOYEE INFORMATION SECOND
-    # --------------------------------------------------------------------------
-    elements.append(Paragraph(f"<b>Employee Name:</b> <font color='{primary_hex}'>{_escape_xml(user_name)}</font>", emp_banner_style))
-
+    # --- 1.A: Employee Information ---
+    elements.append(Paragraph("EMPLOYEE INFORMATION", section_h1_style))
     emp_info_data = [
         [
+            Paragraph("<b>Employee Name:</b>", meta_label_style),
+            Paragraph(f"<b>{_escape_xml(user_name)}</b>", meta_val_style),
             Paragraph("<b>Employee ID:</b>", meta_label_style),
-            Paragraph(_escape_xml(emp_id), meta_val_style),
+            Paragraph(_escape_xml(emp_id), meta_val_style)
+        ],
+        [
             Paragraph("<b>Department:</b>", meta_label_style),
-            Paragraph(_escape_xml(dept), meta_val_style)
-        ],
-        [
+            Paragraph(_escape_xml(dept), meta_val_style),
             Paragraph("<b>Current Designation:</b>", meta_label_style),
-            Paragraph(_escape_xml(current_role), meta_val_style),
+            Paragraph(_escape_xml(current_role), meta_val_style)
+        ],
+        [
             Paragraph("<b>Years of Experience:</b>", meta_label_style),
-            Paragraph(_escape_xml(years_str), meta_val_style)
-        ],
-        [
+            Paragraph(_escape_xml(years_str), meta_val_style),
             Paragraph("<b>Target Designation:</b>", meta_label_style),
-            Paragraph(f"<b>{_escape_xml(target_role)}</b>", meta_val_style),
+            Paragraph(f"<b>{_escape_xml(target_role)}</b>", meta_val_style)
+        ],
+        [
             Paragraph("<b>Target Career Level:</b>", meta_label_style),
-            Paragraph(_escape_xml(target_level), meta_val_style)
-        ],
-        [
+            Paragraph(_escape_xml(target_level), meta_val_style),
             Paragraph("<b>Reporting Period:</b>", meta_label_style),
-            Paragraph(_escape_xml(report_period), meta_val_style),
-            Paragraph("<b>Career Timeline:</b>", meta_label_style),
-            Paragraph(_escape_xml(timeline), meta_val_style)
-        ],
-        [
-            Paragraph("<b>Report Type:</b>", meta_label_style),
-            Paragraph("Talent Performance &amp; Growth Dossier", meta_val_style),
-            Paragraph("<b>Generated On:</b>", meta_label_style),
-            Paragraph(_escape_xml(generated_date), meta_val_style)
+            Paragraph(_escape_xml(report_period), meta_val_style)
         ]
     ]
     emp_table = Table(emp_info_data, colWidths=[105, 156, 105, 157])
     emp_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FFFFFF')),
-        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#CBD5E1')),
+        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor(border_hex)),
         ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 3.5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3.5),
-        ('LEFTPADDING', (0,0), (-1,-1), 6),
-        ('RIGHTPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING', (0,0), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+        ('LEFTPADDING', (0,0), (-1,-1), 5),
+        ('RIGHTPADDING', (0,0), (-1,-1), 5),
     ]))
     elements.append(emp_table)
-    elements.append(Spacer(1, 6))
+    elements.append(Spacer(1, 4))
 
-    # --------------------------------------------------------------------------
-    # 3. EXECUTIVE CAREER SUMMARY THIRD
-    # --------------------------------------------------------------------------
-    elements.append(Paragraph("EXECUTIVE CAREER SUMMARY", h2_style))
-    elements.append(Spacer(1, 3))
+    # --- 1.B: Career Readiness Overview (4 Key Metrics) ---
+    elements.append(Paragraph("CAREER READINESS OVERVIEW", section_h1_style))
 
+    # 1. Role Readiness Percentage
     match_score = int(analysis.get("match") or 0)
-    comp_profile = int(analysis.get("completion") or 0)
-    total_sk = len(skills)
-    total_g = len(goals) if goals else 0
-    comp_g = sum(1 for g in goals if g.get("status") == "Completed") if goals else 0
-    avg_prog = round(sum(float(g.get("progress") or 0) for g in goals) / total_g) if total_g else 0
+    card_readiness = [
+        Paragraph("Role Readiness", kpi_title_style),
+        Paragraph(f"{match_score}%", kpi_metric_style),
+        Paragraph(f"Target: {_escape_xml(target_role)}", kpi_sub_style)
+    ]
 
+    # 2. Performance Rating
     if reviews:
         latest_rev = reviews[0]
         latest_score = float(latest_rev.get("performance_score") or 0.0)
-        rating_text = f"{latest_score:.1f} / 5.0"
-        cycle_text = str(latest_rev.get("review_period") or "Performance Review")
+        rating_metric = f"{latest_score:.1f} / 5.0"
         if latest_score >= 4.5:
             badge_text = "Top Performer"
         elif latest_score >= 4.0:
-            badge_text = "Exceeds Goals"
+            badge_text = "Exceeds Expectations"
         elif latest_score >= 3.0:
             badge_text = "Meets Expectations"
         else:
             badge_text = "Needs Development"
+        rating_sub = f"{badge_text}"
     else:
-        rating_text = "Unrated"
-        cycle_text = "No Reviews Recorded"
-        badge_text = "Pending Cycle"
+        rating_metric = "Not recorded"
+        rating_sub = "No evaluations on file"
 
-    card1 = [
-        Paragraph("Target Role Readiness", kpi_label_style),
-        Paragraph(f"{match_score}%", kpi_val_blue),
-        Paragraph(f"Role: <b>{_escape_xml(target_role)}</b>", kpi_sub_style)
-    ]
-    card2 = [
-        Paragraph("Performance Score", kpi_label_style),
-        Paragraph(f"{rating_text}", kpi_val_green),
-        Paragraph(f"{badge_text} · {_escape_xml(cycle_text)}", kpi_sub_style)
-    ]
-    card3 = [
-        Paragraph("Goals &amp; Milestones", kpi_label_style),
-        Paragraph(f"{avg_prog}% <font size='9'>Avg</font>", kpi_val_navy),
-        Paragraph(f"<b>{comp_g} of {total_g}</b> achieved", kpi_sub_style)
-    ]
-    card4 = [
-        Paragraph("Verified Competencies", kpi_label_style),
-        Paragraph(f"{total_sk} <font size='9'>Skills</font>", kpi_val_teal),
-        Paragraph(f"Profile Readiness: <b>{comp_profile}%</b>", kpi_sub_style)
+    card_perf = [
+        Paragraph("Performance Rating", kpi_title_style),
+        Paragraph(rating_metric, kpi_metric_green if reviews else kpi_title_style),
+        Paragraph(rating_sub, kpi_sub_style)
     ]
 
-    kpi_data = [[card1, '', card2, '', card3, '', card4]]
+    # 3. Verified Skills Count
+    skills_count = len(skills)
+    card_skills = [
+        Paragraph("Verified Skills", kpi_title_style),
+        Paragraph(f"{skills_count}", kpi_metric_style),
+        Paragraph("Validated Competencies", kpi_sub_style)
+    ]
+
+    # 4. Competency Match Count
+    if gaps:
+        matched_count = sum(1 for g in gaps if g.get("gap", 0) == 0)
+        total_bench = len(gaps)
+        match_metric = f"{matched_count} of {total_bench}"
+        match_sub = "Target Skills Met"
+    elif target_role and target_role != "Not selected":
+        match_metric = "All Matched"
+        match_sub = "Zero Gaps Identified"
+    else:
+        match_metric = "Pending"
+        match_sub = "Select Benchmark Role"
+
+    card_matches = [
+        Paragraph("Competency Matches", kpi_title_style),
+        Paragraph(match_metric, kpi_metric_style),
+        Paragraph(match_sub, kpi_sub_style)
+    ]
+
+    kpi_data = [[card_readiness, '', card_perf, '', card_skills, '', card_matches]]
     kpi_table = Table(kpi_data, colWidths=[124, 9, 124, 9, 124, 9, 124])
-
-    kpi_t_style = [
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
-    ]
-    for col_idx in [0, 2, 4, 6]:
+    kpi_t_style = [('VALIGN', (0,0), (-1,-1), 'TOP')]
+    for col_i in [0, 2, 4, 6]:
         kpi_t_style.extend([
-            ('BACKGROUND', (col_idx, 0), (col_idx, 0), colors.HexColor(card_bg_hex)),
-            ('BOX', (col_idx, 0), (col_idx, 0), 0.75, colors.HexColor(border_hex)),
-            ('TOPPADDING', (col_idx, 0), (col_idx, 0), 6),
-            ('BOTTOMPADDING', (col_idx, 0), (col_idx, 0), 6),
-            ('LEFTPADDING', (col_idx, 0), (col_idx, 0), 8),
-            ('RIGHTPADDING', (col_idx, 0), (col_idx, 0), 8),
+            ('BACKGROUND', (col_i, 0), (col_i, 0), colors.HexColor(card_bg_hex)),
+            ('BOX', (col_i, 0), (col_i, 0), 0.5, colors.HexColor(border_hex)),
+            ('TOPPADDING', (col_i, 0), (col_i, 0), 4),
+            ('BOTTOMPADDING', (col_i, 0), (col_i, 0), 4),
+            ('LEFTPADDING', (col_i, 0), (col_i, 0), 6),
+            ('RIGHTPADDING', (col_i, 0), (col_i, 0), 6),
         ])
-    for gap_idx in [1, 3, 5]:
+    for gap_i in [1, 3, 5]:
         kpi_t_style.extend([
-            ('TOPPADDING', (gap_idx, 0), (gap_idx, 0), 0),
-            ('BOTTOMPADDING', (gap_idx, 0), (gap_idx, 0), 0),
-            ('LEFTPADDING', (gap_idx, 0), (gap_idx, 0), 0),
-            ('RIGHTPADDING', (gap_idx, 0), (gap_idx, 0), 0),
+            ('TOPPADDING', (gap_i, 0), (gap_i, 0), 0),
+            ('BOTTOMPADDING', (gap_i, 0), (gap_i, 0), 0),
+            ('LEFTPADDING', (gap_i, 0), (gap_i, 0), 0),
+            ('RIGHTPADDING', (gap_i, 0), (gap_i, 0), 0),
         ])
     kpi_table.setStyle(TableStyle(kpi_t_style))
     elements.append(kpi_table)
-    elements.append(Spacer(1, 5))
+    elements.append(Spacer(1, 4))
 
-    summary_text = profile.get("summary")
-    if not summary_text or len(str(summary_text).strip()) < 15:
-        summary_text = (
-            f"{user_name} is currently serving as {current_role} within the {dept} department with {years_str} "
-            f"of professional experience. Current target role alignment reflects a {match_score}% readiness score "
-            f"for {target_role}. Verified performance status is {rating_text} ({badge_text}, {cycle_text}). "
-            f"The candidate maintains active growth momentum with {total_sk} verified competencies and "
-            f"{comp_g} of {total_g} strategic milestones achieved."
-        )
-    elements.append(Paragraph(f"<b>Executive Career Assessment:</b> {_escape_xml(summary_text)}", body_style))
-    elements.append(Spacer(1, 6))
-
-    # --------------------------------------------------------------------------
-    # 4. PROFESSIONAL REPORT SECTIONS (1 through 9)
-    # --------------------------------------------------------------------------
-
-    # --- Section 1: Professional Profile & Role Trajectory ---
-    elements.append(Paragraph("1. Professional Profile &amp; Role Trajectory", h2_style))
-    prof_traj_data = [
-        [
-            Paragraph("<b>Current Role:</b>", meta_label_style),
-            Paragraph(_escape_xml(current_role), meta_val_style),
-            Paragraph("<b>Target Role:</b>", meta_label_style),
-            Paragraph(f"<b>{_escape_xml(target_role)}</b>", meta_val_style)
-        ],
-        [
-            Paragraph("<b>Education:</b>", meta_label_style),
-            Paragraph(_escape_xml(profile.get("education") or "Bachelor of Science in Computer Science / Engineering"), meta_val_style),
-            Paragraph("<b>Target Industry:</b>", meta_label_style),
-            Paragraph(_escape_xml(profile.get("target_industry") or "Technology &amp; Software Solutions"), meta_val_style)
-        ],
-        [
-            Paragraph("<b>Certifications:</b>", meta_label_style),
-            Paragraph(_escape_xml(profile.get("certifications") or "Industry Standard Technical Certifications"), meta_val_style),
-            Paragraph("<b>Career Goal:</b>", meta_label_style),
-            Paragraph(_escape_xml(profile.get("career_goal") or f"Advance into {target_role} and drive technical excellence"), meta_val_style)
-        ],
-        [
-            Paragraph("<b>Contact &amp; Location:</b>", meta_label_style),
-            Paragraph(f"{_escape_xml(profile.get('email') or 'Verified Company Email')} · {_escape_xml(profile.get('location') or 'Corporate Office')}", meta_val_style),
-            Paragraph("<b>Internal Roster:</b>", meta_label_style),
-            Paragraph(f"Active Employee Profile ({_escape_xml(emp_id)})", meta_val_style)
-        ]
-    ]
-    prof_table = Table(prof_traj_data, colWidths=[105, 156, 105, 157])
-    prof_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FFFFFF')),
-        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-        ('LEFTPADDING', (0,0), (-1,-1), 6),
-        ('RIGHTPADDING', (0,0), (-1,-1), 6),
-    ]))
-    elements.append(prof_table)
-    elements.append(Spacer(1, 6))
-
-    # --- Section 2: Performance Reviews & Evaluation History ---
-    elements.append(Paragraph("2. Performance Reviews &amp; Evaluation History", h2_style))
-    if reviews:
-        rev_rows = [[
-            Paragraph("<b>Review Cycle</b>", table_header_style),
-            Paragraph("<b>Rating</b>", table_header_style),
-            Paragraph("<b>Key Achievements &amp; Core Strengths</b>", table_header_style),
-            Paragraph("<b>Manager Feedback &amp; Development Areas</b>", table_header_style)
-        ]]
-        for r in reviews:
-            rev_score = float(r.get("performance_score") or 0.0)
-            score_col = "#059669" if rev_score >= 4.0 else ("#2563EB" if rev_score >= 3.0 else "#DC2626")
-            ach_str = _escape_xml(r.get('achievements') or 'Demonstrated solid delivery across key objectives.')
-            str_str = _escape_xml(r.get('strengths') or 'Collaborative, proactive problem solver.')
-            m_feed = _escape_xml(r.get('manager_feedback') or 'Strong overall performance and reliable contributor.')
-            m_imp = _escape_xml(r.get('improvements') or 'Focus on architectural leadership.')
-
-            rev_rows.append([
-                Paragraph(_escape_xml(r.get("review_period", "Annual Review")), body_style),
-                Paragraph(f"<font color='{score_col}'><b>{rev_score:.1f} / 5.0</b></font>", bold_style),
-                Paragraph(f"<b>Achievements:</b> {ach_str}<br/><b>Strengths:</b> {str_str}", body_style),
-                Paragraph(f"<b>Feedback:</b> {m_feed}<br/><b>Growth Area:</b> {m_imp}", body_style)
-            ])
-        rev_table = Table(rev_rows, colWidths=[85, 65, 185, 188])
-        t_style = [
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
-            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-            ('TOPPADDING', (0,0), (-1,-1), 3.5),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 3.5),
-            ('LEFTPADDING', (0,0), (-1,-1), 5),
-            ('RIGHTPADDING', (0,0), (-1,-1), 5),
-        ]
-        for row_i in range(1, len(rev_rows)):
-            if row_i % 2 == 1:
-                t_style.append(('BACKGROUND', (0, row_i), (-1, row_i), colors.HexColor('#FFFFFF')))
-            else:
-                t_style.append(('BACKGROUND', (0, row_i), (-1, row_i), colors.HexColor('#F8FAFC')))
-        rev_table.setStyle(TableStyle(t_style))
-        elements.append(rev_table)
-    else:
-        elements.append(Paragraph("No formal performance reviews logged yet for this evaluation cycle. Baseline evaluations are derived from continuous role benchmarks.", body_style))
-    elements.append(Spacer(1, 6))
-
-    # --- Section 3: Skills Matrix & Competency Gap Analysis ---
-    elements.append(Paragraph("3. Skills Matrix &amp; Competency Gap Analysis", h2_style))
+    # --- 1.C: Skills Gap Analysis ---
+    elements.append(Paragraph("SKILLS GAP ANALYSIS", section_h1_style))
     if gaps:
-        matched_kpi = sum(1 for g in gaps if g.get("gap", 0) == 0)
-        total_kpi = len(gaps)
-        elements.append(Paragraph(
-            f"<b>Role Benchmark:</b> {_escape_xml(target_role)} &bull; "
-            f"<b>Readiness Score:</b> {match_score}% &bull; "
-            f"<b>Match Status:</b> {matched_kpi} of {total_kpi} Competencies Matched",
-            body_style
-        ))
-        elements.append(Spacer(1, 3))
-
         gap_rows = [[
-            Paragraph("<b>Target Competency Required</b>", table_header_style),
-            Paragraph("<b>Required Level</b>", table_header_style),
-            Paragraph("<b>Current Level</b>", table_header_style),
-            Paragraph("<b>Match Status</b>", table_header_style),
-            Paragraph("<b>Gap Score</b>", table_header_style),
-            Paragraph("<b>Priority Level</b>", table_header_style)
+            Paragraph("<b>Skill</b>", table_header_style),
+            Paragraph("<b>Current Proficiency</b>", table_header_style),
+            Paragraph("<b>Required Proficiency</b>", table_header_style),
+            Paragraph("<b>Gap</b>", table_header_style),
+            Paragraph("<b>Priority</b>", table_header_style)
         ]]
         for g in gaps:
             pri = str(g.get("priority", "Medium"))
-            pri_color = "#DC2626" if pri == "High" else ("#F59E0B" if pri == "Medium" else "#059669")
-            is_matched = (g.get("gap", 0) == 0)
-            if is_matched:
-                status_html = "<font color='#059669'><b>MATCHED</b></font>"
-            else:
-                status_html = f"<font color='#DC2626'><b>NOT MATCHED (-{g.get('gap', 0)})</b></font>"
+            pri_color = "#DC2626" if pri == "High" else ("#D97706" if pri == "Medium" else "#059669")
+            gap_val = int(g.get("gap", 0))
+            gap_text = "0 (Met)" if gap_val == 0 else f"-{gap_val} Levels"
+            gap_color = "#059669" if gap_val == 0 else "#DC2626"
+
+            cur_lvl = g.get("current", 0)
+            req_lvl = g.get("required", 0)
 
             gap_rows.append([
                 Paragraph(_escape_xml(g.get("skill", "Competency")), body_style),
-                Paragraph(f"Level {g.get('required', 0)}", body_style),
-                Paragraph(f"Level {g.get('current', 0)}", body_style),
-                Paragraph(status_html, body_style),
-                Paragraph(str(g.get("gap", 0)), body_style),
+                Paragraph(f"Level {cur_lvl}", body_style),
+                Paragraph(f"Level {req_lvl}", body_style),
+                Paragraph(f"<font color='{gap_color}'><b>{gap_text}</b></font>", body_style),
                 Paragraph(f"<font color='{pri_color}'><b>{_escape_xml(pri)}</b></font>", body_style)
             ])
-        gap_table = Table(gap_rows, colWidths=[133, 75, 75, 85, 75, 80])
+        gap_table = Table(gap_rows, colWidths=[143, 95, 95, 95, 95])
         gap_style = [
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
-            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-            ('TOPPADDING', (0,0), (-1,-1), 3),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-            ('LEFTPADDING', (0,0), (-1,-1), 5),
-            ('RIGHTPADDING', (0,0), (-1,-1), 5),
-        ]
-        for row_i in range(1, len(gap_rows)):
-            if row_i % 2 == 1:
-                gap_style.append(('BACKGROUND', (0, row_i), (-1, row_i), colors.HexColor('#FFFFFF')))
-            else:
-                gap_style.append(('BACKGROUND', (0, row_i), (-1, row_i), colors.HexColor('#F8FAFC')))
-        gap_table.setStyle(TableStyle(gap_style))
-        elements.append(gap_table)
-    else:
-        if not target_role or target_role == "Target Role Not Selected":
-            elements.append(Paragraph("No target role selected yet for competency benchmark analysis. Please select a target role in the platform to generate role-specific gap evaluations.", body_style))
-        else:
-            elements.append(Paragraph(f"All technical and behavioral competencies for **{_escape_xml(target_role)}** are fully met or exceeded.", body_style))
-
-    # Verified Skills Sub-Table
-    if skills:
-        elements.append(Spacer(1, 4))
-        elements.append(Paragraph("<b>Cataloged Employee Competencies:</b>", bold_style))
-        sk_rows = [[
-            Paragraph("<b>Verified Competency</b>", table_header_style),
-            Paragraph("<b>Category</b>", table_header_style),
-            Paragraph("<b>Proficiency Level</b>", table_header_style),
-            Paragraph("<b>Experience Tenure</b>", table_header_style)
-        ]]
-        for s in skills:
-            s_name = _escape_xml(s.get("name") or s.get("skill_name") or "Skill")
-            s_cat = _escape_xml(s.get("category") or "Technical")
-            s_prof = _escape_xml(s.get("proficiency") or s.get("proficiency_level") or "Intermediate")
-            s_exp = f"{float(s.get('years_experience') or 1.0):g} Yrs"
-            sk_rows.append([
-                Paragraph(s_name, body_style),
-                Paragraph(s_cat, body_style),
-                Paragraph(f"<b>{s_prof}</b>", body_style),
-                Paragraph(s_exp, body_style)
-            ])
-        sk_table = Table(sk_rows, colWidths=[173, 110, 120, 120])
-        sk_style = [
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
-            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor(border_hex)),
             ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
             ('TOPPADDING', (0,0), (-1,-1), 2.5),
             ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
             ('LEFTPADDING', (0,0), (-1,-1), 5),
             ('RIGHTPADDING', (0,0), (-1,-1), 5),
         ]
-        for row_i in range(1, len(sk_rows)):
-            if row_i % 2 == 1:
-                sk_style.append(('BACKGROUND', (0, row_i), (-1, row_i), colors.HexColor('#FFFFFF')))
-            else:
-                sk_style.append(('BACKGROUND', (0, row_i), (-1, row_i), colors.HexColor('#F8FAFC')))
+        for r_idx in range(1, len(gap_rows)):
+            bg = '#FFFFFF' if r_idx % 2 == 1 else '#F8FAFC'
+            gap_style.append(('BACKGROUND', (0, r_idx), (-1, r_idx), colors.HexColor(bg)))
+        gap_table.setStyle(TableStyle(gap_style))
+        elements.append(gap_table)
+    else:
+        if not target_role or target_role == "Not selected":
+            elements.append(Paragraph("Target role not selected. Please select a benchmark role in the platform to generate competency gap telemetry.", not_recorded_style))
+        else:
+            elements.append(Paragraph(f"All evaluated competencies for <b>{_escape_xml(target_role)}</b> meet or exceed required benchmark levels.", body_style))
+    elements.append(Spacer(1, 4))
+
+    # --- 1.D: Performance Summary ---
+    elements.append(Paragraph("PERFORMANCE SUMMARY", section_h1_style))
+    if reviews:
+        rev_rows = [[
+            Paragraph("<b>Review Period</b>", table_header_style),
+            Paragraph("<b>Rating</b>", table_header_style),
+            Paragraph("<b>Evaluation Date</b>", table_header_style),
+            Paragraph("<b>Feedback &amp; Evaluated Accomplishments</b>", table_header_style)
+        ]]
+        for r in reviews:
+            rev_score = float(r.get("performance_score") or 0.0)
+            score_col = "#059669" if rev_score >= 4.0 else ("#2563EB" if rev_score >= 3.0 else "#DC2626")
+            rev_period = _escape_xml(r.get("review_period") or "Annual Review")
+            rev_dt = _escape_xml(str(r.get("review_date") or r.get("created_at") or "Not recorded")[:10])
+            ach = _escape_xml(r.get("achievements") or "Key objectives fulfilled.")
+            feed = _escape_xml(r.get("manager_feedback") or "Reliable performance across deliverables.")
+
+            rev_rows.append([
+                Paragraph(rev_period, body_style),
+                Paragraph(f"<font color='{score_col}'><b>{rev_score:.1f} / 5.0</b></font>", bold_style),
+                Paragraph(rev_dt, body_style),
+                Paragraph(f"<b>Feedback:</b> {feed}<br/><b>Achievements:</b> {ach}", body_style)
+            ])
+        rev_table = Table(rev_rows, colWidths=[95, 75, 85, 268])
+        rev_style = [
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
+            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor(border_hex)),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+            ('TOPPADDING', (0,0), (-1,-1), 2.5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+            ('LEFTPADDING', (0,0), (-1,-1), 5),
+            ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ]
+        for r_idx in range(1, len(rev_rows)):
+            bg = '#FFFFFF' if r_idx % 2 == 1 else '#F8FAFC'
+            rev_style.append(('BACKGROUND', (0, r_idx), (-1, r_idx), colors.HexColor(bg)))
+        rev_table.setStyle(TableStyle(rev_style))
+        elements.append(rev_table)
+    else:
+        # EXACT PHRASE REQUIRED BY SPEC: "Performance evaluation not yet recorded."
+        elements.append(Paragraph("Performance evaluation not yet recorded.", not_recorded_style))
+
+    # ==========================================================================
+    # PAGE BREAK: STRICT TWO-PAGE BOUNDARY
+    # ==========================================================================
+    elements.append(PageBreak())
+
+    # ==========================================================================
+    # PAGE 2: CAREER DEVELOPMENT PLAN
+    # ==========================================================================
+
+    # --- 2.A: Verified Competencies ---
+    elements.append(Paragraph("VERIFIED COMPETENCIES", section_h1_style))
+    if skills:
+        sk_rows = [[
+            Paragraph("<b>Verified Competency</b>", table_header_style),
+            Paragraph("<b>Category</b>", table_header_style),
+            Paragraph("<b>Proficiency Level</b>", table_header_style),
+            Paragraph("<b>Tenure / Experience</b>", table_header_style)
+        ]]
+        for s in skills:
+            s_name = _escape_xml(s.get("name") or s.get("skill_name") or "Skill")
+            s_cat = _escape_xml(s.get("category") or "Technical")
+            s_prof = _escape_xml(s.get("proficiency") or s.get("proficiency_level") or "Intermediate")
+            exp_num = s.get("years_experience") or s.get("years") or 1.0
+            s_exp = f"{float(exp_num):g} Yrs"
+
+            sk_rows.append([
+                Paragraph(s_name, body_style),
+                Paragraph(s_cat, body_style),
+                Paragraph(f"<b>{s_prof}</b>", body_style),
+                Paragraph(s_exp, body_style)
+            ])
+        sk_table = Table(sk_rows, colWidths=[163, 120, 120, 120])
+        sk_style = [
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
+            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor(border_hex)),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+            ('TOPPADDING', (0,0), (-1,-1), 2.5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+            ('LEFTPADDING', (0,0), (-1,-1), 5),
+            ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ]
+        for r_idx in range(1, len(sk_rows)):
+            bg = '#FFFFFF' if r_idx % 2 == 1 else '#F8FAFC'
+            sk_style.append(('BACKGROUND', (0, r_idx), (-1, r_idx), colors.HexColor(bg)))
         sk_table.setStyle(TableStyle(sk_style))
         elements.append(sk_table)
-    elements.append(Spacer(1, 6))
+    else:
+        elements.append(Paragraph("No verified competencies recorded in employee profile.", not_recorded_style))
+    elements.append(Spacer(1, 4))
 
-    # --- Section 4: Career Development Goals & Milestones ---
-    elements.append(Paragraph("4. Career Development Goals &amp; Milestones", h2_style))
+    # --- 2.B: Development Priorities (Top 3–5 Skill Gaps with Specific Actions) ---
+    elements.append(Paragraph("DEVELOPMENT PRIORITIES", section_h1_style))
+    active_gaps = [g for g in gaps if g.get("gap", 0) > 0] if gaps else []
+    if active_gaps:
+        # Sort by gap magnitude and priority
+        priority_order = {"High": 1, "Medium": 2, "Low": 3}
+        sorted_gaps = sorted(active_gaps, key=lambda x: priority_order.get(x.get("priority", "Medium"), 4))[:4]
+
+        prio_rows = [[
+            Paragraph("<b>Priority Competency</b>", table_header_style),
+            Paragraph("<b>Target Growth</b>", table_header_style),
+            Paragraph("<b>Action Plan &amp; Strategic Execution</b>", table_header_style)
+        ]]
+        for g in sorted_gaps:
+            sk_name = _escape_xml(g.get("skill", "Competency"))
+            pri_tag = _escape_xml(g.get("priority", "Medium"))
+            pri_color = "#DC2626" if pri_tag == "High" else ("#D97706" if pri_tag == "Medium" else "#059669")
+            cur_l = g.get("current", 0)
+            req_l = g.get("required", 0)
+
+            action_desc = f"Advance competency from Level {cur_l} to Level {req_l} through practical hands-on project delivery, architectural code reviews, and structured certification."
+
+            prio_rows.append([
+                Paragraph(f"<b>{sk_name}</b><br/><font color='{pri_color}'><b>[{pri_tag}]</b></font>", body_style),
+                Paragraph(f"Level {cur_l} &rarr; Level {req_l}", body_style),
+                Paragraph(action_desc, body_style)
+            ])
+        prio_table = Table(prio_rows, colWidths=[133, 90, 300])
+        prio_style = [
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
+            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor(border_hex)),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+            ('TOPPADDING', (0,0), (-1,-1), 2.5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+            ('LEFTPADDING', (0,0), (-1,-1), 5),
+            ('RIGHTPADDING', (0,0), (-1,-1), 5),
+        ]
+        for r_idx in range(1, len(prio_rows)):
+            bg = '#FFFFFF' if r_idx % 2 == 1 else '#F8FAFC'
+            prio_style.append(('BACKGROUND', (0, r_idx), (-1, r_idx), colors.HexColor(bg)))
+        prio_table.setStyle(TableStyle(prio_style))
+        elements.append(prio_table)
+    else:
+        elements.append(Paragraph("No active development priority gaps identified for target role.", not_recorded_style))
+    elements.append(Spacer(1, 4))
+
+    # --- 2.C: Career Growth Roadmap ---
+    elements.append(Paragraph("CAREER GROWTH ROADMAP", section_h1_style))
+    roadmap_rows = [
+        [
+            Paragraph("<b>Timeline</b>", table_header_style),
+            Paragraph("<b>Development Focus</b>", table_header_style),
+            Paragraph("<b>Expected Outcome</b>", table_header_style),
+            Paragraph("<b>Success Criteria</b>", table_header_style)
+        ],
+        [
+            Paragraph("<b>Months 0–3</b><br/>Foundation", body_style),
+            Paragraph("<b>Core Competency Alignment</b>", body_style),
+            Paragraph(f"Address priority gaps identified for {target_role}.", body_style),
+            Paragraph("Complete technical benchmarks and certifications.", body_style)
+        ],
+        [
+            Paragraph("<b>Months 3–6</b><br/>Execution", body_style),
+            Paragraph("<b>Cross-Functional Ownership</b>", body_style),
+            Paragraph("Lead core subsystem deliverables and reviews.", body_style),
+            Paragraph("Validated manager endorsement and measurable impact.", body_style)
+        ],
+        [
+            Paragraph("<b>Months 6–12</b><br/>Readiness", body_style),
+            Paragraph(f"<b>{target_role} Transition</b>", body_style),
+            Paragraph(f"Formal promotion review for {target_role}.", body_style),
+            Paragraph("Transition into target designation responsibilities.", body_style)
+        ]
+    ]
+    roadmap_table = Table(roadmap_rows, colWidths=[80, 133, 155, 155])
+    roadmap_style = [
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
+        ('BACKGROUND', (0,1), (-1,1), colors.HexColor('#FFFFFF')),
+        ('BACKGROUND', (0,2), (-1,2), colors.HexColor('#F8FAFC')),
+        ('BACKGROUND', (0,3), (-1,3), colors.HexColor('#FFFFFF')),
+        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor(border_hex)),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING', (0,0), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+        ('LEFTPADDING', (0,0), (-1,-1), 5),
+        ('RIGHTPADDING', (0,0), (-1,-1), 5),
+    ]
+    roadmap_table.setStyle(TableStyle(roadmap_style))
+    elements.append(roadmap_table)
+    elements.append(Spacer(1, 4))
+
+    # --- 2.D: Goals and Achievements ---
+    elements.append(Paragraph("GOALS AND ACHIEVEMENTS", section_h1_style))
     if goals:
         goal_rows = [[
-            Paragraph("<b>Goal Milestone Title</b>", table_header_style),
+            Paragraph("<b>Milestone Goal Title</b>", table_header_style),
             Paragraph("<b>Target Alignment</b>", table_header_style),
             Paragraph("<b>Target Date</b>", table_header_style),
             Paragraph("<b>Progress</b>", table_header_style),
             Paragraph("<b>Status</b>", table_header_style)
         ]]
-        for g in goals:
+        for g in goals[:3]:
             stat = str(g.get("status", "In Progress"))
             stat_color = "#059669" if stat == "Completed" else (sub_accent_hex if stat == "In Progress" else "#DC2626")
             goal_rows.append([
                 Paragraph(_escape_xml(g.get("title", "Goal")), body_style),
                 Paragraph(_escape_xml(g.get("target_designation") or target_role), body_style),
-                Paragraph(_escape_xml(str(g.get("target_date") or "Q4 2026")), body_style),
+                Paragraph(_escape_xml(str(g.get("target_date") or "Not recorded")), body_style),
                 Paragraph(f"{g.get('progress', 0)}%", body_style),
                 Paragraph(f"<font color='{stat_color}'><b>{_escape_xml(stat)}</b></font>", body_style)
             ])
-        goal_table = Table(goal_rows, colWidths=[163, 110, 90, 70, 90])
-        g_style = [
+        goal_table = Table(goal_rows, colWidths=[173, 110, 85, 65, 90])
+        goal_style = [
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
-            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor(border_hex)),
             ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-            ('TOPPADDING', (0,0), (-1,-1), 3),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+            ('TOPPADDING', (0,0), (-1,-1), 2.5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
             ('LEFTPADDING', (0,0), (-1,-1), 5),
             ('RIGHTPADDING', (0,0), (-1,-1), 5),
         ]
-        for row_i in range(1, len(goal_rows)):
-            if row_i % 2 == 1:
-                g_style.append(('BACKGROUND', (0, row_i), (-1, row_i), colors.HexColor('#FFFFFF')))
-            else:
-                g_style.append(('BACKGROUND', (0, row_i), (-1, row_i), colors.HexColor('#F8FAFC')))
-        goal_table.setStyle(TableStyle(g_style))
+        for r_idx in range(1, len(goal_rows)):
+            bg = '#FFFFFF' if r_idx % 2 == 1 else '#F8FAFC'
+            goal_style.append(('BACKGROUND', (0, r_idx), (-1, r_idx), colors.HexColor(bg)))
+        goal_table.setStyle(TableStyle(goal_style))
         elements.append(goal_table)
     else:
-        elements.append(Paragraph("No active strategic career milestones registered. Progression checkpoints are detailed in Section 8 (Career Growth Roadmap).", body_style))
-    elements.append(Spacer(1, 6))
-
-    # --- Section 5: Training & Development History ---
-    elements.append(Paragraph("5. Training &amp; Development History", h2_style))
-    training_items = trainings or assessments or []
-    if training_items:
-        train_rows = [[
-            Paragraph("<b>Training / Assessment Program</b>", table_header_style),
-            Paragraph("<b>Domain Category</b>", table_header_style),
-            Paragraph("<b>Evaluation Score</b>", table_header_style),
-            Paragraph("<b>Status / Date</b>", table_header_style)
-        ]]
-        for t in training_items:
-            t_title = _escape_xml(t.get("title") or t.get("skill_name") or t.get("name") or "Technical Evaluation")
-            t_cat = _escape_xml(t.get("category") or "Technical")
-            t_score = f"{t.get('score', 85)}%" if 'score' in t else "Completed"
-            t_date = _escape_xml(str(t.get("created_at") or t.get("completed_at") or "Verified Record")[:10])
-            train_rows.append([
-                Paragraph(t_title, body_style),
-                Paragraph(t_cat, body_style),
-                Paragraph(f"<b>{t_score}</b>", body_style),
-                Paragraph(t_date, body_style)
-            ])
-        train_table = Table(train_rows, colWidths=[173, 110, 120, 120])
-        tr_style = [
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
-            ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-            ('TOPPADDING', (0,0), (-1,-1), 3),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-            ('LEFTPADDING', (0,0), (-1,-1), 5),
-            ('RIGHTPADDING', (0,0), (-1,-1), 5),
-        ]
-        for row_i in range(1, len(train_rows)):
-            if row_i % 2 == 1:
-                tr_style.append(('BACKGROUND', (0, row_i), (-1, row_i), colors.HexColor('#FFFFFF')))
-            else:
-                tr_style.append(('BACKGROUND', (0, row_i), (-1, row_i), colors.HexColor('#F8FAFC')))
-        train_table.setStyle(TableStyle(tr_style))
-        elements.append(train_table)
-    else:
-        elements.append(Paragraph(
-            "No formal training or assessment records logged yet for this evaluation cycle. "
-            "When the candidate completes skill assessments or HR-assigned curriculum modules, "
-            "verified records and evaluation scores will appear here.",
-            body_style
-        ))
-    elements.append(Spacer(1, 6))
-
-    # --- Section 6: Achievements & Strengths ---
-    elements.append(Paragraph("6. Achievements &amp; Strengths", h2_style))
-    strength_items = analysis.get("strengths") or []
-    if reviews:
-        for r in reviews:
-            if r.get("achievements"):
-                strength_items.append(f"Performance Achievement: {r['achievements']}")
-            if r.get("strengths"):
-                strength_items.append(f"Evaluated Core Strength: {r['strengths']}")
-    if not strength_items:
-        strength_items = [
-            f"Demonstrated technical mastery in {current_role} core disciplines.",
-            f"Active career trajectory aligned with {target_role} benchmarks.",
-            f"Consistent record of reliable project execution and team collaboration."
-        ]
-    for s_item in strength_items[:4]:
-        elements.append(Paragraph(f"• <b>{_escape_xml(s_item)}</b>", body_style))
-        elements.append(Spacer(1, 2))
+        elements.append(Paragraph("No active career goals or milestones recorded.", not_recorded_style))
     elements.append(Spacer(1, 4))
 
-    # --- Section 7: Strategic Recommendations & Next Moves ---
-    elements.append(Paragraph("7. Strategic Recommendations &amp; Next Moves", h2_style))
-    rec_list = recommendations or []
-    if not rec_list:
-        rec_list = [
-            {
-                "priority": "High Priority",
-                "title": f"Complete Target Competency Benchmark for {target_role}",
-                "description": f"Focus quarterly professional development on closing top required skills for {target_role}."
-            },
-            {
-                "priority": "Medium Priority",
-                "title": "Lead Technical Cross-Functional Initiatives",
-                "description": "Engage in cross-team architectural reviews to build documented evidence of senior impact."
-            }
-        ]
-    for r in rec_list[:3]:
-        p_tag = _escape_xml(r.get("priority", "High Priority"))
-        p_color = "#DC2626" if "High" in p_tag else "#D97706"
-        elements.append(Paragraph(f"<font color='{p_color}'><b>[{p_tag}]</b></font> <b>{_escape_xml(r.get('title', 'Recommendation'))}</b>", bold_style))
-        elements.append(Paragraph(_escape_xml(r.get("description", "")), body_style))
-        elements.append(Spacer(1, 3))
-    elements.append(Spacer(1, 4))
-
-    # --- Section 8: Career Growth Roadmap ---
-    elements.append(Paragraph("8. Career Growth Roadmap", h2_style))
-    roadmap_rows = [
-        [
-            Paragraph("<b>Development Horizon</b>", table_header_style),
-            Paragraph("<b>Strategic Milestone Focus</b>", table_header_style),
-            Paragraph("<b>Deliverables &amp; Success Validation Criteria</b>", table_header_style)
-        ],
-        [
-            Paragraph("<b>Phase 1: Foundation</b><br/>Months 0–3", body_style),
-            Paragraph("<b>Core Competency Alignment</b>", body_style),
-            Paragraph(f"Address highest-priority skill gaps identified for {target_role}. Complete foundational technical certifications and align individual OKRs with department benchmarks.", body_style)
-        ],
-        [
-            Paragraph("<b>Phase 2: Execution</b><br/>Months 3–6", body_style),
-            Paragraph("<b>Cross-Functional Ownership</b>", body_style),
-            Paragraph("Lead core subsystem delivery, author technical architectural proposals, and mentor junior colleagues on engineering best practices.", body_style)
-        ],
-        [
-            Paragraph("<b>Phase 3: Transition</b><br/>Months 6–12", body_style),
-            Paragraph(f"<b>{target_role} Readiness</b>", body_style),
-            Paragraph(f"Undergo comprehensive formal promotion review. Present portfolio of completed milestones and transition smoothly into full {target_role} responsibilities.", body_style)
-        ]
-    ]
-    roadmap_table = Table(roadmap_rows, colWidths=[113, 160, 250])
-    roadmap_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#EEF2F6')),
-        ('BACKGROUND', (0,1), (-1,1), colors.HexColor('#FFFFFF')),
-        ('BACKGROUND', (0,2), (-1,2), colors.HexColor('#F8FAFC')),
-        ('BACKGROUND', (0,3), (-1,3), colors.HexColor('#FFFFFF')),
-        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('TOPPADDING', (0,0), (-1,-1), 3.5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3.5),
-        ('LEFTPADDING', (0,0), (-1,-1), 5),
-        ('RIGHTPADDING', (0,0), (-1,-1), 5),
-    ]))
-    elements.append(roadmap_table)
-    elements.append(Spacer(1, 6))
-
-    # --- Section 9: HR Assessment and Comments, where authorized ---
-    elements.append(Paragraph("9. HR Assessment and Comments, where authorized", h2_style))
-    elements.append(Paragraph(
-        "Formal evaluation compiled in accordance with enterprise talent governance guidelines. "
-        "All verified competencies, review scores, and milestone progressions have been validated by the corporate talent committee.",
-        body_style
-    ))
-    elements.append(Spacer(1, 4))
-
-    # Corporate Sign-off Block
+    # --- 2.E: Review and Acknowledgement ---
+    elements.append(Paragraph("REVIEW &amp; ACKNOWLEDGEMENT", section_h1_style))
     signoff_rows = [
         [
-            Paragraph(f"<b>Employee Acknowledgement:</b><br/><br/><br/><br/>___________________________<br/><b>{_escape_xml(user_name)}</b><br/>Date: ____________________", body_style),
-            Paragraph("<b>Reviewing Manager Sign-off:</b><br/><br/><br/><br/>___________________________<br/><b>Authorized Evaluator</b><br/>Date: ____________________", body_style),
-            Paragraph("<b>HR Governance Endorsement:</b><br/><br/><br/><br/>___________________________<br/><b>Talent Committee Director</b><br/>Date: ____________________", body_style)
+            Paragraph(f"<b>Employee Acknowledgement</b><br/><br/><br/>___________________________<br/><b>{_escape_xml(user_name)}</b><br/>Date: ____________________", body_style),
+            "",
+            Paragraph("<b>Reviewing Manager Sign-off</b><br/><br/><br/>___________________________<br/><b>Authorized Evaluator</b><br/>Date: ____________________", body_style),
+            "",
+            Paragraph("<b>HR Governance Endorsement</b><br/><br/><br/>___________________________<br/><b>Talent Committee Director</b><br/>Date: ____________________", body_style)
         ]
     ]
-    signoff_table = Table(signoff_rows, colWidths=[174, 174, 175])
-    signoff_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor(card_bg_hex)),
-        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor(border_hex)),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+    signoff_table = Table(signoff_rows, colWidths=[170, 6, 170, 7, 170])
+    signoff_style = [
         ('VALIGN', (0,0), (-1,-1), 'TOP'),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-        ('LEFTPADDING', (0,0), (-1,-1), 6),
-        ('RIGHTPADDING', (0,0), (-1,-1), 6),
-    ]))
+    ]
+    for c_i in [0, 2, 4]:
+        signoff_style.extend([
+            ('BACKGROUND', (c_i, 0), (c_i, 0), colors.HexColor(card_bg_hex)),
+            ('BOX', (c_i, 0), (c_i, 0), 0.5, colors.HexColor(border_hex)),
+            ('TOPPADDING', (c_i, 0), (c_i, 0), 4),
+            ('BOTTOMPADDING', (c_i, 0), (c_i, 0), 4),
+            ('LEFTPADDING', (c_i, 0), (c_i, 0), 6),
+            ('RIGHTPADDING', (c_i, 0), (c_i, 0), 6),
+        ])
+    for g_i in [1, 3]:
+        signoff_style.extend([
+            ('TOPPADDING', (g_i, 0), (g_i, 0), 0),
+            ('BOTTOMPADDING', (g_i, 0), (g_i, 0), 0),
+            ('LEFTPADDING', (g_i, 0), (g_i, 0), 0),
+            ('RIGHTPADDING', (g_i, 0), (g_i, 0), 0),
+        ])
+    signoff_table.setStyle(TableStyle(signoff_style))
     elements.append(KeepTogether(signoff_table))
 
-    # Final Confidentiality Notice
-    elements.append(Spacer(1, 8))
-    elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#CBD5E1'), spaceAfter=4, spaceBefore=4))
+    # Confidentiality Note
+    elements.append(Spacer(1, 4))
+    elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#CBD5E1'), spaceAfter=2, spaceBefore=2))
     elements.append(Paragraph(
-        "<b>CONFIDENTIALITY NOTICE:</b> This report contains confidential employee career and competency information. "
-        "It is intended exclusively for authorized HR personnel and the employee concerned.",
-        conf_notice_style
+        "<b>CONFIDENTIALITY NOTICE:</b> This dossier contains evaluated corporate talent metrics. "
+        "It is intended exclusively for authorized HR personnel and the employee named herein.",
+        subtitle_style
     ))
 
     # --------------------------------------------------------------------------
-    # 5. BUILD MULTI-PAGE DOCUMENT WITH NUMBERED CANVAS
+    # 5. BUILD 2-PAGE DOCUMENT WITH NUMBERED CANVAS
     # --------------------------------------------------------------------------
     doc.build(elements, canvasmaker=make_numbered_canvas(company_name, user_name))
     pdf_data = buffer.getvalue()
