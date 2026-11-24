@@ -602,8 +602,15 @@ def get_connection() -> Union[MySQLConnectionWrapper, sqlite3.Connection]:
         )
         _active_engine = "mysql"
         return MySQLConnectionWrapper(raw_conn)
-    except Exception:
-        # Fall back to SQLite for seamless deployment resilience
+    except Exception as exc:
+        env_file_exists = (BASE_DIR / ".env").is_file()
+        if env_file_exists:
+            # On local developer environment where .env is present, enforce strict MySQL connectivity
+            raise RuntimeError(
+                f"MySQL Connection Error: Failed to connect to MySQL database '{cfg['database']}' at {cfg['host']}:{cfg['port']}. "
+                f"Details: {exc}. Please verify that MySQL Server is running on port {cfg['port']} and credentials in .env are correct."
+            ) from exc
+        # Fall back to SQLite only in remote container environments (e.g. Streamlit Cloud) without local .env
         return _get_sqlite_connection()
 
 
