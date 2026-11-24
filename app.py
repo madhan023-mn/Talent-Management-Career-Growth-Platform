@@ -1958,20 +1958,13 @@ def register_page():
                         if not verified:
                             st.error(f"Registration verification failed: Account was created but record could not be confirmed in the database for '{clean_email}'.")
                         else:
-                            db_diag = get_database_diagnostics()
-                            db_engine = db_diag.get('engine', 'Database')
-                            db_fname = db_diag.get('database_name') or db_diag.get('filename', 'talent_growth')
-                            if is_mysql_expected() and db_engine != "MySQL":
-                                st.error(f"Configuration warning: Expected MySQL database persistence, but active engine reported {db_engine}.")
-                            else:
-                                st.session_state["last_registered_verification"] = verified
-                                emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
-                                st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname})! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
-                                st.session_state["prefill_email"] = clean_email
-                                st.session_state.user = None
-                                st.session_state.auth_view = "login"
-                                st.session_state.current_page = "Dashboard"
-                                st.rerun()
+                            st.session_state["last_registered_verification"] = verified
+                            st.session_state["reg_success_msg"] = "Account created successfully! Please sign in below."
+                            st.session_state["prefill_email"] = clean_email
+                            st.session_state.user = None
+                            st.session_state.auth_view = "login"
+                            st.session_state.current_page = "Dashboard"
+                            st.rerun()
                     else:
                         st.error(msg)
                 else:
@@ -2012,21 +2005,16 @@ def register_page():
                         if not verified:
                             st.error(f"Registration verification failed: Account was created but record could not be confirmed in the database for '{clean_email}'.")
                         else:
-                            db_diag = get_database_diagnostics()
-                            db_engine = db_diag.get('engine', 'Database')
-                            db_fname = db_diag.get('database_name') or db_diag.get('filename', 'talent_growth')
-                            if is_mysql_expected() and db_engine != "MySQL":
-                                st.error(f"Configuration warning: Expected MySQL database persistence, but active engine reported {db_engine}.")
+                            st.session_state["last_registered_verification"] = verified
+                            if "pending" in msg.lower():
+                                st.session_state["reg_success_msg"] = msg
                             else:
-                                st.session_state["last_registered_verification"] = verified
-                                org_role_desc = "organization administrator" if role == "admin" else "employee"
-                                emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
-                                st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname}) for {clean_name} as {org_role_desc}! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
-                                st.session_state["prefill_email"] = clean_email
-                                st.session_state.user = None
-                                st.session_state.auth_view = "login"
-                                st.session_state.current_page = "Dashboard"
-                                st.rerun()
+                                st.session_state["reg_success_msg"] = "Account created successfully! Please sign in below."
+                            st.session_state["prefill_email"] = clean_email
+                            st.session_state.user = None
+                            st.session_state.auth_view = "login"
+                            st.session_state.current_page = "Dashboard"
+                            st.rerun()
                     else:
                         st.error(msg)
 
