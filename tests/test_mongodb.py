@@ -40,7 +40,7 @@ def test_mongodb_connection_and_health():
     health = check_db_health()
     assert health["connected"] is True
     assert "MongoDB" in health["engine"]
-    assert health["database"] == "talent_management"
+    assert health["database"].lower() == "talent_growth"
 
 
 def test_all_15_collections_exist_and_populated():

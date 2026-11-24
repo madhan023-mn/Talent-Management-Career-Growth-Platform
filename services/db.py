@@ -50,7 +50,7 @@ MOCK_STORE_DIR = BASE_DIR / "data" / "mongodb_store"
 MOCK_STORE_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_ATLAS_URI = (
-    "mongodb+srv://<db_username>:<db_password>@cluster0.fea8dfi.mongodb.net/talent_management?retryWrites=true&w=majority"
+    "mongodb+srv://<db_username>:<db_password>@cluster0.r8pgac3.mongodb.net/Talent_Growth?retryWrites=true&w=majority"
 )
 
 
@@ -69,15 +69,15 @@ def get_mongodb_uri() -> str:
 
 def get_mongodb_dbname() -> str:
     """Retrieves target MongoDB database name."""
-    db_name = os.getenv("MONGODB_DB_NAME") or os.getenv("MONGO_DB_NAME") or "talent_management"
+    db_name = os.getenv("MONGODB_DB_NAME") or os.getenv("MONGO_DB_NAME") or "Talent_Growth"
     if not db_name:
         try:
             import streamlit as st
             if hasattr(st, "secrets"):
-                db_name = st.secrets.get("MONGODB_DB_NAME", "talent_management")
+                db_name = st.secrets.get("MONGODB_DB_NAME", "Talent_Growth")
         except Exception:
             pass
-    return db_name.strip() or "talent_management"
+    return db_name.strip() or "Talent_Growth"
 
 
 def has_valid_atlas_credentials(uri: str) -> bool:
@@ -1235,7 +1235,7 @@ def check_db_health() -> Dict[str, Any]:
         "connected": False,
         "engine": "MongoDB Atlas" if not is_mock else "MongoDB (Atlas Emulated)",
         "database": db.name,
-        "host": masked_uri.split("@")[-1].split("/")[0] if "@" in masked_uri else "cluster0.fea8dfi.mongodb.net",
+        "host": masked_uri.split("@")[-1].split("/")[0] if "@" in masked_uri else "cluster0.r8pgac3.mongodb.net",
         "mock_mode": is_mock,
         "counts": {}
     }
@@ -1317,11 +1317,11 @@ def test_mysql_connection() -> Dict[str, Any]:
 def get_mysql_config() -> Dict[str, Any]:
     """Compatibility config stub."""
     return {
-        "host": "cluster0.fea8dfi.mongodb.net",
+        "host": "cluster0.r8pgac3.mongodb.net",
         "port": 27017,
         "user": "atlas_admin",
         "password": "",
-        "database": "talent_management"
+        "database": "talent_growth"
     }
 
 
