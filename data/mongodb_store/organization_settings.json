@@ -1,0 +1,20 @@
+[
+  {
+    "org_id": "ORG-TALENT-01",
+    "name": "TalentGrowth Enterprise Technologies",
+    "org_name": "TalentGrowth Enterprise Technologies",
+    "official_email": "hr@talentgrowth.com",
+    "contact_number": "+1 (555) 019-2834",
+    "address": "100 Innovation Way, Suite 400, San Francisco, CA 94105",
+    "website": "https://www.talentgrowth.com",
+    "industry": "Enterprise Software & Cloud Platforms",
+    "description": "Enterprise-grade talent intelligence, succession planning, and workforce growth platform.",
+    "status": "Active",
+    "logo_base64": "",
+    "theme_color": "Navy & Teal",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4044e",
+    "id": "6b05bdd2790f4209daf4044e"
+  }
+]

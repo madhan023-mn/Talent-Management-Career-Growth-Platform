@@ -1,0 +1,202 @@
+[
+  {
+    "id": 1,
+    "name": "Python",
+    "category": "Technical",
+    "description": "Backend services, data analysis, scripting, and web frameworks (FastAPI/Django).",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40459"
+  },
+  {
+    "id": 2,
+    "name": "React.js",
+    "category": "Technical",
+    "description": "Modern component architectures, hooks, state management, and responsive frontends.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4045a"
+  },
+  {
+    "id": 3,
+    "name": "TypeScript",
+    "category": "Technical",
+    "description": "Type-safe JavaScript for scalable frontend and Node.js applications.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4045b"
+  },
+  {
+    "id": 4,
+    "name": "Docker & Containers",
+    "category": "Technical",
+    "description": "Container packaging, multi-stage builds, and local development environments.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4045c"
+  },
+  {
+    "id": 5,
+    "name": "Kubernetes",
+    "category": "Technical",
+    "description": "Container orchestration, ingress controllers, microservice deployments, and scaling.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4045d"
+  },
+  {
+    "id": 6,
+    "name": "AWS Cloud Services",
+    "category": "Technical",
+    "description": "EC2, S3, RDS, Lambda, ECS, and cloud infrastructure management.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4045e"
+  },
+  {
+    "id": 7,
+    "name": "MongoDB & NoSQL",
+    "category": "Technical",
+    "description": "Document schema modeling, aggregation pipelines, indexing, and Atlas operations.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4045f"
+  },
+  {
+    "id": 8,
+    "name": "Machine Learning & PyTorch",
+    "category": "Technical",
+    "description": "Model architecture, deep learning, PyTorch workflows, and evaluation.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40460"
+  },
+  {
+    "id": 9,
+    "name": "Node.js",
+    "category": "Technical",
+    "description": "Asynchronous backend runtimes, REST/GraphQL APIs, and microservices.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40461"
+  },
+  {
+    "id": 10,
+    "name": "GraphQL APIs",
+    "category": "Technical",
+    "description": "Schema definition, queries, mutations, resolvers, and federation.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40462"
+  },
+  {
+    "id": 11,
+    "name": "CI/CD Automation",
+    "category": "Technical",
+    "description": "GitHub Actions, GitLab CI, automated test runs, and release deployment pipelines.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40463"
+  },
+  {
+    "id": 12,
+    "name": "System Architecture & Microservices",
+    "category": "Technical",
+    "description": "Distributed systems, event-driven design, caching, and resiliency patterns.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40464"
+  },
+  {
+    "id": 13,
+    "name": "Go Programming",
+    "category": "Technical",
+    "description": "High-concurrency systems, low-latency microservices, and network tooling.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40465"
+  },
+  {
+    "id": 14,
+    "name": "Terraform & IaC",
+    "category": "Technical",
+    "description": "Declarative infrastructure as code, cloud provisioning, and state management.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40466"
+  },
+  {
+    "id": 15,
+    "name": "Cybersecurity & SecOps",
+    "category": "Technical",
+    "description": "OWASP defense, threat modeling, vulnerability scanning, and IAM governance.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40467"
+  },
+  {
+    "id": 16,
+    "name": "Agile Project Management",
+    "category": "Soft Skills",
+    "description": "Sprint planning, backlog grooming, velocity tracking, and Scrum facilitation.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40468"
+  },
+  {
+    "id": 17,
+    "name": "Technical Leadership & Mentorship",
+    "category": "Soft Skills",
+    "description": "Guiding junior engineers, code review quality, and technical vision.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40469"
+  },
+  {
+    "id": 18,
+    "name": "Strategic Roadmapping",
+    "category": "Soft Skills",
+    "description": "Translating business goals into actionable engineering deliverables and milestones.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4046a"
+  },
+  {
+    "id": 19,
+    "name": "Cross-functional Collaboration",
+    "category": "Soft Skills",
+    "description": "Seamless communication across engineering, product, design, and operations.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4046b"
+  },
+  {
+    "id": 20,
+    "name": "Critical Problem Solving",
+    "category": "Soft Skills",
+    "description": "Analytical root cause identification and strategic incident remediation.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4046c"
+  },
+  {
+    "id": 21,
+    "name": "Stakeholder Communication",
+    "category": "Soft Skills",
+    "description": "Presenting complex technical concepts to executive and non-technical partners.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4046d"
+  },
+  {
+    "id": 22,
+    "name": "Data-Driven Decision Making",
+    "category": "Soft Skills",
+    "description": "Using metrics, KPIs, and user telemetry to inform development priorities.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4046e"
+  },
+  {
+    "id": 23,
+    "name": "Conflict Resolution",
+    "category": "Soft Skills",
+    "description": "De-escalating team tensions and aligning divergent viewpoints productively.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4046f"
+  },
+  {
+    "id": 24,
+    "name": "Public Speaking & Presentation",
+    "category": "Soft Skills",
+    "description": "Delivering compelling architecture reviews, demos, and tech talks.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40470"
+  },
+  {
+    "id": 25,
+    "name": "Performance Coaching",
+    "category": "Soft Skills",
+    "description": "Conducting 1-on-1s, goal alignment, and career path progression guidance.",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40471"
+  }
+]

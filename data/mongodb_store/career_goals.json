@@ -1,0 +1,662 @@
+[
+  {
+    "id": 1,
+    "user_id": 11,
+    "employee_id": "EMP011",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Lead Cloud Architect",
+    "current_role": "Senior Backend Engineer",
+    "target_role": "Lead Cloud Architect",
+    "target_level": "Principal",
+    "target_timeline": "6-12 months",
+    "target_designation": "Lead Cloud Architect",
+    "description": "Target transition into distributed architecture oversight and cloud strategy.",
+    "target_date": "2025-12-31",
+    "progress": 25,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": true
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf40598"
+  },
+  {
+    "id": 2,
+    "user_id": 12,
+    "employee_id": "EMP012",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Engineering Manager",
+    "current_role": "Frontend Lead",
+    "target_role": "Engineering Manager",
+    "target_level": "Lead",
+    "target_timeline": "1-2 years",
+    "target_designation": "Engineering Manager",
+    "description": "Shift into engineering team leadership, headcount forecasting, and execution.",
+    "target_date": "2025-12-31",
+    "progress": 50,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": false
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf40599"
+  },
+  {
+    "id": 3,
+    "user_id": 13,
+    "employee_id": "EMP013",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Senior Full Stack Architect",
+    "current_role": "Full Stack Engineer",
+    "target_role": "Senior Full Stack Architect",
+    "target_level": "Senior",
+    "target_timeline": "6-12 months",
+    "target_designation": "Senior Full Stack Architect",
+    "description": "Deepen event-driven microservices expertise and modern data schemas.",
+    "target_date": "2025-12-31",
+    "progress": 75,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": true
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf4059a"
+  },
+  {
+    "id": 4,
+    "user_id": 14,
+    "employee_id": "EMP014",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Director of Product Strategy",
+    "current_role": "Senior Product Manager",
+    "target_role": "Director of Product Strategy",
+    "target_level": "Director",
+    "target_timeline": "1-2 years",
+    "target_designation": "Director of Product Strategy",
+    "description": "Own multi-product portfolio roadmaps and executive revenue alignment.",
+    "target_date": "2025-12-31",
+    "progress": 100,
+    "status": "Completed",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": false
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf4059b"
+  },
+  {
+    "id": 5,
+    "user_id": 15,
+    "employee_id": "EMP015",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Product Manager",
+    "current_role": "Associate Product Manager",
+    "target_role": "Product Manager",
+    "target_level": "Mid-Level",
+    "target_timeline": "3-6 months",
+    "target_designation": "Product Manager",
+    "description": "Drive end-to-end user story lifecycle and customer sprint discovery.",
+    "target_date": "2025-12-31",
+    "progress": 25,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": true
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf4059c"
+  },
+  {
+    "id": 6,
+    "user_id": 16,
+    "employee_id": "EMP016",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Head of AI Research & Platforms",
+    "current_role": "Principal ML Engineer",
+    "target_role": "Head of AI Research & Platforms",
+    "target_level": "Director",
+    "target_timeline": "1-2 years",
+    "target_designation": "Head of AI Research & Platforms",
+    "description": "Scale company-wide generative AI models and data governance frameworks.",
+    "target_date": "2025-12-31",
+    "progress": 50,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": false
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf4059d"
+  },
+  {
+    "id": 7,
+    "user_id": 17,
+    "employee_id": "EMP017",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Lead AI Research Scientist",
+    "current_role": "Senior Data Scientist",
+    "target_role": "Lead AI Research Scientist",
+    "target_level": "Lead",
+    "target_timeline": "6-12 months",
+    "target_designation": "Lead AI Research Scientist",
+    "description": "Publish proprietary LLM benchmarks and drive autonomous agent tooling.",
+    "target_date": "2025-12-31",
+    "progress": 75,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": true
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf4059e"
+  },
+  {
+    "id": 8,
+    "user_id": 18,
+    "employee_id": "EMP018",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Head of Product Design",
+    "current_role": "Lead UX Designer",
+    "target_role": "Head of Product Design",
+    "target_level": "Director",
+    "target_timeline": "1-2 years",
+    "target_designation": "Head of Product Design",
+    "description": "Lead cross-platform design system and global design research.",
+    "target_date": "2025-12-31",
+    "progress": 100,
+    "status": "Completed",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": false
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf4059f"
+  },
+  {
+    "id": 9,
+    "user_id": 19,
+    "employee_id": "EMP019",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Senior UX/UI Designer",
+    "current_role": "Interaction Designer",
+    "target_role": "Senior UX/UI Designer",
+    "target_level": "Senior",
+    "target_timeline": "6-12 months",
+    "target_designation": "Senior UX/UI Designer",
+    "description": "Advance high-fidelity design prototyping and accessibility compliance.",
+    "target_date": "2025-12-31",
+    "progress": 25,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": true
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405a0"
+  },
+  {
+    "id": 10,
+    "user_id": 20,
+    "employee_id": "EMP020",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to QA Architecture Manager",
+    "current_role": "Senior SDET",
+    "target_role": "QA Architecture Manager",
+    "target_level": "Lead",
+    "target_timeline": "6-12 months",
+    "target_designation": "QA Architecture Manager",
+    "description": "Orchestrate multi-region automated testing and quality gates.",
+    "target_date": "2025-12-31",
+    "progress": 50,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": false
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405a1"
+  },
+  {
+    "id": 11,
+    "user_id": 21,
+    "employee_id": "EMP021",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Lead Cloud Architect",
+    "current_role": "QA Automation Engineer",
+    "target_role": "Lead Cloud Architect",
+    "target_level": "Principal",
+    "target_timeline": "6-12 months",
+    "target_designation": "Lead Cloud Architect",
+    "description": "Target transition into distributed architecture oversight and cloud strategy.",
+    "target_date": "2025-12-31",
+    "progress": 75,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": true
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405a2"
+  },
+  {
+    "id": 12,
+    "user_id": 22,
+    "employee_id": "EMP022",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Engineering Manager",
+    "current_role": "Talent Acquisition Partner",
+    "target_role": "Engineering Manager",
+    "target_level": "Lead",
+    "target_timeline": "1-2 years",
+    "target_designation": "Engineering Manager",
+    "description": "Shift into engineering team leadership, headcount forecasting, and execution.",
+    "target_date": "2025-12-31",
+    "progress": 100,
+    "status": "Completed",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": false
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405a3"
+  },
+  {
+    "id": 13,
+    "user_id": 23,
+    "employee_id": "EMP023",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Senior Full Stack Architect",
+    "current_role": "People Operations Specialist",
+    "target_role": "Senior Full Stack Architect",
+    "target_level": "Senior",
+    "target_timeline": "6-12 months",
+    "target_designation": "Senior Full Stack Architect",
+    "description": "Deepen event-driven microservices expertise and modern data schemas.",
+    "target_date": "2025-12-31",
+    "progress": 25,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": true
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405a4"
+  },
+  {
+    "id": 14,
+    "user_id": 24,
+    "employee_id": "EMP024",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Director of Product Strategy",
+    "current_role": "Senior Cloud Architect",
+    "target_role": "Director of Product Strategy",
+    "target_level": "Director",
+    "target_timeline": "1-2 years",
+    "target_designation": "Director of Product Strategy",
+    "description": "Own multi-product portfolio roadmaps and executive revenue alignment.",
+    "target_date": "2025-12-31",
+    "progress": 50,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": false
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405a5"
+  },
+  {
+    "id": 15,
+    "user_id": 25,
+    "employee_id": "EMP025",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Product Manager",
+    "current_role": "DevOps Engineer",
+    "target_role": "Product Manager",
+    "target_level": "Mid-Level",
+    "target_timeline": "3-6 months",
+    "target_designation": "Product Manager",
+    "description": "Drive end-to-end user story lifecycle and customer sprint discovery.",
+    "target_date": "2025-12-31",
+    "progress": 75,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": true
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405a6"
+  },
+  {
+    "id": 16,
+    "user_id": 26,
+    "employee_id": "EMP026",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Head of AI Research & Platforms",
+    "current_role": "Senior AppSec Engineer",
+    "target_role": "Head of AI Research & Platforms",
+    "target_level": "Director",
+    "target_timeline": "1-2 years",
+    "target_designation": "Head of AI Research & Platforms",
+    "description": "Scale company-wide generative AI models and data governance frameworks.",
+    "target_date": "2025-12-31",
+    "progress": 100,
+    "status": "Completed",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": false
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405a7"
+  },
+  {
+    "id": 17,
+    "user_id": 27,
+    "employee_id": "EMP027",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Lead AI Research Scientist",
+    "current_role": "Security Compliance Analyst",
+    "target_role": "Lead AI Research Scientist",
+    "target_level": "Lead",
+    "target_timeline": "6-12 months",
+    "target_designation": "Lead AI Research Scientist",
+    "description": "Publish proprietary LLM benchmarks and drive autonomous agent tooling.",
+    "target_date": "2025-12-31",
+    "progress": 25,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": true
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405a8"
+  },
+  {
+    "id": 18,
+    "user_id": 28,
+    "employee_id": "EMP028",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Head of Product Design",
+    "current_role": "Product Marketing Lead",
+    "target_role": "Head of Product Design",
+    "target_level": "Director",
+    "target_timeline": "1-2 years",
+    "target_designation": "Head of Product Design",
+    "description": "Lead cross-platform design system and global design research.",
+    "target_date": "2025-12-31",
+    "progress": 50,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": false
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405a9"
+  },
+  {
+    "id": 19,
+    "user_id": 29,
+    "employee_id": "EMP029",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to Senior UX/UI Designer",
+    "current_role": "Growth Marketing Specialist",
+    "target_role": "Senior UX/UI Designer",
+    "target_level": "Senior",
+    "target_timeline": "6-12 months",
+    "target_designation": "Senior UX/UI Designer",
+    "description": "Advance high-fidelity design prototyping and accessibility compliance.",
+    "target_date": "2025-12-31",
+    "progress": 75,
+    "status": "In Progress",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": true
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405aa"
+  },
+  {
+    "id": 20,
+    "user_id": 30,
+    "employee_id": "EMP030",
+    "org_id": "ORG-TALENT-01",
+    "title": "Advancement to QA Architecture Manager",
+    "current_role": "Senior Financial Analyst",
+    "target_role": "QA Architecture Manager",
+    "target_level": "Lead",
+    "target_timeline": "6-12 months",
+    "target_designation": "QA Architecture Manager",
+    "description": "Orchestrate multi-region automated testing and quality gates.",
+    "target_date": "2025-12-31",
+    "progress": 100,
+    "status": "Completed",
+    "action_items": [
+      {
+        "item": "Complete advanced architecture certification",
+        "done": true
+      },
+      {
+        "item": "Lead quarterly technical milestone design review",
+        "done": false
+      },
+      {
+        "item": "Conduct 2 cross-functional mentoring cycles",
+        "done": false
+      }
+    ],
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "updated_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd3790f4209daf405ab"
+  }
+]

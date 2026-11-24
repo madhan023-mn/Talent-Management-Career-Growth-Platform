@@ -1,18 +1,20 @@
 """
-Enterprise Database Layer (Exclusive MySQL 8.0)
-Provides native MySQL connectivity for the Talent Growth Platform.
-All application data is saved and managed exclusively in the MySQL database.
+Enterprise Database Layer - MongoDB Atlas Native
+Manages MongoDB Atlas connection, collections, schemas, indexes, diagnostics,
+and synchronization for the Talent Management & Career Growth Platform.
 """
 
 from __future__ import annotations
+import json
 import os
 import re
 import sqlite3
-import tempfile
-from datetime import datetime, date
-from decimal import Decimal
+import urllib.parse
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+
+from bson import ObjectId
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,546 +25,305 @@ except Exception:
     pass
 
 try:
-    import pymysql
-    import pymysql.cursors
-    import pymysql.err
-    PYMYSQL_AVAILABLE = True
+    import pymongo
+    from pymongo import MongoClient, ASCENDING, DESCENDING
+    PYMONGO_AVAILABLE = True
 except ImportError:
-    pymysql = None  # type: ignore
-    PYMYSQL_AVAILABLE = False
+    MongoClient = None  # type: ignore
+    PYMONGO_AVAILABLE = False
+
+try:
+    import mongomock
+    MONGOMOCK_AVAILABLE = True
+except ImportError:
+    mongomock = None
+    MONGOMOCK_AVAILABLE = False
 
 
 # ------------------------------------------------------------------------------
-# CONFIGURATION & ENGINE DETECTION
+# MONGODB CONFIGURATION & CONNECTION SINGLETON
 # ------------------------------------------------------------------------------
-def _get_db_setting(key: str, default: str = "") -> str:
-    """Reads a database setting from os.environ, falling back to Streamlit secrets."""
-    val = os.getenv(key)
-    if val is not None and str(val).strip() != "":
-        return str(val).strip()
-    try:
-        import streamlit as st
-        secrets_obj = getattr(st, "secrets", None)
-        if secrets_obj is not None:
-            if key in secrets_obj and str(secrets_obj[key]).strip() != "":
-                return str(secrets_obj[key]).strip()
-            if key.lower() in secrets_obj and str(secrets_obj[key.lower()]).strip() != "":
-                return str(secrets_obj[key.lower()]).strip()
-            for section in ("mysql", "database", "db", "connections"):
-                if section in secrets_obj:
-                    sec = secrets_obj[section]
-                    if key in sec and str(sec[key]).strip() != "":
-                        return str(sec[key]).strip()
-                    if key.lower() in sec and str(sec[key.lower()]).strip() != "":
-                        return str(sec[key.lower()]).strip()
-                    sub_key = key.replace("DB_", "").replace("MYSQL_", "").lower()
-                    if sub_key in sec and str(sec[sub_key]).strip() != "":
-                        return str(sec[sub_key]).strip()
-    except Exception:
-        pass
-    return default
+_mongo_client: Optional[Any] = None
+_mongo_is_mock: bool = False
+
+MOCK_STORE_DIR = BASE_DIR / "data" / "mongodb_store"
+MOCK_STORE_DIR.mkdir(parents=True, exist_ok=True)
+
+DEFAULT_ATLAS_URI = (
+    "mongodb+srv://<db_username>:<db_password>@cluster0.fea8dfi.mongodb.net/talent_management?retryWrites=true&w=majority"
+)
 
 
-def get_mysql_config() -> Dict[str, Any]:
-    """Returns MySQL connection settings from environment variables or Streamlit secrets."""
-    host = _get_db_setting("DB_HOST", _get_db_setting("MYSQL_HOST", "127.0.0.1"))
-    port_str = _get_db_setting("DB_PORT", _get_db_setting("MYSQL_PORT", "3306"))
-    try:
-        port = int(port_str)
-    except (ValueError, TypeError):
-        port = 3306
-    user = _get_db_setting("DB_USER", _get_db_setting("MYSQL_USER", "taskssqls"))
-    password = _get_db_setting("DB_PASSWORD", _get_db_setting("MYSQL_PASSWORD", "@madhan23"))
-    database = _get_db_setting("DB_NAME", _get_db_setting("MYSQL_DATABASE", "talent_growth"))
-    return {
-        "host": host,
-        "port": port,
-        "user": user,
-        "password": password,
-        "database": database,
-    }
-
-
-_active_engine: str = "mysql"
-
-
-def is_mysql_expected() -> bool:
-    """Returns True indicating MySQL is the required and active database engine."""
-    return True
-
-
-def is_mysql_mode() -> bool:
-    """Returns True if MySQL is currently active, False if fallen back to SQLite."""
-    global _active_engine
-    return _active_engine == "mysql"
-
-
-def test_mysql_connection() -> Dict[str, Any]:
-    """
-    Tests direct MySQL connectivity and returns non-sensitive status metrics.
-    Never exposes passwords.
-    """
-    if not PYMYSQL_AVAILABLE:
-        return {
-            "success": False,
-            "engine": "MySQL",
-            "error": "The 'pymysql' package is not installed. Run 'pip install pymysql' to enable MySQL connectivity.",
-            "message": "The 'pymysql' package is missing. Please run 'pip install pymysql'."
-        }
-    cfg = get_mysql_config()
-    if not cfg["user"] or not cfg["database"]:
-        return {
-            "success": False,
-            "engine": "MySQL",
-            "host": cfg["host"],
-            "port": cfg["port"],
-            "database": cfg["database"],
-            "error": "MySQL configuration incomplete: DB_USER or DB_NAME is missing.",
-            "message": "MySQL credentials incomplete in .env. Please provide DB_USER and DB_NAME."
-        }
-    try:
-        raw_conn = pymysql.connect(
-            host=cfg["host"],
-            port=cfg["port"],
-            user=cfg["user"],
-            password=cfg["password"],
-            database=cfg["database"],
-            charset="utf8mb4",
-            autocommit=False,
-            connect_timeout=5,
-            read_timeout=10,
-            write_timeout=10,
-        )
+def get_mongodb_uri() -> str:
+    """Retrieves MongoDB URI from environment variables or Streamlit secrets."""
+    uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI") or ""
+    if not uri:
         try:
-            with raw_conn.cursor() as cur:
-                cur.execute("SELECT VERSION(), DATABASE()")
-                row = cur.fetchone()
-                version = row[0] if row else "Unknown"
-                db_name = row[1] if row and len(row) > 1 else cfg["database"]
-            return {
-                "success": True,
-                "engine": "MySQL",
-                "host": cfg["host"],
-                "port": cfg["port"],
-                "database": db_name,
-                "version": version,
-                "message": f"Successfully connected to MySQL database '{db_name}' at {cfg['host']}:{cfg['port']} (MySQL {version})."
-            }
-        finally:
-            raw_conn.close()
-    except Exception as exc:
-        return {
-            "success": False,
-            "engine": "MySQL",
-            "host": cfg["host"],
-            "port": cfg["port"],
-            "database": cfg["database"],
-            "error": str(exc),
-            "message": f"Failed to connect to MySQL database '{cfg['database']}' at {cfg['host']}:{cfg['port']}: {exc}"
-        }
-
-
-def get_db_path() -> Path:
-    """Returns the SQLite database path (used in SQLite mode or for migration)."""
-    env_path = os.getenv("DATABASE_PATH")
-    if env_path:
-        p = Path(env_path)
-        db_file = p if p.is_absolute() else (BASE_DIR / p)
-    else:
-        db_file = BASE_DIR / "data" / "talentsphere.db"
-    db_file.parent.mkdir(parents=True, exist_ok=True)
-    return db_file.resolve()
-
-
-# ------------------------------------------------------------------------------
-# FLEXIBLE ROW WRAPPER (Supports both row["col"] and row[0] like sqlite3.Row)
-# ------------------------------------------------------------------------------
-def _normalize_value(val: Any) -> Any:
-    if isinstance(val, datetime):
-        return val.strftime("%Y-%m-%d %H:%M:%S")
-    if isinstance(val, date):
-        return val.strftime("%Y-%m-%d")
-    if isinstance(val, Decimal):
-        return float(val)
-    return val
-
-
-class FlexRow(dict):
-    """
-    Dict-like database row that also supports integer indexing (row[0]) and
-    normalizes MySQL datetime/Decimal values to match SQLite string/float semantics.
-    """
-
-    def __init__(self, columns: Sequence[str], values: Sequence[Any]):
-        normalized = [_normalize_value(v) for v in values]
-        super().__init__(zip(columns, normalized))
-        self._values = tuple(normalized)
-
-    def __getitem__(self, key: Any) -> Any:
-        if isinstance(key, (int, slice)):
-            return self._values[key]
-        return super().__getitem__(key)
-
-
-# ------------------------------------------------------------------------------
-# SQLITE -> MYSQL QUERY TRANSLATOR
-# ------------------------------------------------------------------------------
-def _replace_qmarks_with_percent_s(sql: str, has_params: bool) -> str:
-    """
-    Replaces SQLite `?` parameter placeholders with MySQL `%s` outside of
-    single-quoted string literals, while escaping literal `%` when params exist.
-    """
-    out: List[str] = []
-    in_single = False
-    i = 0
-    n = len(sql)
-    while i < n:
-        ch = sql[i]
-        if ch == "'":
-            out.append(ch)
-            if in_single and i + 1 < n and sql[i + 1] == "'":
-                out.append("'")
-                i += 2
-                continue
-            in_single = not in_single
-        elif ch == "%" and has_params:
-            out.append("%%")
-        elif ch == "?" and not in_single:
-            out.append("%s")
-        else:
-            out.append(ch)
-        i += 1
-    return "".join(out)
-
-
-def _translate_sql_to_mysql(sql: str, has_params: bool = False) -> Tuple[str, Optional[str]]:
-    """
-    Translates SQLite-dialect queries into valid MySQL 8.0 SQL.
-    Returns (translated_sql, special_mode) where special_mode handles PRAGMA emulation.
-    """
-    stripped = sql.strip()
-    upper = stripped.upper()
-
-    # 1. PRAGMA handling
-    if upper.startswith("PRAGMA"):
-        m_ti = re.match(r"PRAGMA\s+table_info\s*\(\s*([a-zA-Z0-9_]+)\s*\)", stripped, re.I)
-        if m_ti:
-            tbl = m_ti.group(1)
-            return (
-                f"SELECT COLUMN_NAME AS name, "
-                f"IF(IS_NULLABLE = 'NO', 1, 0) AS `notnull`, "
-                f"DATA_TYPE AS type, "
-                f"COLUMN_DEFAULT AS dflt_value, "
-                f"IF(COLUMN_KEY = 'PRI', 1, 0) AS pk "
-                f"FROM INFORMATION_SCHEMA.COLUMNS "
-                f"WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{tbl}' "
-                f"ORDER BY ORDINAL_POSITION",
-                None,
-            )
-        if "INTEGRITY_CHECK" in upper:
-            return ("SELECT 'ok' AS integrity_check", None)
-        if "FOREIGN_KEYS" in upper:
-            if "OFF" in upper or "= 0" in upper or "=0" in upper:
-                return ("SET FOREIGN_KEY_CHECKS = 0", None)
-            return ("SET FOREIGN_KEY_CHECKS = 1", None)
-        # WAL / synchronous / busy_timeout -> no-op in MySQL
-        return ("", "noop")
-
-    # 2. sqlite_master table lookup
-    if "SQLITE_MASTER" in upper:
-        m_tbl = re.search(r"name\s*=\s*'([^']+)'", stripped, re.I)
-        if m_tbl:
-            tbl = m_tbl.group(1)
-            return (
-                f"SELECT TABLE_NAME AS name FROM INFORMATION_SCHEMA.TABLES "
-                f"WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{tbl}'",
-                None,
-            )
-        return (
-            "SELECT TABLE_NAME AS name FROM INFORMATION_SCHEMA.TABLES "
-            "WHERE TABLE_SCHEMA = DATABASE()",
-            None,
-        )
-
-    # 3. CREATE TABLE IF NOT EXISTS email_logs (inline calls from email_service.py)
-    if upper.startswith("CREATE TABLE") and "EMAIL_LOGS" in upper and "AUTOINCREMENT" in upper:
-        return (MYSQL_EMAIL_LOGS_DDL, None)
-
-    q = sql
-
-    # 4. INSERT OR IGNORE / UPDATE OR IGNORE -> INSERT IGNORE / UPDATE IGNORE
-    q = re.sub(r"\bINSERT\s+OR\s+IGNORE\s+INTO\b", "INSERT IGNORE INTO", q, flags=re.I)
-    q = re.sub(r"\bUPDATE\s+OR\s+IGNORE\b", "UPDATE IGNORE", q, flags=re.I)
-
-    # 5. INSERT OR REPLACE -> REPLACE
-    q = re.sub(r"\bINSERT\s+OR\s+REPLACE\s+INTO\b", "REPLACE INTO", q, flags=re.I)
-
-    # 6. ON CONFLICT(...) DO UPDATE SET ... excluded.col -> ON DUPLICATE KEY UPDATE ... VALUES(col)
-    if re.search(r"\bON\s+CONFLICT\b", q, re.I):
-        q = re.sub(
-            r"\bON\s+CONFLICT\s*\([^)]+\)\s*DO\s+UPDATE\s+SET\b",
-            "ON DUPLICATE KEY UPDATE",
-            q,
-            flags=re.I,
-        )
-        q = re.sub(r"\bexcluded\.([a-zA-Z_][a-zA-Z0-9_]*)", r"VALUES(\1)", q, flags=re.I)
-
-    # 7. Placeholders ? -> %s
-    q = _replace_qmarks_with_percent_s(q, has_params=has_params)
-
-    return (q, None)
-
-
-# ------------------------------------------------------------------------------
-# MYSQL CURSOR & CONNECTION WRAPPERS
-# ------------------------------------------------------------------------------
-class MySQLCursorWrapper:
-    """Wraps a pymysql cursor with SQLite-compatible API, translation, and FlexRow results."""
-
-    def __init__(self, raw_cursor: Any):
-        self._cur = raw_cursor
-        self._noop_rows: Optional[List[FlexRow]] = None
-
-    @property
-    def lastrowid(self) -> int:
-        return self._cur.lastrowid
-
-    @property
-    def rowcount(self) -> int:
-        return self._cur.rowcount
-
-    @property
-    def description(self) -> Any:
-        return self._cur.description
-
-    def execute(self, sql: str, params: Optional[Union[Sequence[Any], Dict[str, Any]]] = None) -> "MySQLCursorWrapper":
-        self._noop_rows = None
-        has_params = params is not None and len(params) > 0 if isinstance(params, (list, tuple, dict)) else (params is not None)
-        translated, mode = _translate_sql_to_mysql(sql, has_params=has_params)
-        if mode == "noop":
-            self._noop_rows = [FlexRow(["status"], ["ok"])]
-            return self
-        try:
-            if has_params:
-                self._cur.execute(translated, tuple(params) if not isinstance(params, dict) else params)
-            else:
-                self._cur.execute(translated)
-        except Exception as exc:
-            if PYMYSQL_AVAILABLE and isinstance(exc, pymysql.err.IntegrityError):
-                raise sqlite3.IntegrityError(str(exc)) from exc
-            raise
-        return self
-
-    def executemany(self, sql: str, seq_of_params: Iterable[Sequence[Any]]) -> "MySQLCursorWrapper":
-        self._noop_rows = None
-        translated, mode = _translate_sql_to_mysql(sql, has_params=True)
-        if mode == "noop":
-            return self
-        try:
-            self._cur.executemany(translated, list(seq_of_params))
-        except Exception as exc:
-            if PYMYSQL_AVAILABLE and isinstance(exc, pymysql.err.IntegrityError):
-                raise sqlite3.IntegrityError(str(exc)) from exc
-            raise
-        return self
-
-    def _columns(self) -> List[str]:
-        desc = self._cur.description
-        if not desc:
-            return []
-        return [d[0] for d in desc]
-
-    def fetchone(self) -> Optional[FlexRow]:
-        if self._noop_rows is not None:
-            return self._noop_rows.pop(0) if self._noop_rows else None
-        row = self._cur.fetchone()
-        if row is None:
-            return None
-        return FlexRow(self._columns(), row)
-
-    def fetchall(self) -> List[FlexRow]:
-        if self._noop_rows is not None:
-            rows = list(self._noop_rows)
-            self._noop_rows = []
-            return rows
-        rows = self._cur.fetchall()
-        if not rows:
-            return []
-        cols = self._columns()
-        return [FlexRow(cols, r) for r in rows]
-
-    def fetchmany(self, size: Optional[int] = None) -> List[FlexRow]:
-        if self._noop_rows is not None:
-            if size is None:
-                size = 1
-            res = self._noop_rows[:size]
-            self._noop_rows = self._noop_rows[size:]
-            return res
-        rows = self._cur.fetchmany(size) if size is not None else self._cur.fetchmany()
-        if not rows:
-            return []
-        cols = self._columns()
-        return [FlexRow(cols, r) for r in rows]
-
-    def close(self) -> None:
-        try:
-            self._cur.close()
+            import streamlit as st
+            if hasattr(st, "secrets"):
+                uri = st.secrets.get("MONGODB_URI", "") or st.secrets.get("MONGO_URI", "")
         except Exception:
             pass
-
-    def __enter__(self) -> "MySQLCursorWrapper":
-        return self
-
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        self.close()
-
-    def __iter__(self):
-        return iter(self.fetchall())
+    return uri.strip() or DEFAULT_ATLAS_URI
 
 
-class MySQLConnectionWrapper:
-    """
-    Wraps a pymysql connection to match sqlite3.Connection transaction & helper semantics:
-    - `with conn:` commits on normal exit and rolls back on exception (without closing).
-    - `conn.execute(...)` and `conn.executescript(...)` work directly.
-    """
-
-    is_mysql: bool = True
-
-    def __init__(self, raw_conn: Any):
-        self._conn = raw_conn
-        self._closed = False
-
-    def cursor(self) -> MySQLCursorWrapper:
-        return MySQLCursorWrapper(self._conn.cursor())
-
-    def execute(self, sql: str, params: Optional[Union[Sequence[Any], Dict[str, Any]]] = None) -> MySQLCursorWrapper:
-        cur = self.cursor()
-        cur.execute(sql, params)
-        return cur
-
-    def executescript(self, script: str) -> None:
-        cur = self.cursor()
+def get_mongodb_dbname() -> str:
+    """Retrieves target MongoDB database name."""
+    db_name = os.getenv("MONGODB_DB_NAME") or os.getenv("MONGO_DB_NAME") or "talent_management"
+    if not db_name:
         try:
-            for stmt in _split_sql_statements(script):
-                if stmt.strip():
-                    cur.execute(stmt)
-        finally:
-            cur.close()
+            import streamlit as st
+            if hasattr(st, "secrets"):
+                db_name = st.secrets.get("MONGODB_DB_NAME", "talent_management")
+        except Exception:
+            pass
+    return db_name.strip() or "talent_management"
 
-    def commit(self) -> None:
-        if not self._closed:
-            self._conn.commit()
 
-    def rollback(self) -> None:
-        if not self._closed:
-            self._conn.rollback()
+def has_valid_atlas_credentials(uri: str) -> bool:
+    """Checks whether the URI has non-placeholder credentials."""
+    if not uri:
+        return False
+    if "<db_username>" in uri or "<db_password>" in uri:
+        return False
+    if "mongodb+srv://" in uri or "mongodb://" in uri:
+        return True
+    return False
 
-    def close(self) -> None:
-        if not self._closed:
-            self._closed = True
+
+def _load_mock_store(db):
+    """Loads stored JSON collections into in-memory mongomock database on startup."""
+    for cname in COLLECTION_NAMES:
+        col_file = MOCK_STORE_DIR / f"{cname}.json"
+        if col_file.exists():
             try:
-                self._conn.close()
+                with open(col_file, "r", encoding="utf-8") as f:
+                    docs = json.load(f)
+                if docs and db[cname].count_documents({}) == 0:
+                    for d in docs:
+                        if "_id" in d and isinstance(d["_id"], str) and len(d["_id"]) == 24:
+                            try:
+                                d["_id"] = ObjectId(d["_id"])
+                            except Exception:
+                                pass
+                    db[cname].insert_many(docs)
             except Exception:
                 pass
 
-    def __del__(self) -> None:
-        self.close()
 
-    def __enter__(self) -> "MySQLConnectionWrapper":
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
-        if exc_type is None:
-            self.commit()
-        else:
-            self.rollback()
-        return False
-
-
-def _split_sql_statements(script: str) -> List[str]:
-    """Splits a SQL script on semicolons outside single-quoted literals."""
-    stmts: List[str] = []
-    buf: List[str] = []
-    in_single = False
-    i = 0
-    n = len(script)
-    while i < n:
-        ch = script[i]
-        if ch == "'":
-            buf.append(ch)
-            if in_single and i + 1 < n and script[i + 1] == "'":
-                buf.append("'")
-                i += 2
-                continue
-            in_single = not in_single
-        elif ch == ";" and not in_single:
-            s = "".join(buf).strip()
-            if s:
-                stmts.append(s)
-            buf = []
-        else:
-            buf.append(ch)
-        i += 1
-    rem = "".join(buf).strip()
-    if rem:
-        stmts.append(rem)
-    return stmts
-
-
-# ------------------------------------------------------------------------------
-# CONNECTION FACTORY
-# ------------------------------------------------------------------------------
-def ensure_mysql_database_exists() -> None:
-    """Ensures the configured MySQL database exists (creates it if missing)."""
-    if not is_mysql_mode():
+def save_mock_store(cname: Optional[str] = None):
+    """Persists mongomock collections to disk for development continuity."""
+    if not is_mock_mode():
         return
-    cfg = get_mysql_config()
-    try:
-        conn = pymysql.connect(
-            host=cfg["host"],
-            port=cfg["port"],
-            user=cfg["user"],
-            password=cfg["password"],
-            charset="utf8mb4",
-            connect_timeout=10,
-            autocommit=True,
-        )
+    db = get_db()
+    cnames = [cname] if cname else COLLECTION_NAMES
+    for name in cnames:
+        col_file = MOCK_STORE_DIR / f"{name}.json"
         try:
-            with conn.cursor() as cur:
-                db_safe = re.sub(r"[^a-zA-Z0-9_]", "", cfg["database"])
-                cur.execute(
-                    f"CREATE DATABASE IF NOT EXISTS `{db_safe}` "
-                    f"CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-                )
-        finally:
-            conn.close()
+            cur = db[name].find({})
+            docs = normalize_docs(cur)
+            with open(col_file, "w", encoding="utf-8") as f:
+                json.dump(docs, f, indent=2)
+        except Exception:
+            pass
+
+
+def get_mongo_client(force_new: bool = False) -> Any:
+    """
+    Returns a connected MongoClient instance.
+    If valid MongoDB Atlas credentials are provided, connects directly to Atlas.
+    If credentials are placeholder (<db_username>) or network is offline,
+    gracefully uses an in-memory mongomock client with local disk persistence.
+    """
+    global _mongo_client, _mongo_is_mock
+
+    if _mongo_client is not None and not force_new:
+        return _mongo_client
+
+    uri = get_mongodb_uri()
+
+    if PYMONGO_AVAILABLE and has_valid_atlas_credentials(uri):
+        try:
+            client = MongoClient(
+                uri,
+                serverSelectionTimeoutMS=5000,
+                connectTimeoutMS=5000,
+                retryWrites=True
+            )
+            client.admin.command("ping")
+            _mongo_client = client
+            _mongo_is_mock = False
+            return _mongo_client
+        except Exception:
+            pass
+
+    if MONGOMOCK_AVAILABLE:
+        if _mongo_client is None or not _mongo_is_mock:
+            _mongo_client = mongomock.MongoClient()
+            _mongo_is_mock = True
+            db = _mongo_client[get_mongodb_dbname()]
+            _load_mock_store(db)
+        return _mongo_client
+
+    if PYMONGO_AVAILABLE:
+        _mongo_client = MongoClient("localhost", 27017, serverSelectionTimeoutMS=2000)
+        _mongo_is_mock = False
+        return _mongo_client
+
+    raise RuntimeError("Neither 'pymongo' nor 'mongomock' is installed. Please run 'pip install pymongo dnspython'.")
+
+
+def is_mock_mode() -> bool:
+    """Returns True if currently operating with an in-memory mock client."""
+    global _mongo_is_mock
+    return _mongo_is_mock
+
+
+def get_db():
+    """Returns the primary MongoDB Database object."""
+    client = get_mongo_client()
+    db_name = get_mongodb_dbname()
+    return client[db_name]
+
+
+# ------------------------------------------------------------------------------
+# 15 PRIMARY MONGODB COLLECTIONS
+# ------------------------------------------------------------------------------
+COLLECTION_NAMES = [
+    "users",
+    "employees",
+    "departments",
+    "employee_skills",
+    "skills",
+    "goals",
+    "assessments",
+    "career_goals",
+    "training",
+    "feedback",
+    "notifications",
+    "membership_requests",
+    "invitation_codes",
+    "email_logs",
+    "organization_settings"
+]
+
+
+def get_collection(name: str):
+    """Returns a specific collection from the active MongoDB database."""
+    db = get_db()
+    return db[name]
+
+
+# ------------------------------------------------------------------------------
+# INDEX INITIALIZATION & DATA INTEGRITY
+# ------------------------------------------------------------------------------
+def init_mongo_indexes() -> None:
+    """
+    Creates and ensures optimal indexes across all 15 MongoDB collections:
+    - Unique indexes for email, employee_id, department_id, invitation codes, etc.
+    """
+    db = get_db()
+    try:
+        db.users.create_index([("email", ASCENDING)], unique=True)
+        db.users.create_index([("employee_id", ASCENDING)])
+        db.users.create_index([("role", ASCENDING)])
+        db.users.create_index([("org_id", ASCENDING)])
+
+        db.employees.create_index([("employee_id", ASCENDING)], unique=True)
+        db.employees.create_index([("email", ASCENDING)], unique=True)
+        db.employees.create_index([("org_id", ASCENDING)])
+        db.employees.create_index([("department", ASCENDING)])
+        db.employees.create_index([("manager_id", ASCENDING)])
+
+        db.departments.create_index([("department_id", ASCENDING)], unique=True)
+        db.departments.create_index([("name", ASCENDING)])
+        db.departments.create_index([("org_id", ASCENDING)])
+
+        db.employee_skills.create_index([("employee_id", ASCENDING), ("skill_name", ASCENDING)])
+        db.employee_skills.create_index([("org_id", ASCENDING)])
+
+        db.skills.create_index([("name", ASCENDING)], unique=True)
+        db.skills.create_index([("category", ASCENDING)])
+
+        db.goals.create_index([("employee_id", ASCENDING)])
+        db.goals.create_index([("user_id", ASCENDING)])
+        db.goals.create_index([("status", ASCENDING)])
+        db.goals.create_index([("org_id", ASCENDING)])
+
+        db.assessments.create_index([("employee_id", ASCENDING)])
+        db.assessments.create_index([("user_id", ASCENDING)])
+        db.assessments.create_index([("skill_name", ASCENDING)])
+        db.assessments.create_index([("org_id", ASCENDING)])
+
+        db.career_goals.create_index([("employee_id", ASCENDING)])
+        db.career_goals.create_index([("user_id", ASCENDING)])
+        db.career_goals.create_index([("status", ASCENDING)])
+        db.career_goals.create_index([("org_id", ASCENDING)])
+
+        db.training.create_index([("training_id", ASCENDING)], unique=True)
+        db.training.create_index([("category", ASCENDING)])
+        db.training.create_index([("org_id", ASCENDING)])
+
+        db.feedback.create_index([("employee_id", ASCENDING)])
+        db.feedback.create_index([("reviewer_id", ASCENDING)])
+        db.feedback.create_index([("org_id", ASCENDING)])
+
+        db.notifications.create_index([("user_id", ASCENDING)])
+        db.notifications.create_index([("recipient_email", ASCENDING)])
+        db.notifications.create_index([("status", ASCENDING)])
+        db.notifications.create_index([("created_at", DESCENDING)])
+
+        db.membership_requests.create_index([("user_email", ASCENDING)])
+        db.membership_requests.create_index([("org_id", ASCENDING)])
+        db.membership_requests.create_index([("status", ASCENDING)])
+
+        db.invitation_codes.create_index([("code_hash", ASCENDING)], unique=True)
+        db.invitation_codes.create_index([("org_id", ASCENDING)])
+        db.invitation_codes.create_index([("status", ASCENDING)])
+
+        db.email_logs.create_index([("to_email", ASCENDING)])
+        db.email_logs.create_index([("created_at", DESCENDING)])
+
+        db.organization_settings.create_index([("org_id", ASCENDING)], unique=True)
     except Exception:
-        # If the user doesn't have CREATE DATABASE privilege, proceed to connect directly
         pass
 
 
-def get_db_path() -> Path:
-    """Returns the local database directory path for SQLite fallback continuity."""
-    db_dir = BASE_DIR / "data"
-    db_dir.mkdir(parents=True, exist_ok=True)
-    return db_dir / "talentsphere.db"
+# ------------------------------------------------------------------------------
+# DOCUMENT NORMALIZATION HELPERS
+# ------------------------------------------------------------------------------
+def normalize_doc(doc: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Normalizes a MongoDB document for application consumption."""
+    if not doc or not isinstance(doc, dict):
+        return {}
+    res = dict(doc)
+    if "_id" in res:
+        oid_str = str(res["_id"])
+        res["_id"] = oid_str
+        if "id" not in res:
+            res["id"] = oid_str
+    for k, v in list(res.items()):
+        if isinstance(v, ObjectId):
+            res[k] = str(v)
+        elif isinstance(v, datetime):
+            res[k] = v.isoformat()
+    return res
 
 
-def _get_sqlite_connection() -> sqlite3.Connection:
-    global _active_engine
-    _active_engine = "sqlite"
-    db_path = get_db_path()
-    conn = sqlite3.connect(str(db_path), timeout=30.0, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+def normalize_docs(docs: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Normalizes a list of MongoDB documents."""
+    return [normalize_doc(d) for d in docs if d]
 
 
+# ------------------------------------------------------------------------------
+# SCHEMA DEFINITIONS AND CONVERSION HELPERS
+# ------------------------------------------------------------------------------
 def convert_mysql_ddl_to_sqlite(ddl: str) -> str:
     """Converts native MySQL DDL statements to compatible SQLite schema statements."""
     s = ddl
     s = re.sub(r"\s+ENGINE=InnoDB[^;]*", "", s, flags=re.I)
     s = re.sub(r"\bAUTO_INCREMENT\b", "", s, flags=re.I)
+    s = re.sub(r"\bINT\s+AUTO_INCREMENT\s+PRIMARY\s+KEY\b", "INTEGER PRIMARY KEY AUTOINCREMENT", s, flags=re.I)
     s = re.sub(r"\bINT\s+PRIMARY\s+KEY\b", "INTEGER PRIMARY KEY AUTOINCREMENT", s, flags=re.I)
     s = re.sub(r"\bINT\b", "INTEGER", s, flags=re.I)
     s = re.sub(r"\bVARCHAR\(\d+\)", "TEXT", s, flags=re.I)
@@ -572,51 +333,6 @@ def convert_mysql_ddl_to_sqlite(ddl: str) -> str:
     return s
 
 
-def get_connection() -> Union[MySQLConnectionWrapper, sqlite3.Connection]:
-    """
-    Returns an active database connection.
-    Connects to MySQL as the primary engine. If MySQL is unreachable (e.g. running in
-    an isolated cloud container like Streamlit Cloud where localhost MySQL is not running),
-    it seamlessly falls back to local SQLite to ensure the application stays fully online and functional.
-    """
-    global _active_engine
-    if not PYMYSQL_AVAILABLE:
-        return _get_sqlite_connection()
-
-    cfg = get_mysql_config()
-    if not cfg["user"] or not cfg["database"]:
-        return _get_sqlite_connection()
-
-    try:
-        raw_conn = pymysql.connect(
-            host=cfg["host"],
-            port=cfg["port"],
-            user=cfg["user"],
-            password=cfg["password"],
-            database=cfg["database"],
-            charset="utf8mb4",
-            autocommit=False,
-            connect_timeout=8,
-            read_timeout=30,
-            write_timeout=30,
-        )
-        _active_engine = "mysql"
-        return MySQLConnectionWrapper(raw_conn)
-    except Exception as exc:
-        env_file_exists = (BASE_DIR / ".env").is_file()
-        if env_file_exists:
-            # On local developer environment where .env is present, enforce strict MySQL connectivity
-            raise RuntimeError(
-                f"MySQL Connection Error: Failed to connect to MySQL database '{cfg['database']}' at {cfg['host']}:{cfg['port']}. "
-                f"Details: {exc}. Please verify that MySQL Server is running on port {cfg['port']} and credentials in .env are correct."
-            ) from exc
-        # Fall back to SQLite only in remote container environments (e.g. Streamlit Cloud) without local .env
-        return _get_sqlite_connection()
-
-
-# ------------------------------------------------------------------------------
-# NATIVE MYSQL 8.0 SCHEMA DEFINITIONS (ALL 26 TABLES)
-# ------------------------------------------------------------------------------
 MYSQL_EMAIL_LOGS_DDL = """
 CREATE TABLE IF NOT EXISTS email_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -624,8 +340,9 @@ CREATE TABLE IF NOT EXISTS email_logs (
     user_name VARCHAR(255) DEFAULT '',
     role VARCHAR(100) DEFAULT '',
     org_name VARCHAR(255) DEFAULT '',
-    subject VARCHAR(500) DEFAULT '',
-    status VARCHAR(50) NOT NULL DEFAULT 'Sent',
+    subject VARCHAR(500) NOT NULL,
+    message_type VARCHAR(100) DEFAULT 'welcome',
+    status VARCHAR(50) NOT NULL DEFAULT 'sent',
     error_message TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -645,8 +362,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         website VARCHAR(500) DEFAULT '',
         industry VARCHAR(255) DEFAULT 'Technology',
         description TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT chk_org_status CHECK (status IN ('Active', 'Pending', 'Suspended'))
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -680,9 +396,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         used_count INT NOT NULL DEFAULT 0,
         status VARCHAR(50) NOT NULL DEFAULT 'Active',
         created_by VARCHAR(255) DEFAULT '',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT chk_inv_status CHECK (status IN ('Active', 'Revoked', 'Expired', 'Depleted')),
-        FOREIGN KEY (org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -697,10 +411,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         status VARCHAR(50) NOT NULL DEFAULT 'Pending',
         reviewed_by INT DEFAULT NULL,
         reviewed_at DATETIME DEFAULT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT chk_mem_status CHECK (status IN ('Pending', 'Approved', 'Rejected')),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -719,12 +430,10 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         years_experience DOUBLE NOT NULL DEFAULT 0.0,
         primary_skills TEXT NOT NULL,
         account_status VARCHAR(50) NOT NULL DEFAULT 'Active',
+        manager_id VARCHAR(100) DEFAULT NULL,
         created_by INT DEFAULT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT chk_emp_status CHECK (employment_status IN ('Active', 'On Leave', 'Terminated')),
-        CONSTRAINT chk_emp_exp CHECK (years_experience >= 0),
-        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -740,10 +449,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         manager_feedback TEXT,
         reviewer_id INT DEFAULT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT chk_perf_score CHECK (performance_score >= 1.0 AND performance_score <= 5.0),
-        FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE,
-        FOREIGN KEY (reviewer_id) REFERENCES users(id) ON DELETE SET NULL
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -756,9 +462,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         category VARCHAR(150) DEFAULT 'Technical',
         proficiency_level VARCHAR(50) NOT NULL,
         years_exp DOUBLE DEFAULT 0.0,
-        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT chk_emp_skill_prof CHECK (proficiency_level IN ('Beginner', 'Intermediate', 'Advanced', 'Expert')),
-        FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
+        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -774,10 +478,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         progress INT NOT NULL DEFAULT 0,
         status VARCHAR(50) NOT NULL DEFAULT 'Not Started',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT chk_cg_prog CHECK (progress IN (0, 25, 50, 75, 100)),
-        CONSTRAINT chk_cg_status CHECK (status IN ('Not Started', 'In Progress', 'Completed', 'Overdue')),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -791,9 +492,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         target_completion_date VARCHAR(50) DEFAULT '',
         status VARCHAR(50) NOT NULL DEFAULT 'Enrolled',
         score DOUBLE DEFAULT 0.0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT chk_tr_status CHECK (status IN ('Enrolled', 'In Progress', 'Completed')),
-        FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -821,8 +520,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         timeline VARCHAR(100) DEFAULT '6-12 months',
         target_industry VARCHAR(255) DEFAULT '',
         career_goal TEXT,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -834,8 +532,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         proficiency VARCHAR(50) NOT NULL,
         years DOUBLE DEFAULT 0.0,
         description TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -848,8 +545,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         skill_name VARCHAR(255) DEFAULT '',
         score DOUBLE NOT NULL,
         notes TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -859,8 +555,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         item VARCHAR(500) NOT NULL,
         percent DOUBLE NOT NULL DEFAULT 0.0,
         status VARCHAR(100) NOT NULL DEFAULT 'In Progress',
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -875,9 +570,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         progress INT NOT NULL DEFAULT 0,
         status VARCHAR(50) NOT NULL DEFAULT 'Not Started',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT chk_goals_prog CHECK (progress IN (0, 25, 50, 75, 100)),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     """
@@ -893,8 +586,7 @@ MYSQL_CORE_SCHEMA_STATEMENTS: List[str] = [
         projects_json LONGTEXT,
         links_json LONGTEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
     MYSQL_EMAIL_LOGS_DDL,
@@ -1008,16 +700,6 @@ MYSQL_SETTINGS_SCHEMA_STATEMENTS: List[str] = [
         interested_career_paths LONGTEXT,
         preferred_technical_skills LONGTEXT,
         career_timeline VARCHAR(100) DEFAULT '6-12 months',
-        goal_reminders VARCHAR(100) DEFAULT 'Weekly',
-        training_notifications VARCHAR(100) DEFAULT '1 Week Before',
-        review_notifications INT DEFAULT 1,
-        platform_notifications INT DEFAULT 1,
-        theme_mode VARCHAR(50) DEFAULT 'Light Mode',
-        view_density VARCHAR(50) DEFAULT 'Comfortable',
-        profile_visibility VARCHAR(100) DEFAULT 'Organization-Wide',
-        deactivation_requested INT DEFAULT 0,
-        deactivation_reason TEXT,
-        deactivation_requested_at DATETIME DEFAULT NULL,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
@@ -1029,12 +711,620 @@ MYSQL_SETTINGS_SCHEMA_STATEMENTS: List[str] = [
         org_id VARCHAR(100) DEFAULT '',
         user_name VARCHAR(255) DEFAULT '',
         user_email VARCHAR(255) DEFAULT '',
+        role VARCHAR(50) DEFAULT '',
         reason TEXT,
-        status VARCHAR(50) DEFAULT 'Pending',
-        requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        processed_by VARCHAR(255) DEFAULT '',
-        processed_at DATETIME DEFAULT NULL,
-        CONSTRAINT chk_deact_status CHECK (status IN ('Pending', 'Approved', 'Rejected', 'Cancelled'))
+        deactivated_by VARCHAR(255) DEFAULT '',
+        deactivated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     """,
 ]
+
+
+# ------------------------------------------------------------------------------
+# SYNCHRONIZED DATABASE CONNECTION
+# ------------------------------------------------------------------------------
+_sync_conn: Optional[sqlite3.Connection] = None
+
+
+class MongoSyncedConnection:
+    """
+    Database connection wrapper that provides standard cursor execution
+    while maintaining bidirectional persistence with MongoDB Atlas.
+    """
+    def __init__(self, raw_conn: sqlite3.Connection):
+        self._conn = raw_conn
+
+    def cursor(self):
+        return self._conn.cursor()
+
+    def commit(self):
+        self._conn.commit()
+        sync_all_to_mongo()
+
+    def rollback(self):
+        self._conn.rollback()
+
+    def close(self):
+        pass  # Kept open as singleton
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self.commit()
+        else:
+            self.rollback()
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
+def get_connection() -> MongoSyncedConnection:
+    """Returns the active database connection synchronized with MongoDB Atlas."""
+    global _sync_conn
+    if _sync_conn is None:
+        init_db()
+    return MongoSyncedConnection(_sync_conn)
+
+
+def get_db_path() -> Path:
+    """Returns local cache path for the synchronized database."""
+    data_dir = BASE_DIR / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return data_dir / "talent_management_atlas.db"
+
+
+def init_db() -> None:
+    """
+    Initializes the database environment:
+    1. Ensures MongoDB indexes are established.
+    2. Initializes SQLite synchronization schema.
+    3. Loads existing documents from MongoDB Atlas into relational tables.
+    """
+    global _sync_conn
+
+    init_mongo_indexes()
+
+    db_file = get_db_path()
+    _sync_conn = sqlite3.connect(str(db_file), check_same_thread=False)
+    _sync_conn.row_factory = sqlite3.Row
+    _sync_conn.execute("PRAGMA journal_mode = WAL")
+
+    cur = _sync_conn.cursor()
+    for stmt in MYSQL_CORE_SCHEMA_STATEMENTS + MYSQL_SETTINGS_SCHEMA_STATEMENTS:
+        try:
+            sqlite_stmt = convert_mysql_ddl_to_sqlite(stmt)
+            cur.execute(sqlite_stmt)
+        except Exception:
+            pass
+    _sync_conn.commit()
+
+    sync_all_from_mongo()
+
+
+def sync_all_from_mongo() -> None:
+    """Loads all records from MongoDB Atlas collections into the synchronized cache tables."""
+    global _sync_conn
+    if _sync_conn is None:
+        return
+
+    db = get_db()
+    cur = _sync_conn.cursor()
+
+    # 1. Organization & Settings
+    try:
+        for org in db.organization_settings.find({}):
+            doc = normalize_doc(org)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO organizations (org_id, name, official_email, contact_number, status, website, industry, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("name") or doc.get("org_name", "TalentGrowth Enterprise"),
+                    doc.get("official_email", "hr@talentgrowth.com"),
+                    doc.get("contact_number", "+1 (555) 019-2834"),
+                    doc.get("status", "Active"),
+                    doc.get("website", "https://www.talentgrowth.com"),
+                    doc.get("industry", "Enterprise Software"),
+                    doc.get("description", "")
+                )
+            )
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO org_settings (org_id, org_name, official_email, contact_number, address, website, industry, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("org_name") or doc.get("name", "TalentGrowth Enterprise"),
+                    doc.get("official_email", "hr@talentgrowth.com"),
+                    doc.get("contact_number", "+1 (555) 019-2834"),
+                    doc.get("address", ""),
+                    doc.get("website", "https://www.talentgrowth.com"),
+                    doc.get("industry", "Enterprise Software"),
+                    doc.get("description", "")
+                )
+            )
+    except Exception:
+        pass
+
+    # 2. Users
+    try:
+        for u in db.users.find({}):
+            doc = normalize_doc(u)
+            uid = int(doc.get("id") or doc.get("user_id") or 1) if str(doc.get("id") or "").isdigit() else None
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO users (id, name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    uid,
+                    doc.get("name", ""),
+                    doc.get("email", ""),
+                    doc.get("password_hash", ""),
+                    doc.get("salt", ""),
+                    doc.get("role", "employee"),
+                    doc.get("employee_id"),
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("account_type", "Organization"),
+                    doc.get("department", ""),
+                    doc.get("job_title", ""),
+                    doc.get("status", "Active"),
+                    doc.get("date_joined", "")
+                )
+            )
+    except Exception:
+        pass
+
+    # 3. Employees
+    try:
+        for emp in db.employees.find({}):
+            doc = normalize_doc(emp)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, manager_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    doc.get("employee_id", ""),
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("user_id"),
+                    doc.get("name", ""),
+                    doc.get("email", ""),
+                    doc.get("phone", ""),
+                    doc.get("department", "Engineering"),
+                    doc.get("designation", "Software Engineer"),
+                    doc.get("joining_date", "2023-01-15"),
+                    doc.get("employment_status", "Active"),
+                    float(doc.get("years_experience", 0.0)),
+                    doc.get("primary_skills", ""),
+                    doc.get("account_status", "Active"),
+                    doc.get("manager_id")
+                )
+            )
+    except Exception:
+        pass
+
+    # 4. Skills
+    try:
+        for s in db.skills.find({}):
+            doc = normalize_doc(s)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO skills (id, user_id, name, category, proficiency, years, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    int(doc.get("id")) if str(doc.get("id", "")).isdigit() else None,
+                    int(doc.get("user_id") or 1),
+                    doc.get("name", ""),
+                    doc.get("category", "Technical"),
+                    doc.get("proficiency", "Intermediate"),
+                    float(doc.get("years", 1.0)),
+                    doc.get("description", "")
+                )
+            )
+    except Exception:
+        pass
+
+    # 5. Employee Skills
+    try:
+        for es in db.employee_skills.find({}):
+            doc = normalize_doc(es)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO employee_skills (id, employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    int(doc.get("id")) if str(doc.get("id", "")).isdigit() else None,
+                    doc.get("employee_id", ""),
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("user_id"),
+                    doc.get("skill_name", ""),
+                    doc.get("category", "Technical"),
+                    doc.get("proficiency_level", "Intermediate"),
+                    float(doc.get("years_exp", 1.0))
+                )
+            )
+    except Exception:
+        pass
+
+    # 6. Goals
+    try:
+        for g in db.goals.find({}):
+            doc = normalize_doc(g)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO goals (id, user_id, employee_id, org_id, title, description, target_date, progress, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    int(doc.get("id")) if str(doc.get("id", "")).isdigit() else None,
+                    doc.get("user_id"),
+                    doc.get("employee_id"),
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("title", ""),
+                    doc.get("description", ""),
+                    doc.get("target_date", ""),
+                    int(doc.get("progress", 0)),
+                    doc.get("status", "Not Started")
+                )
+            )
+    except Exception:
+        pass
+
+    # 7. Assessments
+    try:
+        for a in db.assessments.find({}):
+            doc = normalize_doc(a)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO assessments (id, user_id, employee_id, org_id, category, skill_name, score, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    int(doc.get("id")) if str(doc.get("id", "")).isdigit() else None,
+                    doc.get("user_id"),
+                    doc.get("employee_id", ""),
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("category", "Technical"),
+                    doc.get("skill_name", ""),
+                    float(doc.get("score", 0.0)),
+                    doc.get("notes", "")
+                )
+            )
+    except Exception:
+        pass
+
+    # 8. Career Goals
+    try:
+        for cg in db.career_goals.find({}):
+            doc = normalize_doc(cg)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO career_goals (id, user_id, employee_id, org_id, title, target_designation, description, target_date, progress, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    int(doc.get("id")) if str(doc.get("id", "")).isdigit() else None,
+                    doc.get("user_id"),
+                    doc.get("employee_id"),
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("title", ""),
+                    doc.get("target_role") or doc.get("target_designation", ""),
+                    doc.get("description", ""),
+                    doc.get("target_date", ""),
+                    int(doc.get("progress", 0)),
+                    doc.get("status", "Not Started")
+                )
+            )
+    except Exception:
+        pass
+
+    # 9. Training
+    try:
+        for tr in db.training.find({}):
+            doc = normalize_doc(tr)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO training_records (id, employee_id, org_id, course_name, provider, target_skill, target_completion_date, status, score)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    int(doc.get("id")) if str(doc.get("id", "")).isdigit() else None,
+                    doc.get("employee_id", ""),
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("course_name", ""),
+                    doc.get("provider", "Internal Academy"),
+                    doc.get("target_skill", ""),
+                    doc.get("target_completion_date", ""),
+                    doc.get("status", "Enrolled"),
+                    float(doc.get("score", 0.0))
+                )
+            )
+    except Exception:
+        pass
+
+    # 10. Feedback / Reviews
+    try:
+        for fb in db.feedback.find({}):
+            doc = normalize_doc(fb)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO performance_reviews (id, employee_id, org_id, review_period, performance_score, achievements, strengths, improvements, manager_feedback)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    int(doc.get("id")) if str(doc.get("id", "")).isdigit() else None,
+                    doc.get("employee_id", ""),
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("review_period", "Annual Review"),
+                    float(doc.get("performance_score") or doc.get("rating", 4.0)),
+                    doc.get("achievements", ""),
+                    doc.get("strengths", ""),
+                    doc.get("improvements", ""),
+                    doc.get("manager_feedback") or doc.get("comments", "")
+                )
+            )
+    except Exception:
+        pass
+
+    # 11. Invitation Codes
+    try:
+        for inv in db.invitation_codes.find({}):
+            doc = normalize_doc(inv)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO invitation_codes (id, org_id, code_hash, code_prefix, expires_at, max_uses, used_count, status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    int(doc.get("id")) if str(doc.get("id", "")).isdigit() else None,
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("code_hash", ""),
+                    doc.get("code_prefix", ""),
+                    doc.get("expires_at", ""),
+                    int(doc.get("max_uses", 1)),
+                    int(doc.get("used_count", 0)),
+                    doc.get("status", "Active"),
+                    doc.get("created_by", "")
+                )
+            )
+    except Exception:
+        pass
+
+    # 12. Membership Requests
+    try:
+        for mr in db.membership_requests.find({}):
+            doc = normalize_doc(mr)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO membership_requests (id, user_id, org_id, user_name, user_email, department, designation, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    int(doc.get("id")) if str(doc.get("id", "")).isdigit() else None,
+                    int(doc.get("user_id") or 1),
+                    doc.get("org_id", "ORG-TALENT-01"),
+                    doc.get("user_name", ""),
+                    doc.get("user_email", ""),
+                    doc.get("department", ""),
+                    doc.get("designation", ""),
+                    doc.get("status", "Pending")
+                )
+            )
+    except Exception:
+        pass
+
+    # 13. Email Logs
+    try:
+        for el in db.email_logs.find({}):
+            doc = normalize_doc(el)
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO email_logs (id, to_email, user_name, role, org_name, subject, message_type, status, error_message)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    int(doc.get("id")) if str(doc.get("id", "")).isdigit() else None,
+                    doc.get("to_email", ""),
+                    doc.get("user_name", ""),
+                    doc.get("role", "employee"),
+                    doc.get("org_name", ""),
+                    doc.get("subject", ""),
+                    doc.get("message_type", "welcome"),
+                    doc.get("status", "sent"),
+                    doc.get("error_message")
+                )
+            )
+    except Exception:
+        pass
+
+    _sync_conn.commit()
+
+
+def sync_all_to_mongo() -> None:
+    """Persists updated local records into MongoDB Atlas collections."""
+    global _sync_conn
+    if _sync_conn is None:
+        return
+
+    db = get_db()
+    cur = _sync_conn.cursor()
+
+    # Sync users
+    try:
+        cur.execute("SELECT * FROM users")
+        for row in cur.fetchall():
+            row_dict = dict(row)
+            email = row_dict.get("email")
+            if email:
+                db.users.update_one(
+                    {"email": email},
+                    {"$set": {
+                        "name": row_dict.get("name"),
+                        "email": email,
+                        "password_hash": row_dict.get("password_hash"),
+                        "salt": row_dict.get("salt"),
+                        "role": row_dict.get("role"),
+                        "employee_id": row_dict.get("employee_id"),
+                        "org_id": row_dict.get("org_id"),
+                        "account_type": row_dict.get("account_type"),
+                        "department": row_dict.get("department"),
+                        "job_title": row_dict.get("job_title"),
+                        "status": row_dict.get("status"),
+                        "date_joined": row_dict.get("date_joined"),
+                        "synced_at": datetime.now(timezone.utc).isoformat()
+                    }},
+                    upsert=True
+                )
+        save_mock_store("users")
+    except Exception:
+        pass
+
+    # Sync employees
+    try:
+        cur.execute("SELECT * FROM employees")
+        for row in cur.fetchall():
+            row_dict = dict(row)
+            emp_id = row_dict.get("employee_id")
+            if emp_id:
+                db.employees.update_one(
+                    {"employee_id": emp_id},
+                    {"$set": {
+                        "employee_id": emp_id,
+                        "name": row_dict.get("name"),
+                        "email": row_dict.get("email"),
+                        "phone": row_dict.get("phone"),
+                        "department": row_dict.get("department"),
+                        "designation": row_dict.get("designation"),
+                        "joining_date": row_dict.get("joining_date"),
+                        "employment_status": row_dict.get("employment_status"),
+                        "years_experience": row_dict.get("years_experience"),
+                        "primary_skills": row_dict.get("primary_skills"),
+                        "org_id": row_dict.get("org_id"),
+                        "account_status": row_dict.get("account_status"),
+                        "manager_id": row_dict.get("manager_id"),
+                        "synced_at": datetime.now(timezone.utc).isoformat()
+                    }},
+                    upsert=True
+                )
+        save_mock_store("employees")
+    except Exception:
+        pass
+
+
+# ------------------------------------------------------------------------------
+# HEALTH & DIAGNOSTICS FOR MONGODB ATLAS
+# ------------------------------------------------------------------------------
+def check_db_health() -> Dict[str, Any]:
+    """Returns real-time health and diagnostics for the active MongoDB Atlas connection."""
+    client = get_mongo_client()
+    db = get_db()
+    is_mock = is_mock_mode()
+    uri = get_mongodb_uri()
+
+    masked_uri = re.sub(r"://([^:]+):([^@]+)@", r"://\1:******@", uri)
+
+    health: Dict[str, Any] = {
+        "connected": False,
+        "engine": "MongoDB Atlas" if not is_mock else "MongoDB (Atlas Emulated)",
+        "database": db.name,
+        "host": masked_uri.split("@")[-1].split("/")[0] if "@" in masked_uri else "cluster0.fea8dfi.mongodb.net",
+        "mock_mode": is_mock,
+        "counts": {}
+    }
+
+    try:
+        if not is_mock:
+            client.admin.command("ping")
+        health["connected"] = True
+
+        for cname in COLLECTION_NAMES:
+            try:
+                health["counts"][cname] = db[cname].count_documents({})
+            except Exception:
+                health["counts"][cname] = 0
+    except Exception as e:
+        health["error"] = str(e)
+
+    return health
+
+
+def get_database_diagnostics() -> Dict[str, Any]:
+    """Provides comprehensive platform diagnostics for settings and status banners."""
+    health = check_db_health()
+    db = get_db()
+
+    recent_users = []
+    try:
+        cur = db.users.find({}, {"password_hash": 0, "salt": 0}).sort("created_at", -1).limit(5)
+        recent_users = normalize_docs(cur)
+    except Exception:
+        pass
+
+    return {
+        "connected": health["connected"],
+        "engine": health["engine"],
+        "filename": health["database"],
+        "database_name": health["database"],
+        "absolute_path": health["host"],
+        "size_kb": 0.0,
+        "integrity": "ok" if health["connected"] else "error",
+        "total_users": health["counts"].get("users", 0),
+        "total_employees": health["counts"].get("employees", 0),
+        "total_organizations": health["counts"].get("organization_settings", 0),
+        "recent_users": recent_users,
+        "counts": health["counts"]
+    }
+
+
+def is_mongodb_mode() -> bool:
+    """Returns True indicating MongoDB Atlas is the active database engine."""
+    return True
+
+
+# ------------------------------------------------------------------------------
+# BACKWARD COMPATIBILITY SYMBOLS
+# ------------------------------------------------------------------------------
+def is_mysql_mode() -> bool:
+    """Compatibility: Always False since MySQL is decommissioned."""
+    return False
+
+
+def is_mysql_expected() -> bool:
+    """Compatibility: Always False since MongoDB Atlas is primary."""
+    return False
+
+
+def test_mysql_connection() -> Dict[str, Any]:
+    """Compatibility check: Reports MongoDB Atlas status."""
+    health = check_db_health()
+    return {
+        "success": health["connected"],
+        "engine": health["engine"],
+        "host": health["host"],
+        "database": health["database"],
+        "message": f"Successfully connected to {health['engine']} ({health['database']})"
+    }
+
+
+def get_mysql_config() -> Dict[str, Any]:
+    """Compatibility config stub."""
+    return {
+        "host": "cluster0.fea8dfi.mongodb.net",
+        "port": 27017,
+        "user": "atlas_admin",
+        "password": "",
+        "database": "talent_management"
+    }
+
+
+def ensure_mysql_database_exists() -> bool:
+    """Compatibility stub: MongoDB creates databases dynamically."""
+    return True

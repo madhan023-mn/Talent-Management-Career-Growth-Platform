@@ -1,0 +1,112 @@
+[
+  {
+    "department_id": "DEP001",
+    "name": "Engineering",
+    "head_id": "EMP003",
+    "budget": 750000.0,
+    "description": "Platform architecture, frontend/backend engineering, and distributed systems.",
+    "org_id": "ORG-TALENT-01",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf4044f",
+    "id": "6b05bdd2790f4209daf4044f"
+  },
+  {
+    "department_id": "DEP002",
+    "name": "Product Management",
+    "head_id": "EMP004",
+    "budget": 400000.0,
+    "description": "Product strategy, user personas, roadmaps, and business alignment.",
+    "org_id": "ORG-TALENT-01",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40450",
+    "id": "6b05bdd2790f4209daf40450"
+  },
+  {
+    "department_id": "DEP003",
+    "name": "Data Science & AI",
+    "head_id": "EMP005",
+    "budget": 600000.0,
+    "description": "Machine learning, LLM fine-tuning, predictive modeling, and data pipelines.",
+    "org_id": "ORG-TALENT-01",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40451",
+    "id": "6b05bdd2790f4209daf40451"
+  },
+  {
+    "department_id": "DEP004",
+    "name": "UI/UX Design",
+    "head_id": "EMP006",
+    "budget": 350000.0,
+    "description": "Design systems, user experience research, interaction design, and usability.",
+    "org_id": "ORG-TALENT-01",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40452",
+    "id": "6b05bdd2790f4209daf40452"
+  },
+  {
+    "department_id": "DEP005",
+    "name": "Quality Assurance",
+    "head_id": "EMP007",
+    "budget": 300000.0,
+    "description": "Automated regression testing, load testing, and continuous verification.",
+    "org_id": "ORG-TALENT-01",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40453",
+    "id": "6b05bdd2790f4209daf40453"
+  },
+  {
+    "department_id": "DEP006",
+    "name": "Human Resources",
+    "head_id": "EMP002",
+    "budget": 250000.0,
+    "description": "Talent acquisition, employee enablement, benefits, and culture.",
+    "org_id": "ORG-TALENT-01",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40454",
+    "id": "6b05bdd2790f4209daf40454"
+  },
+  {
+    "department_id": "DEP007",
+    "name": "DevOps & Cloud Infrastructure",
+    "head_id": "EMP003",
+    "budget": 500000.0,
+    "description": "Cloud orchestration, Kubernetes, CI/CD, and site reliability.",
+    "org_id": "ORG-TALENT-01",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40455",
+    "id": "6b05bdd2790f4209daf40455"
+  },
+  {
+    "department_id": "DEP008",
+    "name": "Information Security",
+    "head_id": "EMP003",
+    "budget": 450000.0,
+    "description": "Application security, penetration testing, compliance, and threat mitigation.",
+    "org_id": "ORG-TALENT-01",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40456",
+    "id": "6b05bdd2790f4209daf40456"
+  },
+  {
+    "department_id": "DEP009",
+    "name": "Marketing & Growth",
+    "head_id": "EMP004",
+    "budget": 350000.0,
+    "description": "Product marketing, client acquisition, brand advocacy, and outbound reach.",
+    "org_id": "ORG-TALENT-01",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40457",
+    "id": "6b05bdd2790f4209daf40457"
+  },
+  {
+    "department_id": "DEP010",
+    "name": "Finance & Operations",
+    "head_id": "EMP001",
+    "budget": 400000.0,
+    "description": "Financial planning, accounting, operational efficiency, and auditing.",
+    "org_id": "ORG-TALENT-01",
+    "created_at": "2026-11-24T16:39:46.767233+00:00",
+    "_id": "6b05bdd2790f4209daf40458",
+    "id": "6b05bdd2790f4209daf40458"
+  }
+]
