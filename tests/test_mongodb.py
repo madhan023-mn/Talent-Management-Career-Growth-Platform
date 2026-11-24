@@ -160,3 +160,44 @@ def test_gap_analysis_and_matching():
 
     gaps = gap_analysis("Software Architect", sample_skills)
     assert isinstance(gaps, list)
+
+
+def test_pdf_report_generation():
+    """Validates the redesigned 2-page ReportLab PDF generation with live database data."""
+    import pypdf
+    from io import BytesIO
+    from services.reports import create_report
+    from services.core import get_employee_skills, recommendations
+
+    emp = get_employee_by_id("EMP011", org_id="ORG-TALENT-01")
+    assert emp is not None
+    skills = get_employee_skills(employee_id="EMP011", org_id="ORG-TALENT-01")
+    gaps = gap_analysis("Lead Cloud Architect", skills)
+    recs = recommendations(emp, skills)
+    score = role_match("Lead Cloud Architect", skills, emp.get("years_experience", 6.5))
+
+    pdf_bytes = create_report(
+        profile=emp,
+        skills=skills,
+        analysis={"match": score},
+        gaps=gaps,
+        recommendations=recs,
+        org_id="ORG-TALENT-01"
+    )
+    assert pdf_bytes is not None
+    assert len(pdf_bytes) > 1000
+
+    reader = pypdf.PdfReader(BytesIO(pdf_bytes))
+    assert len(reader.pages) == 2, f"Expected 2 pages, got {len(reader.pages)}"
+
+    p1_text = reader.pages[0].extract_text()
+    p2_text = reader.pages[1].extract_text()
+
+    assert "EMPLOYEE CAREER & PERFORMANCE REPORT" in p1_text
+    assert "CAREER READINESS OVERVIEW" in p1_text
+    assert "SKILLS GAP ANALYSIS" in p1_text
+    assert "KEY DEVELOPMENT ACTIONS" in p1_text
+    assert "CAREER DEVELOPMENT PLAN" in p2_text
+    assert "REVIEW STATUS" in p2_text
+    assert "ACKNOWLEDGEMENT" in p2_text
+
