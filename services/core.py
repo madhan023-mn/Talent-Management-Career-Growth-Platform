@@ -40,9 +40,6 @@ try:
         get_db_path as _db_get_db_path,
         convert_mysql_ddl_to_sqlite,
         MYSQL_CORE_SCHEMA_STATEMENTS,
-        get_database_diagnostics as _db_get_db_diagnostics,
-        check_db_health as _db_check_db_health,
-        is_mongodb_mode,
     )
 except ImportError:
     from .db import (
@@ -55,9 +52,6 @@ except ImportError:
         get_db_path as _db_get_db_path,
         convert_mysql_ddl_to_sqlite,
         MYSQL_CORE_SCHEMA_STATEMENTS,
-        get_database_diagnostics as _db_get_db_diagnostics,
-        check_db_health as _db_check_db_health,
-        is_mongodb_mode,
     )
 
 
@@ -169,23 +163,108 @@ def get_db_path() -> Path:
     return _db_get_db_path()
 
 def check_db_health() -> Dict[str, Any]:
-    """Inspects the active MongoDB Atlas database connection, size, integrity, and record counts."""
-    return _db_check_db_health()
+    """Inspects the active MySQL database connection, size, integrity, and record counts."""
+    cfg = get_mysql_config()
+    info: Dict[str, Any] = {
+        "connected": False,
+        "engine": "MySQL",
+        "path": f"mysql://{cfg['user']}@{cfg['host']}:{cfg['port']}/{cfg['database']}",
+        "filename": cfg["database"],
+        "host": f"{cfg['host']}:{cfg['port']}",
+        "size_kb": 0.0,
+        "integrity": "Unknown",
+        "counts": {}
+    }
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT VERSION()")
+        ver_row = cur.fetchone()
+        info["version"] = str(ver_row[0]) if ver_row else "MySQL"
+        info["integrity"] = "ok"
+        info["connected"] = True
+        cur.execute(
+            "SELECT ROUND(SUM(data_length + index_length) / 1024, 1) "
+            "FROM information_schema.tables WHERE table_schema = DATABASE()"
+        )
+        sz_row = cur.fetchone()
+        info["size_kb"] = float(sz_row[0]) if sz_row and sz_row[0] is not None else 0.0
+        for table in ["organizations", "users", "employees", "invitation_codes", "performance_reviews", "employee_skills", "assessments", "career_goals", "training_records"]:
+            try:
+                cur.execute(f"SELECT COUNT(*) FROM {table}")
+                info["counts"][table] = cur.fetchone()[0]
+            except Exception:
+                pass
+        conn.close()
+    except Exception as e:
+        info["integrity"] = f"Error: {e}"
+    return info
 
 def get_connection():
     return _db_get_connection()
 
 def checkpoint_db(conn: Optional[Any] = None) -> Tuple[int, int, int]:
-    """Forces database checkpoint or flush."""
+    """Forces database checkpoint. In exclusive MySQL mode, this is a safe no-op."""
     return (0, 0, 0)
 
 def get_database_diagnostics() -> Dict[str, Any]:
     """
-    Returns sanitized diagnostic metrics regarding the active MongoDB Atlas database:
-    database name, host/port, connection integrity status,
+    Returns sanitized diagnostic metrics regarding the active MySQL database:
+    database name, host/port, size, connection integrity status,
     record counts, and recently created accounts (without sensitive credentials).
     """
-    return _db_get_db_diagnostics()
+    cfg = get_mysql_config()
+    diag: Dict[str, Any] = {
+        "connected": False,
+        "engine": "MySQL",
+        "filename": cfg["database"],
+        "absolute_path": f"mysql://{cfg['user']}@{cfg['host']}:{cfg['port']}/{cfg['database']}",
+        "size_kb": 0.0,
+        "integrity": "Unknown",
+        "total_users": 0,
+        "total_employees": 0,
+        "total_organizations": 0,
+        "recent_users": []
+    }
+    try:
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT 'ok'")
+            row = cur.fetchone()
+            diag["integrity"] = row[0] if row else "ok"
+            diag["connected"] = True
+
+            cur.execute(
+                "SELECT ROUND(SUM(data_length + index_length) / 1024, 1) "
+                "FROM information_schema.tables WHERE table_schema = DATABASE()"
+            )
+            sz_row = cur.fetchone()
+            diag["size_kb"] = float(sz_row[0]) if sz_row and sz_row[0] is not None else 0.0
+
+            cur.execute("SELECT COUNT(*) FROM users")
+            diag["total_users"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(*) FROM employees")
+            diag["total_employees"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(*) FROM organizations")
+            diag["total_organizations"] = cur.fetchone()[0]
+
+            cur.execute(
+                """
+                SELECT id, name, email, role, account_type, org_id, status, date_joined
+                FROM users
+                ORDER BY id DESC
+                LIMIT 5
+                """
+            )
+            diag["recent_users"] = [dict(r) for r in cur.fetchall()]
+        finally:
+            conn.close()
+    except Exception as e:
+        diag["error"] = str(e)
+    return diag
 
 def verify_user_in_db(user_id_or_email: Union[int, str]) -> Optional[Dict[str, Any]]:
     """
@@ -1108,23 +1187,7 @@ def get_all_designations(org_id: Optional[str] = None) -> List[str]:
 
 # ----------------- Authentication & Security -----------------
 
-try:
-    import bcrypt
-    BCRYPT_AVAILABLE = True
-except ImportError:
-    bcrypt = None
-    BCRYPT_AVAILABLE = False
-
 def hash_password(password: str, salt: Optional[str] = None) -> Tuple[str, str]:
-    """Secures passwords using bcrypt with PBKDF2 fallback."""
-    if BCRYPT_AVAILABLE:
-        pw_bytes = password.encode("utf-8")
-        if salt and salt.startswith("$2"):
-            salt_bytes = salt.encode("utf-8")
-        else:
-            salt_bytes = bcrypt.gensalt(rounds=12)
-        hashed = bcrypt.hashpw(pw_bytes, salt_bytes).decode("utf-8")
-        return hashed, salt_bytes.decode("utf-8")
     if salt is None:
         salt = secrets.token_hex(16)
     hashed = hashlib.pbkdf2_hmac(
@@ -1136,20 +1199,8 @@ def hash_password(password: str, salt: Optional[str] = None) -> Tuple[str, str]:
     return hashed, salt
 
 def verify_password(password: str, stored_hash: str, salt: str) -> bool:
-    """Verifies passwords supporting both bcrypt and legacy PBKDF2 hashes."""
-    if not stored_hash or not password:
-        return False
-    pw_bytes = password.encode("utf-8")
-    if BCRYPT_AVAILABLE and (stored_hash.startswith("$2b$") or stored_hash.startswith("$2a$") or stored_hash.startswith("$2y$")):
-        try:
-            return bcrypt.checkpw(pw_bytes, stored_hash.encode("utf-8"))
-        except Exception:
-            pass
-    if salt:
-        hashed = hashlib.pbkdf2_hmac("sha256", pw_bytes, salt.encode("utf-8"), 100_000).hex()
-        if secrets.compare_digest(hashed, stored_hash):
-            return True
-    return False
+    hashed, _ = hash_password(password, salt)
+    return secrets.compare_digest(hashed, stored_hash)
 
 
 def _mirror_account(
@@ -2209,7 +2260,7 @@ def get_employees(
         query = """
             SELECT e.id, e.employee_id, e.org_id, e.user_id, e.name, e.email, e.phone, e.department, e.designation,
                    e.joining_date, e.employment_status, e.years_experience, e.primary_skills,
-                   e.account_status, e.created_by, e.manager_id, e.created_at, e.updated_at,
+                   e.account_status, e.created_by, e.created_at, e.updated_at,
                    COALESCE(o.name, 'Talent Growth Technologies') as org_name,
                    ROUND(AVG(pr.performance_score), 2) as avg_rating,
                    COUNT(pr.id) as review_count
@@ -2261,7 +2312,7 @@ def get_employee_by_id(employee_id: Any, org_id: Optional[str] = None) -> Option
         query = """
             SELECT e.id, e.employee_id, e.org_id, e.user_id, e.name, e.email, e.phone, e.department, e.designation,
                    e.joining_date, e.employment_status, e.years_experience, e.primary_skills,
-                   e.account_status, e.created_by, e.manager_id, e.created_at, e.updated_at,
+                   e.account_status, e.created_by, e.created_at, e.updated_at,
                    COALESCE(o.name, 'Talent Growth Technologies') as org_name,
                    ROUND(AVG(pr.performance_score), 2) as avg_rating
             FROM employees e
