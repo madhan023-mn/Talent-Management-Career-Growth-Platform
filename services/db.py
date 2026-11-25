@@ -93,6 +93,10 @@ DEFAULT_ATLAS_URI = (
     "mongodb+srv://digisamakshmadhang_db_user:ckVaHfBp307OHqxV@cluster0.rewpdrw.mongodb.net/talent_management?retryWrites=true&w=majority"
 )
 
+DIRECT_ATLAS_URI = (
+    "mongodb://digisamakshmadhang_db_user:ckVaHfBp307OHqxV@ac-0o6zrla-shard-00-00.rewpdrw.mongodb.net:27017,ac-0o6zrla-shard-00-01.rewpdrw.mongodb.net:27017,ac-0o6zrla-shard-00-02.rewpdrw.mongodb.net:27017/talent_management?ssl=true&replicaSet=atlas-12exb5-shard-0&authSource=admin&retryWrites=true&w=majority"
+)
+
 
 def get_mongodb_uri() -> str:
     """Reads MONGODB_URI from environment variables or Streamlit secrets."""
@@ -138,26 +142,191 @@ def has_valid_atlas_credentials(uri: str) -> bool:
     return False
 
 
-def _try_connect_atlas(target_uri: str, timeout_ms: int = 5000) -> Optional[Any]:
-    """Helper to connect to Atlas with fast timeouts and minimal pool initialization latency."""
+def _seed_mock_database(db: Any) -> None:
+    """Pre-seeds standard demo accounts and organizations into in-memory mock database if empty."""
+    try:
+        if db.users.find_one({"email": "ravi@company.com"}):
+            return
+
+        # Pre-seed organizations
+        if not db.organizations.find_one({"org_id": "ORG-TALENT-01"}):
+            db.organizations.insert_many([
+                {"id": 1, "org_id": "ORG-TALENT-01", "name": "Talent Growth Technologies", "official_email": "contact@talentgrowth.com", "contact_number": "+1-555-0100", "status": "Active"},
+                {"id": 2, "org_id": "ORG-TECHCORP-02", "name": "TechCorp Solutions", "official_email": "contact@techcorp.com", "contact_number": "+1-555-0900", "status": "Active"}
+            ])
+
+        # Password hashes
+        import bcrypt
+        def _hash(pw: str) -> tuple:
+            salt = bcrypt.gensalt().decode("utf-8")
+            hashed = bcrypt.hashpw(pw.encode("utf-8"), salt.encode("utf-8")).decode("utf-8")
+            return hashed, salt
+
+        admin_h, admin_s = _hash("Admin@12345")
+        emp_h, emp_s = _hash("Password123")
+
+        db.users.insert_many([
+            {
+                "id": 1001,
+                "name": "HR Administrator",
+                "email": "admin@talentgrowth.com",
+                "password_hash": admin_h,
+                "salt": admin_s,
+                "role": "admin",
+                "employee_id": "EMP001",
+                "org_id": "ORG-TALENT-01",
+                "account_type": "Organization",
+                "department": "Human Resources",
+                "job_title": "VP of Human Resources",
+                "status": "Active"
+            },
+            {
+                "id": 1002,
+                "name": "Alex Morgan",
+                "email": "alex@company.com",
+                "password_hash": emp_h,
+                "salt": emp_s,
+                "role": "employee",
+                "employee_id": "EMP101",
+                "org_id": "ORG-TALENT-01",
+                "account_type": "Organization",
+                "department": "Engineering",
+                "job_title": "Full Stack Engineer",
+                "status": "Active"
+            },
+            {
+                "id": 1003,
+                "name": "Ravi Kumar",
+                "email": "ravi@company.com",
+                "password_hash": emp_h,
+                "salt": emp_s,
+                "role": "employee",
+                "employee_id": "EMP107",
+                "org_id": None,
+                "account_type": "Individual",
+                "department": "IT",
+                "job_title": "Junior Python Developer",
+                "status": "Active"
+            }
+        ])
+
+        db.profiles.insert_many([
+            {"id": 1001, "user_id": 1001, "job_title": "VP of Human Resources", "department": "Human Resources", "target_role": "Chief People Officer"},
+            {"id": 1002, "user_id": 1002, "job_title": "Full Stack Engineer", "department": "Engineering", "target_role": "Senior Software Engineer", "years_experience": 3.5},
+            {"id": 1003, "user_id": 1003, "job_title": "Junior Python Developer", "department": "IT", "target_role": "Full Stack Engineer", "years_experience": 1.5}
+        ])
+
+        db.employees.insert_many([
+            {"id": 1001, "employee_id": "EMP001", "name": "HR Administrator", "email": "admin@talentgrowth.com", "department": "Human Resources", "designation": "VP of Human Resources", "org_id": "ORG-TALENT-01", "status": "Active", "account_status": "Active", "user_id": 1001},
+            {"id": 1002, "employee_id": "EMP101", "name": "Alex Morgan", "email": "alex@company.com", "department": "Engineering", "designation": "Full Stack Engineer", "org_id": "ORG-TALENT-01", "status": "Active", "account_status": "Active", "user_id": 1002},
+            {"id": 1003, "employee_id": "EMP107", "name": "Ravi Kumar", "email": "ravi@company.com", "department": "IT", "designation": "Junior Python Developer", "org_id": "ORG-TALENT-01", "status": "Active", "account_status": "Active", "user_id": 1003}
+        ])
+
+        db.skills.insert_many([
+            {"id": 1001, "user_id": 1003, "name": "Python", "category": "Technical", "proficiency": "Intermediate", "years": 1.5},
+            {"id": 1002, "user_id": 1003, "name": "Git", "category": "Technical", "proficiency": "Intermediate", "years": 1.5},
+            {"id": 1003, "user_id": 1003, "name": "SQL", "category": "Technical", "proficiency": "Beginner", "years": 0.5},
+            {"id": 1004, "user_id": 1002, "name": "Python", "category": "Technical", "proficiency": "Advanced", "years": 3.5},
+            {"id": 1005, "user_id": 1002, "name": "React", "category": "Technical", "proficiency": "Intermediate", "years": 2.0}
+        ])
+    except Exception as exc:
+        logger.warning(f"Error seeding mock database: {exc}")
+
+
+def _create_memory_mock_client() -> Any:
+    """Provides a zero-dependency in-memory MongoDB-compatible client when mongomock is unavailable."""
+    class _SimpleCol:
+        def __init__(self, name: str):
+            self.name = name
+            self.docs: List[Dict[str, Any]] = []
+        def create_index(self, *a, **kw): pass
+        def insert_one(self, doc: Dict[str, Any]):
+            d = dict(doc)
+            if "id" not in d: d["id"] = len(self.docs) + 1
+            self.docs.append(d)
+            class Res: inserted_id = str(d.get("id"))
+            return Res()
+        def insert_many(self, docs: Iterable[Dict[str, Any]]):
+            for d in docs: self.insert_one(d)
+        def find(self, filter: Optional[Dict[str, Any]] = None, proj: Optional[Dict[str, Any]] = None):
+            class Cursor(list):
+                def sort(self, *a, **kw): return self
+                def limit(self, n: int): return Cursor(self[:n])
+            res = [d for d in self.docs if not filter or all(d.get(k) == v for k, v in filter.items() if not k.startswith("$"))]
+            return Cursor(res)
+        def find_one(self, filter: Optional[Dict[str, Any]] = None):
+            r = self.find(filter)
+            return r[0] if r else None
+        def update_one(self, filter, update, upsert=False):
+            doc = self.find_one(filter)
+            if doc:
+                set_vals = update.get("$set", {}) if isinstance(update, dict) else {}
+                doc.update(set_vals)
+            elif upsert:
+                new_d = dict(filter)
+                set_vals = update.get("$set", {}) if isinstance(update, dict) else {}
+                new_d.update(set_vals)
+                self.insert_one(new_d)
+        def find_one_and_update(self, filter, update, upsert=False, return_document=None):
+            self.update_one(filter, update, upsert=upsert)
+            return self.find_one(filter) or {"seq": 100}
+        def delete_one(self, filter):
+            for i, d in enumerate(self.docs):
+                if all(d.get(k) == v for k, v in filter.items()):
+                    self.docs.pop(i)
+                    break
+        def count_documents(self, filter: Optional[Dict[str, Any]] = None):
+            return len(self.find(filter))
+
+    class _SimpleDB:
+        def __init__(self, name: str):
+            self.name = name
+            self._cols: Dict[str, Any] = {}
+            self.admin = self
+        def __getitem__(self, name: str):
+            if name not in self._cols: self._cols[name] = _SimpleCol(name)
+            return self._cols[name]
+        def __getattr__(self, name: str):
+            return self[name]
+        def command(self, *a, **kw): return {"ok": 1}
+        def list_collection_names(self): return list(self._cols.keys())
+
+    class _SimpleClient:
+        def __init__(self):
+            self._dbs: Dict[str, Any] = {}
+            self.admin = _SimpleDB("admin")
+        def __getitem__(self, name: str):
+            if name not in self._dbs: self._dbs[name] = _SimpleDB(name)
+            return self._dbs[name]
+        def __getattr__(self, name: str):
+            return self[name]
+        def close(self): pass
+
+    return _SimpleClient()
+
+
+def _try_connect_atlas(target_uri: str, timeout_ms: int = 1200) -> Tuple[Optional[Any], bool]:
+    """Helper to connect to Atlas with fast timeouts and minimal pool initialization latency. Returns (client, is_dns_failure)."""
     if not target_uri or not has_valid_atlas_credentials(target_uri) or target_uri.startswith("mongomock://"):
-        return None
+        return None, False
     try:
         client = MongoClient(
             target_uri,
             maxPoolSize=50,
             minPoolSize=0,
             serverSelectionTimeoutMS=timeout_ms,
-            connectTimeoutMS=6000,
-            socketTimeoutMS=10000,
+            connectTimeoutMS=timeout_ms,
+            socketTimeoutMS=3000,
             retryWrites=True,
             appname="TalentGrowthApp",
         )
         client.admin.command("ping")
-        return client
+        return client, False
     except Exception as exc:
-        logger.warning(f"MongoDB Atlas connection attempt to {target_uri[:35]}... failed ({exc}).")
-        return None
+        err_msg = str(exc)
+        logger.warning(f"MongoDB Atlas connection attempt failed ({exc}).")
+        is_dns_failure = "11001" in err_msg or "getaddrinfo failed" in err_msg or "nodename nor servname" in err_msg
+        return None, is_dns_failure
 
 
 def get_client() -> Any:
@@ -179,41 +348,56 @@ def get_client() -> Any:
     except Exception:
         pass
 
-    if not PYMONGO_AVAILABLE:
-        raise RuntimeError("PyMongo package is not installed. Please run `pip install pymongo dnspython`.")
-
     primary_uri = get_mongodb_uri()
     client = None
 
-    # 1. Attempt connection with configured/secret URI
-    if has_valid_atlas_credentials(primary_uri):
-        client = _try_connect_atlas(primary_uri, timeout_ms=5000)
+    if PYMONGO_AVAILABLE:
+        is_dns_offline = False
+        # 1. If targeting cluster0.rewpdrw.mongodb.net, prioritize DIRECT_ATLAS_URI!
+        # Direct replica set connection avoids DNS SRV resolution timeouts in cloud containers like Streamlit Cloud.
+        if "cluster0.rewpdrw.mongodb.net" in primary_uri:
+            client, is_dns_offline = _try_connect_atlas(DIRECT_ATLAS_URI, timeout_ms=1200)
 
-    # 2. If configured URI failed and is different from DEFAULT_ATLAS_URI, try DEFAULT_ATLAS_URI
-    if client is None and primary_uri != DEFAULT_ATLAS_URI and has_valid_atlas_credentials(DEFAULT_ATLAS_URI):
-        logger.info("Attempting connection using DEFAULT_ATLAS_URI cluster fallback...")
-        client = _try_connect_atlas(DEFAULT_ATLAS_URI, timeout_ms=5000)
+        # 2. Try configured/primary URI if direct replica wasn't used or failed (and host is resolvable)
+        if client is None and not is_dns_offline and has_valid_atlas_credentials(primary_uri):
+            client, is_dns_offline = _try_connect_atlas(primary_uri, timeout_ms=1200)
+
+        # 3. Try DIRECT_ATLAS_URI fallback
+        if client is None and not is_dns_offline and primary_uri != DIRECT_ATLAS_URI:
+            client, is_dns_offline = _try_connect_atlas(DIRECT_ATLAS_URI, timeout_ms=1200)
+
+        # 4. Try DEFAULT_ATLAS_URI fallback
+        if client is None and not is_dns_offline and primary_uri != DEFAULT_ATLAS_URI:
+            client, is_dns_offline = _try_connect_atlas(DEFAULT_ATLAS_URI, timeout_ms=1200)
 
     if client is not None:
         _mongo_client = client
         _mongo_is_mock = False
         logger.info("Connected to MongoDB Atlas cluster.")
-        # Ensure indexes in background so it never blocks page loading
+        # Ensure indexes in background daemon thread so it never blocks page loading
         target_db = client[get_mongodb_dbname()]
         import threading
         threading.Thread(target=_ensure_indexes, args=(target_db,), daemon=True).start()
-    elif MONGOMOCK_AVAILABLE:
-        # 3. Resilient fallback to mongomock when Atlas is unreachable or offline
-        logger.warning("MongoDB Atlas cluster unreachable; initializing in-memory mongomock database to preserve functionality.")
-        _mongo_client = mongomock.MongoClient()
+    else:
+        # Resilient fallback to in-memory database when Atlas is unreachable, sandboxed, or offline
+        logger.warning("MongoDB Atlas cluster unreachable; initializing in-memory database to preserve functionality.")
+        mm_module = mongomock
+        if mm_module is None:
+            try:
+                import importlib
+                mm_module = importlib.import_module("mongomock")
+            except Exception:
+                mm_module = None
+
+        if mm_module is not None:
+            _mongo_client = mm_module.MongoClient()
+        else:
+            _mongo_client = _create_memory_mock_client()
+
         _mongo_is_mock = True
         target_db = _mongo_client[get_mongodb_dbname()]
         _ensure_indexes(target_db)
-    else:
-        raise RuntimeError(
-            f"Unable to connect to MongoDB Atlas at URI: {primary_uri}. "
-            "Please check your MONGODB_URI credentials in .env or Streamlit secrets."
-        )
+        _seed_mock_database(target_db)
 
     # Cache in Streamlit session_state if available
     try:

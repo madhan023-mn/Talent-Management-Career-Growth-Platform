@@ -997,7 +997,10 @@ def landing_webpage():
             """
         )
         if st.button("Launch HR Admin Demo", icon=":material/rocket_launch:", key="landing_btn_admin", use_container_width=True, type="primary"):
-            admin_acc = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+            try:
+                admin_acc = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+            except Exception:
+                admin_acc = None
             if admin_acc:
                 st.session_state.user = admin_acc
                 st.session_state.current_page = "Dashboard"
@@ -1030,7 +1033,10 @@ def landing_webpage():
             """
         )
         if st.button("Launch Employee Demo", icon=":material/rocket_launch:", key="landing_btn_alex", use_container_width=True, type="primary"):
-            emp_acc = login("alex@company.com", "Password123")
+            try:
+                emp_acc = login("alex@company.com", "Password123")
+            except Exception:
+                emp_acc = None
             if emp_acc:
                 st.session_state.user = emp_acc
                 st.session_state.current_page = "Dashboard"
@@ -1063,7 +1069,10 @@ def landing_webpage():
             """
         )
         if st.button("Launch Individual Demo", icon=":material/rocket_launch:", key="landing_btn_ravi", use_container_width=True, type="primary"):
-            ravi_acc = login("ravi@company.com", "Password123")
+            try:
+                ravi_acc = login("ravi@company.com", "Password123")
+            except Exception:
+                ravi_acc = None
             if ravi_acc:
                 ravi_acc["account_type"] = "Individual"
                 ravi_acc["org_id"] = None
@@ -1735,7 +1744,10 @@ def login_page():
                 if not (email or "").strip() or not password:
                     st.error("Please enter both your email address and password.", icon=":material/error:")
                 else:
-                    user_data = login(email.strip(), password)
+                    try:
+                        user_data = login(email.strip(), password)
+                    except Exception:
+                        user_data = None
                     if user_data:
                         st.session_state.user = user_data
                         st.session_state.current_page = "Dashboard"
@@ -1750,7 +1762,10 @@ def login_page():
             col_chip1, col_chip2, col_chip3 = st.columns(3, gap="small")
             with col_chip1:
                 if st.button("HR Admin", icon=":material/admin_panel_settings:", key="login_chip_admin", use_container_width=True, type="secondary"):
-                    u = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+                    try:
+                        u = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+                    except Exception:
+                        u = None
                     if u:
                         st.session_state.user = u
                         st.session_state.current_page = "Dashboard"
@@ -1758,7 +1773,10 @@ def login_page():
                         st.rerun()
             with col_chip2:
                 if st.button("Employee", icon=":material/badge:", key="login_chip_alex", use_container_width=True, type="secondary"):
-                    u = login("alex@company.com", "Password123")
+                    try:
+                        u = login("alex@company.com", "Password123")
+                    except Exception:
+                        u = None
                     if u:
                         st.session_state.user = u
                         st.session_state.current_page = "Dashboard"
@@ -1766,7 +1784,10 @@ def login_page():
                         st.rerun()
             with col_chip3:
                 if st.button("Individual", icon=":material/person:", key="login_chip_ravi", use_container_width=True, type="secondary"):
-                    u = login("ravi@company.com", "Password123")
+                    try:
+                        u = login("ravi@company.com", "Password123")
+                    except Exception:
+                        u = None
                     if u:
                         u["account_type"] = "Individual"
                         u["org_id"] = None
