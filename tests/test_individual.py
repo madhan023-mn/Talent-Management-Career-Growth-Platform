@@ -256,7 +256,8 @@ def test_assessment_history_improvement_tracking():
         bank_questions[1]["id"]: bank_questions[1]["answer"],
         bank_questions[2]["id"]: bank_questions[2]["answer"],
         bank_questions[3]["id"]: "Wrong 1",
-        bank_questions[4]["id"]: "Wrong 2"
+        bank_questions[4]["id"]: "Wrong 2",
+        bank_questions[5]["id"]: "Wrong 3"
     }
     evaluate_assessment(uid, "SQL", ans_attempt1)
 
@@ -472,9 +473,10 @@ def test_join_organization_invalid_code_rejected():
 def test_three_option_registration_option1_join_existing_org():
     """Option 1: Join Existing Organization creates pending membership request and approves."""
     # Ensure existing org exists
-    org = get_organization_by_name("Talent Growth Technologies")
+    org = get_organization_by_name("Talent Growth Technologies") or get_organization_by_name("Global Talent Enterprises")
     assert org is not None
     org_id = org["org_id"]
+    target_org_name = org["name"]
 
     # 1. Join with invalid org name fails
     ok_fail, msg_fail = register(
@@ -493,7 +495,7 @@ def test_three_option_registration_option1_join_existing_org():
         email="elena.rostova@example.com",
         password="SecurePassword123!",
         registration_type="join_org",
-        org_name="Talent Growth Technologies",
+        org_name=target_org_name,
         department="Engineering",
         job_title="DevOps Specialist",
         primary_skills="Kubernetes, Terraform, Python"

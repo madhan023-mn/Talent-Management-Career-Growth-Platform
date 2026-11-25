@@ -19,46 +19,17 @@ from services.core import (
     verify_password,
     _safe_add_column
 )
-from services.db import is_mysql_mode, MYSQL_SETTINGS_SCHEMA_STATEMENTS, convert_mysql_ddl_to_sqlite
+from services.db import is_mongodb_mode, init_db
 
 # ------------------------------------------------------------------------------
 # DATABASE SCHEMA INITIALIZATION FOR SETTINGS
 # ------------------------------------------------------------------------------
 def init_settings_tables() -> None:
-    """Initializes all settings tables and safe column migrations in MySQL or SQLite fallback."""
+    """Initializes all settings collections and indexes in MongoDB Atlas."""
     try:
-        conn = get_connection()
-    except Exception:
-        return
-    try:
-        with conn:
-            cursor = conn.cursor()
-
-            for stmt in MYSQL_SETTINGS_SCHEMA_STATEMENTS:
-                try:
-                    if is_mysql_mode():
-                        cursor.execute(stmt)
-                    else:
-                        cursor.execute(convert_mysql_ddl_to_sqlite(stmt))
-                except Exception:
-                    pass
-
-            # Safe Column Additions to existing tables
-            _safe_add_column(cursor, "organizations", "logo_base64", "TEXT DEFAULT ''")
-            _safe_add_column(cursor, "organizations", "address", "TEXT DEFAULT ''")
-            _safe_add_column(cursor, "organizations", "website", "TEXT DEFAULT ''")
-            _safe_add_column(cursor, "organizations", "industry", "TEXT DEFAULT 'Technology'")
-            _safe_add_column(cursor, "organizations", "description", "TEXT DEFAULT ''")
-
-            _safe_add_column(cursor, "users", "avatar_base64", "TEXT DEFAULT ''")
-            _safe_add_column(cursor, "users", "phone", "TEXT DEFAULT ''")
+        init_db()
     except Exception:
         pass
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
 
 
 # Safe initialization on module load (does not fail if database is offline or unconfigured)

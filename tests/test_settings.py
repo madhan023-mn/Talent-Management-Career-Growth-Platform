@@ -122,6 +122,19 @@ def test_hr_org_profile_update():
     assert org["address"] == "100 Innovation Way, Suite 400"
     assert "data:image/png;base64" in org["logo_base64"]
 
+    # Restore default organization settings for subsequent test suites
+    save_org_profile_settings(
+        org_id=org_id,
+        name="Talent Growth Technologies",
+        official_email="contact@talentgrowth.com",
+        contact_number="+1-555-0100",
+        address="100 Innovation Way",
+        website="https://talentgrowth.com",
+        industry="Technology & Software",
+        description="Pioneering talent management & growth.",
+        requesting_role="admin"
+    )
+
 
 def test_rbac_prevents_employee_from_modifying_org_profile():
     """Verifies that an Employee calling HR administrative functions is strictly blocked."""
