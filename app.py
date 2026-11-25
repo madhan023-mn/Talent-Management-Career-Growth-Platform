@@ -2026,7 +2026,8 @@ def register_page():
 # ------------------------------------------------------------------------------
 # ROUTING FOR UNAUTHENTICATED USERS
 # ------------------------------------------------------------------------------
-if not st.session_state.user:
+current_user = st.session_state.get("user")
+if not current_user or not isinstance(current_user, dict) or not current_user.get("id"):
     current_auth_view = st.session_state.get("auth_view", "landing")
     if current_auth_view == "login":
         login_page()
@@ -2035,16 +2036,21 @@ if not st.session_state.user:
     else:
         landing_webpage()
     st.stop()
+    # In bare execution or when running outside active Streamlit runtime context:
+    if not st.runtime.exists():
+        import sys
+        sys.exit(0)
 
 # ------------------------------------------------------------------------------
 # AUTHENTICATED CONTEXT
 # ------------------------------------------------------------------------------
 user = st.session_state.get("user") or {}
-uid = user.get("id", 1)
-is_individual = (user.get("account_type") == "Individual" or user.get("org_id") is None or user.get("role") == "individual")
-is_pending_member = (not is_individual and user.get("role") != "admin" and user.get("status") in ("Pending Approval", "Pending"))
-is_admin = (user.get("role") == "admin" and user.get("status") != "Pending Approval" and not is_individual)
-is_pending_hr = (user.get("role") == "admin" and user.get("status") == "Pending Approval" and not is_individual)
+is_authenticated = bool(user and isinstance(user, dict) and user.get("id"))
+uid = int(user.get("id") or user.get("user_id") or 1)
+is_individual = bool(is_authenticated and (user.get("account_type") == "Individual" or user.get("role") == "individual" or (not user.get("org_id") and user.get("role") != "admin")))
+is_pending_member = bool(is_authenticated and not is_individual and user.get("role") != "admin" and user.get("status") in ("Pending Approval", "Pending"))
+is_admin = bool(is_authenticated and user.get("role") == "admin" and user.get("status") != "Pending Approval" and not is_individual)
+is_pending_hr = bool(is_authenticated and user.get("role") == "admin" and user.get("status") == "Pending Approval" and not is_individual)
 emp_id = user.get("employee_id") or f"EMP{uid:03d}"
 org_id = user.get("org_id") or ("" if is_individual else "ORG-TALENT-01")
 org_name = user.get("org_name") or ("" if is_individual else "Talent Growth Technologies")
@@ -2847,7 +2853,8 @@ if is_pending_hr:
         if c_v2.button("Verify & Activate", key="btn_inline_verify_hr", type="primary", use_container_width=True):
             ok_act, msg_act = verify_and_activate_hr_admin(uid, vcode)
             if ok_act:
-                st.session_state.user["status"] = "Active"
+                if isinstance(st.session_state.get("user"), dict):
+                    st.session_state.user["status"] = "Active"
                 st.success("Verification successful! HR Administrator access granted.")
                 st.rerun()
             else:

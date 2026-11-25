@@ -468,7 +468,7 @@ def init_db() -> None:
                  ravi_uid, "Communication", "Soft Skills", "Beginner", 1.0)
             )
         else:
-            ravi_uid = ravi_user["id"]
+            ravi_uid = ravi_user["id"] if (isinstance(ravi_user, dict) and "id" in ravi_user) else (ravi_user[0] if hasattr(ravi_user, '__getitem__') else 2)
 
         # Seed sample employees if not already present
         sample_employees = [

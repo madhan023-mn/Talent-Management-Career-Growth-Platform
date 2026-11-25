@@ -54,7 +54,11 @@ def _get_svg_icon(name: str, size: int = 18, color: str = "#4F46E5") -> str:
 # SECTION 3A: DEDICATED INDIVIDUAL USER DASHBOARD OVERVIEW
 # ==============================================================================
 def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], skills: List[Dict[str, Any]], navigate_to: Callable[[str], None]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view your career studio.")
+        return
     stats = get_individual_dashboard_stats(uid)
 
     # 1. Welcome Hero Banner
@@ -348,7 +352,11 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
 # SECTION 3C: PERSONAL SKILL MANAGEMENT MODULE
 # ==============================================================================
 def render_individual_skills(user: Dict[str, Any], skills: List[Dict[str, Any]], navigate_to: Callable[[str], None]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view your skills.")
+        return
     _render_html(
         f"""
         <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDFA 60%, #EFF6FF 100%); border-left: 6px solid #0D9488;">
@@ -467,7 +475,11 @@ def render_individual_skills(user: Dict[str, Any], skills: List[Dict[str, Any]],
 # SECTION 3D: SKILL ASSESSMENT MODULE (MCQ TESTS, RESULTS, EXPLANATIONS, HISTORY)
 # ==============================================================================
 def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, Any]]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view assessments.")
+        return
     _render_html(
         f"""
         <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 60%, #EFF6FF 100%); border-left: 6px solid #7C3AED;">
@@ -732,7 +744,11 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
 # SECTION 3E: PERSONAL SKILL GAP ANALYSIS
 # ==============================================================================
 def render_individual_skill_gaps(user: Dict[str, Any], skills: List[Dict[str, Any]]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view skill gap analysis.")
+        return
     profile = get_profile(uid)
 
     _render_html(
@@ -910,7 +926,11 @@ def render_individual_skill_gaps(user: Dict[str, Any], skills: List[Dict[str, An
 # SECTION 3F: CAREER GOAL MANAGEMENT
 # ==============================================================================
 def render_individual_career_goals(user: Dict[str, Any], navigate_to: Callable[[str], None]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view career goals.")
+        return
     _render_html(
         f"""
         <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #FFF7ED 60%, #FEF2F2 100%); border-left: 6px solid #F97316;">
@@ -1046,7 +1066,11 @@ def render_individual_career_goals(user: Dict[str, Any], navigate_to: Callable[[
 # SECTION 3G: PERSONAL PERFORMANCE TRACKING & PROGRESS
 # ==============================================================================
 def render_individual_progress(user: Dict[str, Any]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view your progress.")
+        return
     stats = get_individual_dashboard_stats(uid)
 
     _render_html(
@@ -1131,7 +1155,11 @@ def render_individual_progress(user: Dict[str, Any]) -> None:
 # SECTION 5: JOIN AN ORGANIZATION LATER
 # ==============================================================================
 def render_join_organization_card(user: Dict[str, Any]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to join an organization.")
+        return
     st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.35rem;'>Join an Organization</h1>", unsafe_allow_html=True)
     st.caption("Seamlessly transition your individual professional account into an employer's corporate workspace while keeping all your skills, assessments, and goals intact.")
 
@@ -1170,7 +1198,7 @@ def render_join_organization_card(user: Dict[str, Any]) -> None:
                         ok, msg, updated_user = False, "Unknown response", None
 
                     if ok:
-                        if updated_user:
+                        if updated_user and isinstance(st.session_state.get("user"), dict):
                             st.session_state.user["account_type"] = "Organization"
                             st.session_state.user["org_id"] = updated_user.get("org_id")
                             st.session_state.user["org_name"] = updated_user.get("org_name")
