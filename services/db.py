@@ -90,7 +90,7 @@ _mongo_client: Optional[Any] = None
 _mongo_is_mock: bool = False
 
 DEFAULT_ATLAS_URI = (
-    "mongodb+srv://digisamakshmadhang_db_user:803gh3BPr0qebUFy@cluster0.r8pgac3.mongodb.net/talent_management?retryWrites=true&w=majority"
+    "mongodb+srv://digisamakshmadhang_db_user:ckVaHfBp307OHqxV@cluster0.rewpdrw.mongodb.net/talent_management?retryWrites=true&w=majority"
 )
 
 
