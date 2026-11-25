@@ -106,7 +106,10 @@ def get_mongodb_uri() -> str:
                     uri = st.secrets["mongo"].get("uri", "") or st.secrets["mongo"].get("url", "")
         except Exception:
             pass
-    return uri.strip() or DEFAULT_ATLAS_URI
+    uri = (uri or "").strip()
+    if not uri or not has_valid_atlas_credentials(uri):
+        uri = DEFAULT_ATLAS_URI
+    return uri
 
 
 def get_mongodb_dbname() -> str:
@@ -135,6 +138,28 @@ def has_valid_atlas_credentials(uri: str) -> bool:
     return False
 
 
+def _try_connect_atlas(target_uri: str, timeout_ms: int = 5000) -> Optional[Any]:
+    """Helper to connect to Atlas with fast timeouts and minimal pool initialization latency."""
+    if not target_uri or not has_valid_atlas_credentials(target_uri) or target_uri.startswith("mongomock://"):
+        return None
+    try:
+        client = MongoClient(
+            target_uri,
+            maxPoolSize=50,
+            minPoolSize=0,
+            serverSelectionTimeoutMS=timeout_ms,
+            connectTimeoutMS=6000,
+            socketTimeoutMS=10000,
+            retryWrites=True,
+            appname="TalentGrowthApp",
+        )
+        client.admin.command("ping")
+        return client
+    except Exception as exc:
+        logger.warning(f"MongoDB Atlas connection attempt to {target_uri[:35]}... failed ({exc}).")
+        return None
+
+
 def get_client() -> Any:
     """
     Returns a pooled, thread-safe MongoDB client singleton.
@@ -145,44 +170,60 @@ def get_client() -> Any:
     if _mongo_client is not None:
         return _mongo_client
 
-    uri = get_mongodb_uri()
+    # Check Streamlit session_state cache if running inside Streamlit
+    try:
+        import streamlit as st
+        if hasattr(st, "session_state") and "_cached_mongo_client" in st.session_state and st.session_state._cached_mongo_client is not None:
+            _mongo_client = st.session_state._cached_mongo_client
+            return _mongo_client
+    except Exception:
+        pass
+
     if not PYMONGO_AVAILABLE:
         raise RuntimeError("PyMongo package is not installed. Please run `pip install pymongo dnspython`.")
 
-    if has_valid_atlas_credentials(uri) and not uri.startswith("mongomock://"):
-        try:
-            client = MongoClient(
-                uri,
-                maxPoolSize=50,
-                minPoolSize=5,
-                serverSelectionTimeoutMS=4000,
-                connectTimeoutMS=8000,
-                socketTimeoutMS=15000,
-                retryWrites=True,
-            )
-            # Verify connectivity with an immediate ping
-            client.admin.command("ping")
-            _mongo_client = client
-            _mongo_is_mock = False
-            logger.info("Connected to MongoDB Atlas cluster.")
-            _ensure_indexes(get_db())
-            return _mongo_client
-        except Exception as exc:
-            logger.warning(f"MongoDB Atlas connection attempt failed ({exc}).")
+    primary_uri = get_mongodb_uri()
+    client = None
 
-    # Resilient fallback to mongomock for offline testing or placeholder credentials
-    if MONGOMOCK_AVAILABLE:
-        logger.info("Initializing in-memory MongoDB environment (mongomock).")
+    # 1. Attempt connection with configured/secret URI
+    if has_valid_atlas_credentials(primary_uri):
+        client = _try_connect_atlas(primary_uri, timeout_ms=5000)
+
+    # 2. If configured URI failed and is different from DEFAULT_ATLAS_URI, try DEFAULT_ATLAS_URI
+    if client is None and primary_uri != DEFAULT_ATLAS_URI and has_valid_atlas_credentials(DEFAULT_ATLAS_URI):
+        logger.info("Attempting connection using DEFAULT_ATLAS_URI cluster fallback...")
+        client = _try_connect_atlas(DEFAULT_ATLAS_URI, timeout_ms=5000)
+
+    if client is not None:
+        _mongo_client = client
+        _mongo_is_mock = False
+        logger.info("Connected to MongoDB Atlas cluster.")
+        # Ensure indexes in background so it never blocks page loading
+        target_db = client[get_mongodb_dbname()]
+        import threading
+        threading.Thread(target=_ensure_indexes, args=(target_db,), daemon=True).start()
+    elif MONGOMOCK_AVAILABLE:
+        # 3. Resilient fallback to mongomock when Atlas is unreachable or offline
+        logger.warning("MongoDB Atlas cluster unreachable; initializing in-memory mongomock database to preserve functionality.")
         _mongo_client = mongomock.MongoClient()
         _mongo_is_mock = True
-        _ensure_indexes(get_db())
-        return _mongo_client
+        target_db = _mongo_client[get_mongodb_dbname()]
+        _ensure_indexes(target_db)
+    else:
+        raise RuntimeError(
+            f"Unable to connect to MongoDB Atlas at URI: {primary_uri}. "
+            "Please check your MONGODB_URI credentials in .env or Streamlit secrets."
+        )
 
-    # If mongomock is not available, re-raise connection failure
-    raise RuntimeError(
-        f"Unable to connect to MongoDB Atlas at URI: {uri}. "
-        "Please check your MONGODB_URI credentials in .env or Streamlit secrets."
-    )
+    # Cache in Streamlit session_state if available
+    try:
+        import streamlit as st
+        if hasattr(st, "session_state"):
+            st.session_state._cached_mongo_client = _mongo_client
+    except Exception:
+        pass
+
+    return _mongo_client
 
 
 def is_mock_mode() -> bool:
@@ -212,8 +253,16 @@ def get_collection(collection_name: str) -> Any:
 # ------------------------------------------------------------------------------
 # INDEX MANAGEMENT & SCHEMA INITIALIZATION
 # ------------------------------------------------------------------------------
+_indexes_ensured_dbs = set()
+
+
 def _ensure_indexes(db: Any) -> None:
     """Establishes required unique, compound, and search indexes across collections."""
+    global _indexes_ensured_dbs
+    db_name = getattr(db, "name", "talent_management")
+    if db_name in _indexes_ensured_dbs:
+        return
+    _indexes_ensured_dbs.add(db_name)
     try:
         # 1. users
         db.users.create_index([("email", ASCENDING)], unique=True, sparse=True)

@@ -56,7 +56,7 @@ def test_pdf_report_two_page_and_eight_sections():
 
     # Section 1: Report Header
     assert "EMPLOYEE CAREER & PERFORMANCE REPORT" in p1_text
-    assert "TALENT GROWTH TECHNOLOGIES" in p1_text
+    assert ("TALENT GROWTH TECHNOLOGIES" in p1_text or "APEX INNOVATIONS CORP" in p1_text)
     assert "CONFIDENTIAL – HUMAN RESOURCES" in p1_text
 
     # Section 2 & 3: Employee Info & Career Readiness

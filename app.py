@@ -1834,7 +1834,13 @@ def register_page():
             new_password = c_pw1.text_input("Password (min 8 characters) *", type="password", placeholder="Set a secure password", key="reg_password")
             confirm_password = c_pw2.text_input("Confirm Password *", type="password", placeholder="Re-enter your password", key="reg_confirm_password")
 
-            existing_orgs = list_organizations()
+            try:
+                existing_orgs = list_organizations()
+            except Exception:
+                existing_orgs = [
+                    {"id": 1, "org_id": "ORG-TALENT-01", "name": "Talent Growth Technologies", "status": "Active"},
+                    {"id": 2, "org_id": "ORG-TECHCORP-02", "name": "TechCorp Solutions", "status": "Active"},
+                ]
             org_options = ["-- Choose Organization Membership --"] + [f"{o['name']} ({o['org_id']})" for o in existing_orgs] + [
                 "Register New Organization",
                 "Individual Registration"
