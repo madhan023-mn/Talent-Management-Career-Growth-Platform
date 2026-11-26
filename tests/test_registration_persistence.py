@@ -90,11 +90,21 @@ def test_individual_registration_all_13_fields():
     assert row_dict["role"] == "employee"
     assert row_dict["account_type"] == "Individual"
     assert row_dict["org_id"] is None
+    assert row_dict["employee_id"] is not None
     assert row_dict["department"] == "Engineering"
     assert row_dict["job_title"] == "Data Engineer"
     assert row_dict["status"] == "Active"
     assert len(row_dict["password_hash"]) > 20
     assert len(row_dict["salt"]) > 10
+
+    # Confirm that credentials and account also appear in employees table
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM employees WHERE LOWER(email) = ?", (test_email.lower(),))
+    emp_record = cur.fetchone()
+    conn.close()
+    assert emp_record is not None, "Newly registered individual account must appear in employees table"
+    assert emp_record["name"] == "Aarav Sharma"
 
 
 def test_new_organization_registration_hr_admin_all_13_fields():

@@ -1239,9 +1239,18 @@ def register_individual(
             if cursor.fetchone():
                 return False, f"An account with email '{email}' already exists. Please sign in instead."
 
-            # Automatically assign account_type='Individual', org_id=None, role='employee', employee_id=None
-            final_emp_id = None
+            # Auto-assign unique employee_id so account credentials appear in employee table
+            cursor.execute("SELECT COUNT(*) FROM employees")
+            cnt_row = cursor.fetchone()
+            cnt = (cnt_row[0] if cnt_row else 0) + 1
+            cand = f"EMP{cnt:03d}"
+            cursor.execute("SELECT id FROM employees WHERE employee_id = ?", (cand,))
+            while cursor.fetchone():
+                cnt += 1
+                cand = f"EMP{cnt:03d}"
+            final_emp_id = cand
             assigned_org_id = None
+            emp_org = "ORG-TALENT-01"
 
             cursor.execute(
                 """
@@ -1304,30 +1313,29 @@ def register_individual(
             except Exception:
                 pass
 
-            # Insert employee record only if affiliated with an organization
-            if assigned_org_id and final_emp_id:
-                cursor.execute(
-                    """
-                    INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, 'Active', ?)
-                    """,
-                    (
-                        final_emp_id,
-                        assigned_org_id,
-                        user_id,
-                        name,
-                        email,
-                        phone or "",
-                        clean_dept,
-                        clean_title,
-                        date.today().isoformat(),
-                        years_experience,
-                        primary_skills,
-                        user_id
-                    )
+            # Always insert employee record so account credentials appear in the employee table
+            cursor.execute(
+                """
+                INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, 'Active', ?)
+                """,
+                (
+                    final_emp_id,
+                    emp_org,
+                    user_id,
+                    name,
+                    email,
+                    phone or "",
+                    clean_dept or "General",
+                    clean_title or "Professional",
+                    date.today().isoformat(),
+                    years_experience,
+                    primary_skills,
+                    user_id
                 )
+            )
 
-            # Insert initial skills catalog for individual user
+            # Insert initial skills catalog for individual user and employee_skills
             skill_tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
             if not skill_tokens:
                 skill_tokens = ["Python", "Problem Solving"]
@@ -1340,14 +1348,13 @@ def register_individual(
                     """,
                     (user_id, sk, years_experience)
                 )
-                if final_emp_id and assigned_org_id:
-                    cursor.execute(
-                        """
-                        INSERT OR IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp)
-                        VALUES (?, ?, ?, ?, 'Technical', 'Intermediate', ?)
-                        """,
-                        (final_emp_id, assigned_org_id, user_id, sk, years_experience)
-                    )
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp)
+                    VALUES (?, ?, ?, ?, 'Technical', 'Intermediate', ?)
+                    """,
+                    (final_emp_id, emp_org, user_id, sk, years_experience)
+                )
 
             # Explicit verification query within database connection
             cursor.execute(
