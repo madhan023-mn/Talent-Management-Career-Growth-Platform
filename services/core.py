@@ -1239,16 +1239,13 @@ def init_db() -> None:
                 (tc_jane_uid, "TC101", "ORG-TECHCORP-02", "Master Apache Spark & Streaming", "Senior Data Scientist", "Complete internal big data track", "2026-11-30", 50, "In Progress")
             )
 
-        # Initialize all Enterprise Settings tables, columns, and defaults
-        try:
-            from services.settings import init_settings_tables
-            init_settings_tables()
-        except Exception:
-            pass
-
         # Ensure all initial and migration data is checkpointed to disk
         checkpoint_db(conn)
     conn.close()
+
+    # Initialize settings after releasing the core schema transaction to avoid SQLite lock waits.
+    from services.settings import init_settings_tables
+    init_settings_tables()
 
 # ----------------- Organization Management -----------------
 

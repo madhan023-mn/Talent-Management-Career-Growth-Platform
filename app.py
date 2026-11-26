@@ -246,16 +246,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize database schema and ensure migrations on application startup
+# Initialize database schema once per process; failed initialization remains retryable.
+@st.cache_resource(show_spinner=False)
 def ensure_database_ready() -> bool:
-    try:
-        init_db()
-        return True
-    except Exception as _e:
-        logger.error(f"Database startup error: {_e}")
-        return False
+    init_db()
+    return True
 
-ensure_database_ready()
+try:
+    ensure_database_ready()
+except Exception as _e:
+    logger.error(f"Database startup error: {_e}")
 
 @st.cache_data
 def get_logo_b64(which: str = "icon") -> str:
