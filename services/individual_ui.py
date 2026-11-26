@@ -54,7 +54,11 @@ def _get_svg_icon(name: str, size: int = 18, color: str = "#4F46E5") -> str:
 # SECTION 3A: DEDICATED INDIVIDUAL USER DASHBOARD OVERVIEW
 # ==============================================================================
 def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], skills: List[Dict[str, Any]], navigate_to: Callable[[str], None]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view your career studio.")
+        return
     stats = get_individual_dashboard_stats(uid)
 
     # 1. Welcome Hero Banner
@@ -348,7 +352,11 @@ def render_individual_dashboard(user: Dict[str, Any], profile: Dict[str, Any], s
 # SECTION 3C: PERSONAL SKILL MANAGEMENT MODULE
 # ==============================================================================
 def render_individual_skills(user: Dict[str, Any], skills: List[Dict[str, Any]], navigate_to: Callable[[str], None]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view your skills.")
+        return
     _render_html(
         f"""
         <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDFA 60%, #EFF6FF 100%); border-left: 6px solid #0D9488;">
@@ -379,22 +387,29 @@ def render_individual_skills(user: Dict[str, Any], skills: List[Dict[str, Any]],
         with st.form("form_add_individual_skill"):
             c_s1, c_s2 = st.columns(2)
             skill_name = c_s1.text_input("Skill Name *", placeholder="e.g. Python, Docker, React.js, SQL")
-            category = c_s2.selectbox("Skill Category", ["Technical", "Soft Skills", "Domain & Leadership", "Cloud & DevOps"])
+            category = c_s2.selectbox("Skill Category *", ["-- Select Category --", "Technical", "Soft Skills", "Domain & Leadership", "Cloud & DevOps"], index=0)
 
             c_s3, c_s4 = st.columns(2)
-            prof_level = c_s3.selectbox("Proficiency Level *", ["Beginner", "Intermediate", "Advanced", "Expert"], index=1)
-            years_exp = c_s4.number_input("Years of Practical Experience", min_value=0.0, max_value=50.0, value=1.0, step=0.5)
+            prof_level = c_s3.selectbox("Proficiency Level *", ["-- Select Proficiency Level --", "Beginner", "Intermediate", "Advanced", "Expert"], index=0)
+            years_exp = c_s4.number_input("Years of Practical Experience", min_value=0.0, max_value=50.0, value=0.0, step=0.5)
 
             desc = st.text_area("Practical Experience & Project Application Notes (Optional)", placeholder="Summarize hands-on projects, tools, frameworks, and practical experience with this skill.")
             submit_skill = st.form_submit_button("Add Skill to Portfolio", type="primary", use_container_width=True)
 
             if submit_skill:
-                ok, msg = add_skill(uid, skill_name, category, prof_level, years_exp, description=desc)
-                if ok:
-                    st.success(msg)
-                    st.rerun()
+                if not skill_name.strip():
+                    st.error("Validation Error: Skill Name is mandatory.")
+                elif category == "-- Select Category --":
+                    st.error("Validation Error: Please select a Skill Category.")
+                elif prof_level == "-- Select Proficiency Level --":
+                    st.error("Validation Error: Please select a Proficiency Level.")
                 else:
-                    st.error(msg)
+                    ok, msg = add_skill(uid, skill_name, category, prof_level, years_exp, description=desc)
+                    if ok:
+                        st.success(msg)
+                        st.rerun()
+                    else:
+                        st.error(msg)
 
     # Skills List & Management
     st.markdown(f"<h3 style='font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-top: 1.5rem; margin-bottom: 0.85rem;'>Your Skills Portfolio ({len(skills)})</h3>", unsafe_allow_html=True)
@@ -460,7 +475,11 @@ def render_individual_skills(user: Dict[str, Any], skills: List[Dict[str, Any]],
 # SECTION 3D: SKILL ASSESSMENT MODULE (MCQ TESTS, RESULTS, EXPLANATIONS, HISTORY)
 # ==============================================================================
 def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, Any]]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view assessments.")
+        return
     _render_html(
         f"""
         <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 60%, #EFF6FF 100%); border-left: 6px solid #7C3AED;">
@@ -530,7 +549,7 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
             )
             return
 
-        skill_options = user_skill_names
+        skill_options = ["-- Select Skill to Evaluate --"] + user_skill_names
 
         col_sel_sk, col_shuf_btn = st.columns([4, 1.6])
         with col_sel_sk:
@@ -538,14 +557,18 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
                 "Select Skill to Evaluate *",
                 options=skill_options,
                 key=f"mcq_sel_skill_{uid}",
-                format_func=lambda x: f"{x} (Matched with your verified competencies)"
+                format_func=lambda x: x if x == "-- Select Skill to Evaluate --" else f"{x} (Matched with your verified competencies)"
             )
         with col_shuf_btn:
             st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-            if st.button("New Questions", icon=":material/refresh:", key=f"btn_shuf_mcq_{uid}", help="Generates a fresh, non-repeating AI question set for this skill", use_container_width=True):
+            if st.button("New Questions", icon=":material/refresh:", key=f"btn_shuf_mcq_{uid}", help="Generates a fresh, non-repeating AI question set for this skill", use_container_width=True, disabled=(sel_skill == "-- Select Skill to Evaluate --")):
                 st.session_state.pop(f"mcq_active_q_{uid}_{sel_skill}", None)
                 st.session_state.pop(f"last_assessment_result_{sel_skill}", None)
                 st.rerun()
+
+        if sel_skill == "-- Select Skill to Evaluate --":
+            st.info("👤 Please select a verified skill from the dropdown above to begin your adaptive competency evaluation.")
+            return
 
         st.markdown(
             f"<div style='margin: 1rem 0; padding: 12px 18px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; font-size: 0.88rem; color: #1E40AF; display: flex; align-items: center; justify-content: space-between;'>"
@@ -721,7 +744,11 @@ def render_individual_assessments(user: Dict[str, Any], skills: List[Dict[str, A
 # SECTION 3E: PERSONAL SKILL GAP ANALYSIS
 # ==============================================================================
 def render_individual_skill_gaps(user: Dict[str, Any], skills: List[Dict[str, Any]]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view skill gap analysis.")
+        return
     profile = get_profile(uid)
 
     _render_html(
@@ -749,11 +776,17 @@ def render_individual_skill_gaps(user: Dict[str, Any], skills: List[Dict[str, An
         """
     )
 
-    roles_list = list(ROLE_CATALOG.keys())
-    default_role = profile.get("target_role") or "Junior Python Developer"
-    default_idx = roles_list.index(default_role) if default_role in roles_list else 0
+    roles_list = ["-- Select Target Role --"] + list(ROLE_CATALOG.keys())
+    saved_target_role = (profile.get("target_role") or "").strip()
+    if saved_target_role and saved_target_role not in roles_list and saved_target_role != "-- Select Target Role --":
+        roles_list.append(saved_target_role)
+    default_idx = roles_list.index(saved_target_role) if saved_target_role in roles_list else 0
 
     target_role = st.selectbox("Target Career / Job Role *", roles_list, index=default_idx)
+
+    if target_role == "-- Select Target Role --":
+        st.info("🎯 Please select a Target Career Role above to analyze competency gaps, radar alignment, and study roadmaps.")
+        return
 
     role_info = ROLE_CATALOG[target_role]
     required_skills = role_info["skills"]
@@ -893,7 +926,11 @@ def render_individual_skill_gaps(user: Dict[str, Any], skills: List[Dict[str, An
 # SECTION 3F: CAREER GOAL MANAGEMENT
 # ==============================================================================
 def render_individual_career_goals(user: Dict[str, Any], navigate_to: Callable[[str], None]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view career goals.")
+        return
     _render_html(
         f"""
         <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #FFF7ED 60%, #FEF2F2 100%); border-left: 6px solid #F97316;">
@@ -1029,7 +1066,11 @@ def render_individual_career_goals(user: Dict[str, Any], navigate_to: Callable[[
 # SECTION 3G: PERSONAL PERFORMANCE TRACKING & PROGRESS
 # ==============================================================================
 def render_individual_progress(user: Dict[str, Any]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to view your progress.")
+        return
     stats = get_individual_dashboard_stats(uid)
 
     _render_html(
@@ -1114,7 +1155,11 @@ def render_individual_progress(user: Dict[str, Any]) -> None:
 # SECTION 5: JOIN AN ORGANIZATION LATER
 # ==============================================================================
 def render_join_organization_card(user: Dict[str, Any]) -> None:
-    uid = user["id"]
+    user = user or {}
+    uid = user.get("id") or user.get("user_id")
+    if not uid:
+        st.info("Please sign in to join an organization.")
+        return
     st.markdown("<h1 style='font-size: 2.1rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; margin-bottom: 0.35rem;'>Join an Organization</h1>", unsafe_allow_html=True)
     st.caption("Seamlessly transition your individual professional account into an employer's corporate workspace while keeping all your skills, assessments, and goals intact.")
 
@@ -1153,7 +1198,7 @@ def render_join_organization_card(user: Dict[str, Any]) -> None:
                         ok, msg, updated_user = False, "Unknown response", None
 
                     if ok:
-                        if updated_user:
+                        if updated_user and isinstance(st.session_state.get("user"), dict):
                             st.session_state.user["account_type"] = "Organization"
                             st.session_state.user["org_id"] = updated_user.get("org_id")
                             st.session_state.user["org_name"] = updated_user.get("org_name")

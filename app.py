@@ -19,6 +19,7 @@ import re
 import json
 import textwrap
 import base64
+import logging
 from io import BytesIO
 from datetime import datetime, date
 import streamlit as st
@@ -30,10 +31,11 @@ load_dotenv(BASE_DIR / ".env")
 from pypdf import PdfReader
 from docx import Document
 
-# Evict stale cached in-memory services modules during hot reload
-if "services.core" in sys.modules and not hasattr(sys.modules["services.core"], "register_individual"):
-    for _m in [k for k in list(sys.modules.keys()) if k.startswith("services")]:
-        sys.modules.pop(_m, None)
+logger = logging.getLogger("talent_growth")
+
+# Evict stale cached in-memory services modules during hot reload so updates take effect immediately
+for _m in [k for k in list(sys.modules.keys()) if k.startswith("services.")]:
+    sys.modules.pop(_m, None)
 
 try:
     from services.core import (
@@ -246,13 +248,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize database schema and ensure migrations on application startup
+# Initialize database schema and ensure migrations on application startup (cached across sessions)
+@st.cache_resource(show_spinner=False)
 def ensure_database_ready() -> bool:
     try:
         init_db()
         return True
     except Exception as _e:
-        logger.error(f"Database startup error: {_e}")
+        logger.warning(f"Database startup notice: {_e}")
         return False
 
 ensure_database_ready()
@@ -342,6 +345,8 @@ _SVG_RAW_PATHS = {
     "refresh": '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>',
     "check_circle": '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
     "x_circle": '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+    "x": '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    "minus": '<line x1="5" y1="12" x2="19" y2="12"/>',
 }
 
 @st.cache_data
@@ -371,6 +376,37 @@ def get_svg_icon(name: str, size: int = 18, color: str = "#4F46E5", extra_style:
 # MODERN CORPORATE DESIGN SYSTEM & TOKENS (TalentManager / TalentPro Theme)
 # ------------------------------------------------------------------------------
 load_css()
+render_html(
+    """
+    <div id="circle-page-loader" class="circle-page-loader-overlay init-spin">
+        <div class="circle-loader-card">
+            <div class="circle-spinner-ring outer-ring"></div>
+            <div class="circle-spinner-ring inner-ring"></div>
+            <div class="circle-spinner-dot"></div>
+        </div>
+    </div>
+    <script>
+    (function() {
+        function attachCircleLoader() {
+            var loader = document.getElementById('circle-page-loader');
+            if (!loader) return;
+            document.addEventListener('click', function(e) {
+                var target = e.target.closest('button, [role="tab"], [role="radio"], a, input[type="submit"]');
+                if (target) {
+                    loader.classList.remove('init-spin');
+                    loader.classList.add('active');
+                }
+            }, true);
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', attachCircleLoader);
+        } else {
+            attachCircleLoader();
+        }
+    })();
+    </script>
+    """
+)
 
 # ------------------------------------------------------------------------------
 # TABLE COLORATION & BADGE UTILITIES
@@ -653,11 +689,11 @@ def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[
     for g in gaps_list:
         gap_val = g.get("gap", 0)
         if gap_val == 0:
-            match_badge = '<span class="tbl-badge" style="background: #ECFDF5; color: #059669; font-weight: 700; border: 1px solid #A7F3D0;">✅ MATCHED (Met)</span>'
+            match_badge = f'<span class="tbl-badge" style="background: #ECFDF5; color: #059669; font-weight: 700; border: 1px solid #A7F3D0; display: inline-flex; align-items: center; gap: 4px;">{get_svg_icon("check_circle", size=13, color="#059669")} MATCHED (Met)</span>'
         elif gap_val == 1:
-            match_badge = '<span class="tbl-badge" style="background: #FEF3C7; color: #D97706; font-weight: 700; border: 1px solid #FDE68A;">❌ GAP (-1 Level)</span>'
+            match_badge = f'<span class="tbl-badge" style="background: #FEF3C7; color: #D97706; font-weight: 700; border: 1px solid #FDE68A; display: inline-flex; align-items: center; gap: 4px;">{get_svg_icon("x_circle", size=13, color="#D97706")} GAP (-1 Level)</span>'
         else:
-            match_badge = f'<span class="tbl-badge" style="background: #FEF2F2; color: #DC2626; font-weight: 700; border: 1px solid #FECACA;">❌ GAP (-{gap_val} Levels)</span>'
+            match_badge = f'<span class="tbl-badge" style="background: #FEF2F2; color: #DC2626; font-weight: 700; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px;">{get_svg_icon("x_circle", size=13, color="#DC2626")} GAP (-{gap_val} Levels)</span>'
         curr_lvl = levels_str.get(g.get("current_level", 0), str(g.get("current_level", 0)))
         req_lvl = levels_str.get(g.get("required_level", 0), str(g.get("required_level", 0)))
         rows.append(
@@ -994,7 +1030,10 @@ def landing_webpage():
             """
         )
         if st.button("Launch HR Admin Demo", icon=":material/rocket_launch:", key="landing_btn_admin", use_container_width=True, type="primary"):
-            admin_acc = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+            try:
+                admin_acc = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+            except Exception:
+                admin_acc = None
             if admin_acc:
                 st.session_state.user = admin_acc
                 st.session_state.current_page = "Dashboard"
@@ -1027,7 +1066,10 @@ def landing_webpage():
             """
         )
         if st.button("Launch Employee Demo", icon=":material/rocket_launch:", key="landing_btn_alex", use_container_width=True, type="primary"):
-            emp_acc = login("alex@company.com", "Password123")
+            try:
+                emp_acc = login("alex@company.com", "Password123")
+            except Exception:
+                emp_acc = None
             if emp_acc:
                 st.session_state.user = emp_acc
                 st.session_state.current_page = "Dashboard"
@@ -1060,7 +1102,10 @@ def landing_webpage():
             """
         )
         if st.button("Launch Individual Demo", icon=":material/rocket_launch:", key="landing_btn_ravi", use_container_width=True, type="primary"):
-            ravi_acc = login("ravi@company.com", "Password123")
+            try:
+                ravi_acc = login("ravi@company.com", "Password123")
+            except Exception:
+                ravi_acc = None
             if ravi_acc:
                 ravi_acc["account_type"] = "Individual"
                 ravi_acc["org_id"] = None
@@ -1241,10 +1286,20 @@ def landing_webpage():
     )
 
 def render_database_diagnostics_panel(key_suffix: str = ""):
-    """Renders active SQLite database diagnostics & storage inspector with modern colorful cards and zero truncation."""
+    """Renders active MySQL database diagnostics & storage inspector with modern colorful cards and zero truncation."""
     diag = get_database_diagnostics()
     if not diag:
         return
+
+    is_conn = bool(diag.get("connected", False))
+    conn_text = "Connected (OK)" if is_conn else "Disconnected"
+    conn_text_color = "#065F46" if is_conn else "#991B1B"
+    conn_dot_color = "#10B981" if is_conn else "#EF4444"
+    conn_badge_bg = "#DCFCE7" if is_conn else "#FEE2E2"
+    conn_border_left = "#10B981" if is_conn else "#EF4444"
+    conn_border = "#BBF7D0" if is_conn else "#FECACA"
+    conn_bg = "#F0FDF4" if is_conn else "#FEF2F2"
+    conn_icon = "check" if is_conn else "lock"
 
     with st.expander("Active Database Diagnostics & Storage Inspector", expanded=(key_suffix == "settings")):
         render_html(
@@ -1259,7 +1314,7 @@ def render_database_diagnostics_panel(key_suffix: str = ""):
                         </div>
                     </div>
                     <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A; line-height: 1.2; word-break: break-all;">
-                        {diag.get('filename', 'talentsphere.db')}
+                        {diag.get('filename', 'talent_growth')}
                     </div>
                     <div style="font-size: 0.76rem; color: #475569; margin-top: 8px; line-height: 1.4;">
                         <strong>Path:</strong> <span style="font-family: monospace; background: #FFFFFF; padding: 2px 6px; border-radius: 4px; border: 1px solid #E2E8F0; font-size: 0.74rem; word-break: break-all; color: #0D9488;">{diag.get('absolute_path', '')}</span>
@@ -1267,19 +1322,19 @@ def render_database_diagnostics_panel(key_suffix: str = ""):
                 </div>
 
                 <!-- Card 2: Connection Status -->
-                <div style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%); border: 1.5px solid #BBF7D0; border-left: 5px solid #10B981; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(16,185,129,0.06);">
+                <div style="background: linear-gradient(135deg, #FFFFFF 0%, {conn_bg} 100%); border: 1.5px solid {conn_border}; border-left: 5px solid {conn_border_left}; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(16,185,129,0.06);">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="font-size: 0.74rem; font-weight: 800; color: #065F46; text-transform: uppercase; letter-spacing: 0.05em;">Connection Status</span>
-                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #DCFCE7; display: flex; align-items: center; justify-content: center;">
-                            {get_svg_icon("check", size=16, color="#10B981")}
+                        <span style="font-size: 0.74rem; font-weight: 800; color: {conn_text_color}; text-transform: uppercase; letter-spacing: 0.05em;">Connection Status</span>
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: {conn_badge_bg}; display: flex; align-items: center; justify-content: center;">
+                            {get_svg_icon(conn_icon, size=16, color=conn_border_left)}
                         </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #10B981; display: inline-block; box-shadow: 0 0 10px #10B981;"></span>
-                        <span style="font-size: 1.25rem; font-weight: 800; color: #065F46;">Connected (OK)</span>
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: {conn_dot_color}; display: inline-block; box-shadow: 0 0 10px {conn_dot_color};"></span>
+                        <span style="font-size: 1.25rem; font-weight: 800; color: {conn_text_color};">{conn_text}</span>
                     </div>
-                    <div style="font-size: 0.78rem; color: #047857; margin-top: 8px;">
-                        Integrity: <strong>{diag.get('integrity', 'ok').upper()}</strong> &bull; Size: <strong>{diag.get('size_kb', 0)} KB</strong>
+                    <div style="font-size: 0.78rem; color: #475569; margin-top: 8px;">
+                        Integrity: <strong>{diag.get('integrity', 'Unknown').upper()}</strong> &bull; Size: <strong>{diag.get('size_kb', 0)} KB</strong>
                     </div>
                 </div>
 
@@ -1302,13 +1357,20 @@ def render_database_diagnostics_panel(key_suffix: str = ""):
             """
         )
 
+        if not is_conn and diag.get("error"):
+            st.warning(
+                f"⚠️ **MySQL Connection Offline:** `{diag.get('error')}`\n\n"
+                "• **Running locally:** Verify your local MySQL service is running on port 3306 and database `talent_growth` is created.\n"
+                "• **Running on Streamlit Cloud:** Please configure your cloud MySQL database credentials in **Streamlit Cloud Dashboard -> Settings -> Secrets** (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`)."
+            )
+
         if is_mysql_expected() or diag.get("engine") == "MySQL":
             if st.button("⚡ Test MySQL Database Connection", key=f"btn_test_mysql_{key_suffix}", use_container_width=True):
                 test_res = test_mysql_connection()
                 if test_res.get("success"):
-                    st.success(f"✅ {test_res.get('message')}")
+                    st.success(test_res.get('message', 'Connection successful'))
                 else:
-                    st.error(f"❌ {test_res.get('message')}")
+                    st.error(test_res.get('message', 'Connection failed'))
 
         last_v = st.session_state.get("last_registered_verification")
         if last_v:
@@ -1715,7 +1777,10 @@ def login_page():
                 if not (email or "").strip() or not password:
                     st.error("Please enter both your email address and password.", icon=":material/error:")
                 else:
-                    user_data = login(email.strip(), password)
+                    try:
+                        user_data = login(email.strip(), password)
+                    except Exception:
+                        user_data = None
                     if user_data:
                         st.session_state.user = user_data
                         st.session_state.current_page = "Dashboard"
@@ -1730,7 +1795,10 @@ def login_page():
             col_chip1, col_chip2, col_chip3 = st.columns(3, gap="small")
             with col_chip1:
                 if st.button("HR Admin", icon=":material/admin_panel_settings:", key="login_chip_admin", use_container_width=True, type="secondary"):
-                    u = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+                    try:
+                        u = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+                    except Exception:
+                        u = None
                     if u:
                         st.session_state.user = u
                         st.session_state.current_page = "Dashboard"
@@ -1738,7 +1806,10 @@ def login_page():
                         st.rerun()
             with col_chip2:
                 if st.button("Employee", icon=":material/badge:", key="login_chip_alex", use_container_width=True, type="secondary"):
-                    u = login("alex@company.com", "Password123")
+                    try:
+                        u = login("alex@company.com", "Password123")
+                    except Exception:
+                        u = None
                     if u:
                         st.session_state.user = u
                         st.session_state.current_page = "Dashboard"
@@ -1746,7 +1817,10 @@ def login_page():
                         st.rerun()
             with col_chip3:
                 if st.button("Individual", icon=":material/person:", key="login_chip_ravi", use_container_width=True, type="secondary"):
-                    u = login("ravi@company.com", "Password123")
+                    try:
+                        u = login("ravi@company.com", "Password123")
+                    except Exception:
+                        u = None
                     if u:
                         u["account_type"] = "Individual"
                         u["org_id"] = None
@@ -1814,7 +1888,13 @@ def register_page():
             new_password = c_pw1.text_input("Password (min 8 characters) *", type="password", placeholder="Set a secure password", key="reg_password")
             confirm_password = c_pw2.text_input("Confirm Password *", type="password", placeholder="Re-enter your password", key="reg_confirm_password")
 
-            existing_orgs = list_organizations()
+            try:
+                existing_orgs = list_organizations()
+            except Exception:
+                existing_orgs = [
+                    {"id": 1, "org_id": "ORG-TALENT-01", "name": "Talent Growth Technologies", "status": "Active"},
+                    {"id": 2, "org_id": "ORG-TECHCORP-02", "name": "TechCorp Solutions", "status": "Active"},
+                ]
             org_options = ["-- Choose Organization Membership --"] + [f"{o['name']} ({o['org_id']})" for o in existing_orgs] + [
                 "Register New Organization",
                 "Individual Registration"
@@ -1872,9 +1952,7 @@ def register_page():
                 key="reg_title"
             )
 
-            c_sk1, c_sk2 = st.columns([2, 1])
-            skills_val = c_sk1.text_input("Primary Skills (Comma-separated) *", placeholder="e.g. Python, SQL, React", key="reg_skills")
-            exp_val = c_sk2.number_input("Years Experience", min_value=0.0, max_value=50.0, value=0.0, step=0.5, key="reg_exp")
+            skills_val = st.text_input("Primary Skills (Comma-separated) *", placeholder="e.g. Python, SQL, React", key="reg_skills")
 
             terms = st.checkbox("I agree to the Enterprise Talent Governance Terms", value=True, key="reg_terms")
             if is_individual:
@@ -1929,7 +2007,7 @@ def register_page():
                         confirm_password=clean_confirm_pwd,
                         phone=clean_phone,
                         primary_skills=clean_skills,
-                        years_experience=exp_val,
+                        years_experience=0.0,
                         department=dept_val,
                         job_title=clean_title
                     )
@@ -1938,20 +2016,13 @@ def register_page():
                         if not verified:
                             st.error(f"Registration verification failed: Account was created but record could not be confirmed in the database for '{clean_email}'.")
                         else:
-                            db_diag = get_database_diagnostics()
-                            db_engine = db_diag.get('engine', 'Database')
-                            db_fname = db_diag.get('database_name') or db_diag.get('filename', 'talent_growth')
-                            if is_mysql_expected() and db_engine != "MySQL":
-                                st.error(f"Configuration warning: Expected MySQL database persistence, but active engine reported {db_engine}.")
-                            else:
-                                st.session_state["last_registered_verification"] = verified
-                                emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
-                                st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname})! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
-                                st.session_state["prefill_email"] = clean_email
-                                st.session_state.user = None
-                                st.session_state.auth_view = "login"
-                                st.session_state.current_page = "Dashboard"
-                                st.rerun()
+                            st.session_state["last_registered_verification"] = verified
+                            st.session_state["reg_success_msg"] = "Account created successfully! Please sign in below."
+                            st.session_state["prefill_email"] = clean_email
+                            st.session_state.user = None
+                            st.session_state.auth_view = "login"
+                            st.session_state.current_page = "Dashboard"
+                            st.rerun()
                     else:
                         st.error(msg)
                 else:
@@ -1981,7 +2052,7 @@ def register_page():
                         department=dept_val,
                         job_title=clean_title,
                         primary_skills=clean_skills,
-                        years_experience=exp_val,
+                        years_experience=0.0,
                         contact_number=clean_phone,
                         is_new_org=is_new_org,
                         hr_verification_code="HR2026" if role == "admin" else None,
@@ -1992,21 +2063,16 @@ def register_page():
                         if not verified:
                             st.error(f"Registration verification failed: Account was created but record could not be confirmed in the database for '{clean_email}'.")
                         else:
-                            db_diag = get_database_diagnostics()
-                            db_engine = db_diag.get('engine', 'Database')
-                            db_fname = db_diag.get('database_name') or db_diag.get('filename', 'talent_growth')
-                            if is_mysql_expected() and db_engine != "MySQL":
-                                st.error(f"Configuration warning: Expected MySQL database persistence, but active engine reported {db_engine}.")
+                            st.session_state["last_registered_verification"] = verified
+                            if "pending" in msg.lower():
+                                st.session_state["reg_success_msg"] = msg
                             else:
-                                st.session_state["last_registered_verification"] = verified
-                                org_role_desc = "organization administrator" if role == "admin" else "employee"
-                                emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
-                                st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname}) for {clean_name} as {org_role_desc}! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
-                                st.session_state["prefill_email"] = clean_email
-                                st.session_state.user = None
-                                st.session_state.auth_view = "login"
-                                st.session_state.current_page = "Dashboard"
-                                st.rerun()
+                                st.session_state["reg_success_msg"] = "Account created successfully! Please sign in below."
+                            st.session_state["prefill_email"] = clean_email
+                            st.session_state.user = None
+                            st.session_state.auth_view = "login"
+                            st.session_state.current_page = "Dashboard"
+                            st.rerun()
                     else:
                         st.error(msg)
 
@@ -2020,7 +2086,8 @@ def register_page():
 # ------------------------------------------------------------------------------
 # ROUTING FOR UNAUTHENTICATED USERS
 # ------------------------------------------------------------------------------
-if not st.session_state.user:
+current_user = st.session_state.get("user")
+if not current_user or not isinstance(current_user, dict) or not current_user.get("id"):
     current_auth_view = st.session_state.get("auth_view", "landing")
     if current_auth_view == "login":
         login_page()
@@ -2029,21 +2096,35 @@ if not st.session_state.user:
     else:
         landing_webpage()
     st.stop()
+    # In bare execution or when running outside active Streamlit runtime context:
+    if not st.runtime.exists():
+        import sys
+        sys.exit(0)
 
 # ------------------------------------------------------------------------------
 # AUTHENTICATED CONTEXT
 # ------------------------------------------------------------------------------
 user = st.session_state.get("user") or {}
-uid = user.get("id", 1)
-is_individual = (user.get("account_type") == "Individual" or user.get("org_id") is None or user.get("role") == "individual")
-is_pending_member = (not is_individual and user.get("role") != "admin" and user.get("status") in ("Pending Approval", "Pending"))
-is_admin = (user.get("role") == "admin" and user.get("status") != "Pending Approval" and not is_individual)
-is_pending_hr = (user.get("role") == "admin" and user.get("status") == "Pending Approval" and not is_individual)
+is_authenticated = bool(user and isinstance(user, dict) and user.get("id"))
+uid = int(user.get("id") or user.get("user_id") or 1)
+is_individual = bool(is_authenticated and (user.get("account_type") == "Individual" or user.get("role") == "individual" or (not user.get("org_id") and user.get("role") != "admin")))
+is_pending_member = bool(is_authenticated and not is_individual and user.get("role") != "admin" and user.get("status") in ("Pending Approval", "Pending"))
+is_admin = bool(is_authenticated and user.get("role") == "admin" and user.get("status") != "Pending Approval" and not is_individual)
+is_pending_hr = bool(is_authenticated and user.get("role") == "admin" and user.get("status") == "Pending Approval" and not is_individual)
 emp_id = user.get("employee_id") or f"EMP{uid:03d}"
 org_id = user.get("org_id") or ("" if is_individual else "ORG-TALENT-01")
 org_name = user.get("org_name") or ("" if is_individual else "Talent Growth Technologies")
-profile = get_profile(uid)
-skills = list_skills(uid)
+
+# In-memory session state cache to eliminate redundant database calls on page interactions
+if "profile" not in st.session_state or st.session_state.get("_cached_profile_uid") != uid:
+    st.session_state.profile = get_profile(uid)
+    st.session_state._cached_profile_uid = uid
+profile = st.session_state.profile
+
+if "skills" not in st.session_state or st.session_state.get("_cached_skills_uid") != uid:
+    st.session_state.skills = list_skills(uid)
+    st.session_state._cached_skills_uid = uid
+skills = st.session_state.skills
 
 # Initials for avatar
 name_parts = (user.get("name") or "User").strip().split()
@@ -2685,7 +2766,7 @@ def nav_format(page_name: str) -> str:
     return _NAV_PAGE_ICONS.get(page_name, page_name)
 
 def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
-    """Renders the modernized Enterprise SaaS sidebar."""
+    """Renders the modernized sidebar."""
     with st.sidebar:
         # 1. Branding Header Row: Swirl Logo + Talent Growth
         st.markdown(
@@ -2693,10 +2774,7 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
             <div style="display: flex; align-items: center; justify-content: flex-start; padding: 4px 0 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     {get_svg_icon("brand_logo", size=32)}
-                    <div style="display: flex; flex-direction: column; line-height: 1.15;">
-                        <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
-                        <span style="font-size: 0.72rem; font-weight: 600; color: #38BDF8; letter-spacing: 0.02em;">Enterprise SaaS</span>
-                    </div>
+                    <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
                 </div>
             </div>
             <div style="font-size: 0.70rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.08em; padding: 14px 2px 6px 2px;">
@@ -2844,7 +2922,8 @@ if is_pending_hr:
         if c_v2.button("Verify & Activate", key="btn_inline_verify_hr", type="primary", use_container_width=True):
             ok_act, msg_act = verify_and_activate_hr_admin(uid, vcode)
             if ok_act:
-                st.session_state.user["status"] = "Active"
+                if isinstance(st.session_state.get("user"), dict):
+                    st.session_state.user["status"] = "Active"
                 st.success("Verification successful! HR Administrator access granted.")
                 st.rerun()
             else:
@@ -3175,8 +3254,11 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                 for s in skills_dist[:4]:
                     s_name = s.get("skill_name") or s.get("name") or "Skill"
                     s_cnt = s.get("count", 0)
-                    s_avg = s.get("avg_level", 2)
-                    pct = int(min(100, (s_avg / 4.0) * 100))
+                    try:
+                        s_avg = float(s.get("avg_level") or 2.0)
+                    except (ValueError, TypeError):
+                        s_avg = 2.0
+                    pct = int(min(100, max(0, (s_avg / 4.0) * 100)))
                     sk_rows_html += f"""
                     <div class="progress-widget-row" style="margin-bottom: 9px;">
                         <span class="progress-widget-name" style="font-size: 0.82rem; min-width: 95px;">{s_name} ({s_cnt})</span>
@@ -3224,6 +3306,81 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                 render_html(f"<div style='margin-top: 12px;'>{goal_rows_html}</div>")
             else:
                 st.info(f"No active career goals recorded in {org_id}.")
+
+    # Dedicated Organization Workforce & Sample Employees Showcase
+    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+    with st.container(border=True):
+        c_dir1, c_dir2 = st.columns([2.2, 1])
+        with c_dir1:
+            render_html(
+                f"""
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                    {get_svg_icon("employees", size=22, color="#2563EB")}
+                    <span style="font-weight: 800; font-size: 1.15rem; color: #0F172A;">Organization Workforce &amp; Demo Personnel</span>
+                    <span class="tbl-badge tbl-badge-blue" style="font-size: 0.75rem;">{len(employees)} Total Registered</span>
+                </div>
+                <div style="font-size: 0.84rem; color: #64748B; margin-bottom: 0.75rem;">
+                    Active personnel roster for <strong>{org_display_name} ({org_id})</strong> including live demo roles across Engineering, Product, HR, and Analytics.
+                </div>
+                """
+            )
+        with c_dir2:
+            st.markdown("<div style='text-align: right; padding-top: 6px;'>", unsafe_allow_html=True)
+            if st.button("Manage Full Directory", key="btn_dash_manage_emps", type="primary", use_container_width=False):
+                navigate_to("Employees")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        if employees:
+            demo_table_rows = []
+            for emp_item in employees[:8]:
+                emp_eid = emp_item.get("employee_id", "")
+                emp_nm = emp_item.get("name", "Employee")
+                emp_em = emp_item.get("email", "")
+                emp_dp = emp_item.get("department", "General")
+                emp_ds = emp_item.get("designation", "Staff")
+                emp_rt = emp_item.get("avg_rating") or 4.2
+                emp_st = emp_item.get("employment_status") or "Active"
+                emp_sk = emp_item.get("primary_skills") or "Technical"
+
+                demo_table_rows.append(
+                    f"""
+                    <tr>
+                        <td><span class="tbl-id-pill" style="font-weight: 700;">{emp_eid}</span></td>
+                        <td>
+                            <div style="font-weight: 700; color: #0F172A;">{emp_nm}</div>
+                            <div style="font-size: 0.76rem; color: #64748B;">{emp_em}</div>
+                        </td>
+                        <td>{get_dept_badge_html(emp_dp)}</td>
+                        <td><span style="font-weight: 600; color: #334155;">{emp_ds}</span></td>
+                        <td><span style="font-size: 0.80rem; color: #475569;" title="{emp_sk}">{emp_sk[:28]}..</span></td>
+                        <td>{get_rating_badge_html(emp_rt)}</td>
+                        <td>{get_status_badge_html(emp_st)}</td>
+                    </tr>
+                    """
+                )
+
+            render_html(
+                f"""
+                <div class="corporate-table-wrapper" style="margin-top: 0.25rem;">
+                    <table class="corporate-table">
+                        <thead>
+                            <tr>
+                                <th>Emp ID</th>
+                                <th>Personnel</th>
+                                <th>Department</th>
+                                <th>Role / Title</th>
+                                <th>Competencies</th>
+                                <th>Rating</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>{''.join(demo_table_rows)}</tbody>
+                    </table>
+                </div>
+                """
+            )
+        else:
+            st.info(f"No employee records registered in {org_id} yet.")
 
 # ==============================================================================
 # 2. EMPLOYEE: MY CAREER DASHBOARD
@@ -3850,9 +4007,10 @@ elif page in ["Employees", "Employee Management"]:
         )
 
         # Section 7: Workforce Statistics (4 Modern Cards)
-        active_cnt = sum(1 for e in emp_results if e.get("employment_status") == "Active")
-        avg_exp_val = round(sum(e['years_experience'] for e in emp_results)/len(emp_results), 1) if emp_results else 0.0
-        ratings_list = [e['avg_rating'] for e in emp_results if e.get('avg_rating')]
+        active_cnt = sum(1 for e in emp_results if (e.get("employment_status") or "Active") == "Active")
+        exp_list = [float(e.get('years_experience') or 0.0) for e in emp_results]
+        avg_exp_val = round(sum(exp_list)/len(exp_list), 1) if exp_list else 0.0
+        ratings_list = [float(e['avg_rating']) for e in emp_results if e.get('avg_rating') is not None]
         avg_rtg_val = round(sum(ratings_list)/len(ratings_list), 2) if ratings_list else None
         avg_rtg_str = f"{avg_rtg_val} / 5.0" if avg_rtg_val else "N/A"
 
@@ -3965,10 +4123,11 @@ elif page in ["Employees", "Employee Management"]:
             st.session_state.e_desig = ""
             st.session_state.e_exp = 0.0
             st.session_state.e_skills = ""
-            st.session_state.e_status = "Active"
+            st.session_state.e_status = "-- Select Employment Status --"
             st.session_state.clear_emp_form_flag = False
 
-        depts = ["Select Department"] + get_all_departments(org_id=org_id)
+        depts = ["-- Select Department --"] + get_all_departments(org_id=org_id)
+        emp_status_choices = ["-- Select Employment Status --"] + EMPLOYMENT_STATUSES
 
         col_form_wrap, col_guidelines = st.columns([2.1, 1], gap="large")
         with col_form_wrap:
@@ -4011,7 +4170,7 @@ elif page in ["Employees", "Employee Management"]:
                 )
                 c_e1, c_e2, c_e3 = st.columns(3)
                 exp_input = c_e1.number_input("Years of Experience *", min_value=0.0, max_value=60.0, value=0.0, step=0.5, key="e_exp")
-                status_input = c_e2.selectbox("Employment Status", EMPLOYMENT_STATUSES, key="e_status")
+                status_input = c_e2.selectbox("Employment Status *", emp_status_choices, key="e_status")
                 join_input = c_e3.date_input("Joining Date", value=date.today())
 
                 skills_input = st.text_input("Primary Skills (Comma-separated) *", key="e_skills", placeholder="e.g. Python, Django, PostgreSQL, Docker, AWS")
@@ -4028,10 +4187,12 @@ elif page in ["Employees", "Employee Management"]:
                     st.error("Validation Error: Employee Name is mandatory.")
                 elif not id_input.strip():
                     st.error("Validation Error: Employee ID Code is mandatory.")
-                elif dept_input == "Select Department" or not dept_input.strip():
+                elif dept_input in ["Select Department", "-- Select Department --"] or not dept_input.strip():
                     st.error("Validation Error: Please select a valid Department.")
                 elif not desig_input.strip():
                     st.error("Validation Error: Designation is mandatory.")
+                elif status_input == "-- Select Employment Status --":
+                    st.error("Validation Error: Please select an Employment Status.")
                 elif not skills_input.strip():
                     st.error("Validation Error: Primary Skills are mandatory.")
                 elif exp_input < 0:
@@ -4120,7 +4281,7 @@ elif page in ["Employees", "Employee Management"]:
                         </div>
                         <div>
                             <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Bulk Employee Dataset Ingestion</div>
-                            <div style="color: #64748B; font-size: 0.88rem;">Batch upload structured CSV or Excel spreadsheets to ingest multiple personnel profiles into SQLite instantly.</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Batch upload structured CSV or Excel spreadsheets to ingest multiple personnel profiles into the MySQL database instantly.</div>
                         </div>
                     </div>
                     <span style="background: #F0FDFA; border: 1px solid #99F6E4; color: #0F766E; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
@@ -4314,139 +4475,156 @@ elif page in ["Employees", "Employee Management"]:
             st.info(f"No employee records currently available in {org_name}.")
         else:
             emp_map = {f"{e['employee_id']} — {e['name']} ({e['designation']})": e['employee_id'] for e in all_emps}
-            selected_emp_k = st.selectbox("Select Employee Record", list(emp_map.keys()))
-            selected_emp_code = emp_map[selected_emp_k]
-            emp_curr = get_employee_by_id(selected_emp_code, org_id=org_id)
+            emp_opts = ["-- Select an Employee Record --"] + list(emp_map.keys())
+            selected_emp_k = st.selectbox("Select Employee Record", emp_opts, index=0)
 
-            if emp_curr:
-                initials = "".join([part[:1].upper() for part in (emp_curr.get("name") or "User").split()[:2]])
-                status_color = "#10B981" if emp_curr["employment_status"] == "Active" else ("#EF4444" if emp_curr["employment_status"] == "Terminated" else "#F59E0B")
+            if selected_emp_k == "-- Select an Employee Record --":
+                st.info("👤 **Please select an employee record from the dropdown above** to view and manage their profile information.")
+            else:
+                selected_emp_code = emp_map[selected_emp_k]
+                emp_curr = get_employee_by_id(selected_emp_code, org_id=org_id)
 
-                # Live Profile Badge
-                render_html(
-                    f"""
-                    <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 14px 18px; margin: 10px 0 16px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="width: 46px; height: 46px; border-radius: 12px; background: linear-gradient(135deg, #2563EB, #7C3AED); color: #FFFFFF; font-weight: 800; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(37,99,235,0.25);">
-                                {initials}
+                if emp_curr:
+                    initials = "".join([part[:1].upper() for part in (emp_curr.get("name") or "User").split()[:2]])
+                    status_color = "#10B981" if emp_curr["employment_status"] == "Active" else ("#EF4444" if emp_curr["employment_status"] == "Terminated" else "#F59E0B")
+
+                    # Live Profile Badge
+                    render_html(
+                        f"""
+                        <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 14px 18px; margin: 10px 0 16px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 46px; height: 46px; border-radius: 12px; background: linear-gradient(135deg, #2563EB, #7C3AED); color: #FFFFFF; font-weight: 800; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(37,99,235,0.25);">
+                                    {initials}
+                                </div>
+                                <div>
+                                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A;">
+                                        {emp_curr['name']}
+                                        <span style="font-family: monospace; font-size: 0.78rem; background: #F1F5F9; color: #475569; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">
+                                            {emp_curr['employee_id']}
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 0.82rem; color: #64748B; margin-top: 2px;">
+                                        {emp_curr['designation']} &bull; {emp_curr['department']}
+                                    </div>
+                                </div>
                             </div>
                             <div>
-                                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A;">
-                                    {emp_curr['name']}
-                                    <span style="font-family: monospace; font-size: 0.78rem; background: #F1F5F9; color: #475569; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">
-                                        {emp_curr['employee_id']}
-                                    </span>
-                                </div>
-                                <div style="font-size: 0.82rem; color: #64748B; margin-top: 2px;">
-                                    {emp_curr['designation']} &bull; {emp_curr['department']}
-                                </div>
+                                <span style="background: {status_color}18; border: 1px solid {status_color}55; color: {status_color}; font-size: 0.76rem; font-weight: 800; padding: 4px 12px; border-radius: 9999px;">
+                                    {emp_curr['employment_status'].upper()}
+                                </span>
                             </div>
                         </div>
-                        <div>
-                            <span style="background: {status_color}18; border: 1px solid {status_color}55; color: {status_color}; font-size: 0.76rem; font-weight: 800; padding: 4px 12px; border-radius: 9999px;">
-                                {emp_curr['employment_status'].upper()}
-                            </span>
-                        </div>
-                    </div>
-                    """
-                )
-
-                col_ed, col_rm = st.columns([1.6, 1], gap="large")
-                with col_ed:
-                    render_html(
-                        f"""
-                        <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
-                            <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                {get_svg_icon("edit", size=18, color="#2563EB")} Edit Profile Information
-                            </div>
                         """
                     )
-                    with st.form("edit_emp_master_form"):
-                        up_name = st.text_input("Full Legal Name", value=emp_curr["name"])
-                        c_mail, c_ph = st.columns(2)
-                        up_email = c_mail.text_input("Corporate Email", value=emp_curr["email"] or "")
-                        up_phone = c_ph.text_input("Phone Number", value=emp_curr["phone"] or "")
 
-                        d_list = get_all_departments(org_id=org_id)
-                        d_idx = d_list.index(emp_curr["department"]) if emp_curr["department"] in d_list else 0
-                        c_dept, c_des = st.columns(2)
-                        up_dept = c_dept.selectbox("Department", d_list, index=d_idx)
-                        up_desig = c_des.text_input("Designation / Title", value=emp_curr["designation"])
-
-                        s_idx = EMPLOYMENT_STATUSES.index(emp_curr["employment_status"]) if emp_curr["employment_status"] in EMPLOYMENT_STATUSES else 0
-                        c_st, c_xp = st.columns(2)
-                        up_status = c_st.selectbox("Employment Status", EMPLOYMENT_STATUSES, index=s_idx)
-                        up_exp = c_xp.number_input("Years of Experience", min_value=0.0, max_value=60.0, value=float(emp_curr["years_experience"]), step=0.5)
-                        up_skills = st.text_input("Primary Skills", value=emp_curr["primary_skills"])
-
-                        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-                        update_save_btn = st.form_submit_button("Update Employee Record", type="primary", use_container_width=True)
-
-                    render_html("</div>")
-
-                    if update_save_btn:
-                        ok_upd, msg_upd = update_employee(
-                            employee_id=emp_curr["employee_id"],
-                            name=up_name,
-                            department=up_dept,
-                            designation=up_desig,
-                            years_experience=up_exp,
-                            primary_skills=up_skills,
-                            email=up_email if up_email.strip() else None,
-                            phone=up_phone,
-                            joining_date=emp_curr["joining_date"],
-                            employment_status=up_status,
-                            org_id=org_id
+                    col_ed, col_rm = st.columns([1.6, 1], gap="large")
+                    with col_ed:
+                        render_html(
+                            f"""
+                            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                    {get_svg_icon("edit", size=18, color="#2563EB")} Edit Profile Information
+                                </div>
+                            """
                         )
-                        if ok_upd:
-                            st.success(msg_upd)
-                            st.rerun()
-                        else:
-                            st.error(msg_upd)
+                        with st.form("edit_emp_master_form"):
+                            up_name = st.text_input("Full Legal Name *", value=emp_curr["name"])
+                            c_mail, c_ph = st.columns(2)
+                            up_email = c_mail.text_input("Corporate Email", value=emp_curr["email"] or "")
+                            up_phone = c_ph.text_input("Phone Number", value=emp_curr["phone"] or "")
 
-                with col_rm:
-                    # Deactivation Box
-                    render_html(
-                        f"""
-                        <div style="background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 16px; padding: 20px; margin-bottom: 1.2rem; box-shadow: 0 4px 14px rgba(245,158,11,0.06);">
-                            <div style="font-size: 0.98rem; font-weight: 800; color: #92400E; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                                {get_svg_icon("alert_triangle", size=18, color="#F59E0B")} Action 1: Deactivate Account
-                            </div>
-                            <div style="font-size: 0.80rem; color: #78350F; line-height: 1.4; margin-bottom: 12px;">
-                                Suspends active login and marks employment status as Terminated while preserving past evaluations and skill records.
-                            </div>
-                        """
-                    )
-                    if st.button("Deactivate Employee", key=f"btn_deact_{emp_curr['employee_id']}", type="secondary", use_container_width=True):
-                        ok_dea, msg_dea = deactivate_employee(emp_curr["employee_id"], org_id=org_id)
-                        if ok_dea:
-                            st.success(msg_dea)
-                            st.rerun()
-                        else:
-                            st.error(msg_dea)
-                    render_html("</div>")
+                            raw_depts = get_all_departments(org_id=org_id)
+                            d_list = ["-- Select Department --"] + raw_depts
+                            d_idx = d_list.index(emp_curr["department"]) if emp_curr["department"] in d_list else 0
+                            c_dept, c_des = st.columns(2)
+                            up_dept = c_dept.selectbox("Department *", d_list, index=d_idx)
+                            up_desig = c_des.text_input("Designation / Title *", value=emp_curr["designation"])
 
-                    # Danger Box: Permanent Deletion
-                    render_html(
-                        f"""
-                        <div style="background: #FEF2F2; border: 1.5px solid #FECACA; border-radius: 16px; padding: 20px; box-shadow: 0 4px 14px rgba(239,68,68,0.06);">
-                            <div style="font-size: 0.98rem; font-weight: 800; color: #991B1B; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                                {get_svg_icon("trash", size=18, color="#EF4444")} Action 2: Permanent Removal
-                            </div>
-                            <div style="font-size: 0.80rem; color: #7F1D1D; line-height: 1.4; margin-bottom: 10px;">
-                                Irreversibly deletes this employee record and all associated performance reviews, assessments, and logs.
-                            </div>
-                        """
-                    )
-                    confirm_deletion = st.checkbox("I confirm permanent deletion of this record.", key=f"chk_del_{emp_curr['employee_id']}")
-                    if st.button("Permanently Delete", type="secondary", disabled=not confirm_deletion, key=f"btn_del_{emp_curr['employee_id']}", use_container_width=True):
-                        ok_del, msg_del = delete_employee(emp_curr["employee_id"], org_id=org_id)
-                        if ok_del:
-                            st.success(msg_del)
-                            st.rerun()
-                        else:
-                            st.error(msg_del)
-                    render_html("</div>")
+                            st_list = ["-- Select Status --"] + EMPLOYMENT_STATUSES
+                            s_idx = st_list.index(emp_curr["employment_status"]) if emp_curr["employment_status"] in st_list else 0
+                            c_st, c_xp = st.columns(2)
+                            up_status = c_st.selectbox("Employment Status *", st_list, index=s_idx)
+                            up_exp = c_xp.number_input("Years of Experience", min_value=0.0, max_value=60.0, value=float(emp_curr["years_experience"]), step=0.5)
+                            up_skills = st.text_input("Primary Skills", value=emp_curr["primary_skills"])
+
+                            st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+                            update_save_btn = st.form_submit_button("Update Employee Record", type="primary", use_container_width=True)
+
+                        render_html("</div>")
+
+                        if update_save_btn:
+                            if not up_name.strip():
+                                st.error("Full Legal Name is required.")
+                            elif not up_desig.strip():
+                                st.error("Designation / Title is required.")
+                            elif up_dept == "-- Select Department --":
+                                st.error("Please select a department.")
+                            elif up_status == "-- Select Status --":
+                                st.error("Please select an employment status.")
+                            else:
+                                ok_upd, msg_upd = update_employee(
+                                    employee_id=emp_curr["employee_id"],
+                                    name=up_name.strip(),
+                                    department=up_dept,
+                                    designation=up_desig.strip(),
+                                    years_experience=up_exp,
+                                    primary_skills=up_skills.strip(),
+                                    email=up_email.strip() if up_email.strip() else None,
+                                    phone=up_phone.strip(),
+                                    joining_date=emp_curr["joining_date"],
+                                    employment_status=up_status,
+                                    org_id=org_id
+                                )
+                                if ok_upd:
+                                    st.success(msg_upd)
+                                    st.rerun()
+                                else:
+                                    st.error(msg_upd)
+
+                    with col_rm:
+                        # Deactivation Box
+                        render_html(
+                            f"""
+                            <div style="background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 16px; padding: 20px; margin-bottom: 1.2rem; box-shadow: 0 4px 14px rgba(245,158,11,0.06);">
+                                <div style="font-size: 0.98rem; font-weight: 800; color: #92400E; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                    {get_svg_icon("alert_triangle", size=18, color="#F59E0B")} Action 1: Deactivate Account
+                                </div>
+                                <div style="font-size: 0.80rem; color: #78350F; line-height: 1.4; margin-bottom: 12px;">
+                                    Suspends active login and marks employment status as Terminated while preserving past evaluations and skill records.
+                                </div>
+                            """
+                        )
+                        confirm_deact = st.checkbox(f"I confirm deactivating {emp_curr['name']}.", key=f"chk_deact_{emp_curr['employee_id']}")
+                        if st.button("Deactivate Employee", key=f"btn_deact_{emp_curr['employee_id']}", disabled=not confirm_deact, type="secondary", use_container_width=True):
+                            ok_dea, msg_dea = deactivate_employee(emp_curr["employee_id"], org_id=org_id)
+                            if ok_dea:
+                                st.success(msg_dea)
+                                st.rerun()
+                            else:
+                                st.error(msg_dea)
+                        render_html("</div>")
+
+                        # Danger Box: Permanent Deletion
+                        render_html(
+                            f"""
+                            <div style="background: #FEF2F2; border: 1.5px solid #FECACA; border-radius: 16px; padding: 20px; box-shadow: 0 4px 14px rgba(239,68,68,0.06);">
+                                <div style="font-size: 0.98rem; font-weight: 800; color: #991B1B; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                    {get_svg_icon("trash", size=18, color="#EF4444")} Action 2: Permanent Removal
+                                </div>
+                                <div style="font-size: 0.80rem; color: #7F1D1D; line-height: 1.4; margin-bottom: 10px;">
+                                    Irreversibly deletes this employee record and all associated performance reviews, assessments, and logs.
+                                </div>
+                            """
+                        )
+                        confirm_deletion = st.checkbox("I confirm permanent deletion of this record.", key=f"chk_del_{emp_curr['employee_id']}")
+                        if st.button("Permanently Delete", type="secondary", disabled=not confirm_deletion, key=f"btn_del_{emp_curr['employee_id']}", use_container_width=True):
+                            ok_del, msg_del = delete_employee(emp_curr["employee_id"], org_id=org_id)
+                            if ok_del:
+                                st.success(msg_del)
+                                st.rerun()
+                            else:
+                                st.error(msg_del)
+                        render_html("</div>")
     # --- TAB 5: INVITATION CODES ---
     with tab_invite:
         render_html(
@@ -4532,28 +4710,36 @@ elif page in ["Employees", "Employee Management"]:
                 )
             else:
                 for c_item in codes_list:
-                    status_color = "#10B981" if c_item["status"] == "Active" else ("#EF4444" if c_item["status"] == "Revoked" else "#F59E0B")
+                    c_status = c_item.get("status") or "Active"
+                    status_color = "#10B981" if c_status == "Active" else ("#EF4444" if c_status == "Revoked" else "#F59E0B")
+                    c_prefix = c_item.get("code_prefix") or c_item.get("prefix") or (str(c_item.get("code") or "CODE")[:4] + "****")
+                    c_used = c_item.get("used_count", 0)
+                    c_max = c_item.get("max_uses", 1)
+                    c_expires = c_item.get("expires_at") or "Never"
+                    c_created = str(c_item.get("created_at") or "")[:10] or "Recently"
+                    c_id = c_item.get("id") or c_item.get("_id") or 1
+
                     col_code_info, col_code_action = st.columns([3, 1])
                     with col_code_info:
                         render_html(
                             f"""
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <span style="font-family: monospace; font-size: 0.96rem; font-weight: 800; color: #0F172A; background: #F8FAFC; padding: 2px 8px; border-radius: 6px; border: 1px solid #DCE5F1;">
-                                    {c_item['code_prefix']}
+                                    {c_prefix}
                                 </span>
                                 <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: {status_color}18; color: {status_color}; font-weight: 800; text-transform: uppercase;">
-                                    {c_item['status']}
+                                    {c_status}
                                 </span>
                             </div>
                             <div style="font-size: 0.80rem; color: #64748B; margin-top: 4px;">
-                                Uses: <strong>{c_item['used_count']} / {c_item['max_uses']}</strong> &bull; Expires: {c_item['expires_at']} &bull; Created: {c_item['created_at'][:10]}
+                                Uses: <strong>{c_used} / {c_max}</strong> &bull; Expires: {c_expires} &bull; Created: {c_created}
                             </div>
                             """
                         )
                     with col_code_action:
-                        if c_item["status"] == "Active":
-                            if st.button("Revoke", key=f"btn_revoke_{c_item['id']}", type="secondary", use_container_width=True):
-                                ok_rev, msg_rev = revoke_invitation_code(c_item["id"], org_id=org_id)
+                        if c_status == "Active":
+                            if st.button("Revoke", key=f"btn_revoke_{c_id}", type="secondary", use_container_width=True):
+                                ok_rev, msg_rev = revoke_invitation_code(c_id, org_id=org_id)
                                 if ok_rev:
                                     st.success(msg_rev)
                                     st.rerun()
@@ -4950,9 +5136,9 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
             else:
                 emp_choices = {f"{e['employee_id']} — {e['name']} ({e['designation']})": e['employee_id'] for e in emps}
                 with st.form("add_review_form"):
-                    chosen_emp = st.selectbox("Select Employee *", list(emp_choices.keys()))
+                    chosen_emp = st.selectbox("Select Employee *", ["-- Select Employee to Evaluate --"] + list(emp_choices.keys()), index=0)
                     rev_period = st.text_input("Review Period *", placeholder="e.g. Q1 2026 or 2025 Annual Review")
-                    rev_score = st.slider("Performance Rating (1.0 = Needs Improvement, 5.0 = Exceptional) *", min_value=1.0, max_value=5.0, value=4.0, step=0.1)
+                    rev_score = st.slider("Performance Rating (1.0 = Needs Improvement, 5.0 = Exceptional) *", min_value=1.0, max_value=5.0, value=3.0, step=0.1)
                     achieve = st.text_area("Key Achievements & Deliverables", placeholder="Projects completed, measurable impact, KPI results...")
                     strengths_txt = st.text_area("Demonstrated Core Strengths", placeholder="Competencies, leadership, teamwork...")
                     improve_txt = st.text_area("Areas for Growth & Upskilling", placeholder="Skills to develop, training needs...")
@@ -4961,17 +5147,19 @@ elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
                     save_rev_btn = st.form_submit_button("Save Performance Evaluation", type="primary")
 
                 if save_rev_btn:
-                    if not rev_period.strip():
+                    if chosen_emp == "-- Select Employee to Evaluate --":
+                        st.error("Validation Error: Please select an employee to evaluate.")
+                    elif not rev_period.strip():
                         st.error("Validation Error: Review Period is required.")
                     else:
                         ok_r, msg_r = add_performance_review(
                             employee_id=emp_choices[chosen_emp],
-                            review_period=rev_period,
+                            review_period=rev_period.strip(),
                             performance_score=rev_score,
-                            achievements=achieve,
-                            strengths=strengths_txt,
-                            improvements=improve_txt,
-                            manager_feedback=feedback_txt,
+                            achievements=achieve.strip(),
+                            strengths=strengths_txt.strip(),
+                            improvements=improve_txt.strip(),
+                            manager_feedback=feedback_txt.strip(),
                             reviewer_id=uid,
                             org_id=org_id
                         )
@@ -5067,16 +5255,22 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                 with c_s1:
                     new_sk_name = st.text_input("Skill Name *", placeholder="e.g. Python, SQL, Communication, Leadership, Data Analysis")
                 with c_s2:
-                    new_sk_cat = st.selectbox("Category", ["Technical", "Soft Skill", "Leadership", "Tools", "Domain", "Business"])
+                    new_sk_cat = st.selectbox("Category *", ["-- Select Category --", "Technical", "Soft Skill", "Leadership", "Tools", "Domain", "Business"], index=0)
                 with c_s3:
-                    new_sk_prof = st.selectbox("Proficiency Level", list(LEVELS.keys()))
+                    new_sk_prof = st.selectbox("Proficiency Level *", ["-- Select Proficiency Level --"] + list(LEVELS.keys()), index=0)
                 with c_s4:
-                    new_sk_yrs = st.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.0, step=0.5, format="%.1f")
+                    new_sk_yrs = st.number_input("Years Experience", min_value=0.0, max_value=50.0, value=0.0, step=0.5, format="%.1f")
 
                 btn_add_sk = st.form_submit_button("Save Competency", type="primary")
 
             if btn_add_sk:
-                if new_sk_name.strip():
+                if not new_sk_name.strip():
+                    st.error("Please enter a skill name.")
+                elif new_sk_cat == "-- Select Category --":
+                    st.error("Please select a skill category.")
+                elif new_sk_prof == "-- Select Proficiency Level --":
+                    st.error("Please select a proficiency level.")
+                else:
                     ok_sk, msg_sk = add_employee_skill(
                         emp_id if emp_id else f"EMP-{uid}",
                         new_sk_name.strip(),
@@ -5092,8 +5286,6 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                         st.rerun()
                     else:
                         st.error(msg_sk)
-                else:
-                    st.error("Please enter a skill name.")
 
             user_emp_skills = get_employee_skills(emp_id if emp_id else f"EMP-{uid}", org_id=org_id)
             if user_emp_skills:
@@ -5137,26 +5329,29 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
             with c_as1:
                 with st.form("emp_rec_assessment_form"):
                     cap_areas = ["Python", "SQL", "Communication", "Leadership", "Data Analysis", "System Design", "Problem Solving", "Project Management", "Domain Knowledge", "Cloud Architecture"]
-                    cap_area = st.selectbox("Capability / Skill Area *", cap_areas)
+                    cap_area = st.selectbox("Capability / Skill Area *", ["-- Select Capability Area --"] + cap_areas, index=0)
                     conf_score = st.slider("Evaluated Proficiency / Confidence Score (0–100%) *", min_value=0, max_value=100, value=75, step=5)
                     ass_notes = st.text_area("Assessment Evidence & Key Deliverables", placeholder="Describe practical experience, projects, or certifications supporting this assessment...")
                     btn_save_ass = st.form_submit_button("Record Assessment to Profile", type="primary")
 
                 if btn_save_ass:
-                    ok_ass = add_assessment(
-                        uid=uid,
-                        category=cap_area,
-                        score=float(conf_score),
-                        employee_id=emp_id,
-                        org_id=org_id,
-                        skill_name=cap_area,
-                        notes=ass_notes
-                    )
-                    if ok_ass:
-                        st.success(f"Assessment recorded for {cap_area} ({conf_score}%) successfully!")
-                        st.rerun()
+                    if cap_area == "-- Select Capability Area --":
+                        st.error("Please select a capability / skill area.")
                     else:
-                        st.error("Failed to record assessment. Please try again.")
+                        ok_ass = add_assessment(
+                            uid=uid,
+                            category=cap_area,
+                            score=float(conf_score),
+                            employee_id=emp_id,
+                            org_id=org_id,
+                            skill_name=cap_area,
+                            notes=ass_notes.strip()
+                        )
+                        if ok_ass:
+                            st.success(f"Assessment recorded for {cap_area} ({conf_score}%) successfully!")
+                            st.rerun()
+                        else:
+                            st.error("Failed to record assessment. Please try again.")
 
             with c_as2:
                 prev_assessments = get_assessments(uid=uid, employee_id=emp_id, org_id=org_id)
@@ -5254,40 +5449,52 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
             if not emp_sk_map:
                 st.warning(f"No employees found in organization {org_id}. Please register or add employees first.")
             else:
-                selected_sk_emp = st.selectbox("Select Employee Profile", list(emp_sk_map.keys()), key="hr_sel_sk_emp")
-                target_code = emp_sk_map[selected_sk_emp]
+                sk_emp_opts = ["-- Select Employee Profile --"] + list(emp_sk_map.keys())
+                selected_sk_emp = st.selectbox("Select Employee Profile", sk_emp_opts, index=0, key="hr_sel_sk_emp")
 
-                col_sk_form, col_sk_table = st.columns([1, 1.5])
-                with col_sk_form:
-                    with st.form("add_sk_form"):
-                        st.markdown(f"##### Add Competency for `{target_code}`")
-                        sk_name = st.text_input("Skill Name *", placeholder="e.g. Python, SQL, Docker, React, AWS")
-                        sk_cat = st.selectbox("Skill Category", ["Technical", "Domain", "Soft Skill", "Leadership", "Tool", "Business"])
-                        sk_prof = st.selectbox("Proficiency Level", list(LEVELS.keys()))
-                        sk_yrs = st.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.5, step=0.5)
-                        submit_sk = st.form_submit_button("Add Skill to Portfolio", type="primary")
+                if selected_sk_emp == "-- Select Employee Profile --":
+                    st.info("👤 **Please select an employee profile from the dropdown above** to view and manage their verified competencies.")
+                else:
+                    target_code = emp_sk_map[selected_sk_emp]
 
-                    if submit_sk:
-                        ok_sk, msg_sk = add_employee_skill(target_code, sk_name, sk_prof, sk_cat, sk_yrs, org_id=org_id)
-                        if ok_sk:
-                            st.success(msg_sk)
-                            st.rerun()
+                    col_sk_form, col_sk_table = st.columns([1, 1.5])
+                    with col_sk_form:
+                        with st.form("add_sk_form"):
+                            st.markdown(f"##### Add Competency for `{target_code}`")
+                            sk_name = st.text_input("Skill Name *", placeholder="e.g. Python, SQL, Docker, React, AWS")
+                            sk_cat = st.selectbox("Skill Category *", ["-- Select Category --", "Technical", "Domain", "Soft Skill", "Leadership", "Tool", "Business"], index=0)
+                            sk_prof = st.selectbox("Proficiency Level *", ["-- Select Proficiency Level --"] + list(LEVELS.keys()), index=0)
+                            sk_yrs = st.number_input("Years Experience", min_value=0.0, max_value=50.0, value=0.0, step=0.5)
+                            submit_sk = st.form_submit_button("Add Skill to Portfolio", type="primary")
+
+                        if submit_sk:
+                            if not sk_name.strip():
+                                st.error("Validation Error: Skill Name is required.")
+                            elif sk_cat == "-- Select Category --":
+                                st.error("Validation Error: Please select a skill category.")
+                            elif sk_prof == "-- Select Proficiency Level --":
+                                st.error("Validation Error: Please select a proficiency level.")
+                            else:
+                                ok_sk, msg_sk = add_employee_skill(target_code, sk_name.strip(), sk_prof, sk_cat, sk_yrs, org_id=org_id)
+                                if ok_sk:
+                                    st.success(msg_sk)
+                                    st.rerun()
+                                else:
+                                    st.error(msg_sk)
+
+                    with col_sk_table:
+                        emp_skills = get_employee_skills(target_code, org_id=org_id)
+                        st.markdown(f"##### Verified Skills Catalog ({len(emp_skills)})")
+                        if emp_skills:
+                            render_html(render_colored_skills_table(emp_skills))
+                            sk_del_map = {f"{s.get('skill_name') or s.get('name') or 'Skill'} ({s.get('proficiency_level') or s.get('proficiency') or 'Intermediate'})": s.get("id") for s in emp_skills}
+                            sel_del_sk = st.selectbox("Remove Competency", ["Select skill to remove..."] + list(sk_del_map.keys()), key="hr_del_sk_sel")
+                            if sel_del_sk != "Select skill to remove..." and st.button("Delete Skill", key="hr_del_sk_btn"):
+                                delete_employee_skill(sk_del_map[sel_del_sk], employee_id=target_code, org_id=org_id)
+                                st.success("Skill removed successfully.")
+                                st.rerun()
                         else:
-                            st.error(msg_sk)
-
-                with col_sk_table:
-                    emp_skills = get_employee_skills(target_code, org_id=org_id)
-                    st.markdown(f"##### Verified Skills Catalog ({len(emp_skills)})")
-                    if emp_skills:
-                        render_html(render_colored_skills_table(emp_skills))
-                        sk_del_map = {f"{s.get('skill_name') or s.get('name') or 'Skill'} ({s.get('proficiency_level') or s.get('proficiency') or 'Intermediate'})": s.get("id") for s in emp_skills}
-                        sel_del_sk = st.selectbox("Remove Competency", ["Select skill to remove..."] + list(sk_del_map.keys()), key="hr_del_sk_sel")
-                        if sel_del_sk != "Select skill to remove..." and st.button("Delete Skill", key="hr_del_sk_btn"):
-                            delete_employee_skill(sk_del_map[sel_del_sk], employee_id=target_code, org_id=org_id)
-                            st.success("Skill removed successfully.")
-                            st.rerun()
-                    else:
-                        st.info("No skills cataloged for this employee profile yet.")
+                            st.info("No skills cataloged for this employee profile yet.")
 
         with tab_sk_assessments:
             st.markdown("#### HR Skills Assessment & Capability Evaluation")
@@ -5296,79 +5503,87 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
             if not emp_sk_map:
                 st.warning("No employees available to evaluate.")
             else:
-                sel_ass_emp = st.selectbox("Select Employee to Assess", list(emp_sk_map.keys()), key="hr_sel_ass_emp")
-                target_ass_code = emp_sk_map[sel_ass_emp]
+                ass_emp_opts = ["-- Select Employee to Assess --"] + list(emp_sk_map.keys())
+                sel_ass_emp = st.selectbox("Select Employee to Assess", ass_emp_opts, index=0, key="hr_sel_ass_emp")
 
-                c_haf1, c_haf2 = st.columns([1.1, 1], gap="large")
-                with c_haf1:
-                    with st.form("hr_rec_assessment_form"):
-                        st.markdown(f"##### Record Assessment for `{target_ass_code}`")
-                        hr_cap_areas = ["Python", "SQL", "Communication", "Leadership", "Data Analysis", "System Design", "Problem Solving", "Project Management", "Domain Knowledge", "Cloud Architecture"]
-                        hr_cap_area = st.selectbox("Capability / Competency *", hr_cap_areas, key="hr_ass_cap")
-                        hr_conf_score = st.slider("Assessment Score (0–100%) *", min_value=0, max_value=100, value=80, step=5, key="hr_ass_score")
-                        hr_ass_notes = st.text_area("HR / Manager Evaluation Notes", placeholder="Demonstrated skills in recent sprint, code review scores, technical proficiency...", key="hr_ass_notes")
-                        btn_hr_ass = st.form_submit_button("Submit Assessment Record", type="primary")
+                if sel_ass_emp == "-- Select Employee to Assess --":
+                    st.info("👤 **Please select an employee from the dropdown above** to evaluate competency assessment scores.")
+                else:
+                    target_ass_code = emp_sk_map[sel_ass_emp]
 
-                    if btn_hr_ass:
-                        ok_hr_ass = add_assessment(
-                            category=hr_cap_area,
-                            score=float(hr_conf_score),
-                            employee_id=target_ass_code,
-                            org_id=org_id,
-                            skill_name=hr_cap_area,
-                            notes=hr_ass_notes
-                        )
-                        if ok_hr_ass:
-                            st.success(f"Assessment score of {hr_conf_score}% recorded for {target_ass_code} ({hr_cap_area})!")
-                            st.rerun()
+                    c_haf1, c_haf2 = st.columns([1.1, 1], gap="large")
+                    with c_haf1:
+                        with st.form("hr_rec_assessment_form"):
+                            st.markdown(f"##### Record Assessment for `{target_ass_code}`")
+                            hr_cap_areas = ["Python", "SQL", "Communication", "Leadership", "Data Analysis", "System Design", "Problem Solving", "Project Management", "Domain Knowledge", "Cloud Architecture"]
+                            hr_cap_area = st.selectbox("Capability / Competency *", ["-- Select Capability Area --"] + hr_cap_areas, index=0, key="hr_ass_cap")
+                            hr_conf_score = st.slider("Assessment Score (0–100%) *", min_value=0, max_value=100, value=80, step=5, key="hr_ass_score")
+                            hr_ass_notes = st.text_area("HR / Manager Evaluation Notes", placeholder="Demonstrated skills in recent sprint, code review scores, technical proficiency...", key="hr_ass_notes")
+                            btn_hr_ass = st.form_submit_button("Submit Assessment Record", type="primary")
+
+                        if btn_hr_ass:
+                            if hr_cap_area == "-- Select Capability Area --":
+                                st.error("Validation Error: Please select a capability / competency area.")
+                            else:
+                                ok_hr_ass = add_assessment(
+                                    category=hr_cap_area,
+                                    score=float(hr_conf_score),
+                                    employee_id=target_ass_code,
+                                    org_id=org_id,
+                                    skill_name=hr_cap_area,
+                                    notes=hr_ass_notes.strip()
+                                )
+                                if ok_hr_ass:
+                                    st.success(f"Assessment score of {hr_conf_score}% recorded for {target_ass_code} ({hr_cap_area})!")
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to record assessment.")
+
+                    with c_haf2:
+                        hr_emp_ass = get_assessments(employee_id=target_ass_code, org_id=org_id)
+                        st.markdown(f"##### Assessment Trajectory for `{target_ass_code}` ({len(hr_emp_ass)})")
+                        if hr_emp_ass:
+                            chart_skills = [a.get("skill_name") or a.get("category") for a in hr_emp_ass[:8]]
+                            chart_scores = [a.get("score", 0.0) for a in hr_emp_ass[:8]]
+                            if len(chart_skills) >= 3:
+                                fig_hr_ass = go.Figure()
+                                fig_hr_ass.add_trace(go.Scatterpolar(
+                                    r=chart_scores + [chart_scores[0]],
+                                    theta=chart_skills + [chart_skills[0]],
+                                    fill='toself',
+                                    fillcolor='rgba(16, 185, 129, 0.15)',
+                                    line=dict(color='#10B981', width=2),
+                                    name='Assessment Score'
+                                ))
+                                fig_hr_ass.update_layout(
+                                    polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                                    showlegend=False,
+                                    height=270,
+                                    margin=dict(l=25, r=25, t=25, b=25),
+                                    paper_bgcolor="#FFFFFF"
+                                )
+                                st.plotly_chart(fig_hr_ass, use_container_width=True)
+                            else:
+                                df_h_chart = pd.DataFrame({"Capability": chart_skills, "Score": chart_scores})
+                                fig_bar_h = px.bar(df_h_chart, x="Capability", y="Score", range_y=[0, 100], color_discrete_sequence=["#10B981"])
+                                fig_bar_h.update_layout(height=240, margin=dict(l=10, r=10, t=10, b=10))
+                                st.plotly_chart(fig_bar_h, use_container_width=True)
                         else:
-                            st.error("Failed to record assessment.")
+                            st.info(f"No assessments recorded for {target_ass_code} yet.")
 
-                with c_haf2:
-                    hr_emp_ass = get_assessments(employee_id=target_ass_code, org_id=org_id)
-                    st.markdown(f"##### Assessment Trajectory for `{target_ass_code}` ({len(hr_emp_ass)})")
                     if hr_emp_ass:
-                        chart_skills = [a.get("skill_name") or a.get("category") for a in hr_emp_ass[:8]]
-                        chart_scores = [a.get("score", 0.0) for a in hr_emp_ass[:8]]
-                        if len(chart_skills) >= 3:
-                            fig_hr_ass = go.Figure()
-                            fig_hr_ass.add_trace(go.Scatterpolar(
-                                r=chart_scores + [chart_scores[0]],
-                                theta=chart_skills + [chart_skills[0]],
-                                fill='toself',
-                                fillcolor='rgba(16, 185, 129, 0.15)',
-                                line=dict(color='#10B981', width=2),
-                                name='Assessment Score'
-                            ))
-                            fig_hr_ass.update_layout(
-                                polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
-                                showlegend=False,
-                                height=270,
-                                margin=dict(l=25, r=25, t=25, b=25),
-                                paper_bgcolor="#FFFFFF"
-                            )
-                            st.plotly_chart(fig_hr_ass, use_container_width=True)
-                        else:
-                            df_h_chart = pd.DataFrame({"Capability": chart_skills, "Score": chart_scores})
-                            fig_bar_h = px.bar(df_h_chart, x="Capability", y="Score", range_y=[0, 100], color_discrete_sequence=["#10B981"])
-                            fig_bar_h.update_layout(height=240, margin=dict(l=10, r=10, t=10, b=10))
-                            st.plotly_chart(fig_bar_h, use_container_width=True)
-                    else:
-                        st.info(f"No assessments recorded for {target_ass_code} yet.")
-
-                if hr_emp_ass:
-                    st.markdown("##### Assessment Records Log")
-                    hr_ass_records = [
-                        {
-                            "Skill / Competency": a.get("skill_name") or a.get("name") or "Competency Area",
-                            "Score (%)": a.get("score") if a.get("score") is not None else (a.get("assessment_score") or 0),
-                            "Manager Notes": a.get("notes") or "",
-                            "Evaluation Date": a.get("created_at") or a.get("date") or "",
-                        }
-                        for a in hr_emp_ass
-                    ]
-                    df_h_log = pd.DataFrame(hr_ass_records)
-                    st.dataframe(df_h_log, width="stretch", hide_index=True)
+                        st.markdown("##### Assessment Records Log")
+                        hr_ass_records = [
+                            {
+                                "Skill / Competency": a.get("skill_name") or a.get("name") or "Competency Area",
+                                "Score (%)": a.get("score") if a.get("score") is not None else (a.get("assessment_score") or 0),
+                                "Manager Notes": a.get("notes") or "",
+                                "Evaluation Date": a.get("created_at") or a.get("date") or "",
+                            }
+                            for a in hr_emp_ass
+                        ]
+                        df_h_log = pd.DataFrame(hr_ass_records)
+                        st.dataframe(df_h_log, width="stretch", hide_index=True)
 
         with tab_sk_gaps:
             st.markdown("#### Benchmark Role Gap Analysis & Competency Radar")
@@ -5465,8 +5680,8 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
             if is_admin:
                 with st.form("assign_train_form"):
                     st.markdown("##### Assign Upskilling Course")
-                    t_emp = st.selectbox("Assignee Employee", list(emp_sk_map.keys()) if all_emps else [target_code])
-                    t_emp_code = emp_sk_map[t_emp] if all_emps else target_code
+                    t_emp_opts = ["-- Select Assignee Employee --"] + (list(emp_sk_map.keys()) if all_emps else [target_code])
+                    t_emp = st.selectbox("Assignee Employee *", t_emp_opts, index=0)
                     t_course = st.text_input("Course Title *", placeholder="e.g. Enterprise System Design Architecture")
                     t_skill = st.text_input("Target Skill *", placeholder="e.g. System Design")
                     t_provider = st.text_input("Training Provider", value="Talent Growth Academy")
@@ -5474,12 +5689,20 @@ elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills
                     submit_train = st.form_submit_button("Assign Course", type="primary")
 
                 if submit_train:
-                    ok_tr, msg_tr = add_training_record(t_emp_code, t_course, t_skill, t_provider, t_due.isoformat(), "Enrolled", org_id=org_id)
-                    if ok_tr:
-                        st.success(msg_tr)
-                        st.rerun()
+                    if t_emp == "-- Select Assignee Employee --":
+                        st.error("Validation Error: Please select an assignee employee.")
+                    elif not t_course.strip():
+                        st.error("Validation Error: Course Title is required.")
+                    elif not t_skill.strip():
+                        st.error("Validation Error: Target Skill is required.")
                     else:
-                        st.error(msg_tr)
+                        t_emp_code = emp_sk_map[t_emp] if all_emps else target_code
+                        ok_tr, msg_tr = add_training_record(t_emp_code, t_course.strip(), t_skill.strip(), t_provider.strip(), t_due.isoformat(), "Enrolled", org_id=org_id)
+                        if ok_tr:
+                            st.success(msg_tr)
+                            st.rerun()
+                        else:
+                            st.error(msg_tr)
 
             trainings = get_training_records(org_id=org_id)
             if trainings:
@@ -5517,9 +5740,11 @@ elif page in ["Role Match & Gaps", "Role Match & Competency Gaps", "Competency G
     )
 
     all_roles = list(ROLE_CATALOG.keys())
-    saved_target_role = profile.get("target_role") or ""
+    saved_target_role = (profile.get("target_role") or "").strip()
     role_options = ["-- Choose Benchmark Role --"] + all_roles
-    default_role_idx = (role_options.index(saved_target_role)) if saved_target_role in all_roles else 0
+    if saved_target_role and saved_target_role not in role_options and saved_target_role != "-- Choose Benchmark Role --":
+        role_options.append(saved_target_role)
+    default_role_idx = (role_options.index(saved_target_role)) if saved_target_role in role_options else 0
     target_role_eval = st.selectbox("Benchmark Target Role", role_options, index=default_role_idx, key="sel_role_match_page")
 
     has_selected_role = (target_role_eval != "-- Choose Benchmark Role --")
@@ -5919,22 +6144,25 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
             q1, q2, q3 = st.columns([2, 1, 1])
             with q1:
                 q_map = {f"{g['title']} (Current: {g['progress']}%)": g["id"] for g in goals_data}
-                sel_q_goal = st.selectbox("Select Goal to Update", list(q_map.keys()))
-                q_gid = q_map[sel_q_goal]
+                sel_q_goal = st.selectbox("Select Goal to Update", ["-- Select Goal to Update --"] + list(q_map.keys()))
             with q2:
-                curr_g_obj = next((g for g in goals_data if g.get("id") == q_gid), {})
-                milestone_opts = [0, 25, 50, 75, 100]
-                cur_prog = curr_g_obj.get("progress", 0)
-                m_idx = milestone_opts.index(cur_prog) if cur_prog in milestone_opts else 0
-                new_prog_val = st.selectbox(
-                    "New Milestone", milestone_opts,
-                    index=m_idx
-                )
+                if sel_q_goal != "-- Select Goal to Update --":
+                    q_gid = q_map[sel_q_goal]
+                    curr_g_obj = next((g for g in goals_data if g.get("id") == q_gid), {})
+                    milestone_opts = [0, 25, 50, 75, 100]
+                    cur_prog = curr_g_obj.get("progress", 0)
+                    m_idx = milestone_opts.index(cur_prog) if cur_prog in milestone_opts else 0
+                    new_prog_val = st.selectbox(
+                        "New Milestone", milestone_opts,
+                        index=m_idx
+                    )
+                else:
+                    new_prog_val = st.selectbox("New Milestone", ["-- Select Goal First --"], index=0, disabled=True)
             with q3:
                 st.write("")
                 st.write("")
-                if st.button("Update Milestone", type="primary", use_container_width=True):
-                    ok_qp, msg_qp = update_goal_progress(q_gid, uid, new_prog_val)
+                if st.button("Update Milestone", type="primary", use_container_width=True, disabled=(sel_q_goal == "-- Select Goal to Update --")):
+                    ok_qp, msg_qp = update_goal_progress(q_map[sel_q_goal], uid, new_prog_val)
                     if ok_qp:
                         st.success(msg_qp)
                         st.rerun()
@@ -5965,7 +6193,7 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
 
         with st.form("create_career_goal_form"):
             cg_title = st.text_input("Goal Title *", placeholder="e.g. Master Enterprise System Design & Distributed Systems")
-            cg_role = st.selectbox("Target Designation", ["Not Specified"] + list(ROLE_CATALOG.keys()))
+            cg_role = st.selectbox("Target Designation", ["-- Select Target Designation (Optional) --", "Not Specified"] + list(ROLE_CATALOG.keys()))
             cg_desc = st.text_area("Action Steps & Deliverables", placeholder="Specific certifications, projects, or milestones to achieve...")
             cg_date = st.date_input("Target Completion Date *", min_value=date.today())
             cg_prog = st.select_slider(
@@ -5988,7 +6216,7 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
                     target_date=cg_date.isoformat(),
                     progress=cg_prog,
                     employee_id=emp_id,
-                    target_designation="" if cg_role == "Not Specified" else cg_role,
+                    target_designation="" if cg_role in ["-- Select Target Designation (Optional) --", "Not Specified"] else cg_role,
                     org_id=org_id
                 )
                 if ok_cg:
@@ -6005,62 +6233,66 @@ elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My
             st.info("No goals available to manage.")
         else:
             g_edit_map = {f"{g['title']} (Due: {g['target_date']})": g["id"] for g in my_all_goals}
-            sel_g_label = st.selectbox("Select Goal to Modify", list(g_edit_map.keys()))
-            sel_gid = g_edit_map[sel_g_label]
-            target_g_obj = get_goal_by_id(sel_gid)
+            sel_g_label = st.selectbox("Select Goal to Modify", ["-- Select Goal to Modify --"] + list(g_edit_map.keys()))
 
-            if target_g_obj:
-                c_ged, c_gdel = st.columns([1.6, 1])
-                with c_ged:
-                    with st.form("edit_career_goal_form"):
-                        st.markdown(f"##### Edit Details for *{target_g_obj['title']}*")
-                        ed_title = st.text_input("Goal Title", value=target_g_obj["title"])
-                        role_keys = ["Not Specified"] + list(ROLE_CATALOG.keys())
-                        curr_rk_idx = role_keys.index(target_g_obj.get("target_designation")) if target_g_obj.get("target_designation") in role_keys else 0
-                        ed_role = st.selectbox("Target Designation", role_keys, index=curr_rk_idx)
-                        ed_desc = st.text_area("Action Steps", value=target_g_obj["description"])
-                        try:
-                            def_d = datetime.strptime(target_g_obj["target_date"], "%Y-%m-%d").date()
-                        except Exception:
-                            def_d = date.today()
-                        ed_date = st.date_input("Target Date", value=def_d)
-                        ed_prog = st.select_slider(
-                            "Milestone Progress",
-                            options=[0, 25, 50, 75, 100],
-                            value=target_g_obj["progress"],
-                            format_func=lambda x: f"{x}% ({'Not Started' if x==0 else ('Completed' if x==100 else 'In Progress')})"
-                        )
-                        update_g_btn = st.form_submit_button("Update Goal", type="primary")
+            if sel_g_label == "-- Select Goal to Modify --":
+                st.info("Please select a career goal above to inspect, modify, or remove its milestones.")
+            else:
+                sel_gid = g_edit_map[sel_g_label]
+                target_g_obj = get_goal_by_id(sel_gid)
 
-                    if update_g_btn:
-                        ok_gu, msg_gu = update_goal(
-                            goal_id=sel_gid,
-                            user_id=uid,
-                            title=ed_title,
-                            description=ed_desc,
-                            target_date=ed_date.isoformat(),
-                            progress=ed_prog,
-                            target_designation="" if ed_role == "Not Specified" else ed_role
-                        )
-                        if ok_gu:
-                            st.success(msg_gu)
-                            st.rerun()
-                        else:
-                            st.error(msg_gu)
+                if target_g_obj:
+                    c_ged, c_gdel = st.columns([1.6, 1])
+                    with c_ged:
+                        with st.form("edit_career_goal_form"):
+                            st.markdown(f"##### Edit Details for *{target_g_obj['title']}*")
+                            ed_title = st.text_input("Goal Title", value=target_g_obj["title"])
+                            role_keys = ["Not Specified"] + list(ROLE_CATALOG.keys())
+                            curr_rk_idx = role_keys.index(target_g_obj.get("target_designation")) if target_g_obj.get("target_designation") in role_keys else 0
+                            ed_role = st.selectbox("Target Designation", role_keys, index=curr_rk_idx)
+                            ed_desc = st.text_area("Action Steps", value=target_g_obj["description"])
+                            try:
+                                def_d = datetime.strptime(target_g_obj["target_date"], "%Y-%m-%d").date()
+                            except Exception:
+                                def_d = date.today()
+                            ed_date = st.date_input("Target Date", value=def_d)
+                            ed_prog = st.select_slider(
+                                "Milestone Progress",
+                                options=[0, 25, 50, 75, 100],
+                                value=target_g_obj["progress"],
+                                format_func=lambda x: f"{x}% ({'Not Started' if x==0 else ('Completed' if x==100 else 'In Progress')})"
+                            )
+                            update_g_btn = st.form_submit_button("Update Goal", type="primary")
 
-                with c_gdel:
-                    with st.container(border=True):
-                        st.markdown("##### Remove Career Goal")
-                        st.write(f"Are you sure you want to delete **{target_g_obj['title']}**?")
-                        st.caption("Permanent action. Associated progress logs will be purged.")
-                        confirm_g_del = st.checkbox("I confirm deletion of this career goal.")
-                        if st.button("Delete Goal", type="secondary", disabled=not confirm_g_del):
-                            ok_gdel, msg_gdel = delete_goal(sel_gid, uid)
-                            if ok_gdel:
-                                st.success(msg_gdel)
+                        if update_g_btn:
+                            ok_gu, msg_gu = update_goal(
+                                goal_id=sel_gid,
+                                user_id=uid,
+                                title=ed_title,
+                                description=ed_desc,
+                                target_date=ed_date.isoformat(),
+                                progress=ed_prog,
+                                target_designation="" if ed_role == "Not Specified" else ed_role
+                            )
+                            if ok_gu:
+                                st.success(msg_gu)
                                 st.rerun()
                             else:
-                                st.error(msg_gdel)
+                                st.error(msg_gu)
+
+                    with c_gdel:
+                        with st.container(border=True):
+                            st.markdown("##### Remove Career Goal")
+                            st.write(f"Are you sure you want to delete **{target_g_obj['title']}**?")
+                            st.caption("Permanent action. Associated progress logs will be purged.")
+                            confirm_g_del = st.checkbox("I confirm deletion of this career goal.")
+                            if st.button("Delete Goal", type="secondary", disabled=not confirm_g_del):
+                                ok_gdel, msg_gdel = delete_goal(sel_gid, uid)
+                                if ok_gdel:
+                                    st.success(msg_gdel)
+                                    st.rerun()
+                                else:
+                                    st.error(msg_gdel)
 
 # ==============================================================================
 # 7. REPORTS & ANALYTICS / CAREER REPORT
@@ -6083,9 +6315,11 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
         my_progress = get_progress(uid)
 
         all_catalog_roles = list(ROLE_CATALOG.keys())
-        saved_role = my_profile.get("target_role") or ""
+        saved_role = (my_profile.get("target_role") or "").strip()
         role_select_options = ["-- Choose Target Role --"] + all_catalog_roles
-        default_role_idx = (role_select_options.index(saved_role)) if saved_role in all_catalog_roles else 0
+        if saved_role and saved_role not in role_select_options and saved_role != "-- Choose Target Role --":
+            role_select_options.append(saved_role)
+        default_role_idx = (role_select_options.index(saved_role)) if saved_role in role_select_options else 0
 
         render_html(
             f"""
@@ -6460,18 +6694,42 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                     total_req = len(gaps)
                     st.markdown(f"**Competency Fit for Target Role ({target_role}) &mdash; {matched_ct} of {total_req} Matched ({match_score}%)**")
                     if gaps:
-                        fit_rows = []
+                        rows_html = []
                         for g in gaps:
-                            is_m = (g.get("gap", 0) == 0)
-                            fit_rows.append({
-                                "Competency": g["skill"],
-                                "Required Level": f"Level {g['required']}",
-                                "Current Level": f"Level {g['current']}",
-                                "Match Status": "✅ MATCHED" if is_m else f"❌ GAP (-{g['gap']})",
-                                "Priority": g["priority"]
-                            })
-                        gap_df = pd.DataFrame(fit_rows)
-                        st.dataframe(gap_df, use_container_width=True, hide_index=True)
+                            gap_val = g.get("gap", 0)
+                            is_m = (gap_val == 0)
+                            if is_m:
+                                status_badge = f'<span class="tbl-badge" style="background: #ECFDF5; color: #059669; font-weight: 700; border: 1px solid #A7F3D0; display: inline-flex; align-items: center; gap: 4px;">{get_svg_icon("check_circle", size=13, color="#059669")} MATCHED</span>'
+                            else:
+                                status_badge = f'<span class="tbl-badge" style="background: #FEF2F2; color: #DC2626; font-weight: 700; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px;">{get_svg_icon("x_circle", size=13, color="#DC2626")} GAP (-{gap_val})</span>'
+                            req_lvl = f"Level {g.get('required', '')}"
+                            cur_lvl = f"Level {g.get('current', '')}"
+                            rows_html.append(f"""<tr>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 7px;">
+                                        {get_svg_icon("target", size=14, color="#2563EB")}
+                                        <span style="font-weight: 600; color: #0F172A;">{g.get('skill', '')}</span>
+                                    </div>
+                                </td>
+                                <td>{get_prof_badge_html(req_lvl)}</td>
+                                <td>{get_prof_badge_html(cur_lvl)}</td>
+                                <td>{status_badge}</td>
+                                <td>{get_priority_badge_html(g.get('priority', 'Medium'))}</td>
+                            </tr>""")
+                        render_html(f"""<div class="corporate-table-wrapper" style="margin-top: 0.5rem;">
+                            <table class="corporate-table">
+                                <thead>
+                                    <tr>
+                                        <th>Competency</th>
+                                        <th>Required Level</th>
+                                        <th>Current Level</th>
+                                        <th>Match Status</th>
+                                        <th>Priority</th>
+                                    </tr>
+                                </thead>
+                                <tbody>{''.join(rows_html)}</tbody>
+                            </table>
+                        </div>""")
                     else:
                         st.success(f"All competencies for **{target_role}** are fully met or exceeded!")
                 else:
@@ -6619,7 +6877,11 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                     f"{e['name']} ({e['employee_id']} — {e.get('department', 'General')} · {e.get('designation', 'Staff')})": e
                     for e in employees
                 }
-                sel_emp_label = st.selectbox("Select Employee from Roster", list(emp_map.keys()), key="hr_sel_emp_dossier")
+                emp_dossier_opts = ["-- Select Employee from Roster --"] + list(emp_map.keys())
+                sel_emp_label = st.selectbox("Select Employee from Roster", emp_dossier_opts, key="hr_sel_emp_dossier")
+                if sel_emp_label == "-- Select Employee from Roster --":
+                    st.info("Please select an employee profile from the roster above to preview their evaluation dossier.")
+                    st.stop()
                 sel_emp = emp_map[sel_emp_label]
                 sel_uid = sel_emp.get("user_id")
                 sel_emp_id = sel_emp.get("employee_id")
@@ -6840,7 +7102,7 @@ elif page == "My Profile":
             company = st.text_input("Company / Organization", value=profile.get("company", org_display_name), placeholder="e.g. Talent Growth Technologies")
         with col_r2:
             department = st.text_input("Department / Business Unit", value=profile.get("department", ""), placeholder="e.g. Engineering & Product")
-            industry = st.text_input("Industry Domain", value=profile.get("industry", ""), placeholder="e.g. Enterprise Software / SaaS")
+            industry = st.text_input("Industry Domain", value=profile.get("industry", ""), placeholder="e.g. Technology & Software Solutions")
         render_html("</div>")
 
         # Section 3: Employment Details & Experience Boundary
@@ -6858,9 +7120,10 @@ elif page == "My Profile":
         col_e1, col_e2 = st.columns(2, gap="large")
         with col_e1:
             emp_types = ["Full-time", "Part-time", "Contract", "Internship", "Freelance", "Other"]
+            emp_select_opts = ["-- Select Employment Type --"] + emp_types
             curr_emp = profile.get("employment_type")
-            emp_idx = emp_types.index(curr_emp) if curr_emp in emp_types else 0
-            employment = st.selectbox("Employment Type", emp_types, index=emp_idx)
+            emp_idx = emp_select_opts.index(curr_emp) if curr_emp in emp_select_opts else 0
+            employment = st.selectbox("Employment Type", emp_select_opts, index=emp_idx)
         with col_e2:
             years = st.number_input("Years of Professional Experience", min_value=0.0, max_value=60.0, value=float(profile.get("years_experience") or 0.0), step=0.5, format="%.2f")
         render_html("</div>")
@@ -6927,7 +7190,8 @@ elif page == "My Profile":
         if submitted_prof:
             save_profile(uid, {
                 "phone": phone, "location": location, "job_title": job, "company": company,
-                "department": department, "industry": industry, "employment_type": employment,
+                "department": department, "industry": industry,
+                "employment_type": "" if employment == "-- Select Employment Type --" else employment,
                 "years_experience": years, "linkedin": linkedin, "github": github,
                 "portfolio": portfolio, "education": education, "certifications": certifications,
                 "summary": summary, "experience": experience, "projects": projects
@@ -6995,7 +7259,11 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
             st.stop()
 
         emp_options = {f"{e['name']} ({e['employee_id']} - {e.get('designation', 'Staff')})": e for e in org_employees}
-        selected_emp_label = st.selectbox("Select Employee Candidate", list(emp_options.keys()), key="hr_resume_emp_selector")
+        hr_cand_opts = ["-- Select Employee Candidate --"] + list(emp_options.keys())
+        selected_emp_label = st.selectbox("Select Employee Candidate", hr_cand_opts, key="hr_resume_emp_selector")
+        if selected_emp_label == "-- Select Employee Candidate --":
+            st.info("Please select an employee candidate above to inspect their ATS resume dossier.")
+            st.stop()
         selected_emp = emp_options[selected_emp_label]
         
         # Resolve target user id
@@ -7133,11 +7401,15 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                 with col_add_sname:
                     new_skill_name = st.text_input("Skill Name", key="rs_new_skill_input", placeholder="e.g. Python, SQL, React")
                 with col_add_sprof:
-                    new_skill_prof = st.selectbox("Proficiency", list(LEVELS.keys()), index=1, key="rs_new_skill_prof")
+                    new_skill_prof = st.selectbox("Proficiency", ["-- Select Proficiency --"] + list(LEVELS.keys()), index=0, key="rs_new_skill_prof")
                 with col_add_sbtn:
                     st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
                     if st.button("+ Add Skill", key="btn_rs_add_skill", type="secondary", use_container_width=True):
-                        if new_skill_name.strip():
+                        if not new_skill_name.strip():
+                            st.warning("Please enter a skill name.")
+                        elif new_skill_prof == "-- Select Proficiency --":
+                            st.warning("Please select a valid proficiency level.")
+                        else:
                             existing_names = [s["name"].lower() for s in res_data.get("skills", [])]
                             if new_skill_name.strip().lower() in existing_names:
                                 st.warning(f"Skill '{new_skill_name.strip()}' is already in your resume.")
@@ -7148,8 +7420,6 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                                 st.session_state[res_session_key] = res_data
                                 st.success(f"Added '{new_skill_name.strip()}'")
                                 st.rerun()
-                        else:
-                            st.warning("Please enter a skill name.")
 
                 # Integration with Skills & Assessment
                 st.markdown("<div style='margin-top: 0.75rem; border-top: 1px dashed #E2E8F0; padding-top: 0.75rem;'></div>", unsafe_allow_html=True)
@@ -7214,7 +7484,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                         with col_e1:
                             new_e_title = st.text_input("Job Title*", placeholder="Senior Software Engineer")
                             new_e_comp = st.text_input("Company Name*", placeholder="Tech Innovations Inc.")
-                            new_e_type = st.selectbox("Employment Type", ["Full-time", "Part-time", "Contract", "Internship", "Freelance"])
+                            new_e_type = st.selectbox("Employment Type", ["-- Select Employment Type --", "Full-time", "Part-time", "Contract", "Internship", "Freelance", "Other"], index=0)
                         with col_e2:
                             new_e_loc = st.text_input("Location", placeholder="Bangalore, India or Remote")
                             new_e_start = st.text_input("Start Date* (YYYY-MM or YYYY)", placeholder="2023-01")
@@ -7227,6 +7497,8 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                         if btn_submit_exp:
                             if not new_e_title.strip() or not new_e_comp.strip() or not new_e_start.strip():
                                 st.error("Job title, company name, and start date are required.")
+                            elif new_e_type == "-- Select Employment Type --":
+                                st.error("Please select an employment type.")
                             else:
                                 end_val = "Present" if new_e_curr else new_e_end.strip()
                                 ok_dt, err_dt = validate_date_range(new_e_start.strip(), end_val, new_e_curr)
@@ -7416,7 +7688,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                         with col_pr1:
                             new_p_title = st.text_input("Project Title*", placeholder="Cloud-Native Talent Platform")
                             new_p_role = st.text_input("Your Role", placeholder="Lead Architect / Developer")
-                            new_p_tech = st.text_input("Technologies Used*", placeholder="Python, React, SQLite, Docker")
+                            new_p_tech = st.text_input("Technologies Used*", placeholder="Python, React, MySQL, Docker")
                         with col_pr2:
                             new_p_purl = st.text_input("Project / Demo URL", placeholder="https://example.com/demo")
                             new_p_ghurl = st.text_input("GitHub URL", placeholder="https://github.com/example/project")
@@ -7472,7 +7744,7 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                     with st.form("form_add_link"):
                         col_lk1, col_lk2 = st.columns([2.5, 4.5])
                         with col_lk1:
-                            new_l_label = st.selectbox("Platform / Label", ["LinkedIn", "GitHub", "Portfolio", "Personal Website", "Blog", "Other"])
+                            new_l_label = st.selectbox("Platform / Label", ["-- Select Platform --", "LinkedIn", "GitHub", "Portfolio", "Personal Website", "Blog", "Other"], index=0)
                         with col_lk2:
                             new_l_url = st.text_input("URL Address*", placeholder="https://linkedin.com/in/username")
 
@@ -7480,6 +7752,8 @@ elif page == "ATS Resume Studio" or page == "Resume Studio":
                         if btn_submit_link:
                             if not new_l_url.strip():
                                 st.error("Please enter a web URL.")
+                            elif new_l_label == "-- Select Platform --":
+                                st.error("Please select a platform label.")
                             elif not validate_url(new_l_url.strip()):
                                 st.error(f"Invalid URL format: '{new_l_url.strip()}'. Must be a valid HTTP/HTTPS address or domain.")
                             else:
@@ -7802,18 +8076,35 @@ elif page in ["Career Direction", "Career Direction & Gaps"]:
     with st.form("career_direction_form"):
         current = st.text_input("Current role", value=profile.get("job_title", ""), placeholder="e.g. Software Engineer")
         roles_list = ["-- Choose Target Role --"] + list(ROLE_CATALOG.keys())
-        saved_role = profile.get("target_role") or ""
-        curr_role_idx = (roles_list.index(saved_role)) if saved_role in ROLE_CATALOG else 0
+        saved_role = (profile.get("target_role") or "").strip()
+        if saved_role and saved_role not in roles_list and saved_role != "-- Choose Target Role --":
+            roles_list.append(saved_role)
+        curr_role_idx = roles_list.index(saved_role) if saved_role in roles_list else 0
         target = st.selectbox("Target role *", roles_list, index=curr_role_idx)
 
         levels = ["-- Choose Target Level --", "Senior", "Lead", "Manager", "Director", "Principal", "Individual contributor"]
-        saved_lvl = profile.get("target_level") or ""
-        curr_lvl_idx = (levels.index(saved_lvl)) if saved_lvl in levels else 0
+        saved_lvl = (profile.get("target_level") or "").strip()
+        matching_lvl = next((l for l in levels if l.lower() == saved_lvl.lower()), None)
+        if matching_lvl:
+            curr_lvl_idx = levels.index(matching_lvl)
+        elif saved_lvl and saved_lvl != "-- Choose Target Level --":
+            levels.append(saved_lvl)
+            curr_lvl_idx = levels.index(saved_lvl)
+        else:
+            curr_lvl_idx = 0
         level = st.selectbox("Target level *", levels, index=curr_lvl_idx)
 
         timelines = ["-- Choose Target Timeline --", "3–6 months", "6–12 months", "1–2 years", "Exploring"]
-        saved_time = profile.get("timeline") or ""
-        curr_time_idx = (timelines.index(saved_time)) if saved_time in timelines else 0
+        saved_time = (profile.get("timeline") or "").strip()
+        norm_saved_time = saved_time.replace("-", "–")
+        matching_time = next((t for t in timelines if t.replace("-", "–").lower() == norm_saved_time.lower()), None)
+        if matching_time:
+            curr_time_idx = timelines.index(matching_time)
+        elif saved_time and saved_time != "-- Choose Target Timeline --":
+            timelines.append(saved_time)
+            curr_time_idx = timelines.index(saved_time)
+        else:
+            curr_time_idx = 0
         timeline = st.selectbox("Target timeline *", timelines, index=curr_time_idx)
 
         industry = st.text_input("Target industry", value=profile.get("target_industry", ""), placeholder="e.g. Technology & Software Solutions")
@@ -7829,7 +8120,7 @@ elif page in ["Career Direction", "Career Direction & Gaps"]:
             elif timeline == "-- Choose Target Timeline --":
                 st.error("Please choose a target timeline.")
             else:
-                save_profile(uid, {
+                ok = save_profile(uid, {
                     "job_title": current,
                     "target_role": target,
                     "target_level": level,
@@ -7837,8 +8128,17 @@ elif page in ["Career Direction", "Career Direction & Gaps"]:
                     "target_industry": industry,
                     "career_goal": goal
                 })
-                st.success("Career direction saved successfully!")
-                st.rerun()
+                if ok:
+                    profile["job_title"] = current
+                    profile["target_role"] = target
+                    profile["target_level"] = level
+                    profile["timeline"] = timeline
+                    profile["target_industry"] = industry
+                    profile["career_goal"] = goal
+                    st.success("Career direction saved successfully!")
+                    st.rerun()
+                else:
+                    st.error("Failed to save career direction to database. Please check your connection.")
 
     if profile.get("target_role") and profile.get("target_role") in ROLE_CATALOG:
         st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)

@@ -11,6 +11,7 @@ enableCORS = false
 enableXsrfProtection = false
 runOnSave = false
 maxUploadSize = 50
+enableWebsocketCompression = true
 
 [browser]
 gatherUsageStats = false
@@ -18,4 +19,7 @@ gatherUsageStats = false
 [client]
 toolbarMode = "minimal"
 showErrorDetails = "full"
+
+[runner]
+fastReruns = true
 
