@@ -33,10 +33,6 @@ from docx import Document
 
 logger = logging.getLogger("talent_growth")
 
-# Evict stale cached in-memory services modules during hot reload so updates take effect immediately
-for _m in [k for k in list(sys.modules.keys()) if k.startswith("services.")]:
-    sys.modules.pop(_m, None)
-
 try:
     from services.core import (
         BASE_DIR, ROLE_CATALOG, LEVELS, STANDARD_DEPARTMENTS, EMPLOYMENT_STATUSES,

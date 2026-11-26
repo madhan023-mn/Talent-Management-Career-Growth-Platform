@@ -29,14 +29,6 @@ app = handler
 application = handler
 
 if __name__ == "__main__":
-    if not _DATABASE_INITIALIZED:
-        try:
-            from services.core import init_db
-            init_db()
-            _DATABASE_INITIALIZED = True
-        except Exception as _db_err:
-            print(f"Pre-startup database migration note: {_db_err}")
-
     # Execute app.py directly within Streamlit context
     _app_file = Path(_ROOT) / "app.py"
     with open(_app_file, "r", encoding="utf-8") as _f:
