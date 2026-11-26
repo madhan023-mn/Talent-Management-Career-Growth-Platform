@@ -90,6 +90,40 @@ _mongo_client: Optional[Any] = None
 _mongo_is_mock: bool = False
 
 
+def normalize_mongodb_uri(uri: str) -> str:
+    """
+    Normalizes a MongoDB URI ensuring that special characters in the password
+    (such as '@', ':', or '%') are properly URL-encoded so the driver does not fail.
+    Handles both already-encoded passwords and unencoded passwords seamlessly.
+    """
+    if not uri or not isinstance(uri, str):
+        return ""
+    uri_clean = uri.strip()
+    m = re.match(r"^(mongodb(?:\+srv)?://)(.*)$", uri_clean)
+    if not m:
+        return uri_clean
+    scheme, rest = m.groups()
+    end_auth = len(rest)
+    for sep in ["/", "?"]:
+        idx = rest.find(sep)
+        if idx != -1 and idx < end_auth:
+            end_auth = idx
+    auth_host = rest[:end_auth]
+    tail = rest[end_auth:]
+    at_idx = auth_host.rfind("@")
+    if at_idx != -1:
+        user_pwd = auth_host[:at_idx]
+        host = auth_host[at_idx + 1:]
+        colon_idx = user_pwd.find(":")
+        if colon_idx != -1:
+            user = user_pwd[:colon_idx]
+            pwd = user_pwd[colon_idx + 1:]
+            unquoted = urllib.parse.unquote(pwd)
+            encoded_pwd = urllib.parse.quote_plus(unquoted)
+            return f"{scheme}{user}:{encoded_pwd}@{host}{tail}"
+    return uri_clean
+
+
 def get_mongodb_uri() -> str:
     """Reads MONGODB_URI securely from environment variables or Streamlit secrets."""
     uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI") or ""
@@ -102,7 +136,7 @@ def get_mongodb_uri() -> str:
                     uri = st.secrets["mongo"].get("uri", "") or st.secrets["mongo"].get("url", "")
         except Exception:
             pass
-    return (uri or "").strip()
+    return normalize_mongodb_uri(uri)
 
 
 def get_direct_replica_uri(srv_uri: str) -> Optional[str]:
