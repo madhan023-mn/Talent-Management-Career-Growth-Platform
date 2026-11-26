@@ -1,70 +1,151 @@
 {% extends 'base.html' %}
 {% load static custom_tags %}
 
-{% block title %}Career & Workforce Reports — Talent Growth{% endblock %}
+{% block title %}Reports & Analytics Dossiers — Talent Growth{% endblock %}
 
 {% block content %}
-<div style="max-width: 1100px; margin: 0 auto;">
+<div style="max-width: 1280px; margin: 0 auto;">
 
-    <!-- TOP HEADER -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
-        <div>
-            <h1 style="font-size: 1.8rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">Career & Workforce Intelligence Reports</h1>
-            <p style="font-size: 0.90rem; color: #64748B; margin: 0;">Generate executive-grade intelligence dossiers and validated PDF export packages</p>
+    <!-- COLORFUL HERO HEADER -->
+    <div
+        style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 60%, #EEF2FF 100%); border-left: 6px solid #4F46E5; border-radius: 16px; padding: 24px 28px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(79,70,229,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div
+                style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #4F46E5 0%, #2563EB 100%); display: flex; align-items: center; justify-content: center; color: #FFF; font-size: 1.4rem;">
+                📊
+            </div>
+            <div>
+                <h1 style="font-size: 1.65rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">Reports &amp;
+                    Analytics Dossiers</h1>
+                <p style="font-size: 0.88rem; color: #64748B; margin: 0;">Comprehensive workforce analytics, career
+                    progression trajectory, and executive PDF dossier exports</p>
+            </div>
         </div>
-        <div>
-            <a href="/reports/pdf/" class="btn-saas btn-saas-primary" style="padding: 10px 22px;">
-                📥 Download Official Report (PDF)
-            </a>
+        <div style="display: flex; gap: 10px;">
+            <a href="/reports/pdf/" class="btn-saas btn-saas-primary">📥 Download Career Report PDF</a>
         </div>
     </div>
 
-    <!-- REPORT PREVIEW DOSSIER CARD -->
-    <div class="saas-card" style="padding: 32px; margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #F1F5F9; padding-bottom: 14px; margin-bottom: 24px;">
-            <div>
-                <h2 style="font-size: 1.35rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">Executive Career Growth Dossier</h2>
-                <div style="font-size: 0.82rem; color: #64748B;">Validated against enterprise role benchmarks</div>
+    <!-- 2 SEGMENTED TABS -->
+    <div class="nav-tabs-wrapper">
+        <button class="nav-tab-btn active" data-tab-target="tab_rep_overview">
+            📈 Analytics Overview &amp; Trajectory
+        </button>
+        <button class="nav-tab-btn" data-tab-target="tab_rep_pdf">
+            📄 Executive PDF Dossiers &amp; Data Export
+        </button>
+    </div>
+
+    <!-- TAB 1: ANALYTICS OVERVIEW -->
+    <div id="tab_rep_overview" class="tab-pane active">
+        <!-- Stat Highlights -->
+        <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div class="saas-card" style="margin-bottom: 0; padding: 20px; border-left: 4px solid #2563EB;">
+                <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Role
+                    Readiness</div>
+                <div style="font-size: 2rem; font-weight: 800; color: #2563EB; margin-top: 4px;">{{ match }}%</div>
+                <div style="font-size: 0.74rem; color: #64748B; margin-top: 2px;">Target: {{
+                    profile.target_role|default:"Software Engineer" }}</div>
             </div>
-            <span style="font-size: 0.74rem; font-weight: 700; color: #16A34A; background: #F0FDF4; border: 1px solid #BBF7D0; padding: 3px 10px; border-radius: 9999px;">
-                ● Production Intelligence Report
-            </span>
+            <div class="saas-card" style="margin-bottom: 0; padding: 20px; border-left: 4px solid #16A34A;">
+                <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Benchmark
+                    Trajectory</div>
+                <div style="font-size: 2rem; font-weight: 800; color: #16A34A; margin-top: 4px;">Senior Tier</div>
+                <div style="font-size: 0.74rem; color: #64748B; margin-top: 2px;">Calibrated against industry peers
+                </div>
+            </div>
+            <div class="saas-card" style="margin-bottom: 0; padding: 20px; border-left: 4px solid #7C3AED;">
+                <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Competency
+                    Coverage</div>
+                <div style="font-size: 2rem; font-weight: 800; color: #7C3AED; margin-top: 4px;">Verified</div>
+                <div style="font-size: 0.74rem; color: #64748B; margin-top: 2px;">Full competency matrix indexed</div>
+            </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-bottom: 28px;">
-            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px;">
-                <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Profile Owner</div>
-                <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-top: 4px;">{{ current_user.name }}</div>
-                <div style="font-size: 0.78rem; color: #64748B;">{{ current_user.email }}</div>
+        {% if is_admin and dept_summary %}
+        <!-- Organization Department Analytics Table -->
+        <div class="saas-card" style="padding: 0; overflow: hidden; margin-bottom: 24px;">
+            <div style="padding: 18px 24px; border-bottom: 1px solid #E2E8F0;">
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0;">Department Analytics &amp;
+                    Headcount Distribution</h3>
             </div>
-
-            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px;">
-                <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Organization Unit</div>
-                <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-top: 4px;">{{ org_name }}</div>
-                <div style="font-size: 0.78rem; color: #64748B;">{{ current_user.department|default:"Engineering" }}</div>
-            </div>
-
-            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px;">
-                <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Target Role</div>
-                <div style="font-size: 1.15rem; font-weight: 800; color: #2563EB; margin-top: 4px;">{{ profile.target_role|default:"Full Stack Engineer" }}</div>
-                <div style="font-size: 0.78rem; color: #64748B;">Tier: {{ profile.target_level|default:"Senior" }}</div>
-            </div>
-
-            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px;">
-                <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Readiness Match</div>
-                <div style="font-size: 1.45rem; font-weight: 900; color: #16A34A; margin-top: 4px;">{{ match.match_score|default:"75" }}%</div>
-                <div style="font-size: 0.78rem; color: #16A34A; font-weight: 600;">Verified Competency</div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
+                    <thead>
+                        <tr
+                            style="background: #F8FAFC; border-bottom: 2px solid #E2E8F0; text-align: left; color: #64748B; font-size: 0.76rem; text-transform: uppercase;">
+                            <th style="padding: 12px 18px;">Department</th>
+                            <th style="padding: 12px 18px;">Staff Count</th>
+                            <th style="padding: 12px 18px;">Average Performance</th>
+                            <th style="padding: 12px 18px;">Min / Max Rating</th>
+                            <th style="padding: 12px 18px;">High Performers</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in dept_summary %}
+                        <tr style="border-bottom: 1px solid #F1F5F9;">
+                            <td style="padding: 14px 18px; font-weight: 700; color: #0F172A;">{{ d.department }}</td>
+                            <td style="padding: 14px 18px; font-weight: 600;">{{ d.employee_count }}</td>
+                            <td style="padding: 14px 18px; font-weight: 700; color: #16A34A;">★ {{
+                                d.avg_score|default:"4.2" }}</td>
+                            <td style="padding: 14px 18px; color: #64748B;">{{ d.min_score|default:"3.8" }} / {{
+                                d.max_score|default:"4.9" }}</td>
+                            <td style="padding: 14px 18px; font-weight: 700; color: #2563EB;">{{
+                                d.high_performers|default:"2" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
+        {% endif %}
+    </div>
 
-        <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
-            <div>
-                <h4 style="font-size: 0.98rem; font-weight: 700; color: #1E40AF; margin: 0 0 4px 0;">Official PDF Career Intelligence Report</h4>
-                <p style="font-size: 0.84rem; color: #3B82F6; margin: 0;">Includes executive summary, competency matrix verification, roadmap progress, and career coach recommendations.</p>
+    <!-- TAB 2: PDF DOSSIERS & EXPORT -->
+    <div id="tab_rep_pdf" class="tab-pane">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+            <!-- Individual Dossier -->
+            <div class="saas-card" style="border-top: 4px solid #2563EB;">
+                <div style="font-size: 1.8rem; margin-bottom: 10px;">👤</div>
+                <h3 style="font-size: 1.20rem; font-weight: 700; color: #0F172A; margin: 0 0 6px 0;">Individual Career
+                    Dossier (PDF)</h3>
+                <p style="font-size: 0.86rem; color: #64748B; margin: 0 0 20px 0; line-height: 1.5;">
+                    Generate a formal, publication-ready multi-page career development dossier containing competency
+                    gaps, goals, performance reviews, and career roadmap.
+                </p>
+                <a href="/reports/pdf/" class="btn-saas btn-saas-primary"
+                    style="width: 100%; box-sizing: border-box;">📥 Download Personal Report PDF</a>
             </div>
-            <a href="/reports/pdf/" class="btn-saas btn-saas-primary" style="padding: 9px 18px; font-size: 0.88rem;">
-                Download PDF Report
-            </a>
+
+            {% if is_admin %}
+            <!-- Org Analytics Dossier -->
+            <div class="saas-card" style="border-top: 4px solid #7C3AED;">
+                <div style="font-size: 1.8rem; margin-bottom: 10px;">🏢</div>
+                <h3 style="font-size: 1.20rem; font-weight: 700; color: #0F172A; margin: 0 0 6px 0;">Organization
+                    Analytics Dossier (PDF)</h3>
+                <p style="font-size: 0.86rem; color: #64748B; margin: 0 0 20px 0; line-height: 1.5;">
+                    Executive report summarizing departmental headcount, compensation aggregates, rating distributions,
+                    and workforce readiness benchmarks.
+                </p>
+                <a href="/reports/org-pdf/" class="btn-saas btn-saas-primary"
+                    style="width: 100%; box-sizing: border-box; background: linear-gradient(135deg, #7C3AED, #4F46E5);">📥
+                    Download Org Analytics PDF</a>
+            </div>
+            {% endif %}
+
+            <!-- Data Export (JSON) -->
+            <div class="saas-card" style="border-top: 4px solid #16A34A;">
+                <div style="font-size: 1.8rem; margin-bottom: 10px;">💾</div>
+                <h3 style="font-size: 1.20rem; font-weight: 700; color: #0F172A; margin: 0 0 6px 0;">Complete Data
+                    Export (JSON)</h3>
+                <p style="font-size: 0.86rem; color: #64748B; margin: 0 0 20px 0; line-height: 1.5;">
+                    Export your complete talent records, skills, goals, evaluations, and profile data in
+                    machine-readable JSON format.
+                </p>
+                <a href="/reports/export-data/" class="btn-saas btn-saas-secondary"
+                    style="width: 100%; box-sizing: border-box;">📥 Export All Data (JSON)</a>
+            </div>
         </div>
     </div>
 

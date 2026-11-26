@@ -58,15 +58,11 @@
                 {% for s in skills|slice:":5" %}
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;">
                     <div>
-                        <div style="font-size: 0.90rem; font-weight: 600; color: #0F172A;">{{ s.name|default:s.skill_name }}</div>
+                        <div style="font-size: 0.90rem; font-weight: 600; color: #0F172A;">{{ s|skill_name }}</div>
                         <div style="font-size: 0.74rem; color: #64748B;">{{ s.category|default:"Technical" }}</div>
                     </div>
-                    <span style="font-size: 0.74rem; font-weight: 700; padding: 3px 9px; border-radius: 6px; 
-                        {% if s.proficiency == 'Expert' or s.proficiency_level == 'Expert' %}background: #EDE9FE; color: #6D28D9;
-                        {% elif s.proficiency == 'Advanced' or s.proficiency_level == 'Advanced' %}background: #EFF6FF; color: #1D4ED8;
-                        {% elif s.proficiency == 'Intermediate' or s.proficiency_level == 'Intermediate' %}background: #F0FDF4; color: #15803D;
-                        {% else %}background: #FFFBEB; color: #B45309;{% endif %}">
-                        {{ s.proficiency|default:s.proficiency_level|default:"Intermediate" }}
+                    <span style="font-size: 0.74rem; font-weight: 700; padding: 3px 9px; border-radius: 6px; background: #F0FDF4; color: #15803D;">
+                        {{ s|skill_proficiency }}
                     </span>
                 </div>
                 {% empty %}

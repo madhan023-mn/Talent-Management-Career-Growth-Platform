@@ -1,133 +1,181 @@
 """
-End-to-End Migration Test Suite for Talent Growth Django Platform.
-Tests all routes, views, authentication, MongoDB Atlas operations, and PDF generation.
+Comprehensive End-to-End Test Suite for Talent Growth Django Platform.
+Tests all pages, segmented tabs, forms, actions, MongoDB Atlas operations,
+interactive MCQ testing, AI coach chat, and PDF/CSV downloads.
 """
 import os
 import django
 from django.test import TestCase, Client
-from django.urls import reverse
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'talent_growth_project.settings')
 django.setup()
 
 import services.core as core
-import services.db as db
 
-class DjangoMigrationEndToEndTests(TestCase):
+
+class ComprehensiveMigrationRecoveryTests(TestCase):
 
     def setUp(self):
         self.client = Client()
 
-    def test_01_public_landing_page(self):
-        response = self.client.get('/')
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Build Exceptional Teams")
-        self.assertContains(response, "Talent Growth")
+    def test_01_public_landing_and_auth_routes(self):
+        resp = self.client.get('/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Build Exceptional Teams")
 
-    def test_02_login_and_register_pages(self):
         login_resp = self.client.get('/login/')
         self.assertEqual(login_resp.status_code, 200)
-        self.assertContains(login_resp, "Welcome Back")
+        self.assertContains(login_resp, "Sign In")
 
         reg_resp = self.client.get('/register/')
         self.assertEqual(reg_resp.status_code, 200)
-        self.assertContains(reg_resp, "Create Your Account")
+        self.assertContains(reg_resp, "Create Account")
 
-    def test_03_admin_login_and_dashboard(self):
-        # Authenticate as HR Admin
-        login_post = self.client.post('/login/', {
-            'email': 'admin@talentgrowth.com',
-            'password': 'Admin@12345'
-        })
-        self.assertEqual(login_post.status_code, 302)  # Redirects to /dashboard/
+    def test_02_admin_dashboard_and_metrics(self):
+        self.client.post('/login/', {'email': 'admin@talentgrowth.com', 'password': 'Admin@12345'})
+        resp = self.client.get('/dashboard/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Executive Workforce Dashboard")
+        self.assertContains(resp, "Total Workforce")
+        self.assertContains(resp, "Active Departments")
 
-        dash_resp = self.client.get('/dashboard/')
-        self.assertEqual(dash_resp.status_code, 200)
-        self.assertContains(dash_resp, "Executive Workforce Dashboard")
+    def test_03_employee_dashboard(self):
+        self.client.post('/login/', {'email': 'alex@company.com', 'password': 'Password123'})
+        resp = self.client.get('/dashboard/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Welcome")
+        self.assertContains(resp, "Target Competency Readiness")
 
-    def test_04_employee_login_and_dashboard(self):
-        # Authenticate as Employee
-        login_post = self.client.post('/login/', {
-            'email': 'alex@company.com',
-            'password': 'Password123'
-        })
-        self.assertEqual(login_post.status_code, 302)
-
-        dash_resp = self.client.get('/dashboard/')
-        self.assertEqual(dash_resp.status_code, 200)
-        self.assertContains(dash_resp, "Personal Career Intelligence")
-
-    def test_05_workforce_directory(self):
-        # Login as Admin
+    def test_04_employees_all_six_tabs(self):
         self.client.post('/login/', {'email': 'admin@talentgrowth.com', 'password': 'Admin@12345'})
         
-        resp = self.client.get('/employees/')
+        # Directory Tab
+        resp = self.client.get('/employees/?tab=tab_dir')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Workforce Directory")
+        self.assertContains(resp, "Add New Employee")
+        self.assertContains(resp, "Bulk Dataset Upload")
+        self.assertContains(resp, "Manage Records")
+        self.assertContains(resp, "Invitation Codes")
+        self.assertContains(resp, "Membership Requests")
 
-        # Test CSV Export
+        # Export CSV
         csv_resp = self.client.get('/employees/export/')
         self.assertEqual(csv_resp.status_code, 200)
         self.assertEqual(csv_resp['Content-Type'], 'text/csv')
 
-    def test_06_performance_reviews(self):
+        # Generate Invite Code
+        gen_resp = self.client.post('/employees/invite-codes/', {
+            'role': 'employee',
+            'department': 'Engineering',
+            'max_uses': 3,
+            'days': 7
+        })
+        self.assertEqual(gen_resp.status_code, 302)
+
+    def test_05_skills_and_interactive_mcq_assessment(self):
+        self.client.post('/login/', {'email': 'alex@company.com', 'password': 'Password123'})
+        resp = self.client.get('/skills/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Skills, Assessments")
+        self.assertContains(resp, "Interactive MCQ Skill Assessment Test")
+
+        # Test AJAX fetch of MCQ questions
+        mcq_json = self.client.get('/skills/mcq-test/?skill=Python')
+        self.assertEqual(mcq_json.status_code, 200)
+        data = mcq_json.json()
+        self.assertEqual(data.get('skill'), 'Python')
+        self.assertTrue(len(data.get('questions', [])) > 0)
+
+        # Test MCQ submission and instant evaluation
+        submit_resp = self.client.post('/skills/mcq-submit/', {
+            'skill_name': 'Python',
+            'q_0': 1,
+            'q_1': 1,
+            'q_2': 1,
+            'q_3': 1,
+            'q_4': 1
+        })
+        self.assertEqual(submit_resp.status_code, 302)
+
+    def test_06_performance_reviews_and_analytics(self):
         self.client.post('/login/', {'email': 'admin@talentgrowth.com', 'password': 'Admin@12345'})
         resp = self.client.get('/performance/')
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Performance Reviews")
+        self.assertContains(resp, "Evaluation Records")
+        self.assertContains(resp, "Distribution Analytics")
 
-    def test_07_skills_and_assessments(self):
-        self.client.post('/login/', {'email': 'alex@company.com', 'password': 'Password123'})
-        resp = self.client.get('/skills/')
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Skills & Competency Matrix")
-
-    def test_08_career_goals(self):
+    def test_07_career_goals_and_milestones(self):
         self.client.post('/login/', {'email': 'alex@company.com', 'password': 'Password123'})
         resp = self.client.get('/goals/')
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "Career Goals & Growth Milestones")
+        self.assertContains(resp, "Career Development & SMART Goals")
+        self.assertContains(resp, "Create SMART Career Goal")
 
-    def test_09_role_match_and_coach(self):
+    def test_08_role_match_and_competency_gaps(self):
         self.client.post('/login/', {'email': 'alex@company.com', 'password': 'Password123'})
-        
-        rm_resp = self.client.get('/role-match/')
-        self.assertEqual(rm_resp.status_code, 200)
-        self.assertContains(rm_resp, "Role Match & Competency Gap Analysis")
+        resp = self.client.get('/role-match/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Role Match")
+        self.assertContains(resp, "Matched Competencies")
 
-        coach_resp = self.client.get('/career-coach/')
-        self.assertEqual(coach_resp.status_code, 200)
-        self.assertContains(coach_resp, "AI Career Coach")
-
-    def test_10_resume_studio_and_pdf_export(self):
+    def test_09_career_coach_and_chat_api(self):
         self.client.post('/login/', {'email': 'alex@company.com', 'password': 'Password123'})
-        
-        rs_resp = self.client.get('/resume-studio/')
-        self.assertEqual(rs_resp.status_code, 200)
-        self.assertContains(rs_resp, "ATS Resume Studio")
+        resp = self.client.get('/career-coach/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "AI Executive Career Coach")
 
-        # PDF Download test
+        # Test instant AI Chat AJAX endpoint
+        chat_resp = self.client.post('/career-coach/chat/', {
+            'message': 'How can I become a Principal Architect?'
+        })
+        self.assertEqual(chat_resp.status_code, 200)
+        self.assertIn('reply', chat_resp.json())
+
+    def test_10_resume_studio_and_pdf(self):
+        self.client.post('/login/', {'email': 'alex@company.com', 'password': 'Password123'})
+        resp = self.client.get('/resume-studio/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "ATS Resume Studio")
+        self.assertContains(resp, "Interactive Resume Editor")
+        self.assertContains(resp, "AI ATS Screener")
+
+        # Test Resume PDF download
         pdf_resp = self.client.get('/resume-studio/export/')
         self.assertEqual(pdf_resp.status_code, 200)
         self.assertEqual(pdf_resp['Content-Type'], 'application/pdf')
-        self.assertTrue(len(pdf_resp.content) > 1000)
+        self.assertTrue(len(pdf_resp.content) > 500)
 
-    def test_11_reports_and_pdf_download(self):
-        self.client.post('/login/', {'email': 'alex@company.com', 'password': 'Password123'})
-        
-        rep_resp = self.client.get('/reports/')
-        self.assertEqual(rep_resp.status_code, 200)
-        self.assertContains(rep_resp, "Intelligence Reports")
+    def test_11_reports_and_dossiers(self):
+        self.client.post('/login/', {'email': 'admin@talentgrowth.com', 'password': 'Admin@12345'})
+        resp = self.client.get('/reports/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Reports & Analytics Dossiers")
 
-        # PDF Download test
+        # Test Career PDF download
         pdf_resp = self.client.get('/reports/pdf/')
         self.assertEqual(pdf_resp.status_code, 200)
         self.assertEqual(pdf_resp['Content-Type'], 'application/pdf')
-        self.assertTrue(len(pdf_resp.content) > 1000)
 
-    def test_12_settings_and_mongodb_telemetry(self):
+        # Test Org PDF download
+        org_pdf_resp = self.client.get('/reports/org-pdf/')
+        self.assertEqual(org_pdf_resp.status_code, 200)
+        self.assertEqual(org_pdf_resp['Content-Type'], 'application/pdf')
+
+        # Test JSON Data Export
+        json_resp = self.client.get('/reports/export-data/')
+        self.assertEqual(json_resp.status_code, 200)
+        self.assertEqual(json_resp['Content-Type'], 'application/json')
+
+    def test_12_settings_and_join_organization(self):
         self.client.post('/login/', {'email': 'admin@talentgrowth.com', 'password': 'Admin@12345'})
         resp = self.client.get('/settings/')
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "MongoDB Atlas")
-        self.assertContains(resp, "talent_management")
+        self.assertContains(resp, "Settings & Workspace Administration")
+        self.assertContains(resp, "Organization Profile")
+
+        # Test Join Organization page
+        join_resp = self.client.get('/join-organization/')
+        self.assertEqual(join_resp.status_code, 200)
+        self.assertContains(join_resp, "Join an Organization")

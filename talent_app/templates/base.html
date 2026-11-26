@@ -149,6 +149,54 @@
             box-shadow: 0 4px 16px rgba(30, 64, 175, 0.04);
             margin-bottom: 24px;
         }
+        /* Segmented Rounded-Box Tab System matching Streamlit st.tabs() */
+        .nav-tabs-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0 16px 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #E2E8F0;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .nav-tab-btn {
+            background: #F8FAFC;
+            color: #475569;
+            border: 1px solid #E2E8F0;
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.16s ease;
+        }
+        .nav-tab-btn:hover {
+            background: #EFF6FF;
+            color: #2563EB;
+            border-color: #BFDBFE;
+        }
+        .nav-tab-btn.active {
+            background: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%);
+            color: #FFFFFF !important;
+            border-color: #2563EB;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+        }
+        .tab-pane {
+            display: none;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+        .tab-pane.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .flash-msg {
             padding: 12px 18px;
             border-radius: 10px;

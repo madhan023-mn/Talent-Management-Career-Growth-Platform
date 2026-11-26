@@ -29,3 +29,27 @@ def round_val(value, decimals=1):
         return round(float(value), decimals)
     except Exception:
         return value
+
+@register.filter(name='skill_name')
+def skill_name_filter(s):
+    if isinstance(s, dict):
+        return s.get("name") or s.get("skill_name") or ""
+    return str(s)
+
+@register.filter(name='skill_proficiency')
+def skill_proficiency_filter(s):
+    if isinstance(s, dict):
+        return s.get("proficiency") or s.get("proficiency_level") or "Intermediate"
+    return "Intermediate"
+
+@register.filter(name='skill_years')
+def skill_years_filter(s):
+    if isinstance(s, dict):
+        return s.get("years") or s.get("years_exp") or "1.0"
+    return "1.0"
+
+@register.filter(name='skill_id')
+def skill_id_filter(s):
+    if isinstance(s, dict):
+        return s.get("id") or s.get("name") or s.get("skill_name") or ""
+    return str(s)

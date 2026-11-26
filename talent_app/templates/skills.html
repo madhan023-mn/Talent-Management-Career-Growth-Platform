@@ -1,180 +1,610 @@
 {% extends 'base.html' %}
 {% load static custom_tags %}
 
-{% block title %}Skills & Assessment Matrix — Talent Growth{% endblock %}
+{% block title %}Skills, Assessments & Competency Matrix — Talent Growth{% endblock %}
 
 {% block content %}
-<div style="max-width: 1200px; margin: 0 auto;">
+<div style="max-width: 1280px; margin: 0 auto;">
 
-    <!-- TOP HEADER -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
-        <div>
-            <h1 style="font-size: 1.8rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">Skills & Competency Matrix</h1>
-            <p style="font-size: 0.90rem; color: #64748B; margin: 0;">Map, evaluate, and benchmark core competencies across technical and leadership domains</p>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <button type="button" class="btn-saas btn-saas-primary" onclick="openModal('addSkillModal')">+ Add Skill</button>
-            <button type="button" class="btn-saas btn-saas-secondary" onclick="openModal('addAssessmentModal')">Submit Assessment</button>
+    <!-- COLORFUL HERO HEADER -->
+    <div style="background: linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 60%, #EDE9FE 100%); border-left: 6px solid #7C3AED; border-radius: 16px; padding: 24px 28px; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(124,58,237,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%); display: flex; align-items: center; justify-content: center; color: #FFF; font-size: 1.4rem;">
+                🎯
+            </div>
+            <div>
+                <h1 style="font-size: 1.65rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">Skills &amp; Competency Matrix</h1>
+                <p style="font-size: 0.88rem; color: #64748B; margin: 0;">Comprehensive skill inventory, verified MCQ assessments, competency gaps, and training records</p>
+            </div>
         </div>
     </div>
 
-    <!-- SKILLS MATRIX CARDS GRID -->
-    <div class="saas-card">
-        <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0 0 16px 0; color: #0F172A;">Assessed Competencies</h3>
+    {% if is_admin %}
+        <!-- ADMIN SEGMENTED TABS (4 TABS) -->
+        <div class="nav-tabs-wrapper">
+            <button class="nav-tab-btn {% if active_tab == 'tab_sk_matrix' or not active_tab %}active{% endif %}" data-tab-target="tab_sk_matrix">
+                📊 Skills Portfolio
+            </button>
+            <button class="nav-tab-btn {% if active_tab == 'tab_sk_assessments' %}active{% endif %}" data-tab-target="tab_sk_assessments">
+                📝 Assessments &amp; Evaluations
+            </button>
+            <button class="nav-tab-btn {% if active_tab == 'tab_sk_gaps' %}active{% endif %}" data-tab-target="tab_sk_gaps">
+                🔍 Competency Gaps
+            </button>
+            <button class="nav-tab-btn {% if active_tab == 'tab_sk_train' %}active{% endif %}" data-tab-target="tab_sk_train">
+                🎓 Training Management &amp; Records ({{ trainings|length }})
+            </button>
+        </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-            {% for s in skills %}
-            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                    <div>
-                        <div style="font-size: 1rem; font-weight: 700; color: #0F172A;">{{ s.name|default:s.skill_name }}</div>
-                        <div style="font-size: 0.76rem; color: #64748B;">{{ s.category|default:"Technical" }}</div>
+        <!-- TAB 1: SKILLS PORTFOLIO -->
+        <div id="tab_sk_matrix" class="tab-pane {% if active_tab == 'tab_sk_matrix' or not active_tab %}active{% endif %}">
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: flex-start;">
+                <!-- Add Skill Form -->
+                <div class="saas-card">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0 0 6px 0;">Add Workforce Skill</h3>
+                    <p style="font-size: 0.84rem; color: #64748B; margin: 0 0 18px 0;">Assign verified technical or domain competencies to employee profiles.</p>
+
+                    <form method="POST" action="/skills/add/">
+                        {% csrf_token %}
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Target Employee *</label>
+                            <select name="target_employee_id" required style="width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
+                                {% for e in employees %}
+                                    <option value="{{ e.employee_id }}">{{ e.name }} ({{ e.employee_id }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Skill Name *</label>
+                            <input type="text" name="skill_name" required placeholder="e.g. Docker, Python, System Architecture" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                            <div>
+                                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Category</label>
+                                <select name="category" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
+                                    <option value="Technical">Technical</option>
+                                    <option value="Leadership">Leadership</option>
+                                    <option value="Domain">Domain</option>
+                                    <option value="Communication">Communication</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Proficiency</label>
+                                <select name="proficiency" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate" selected>Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                    <option value="Expert">Expert</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 18px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Years Experience</label>
+                            <input type="number" name="years" value="2.0" step="0.5" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                        </div>
+                        <button type="submit" class="btn-saas btn-saas-primary" style="width: 100%;">Record Competency</button>
+                    </form>
+                </div>
+
+                <!-- Skills Table -->
+                <div class="saas-card" style="padding: 0; overflow: hidden;">
+                    <div style="padding: 18px 24px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0;">Verified Organization Competencies</h3>
                     </div>
-                    <span style="font-size: 0.74rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; 
-                        {% if s.proficiency == 'Expert' or s.proficiency_level == 'Expert' %}background: #EDE9FE; color: #6D28D9;
-                        {% elif s.proficiency == 'Advanced' or s.proficiency_level == 'Advanced' %}background: #EFF6FF; color: #1D4ED8;
-                        {% elif s.proficiency == 'Intermediate' or s.proficiency_level == 'Intermediate' %}background: #F0FDF4; color: #15803D;
-                        {% else %}background: #FFFBEB; color: #B45309;{% endif %}">
-                        {{ s.proficiency|default:s.proficiency_level|default:"Intermediate" }}
-                    </span>
-                </div>
-
-                <div style="font-size: 0.82rem; color: #475569; margin-bottom: 12px;">
-                    Experience: <strong>{{ s.years|default:s.years_exp|default:"1" }} yrs</strong>
-                </div>
-
-                <div style="display: flex; justify-content: flex-end;">
-                    <a href="/skills/{{ s.id|default:s.skill_name }}/delete/" onclick="return confirm('Remove this skill?');" style="font-size: 0.76rem; color: #DC2626; text-decoration: none; font-weight: 600;">Remove</a>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
+                            <thead>
+                                <tr style="background: #F8FAFC; border-bottom: 2px solid #E2E8F0; text-align: left; color: #64748B; font-size: 0.76rem; text-transform: uppercase;">
+                                    <th style="padding: 12px 18px;">Skill</th>
+                                    <th style="padding: 12px 18px;">Category</th>
+                                    <th style="padding: 12px 18px;">Proficiency</th>
+                                    <th style="padding: 12px 18px;">Experience</th>
+                                    <th style="padding: 12px 18px; text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in skills %}
+                                <tr style="border-bottom: 1px solid #F1F5F9;">
+                                    <td style="padding: 12px 18px; font-weight: 700; color: #0F172A;">{{ s|skill_name }}</td>
+                                    <td style="padding: 12px 18px;">{{ s.category|default:"Technical" }}</td>
+                                    <td style="padding: 12px 18px;">
+                                        <span style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px; background: #F5F3FF; color: #7C3AED;">
+                                            {{ s|skill_proficiency }}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px 18px;">{{ s|skill_years }} yrs</td>
+                                    <td style="padding: 12px 18px; text-align: right;">
+                                        <a href="/skills/{{ s|skill_id }}/delete/" onclick="return confirm('Remove skill?');" style="color: #DC2626; font-size: 0.82rem; font-weight: 600; text-decoration: none;">Delete</a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" style="padding: 32px; text-align: center; color: #94A3B8;">No skills registered.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            {% empty %}
-            <div style="grid-column: 1 / -1; padding: 36px; text-align: center; color: #94A3B8;">
-                No skills added yet. Click "+ Add Skill" above to start building your competency matrix.
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- RECENT ASSESSMENTS TABLE -->
-    <div class="saas-card">
-        <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0 0 16px 0; color: #0F172A;">Recent Competency Assessments</h3>
-
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
-                <thead>
-                    <tr style="border-bottom: 2px solid #F1F5F9; text-align: left; color: #64748B; font-size: 0.76rem; text-transform: uppercase;">
-                        <th style="padding: 10px 14px;">Domain Category</th>
-                        <th style="padding: 10px 14px;">Focus Skill</th>
-                        <th style="padding: 10px 14px;">Score</th>
-                        <th style="padding: 10px 14px;">Assessment Notes</th>
-                        <th style="padding: 10px 14px;">Recorded Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for a in assessments %}
-                    <tr style="border-bottom: 1px solid #F1F5F9;">
-                        <td style="padding: 12px 14px; font-weight: 600; color: #0F172A;">{{ a.category }}</td>
-                        <td style="padding: 12px 14px;">{{ a.skill_name|default:"General Domain" }}</td>
-                        <td style="padding: 12px 14px; font-weight: 700; color: #2563EB;">{{ a.score|round_val:1 }} / 5.0</td>
-                        <td style="padding: 12px 14px; color: #475569;">{{ a.notes|default:"-" }}</td>
-                        <td style="padding: 12px 14px; font-size: 0.78rem; color: #64748B;">{{ a.created_at|slice:":10" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" style="padding: 24px; text-align: center; color: #94A3B8;">No self-assessments submitted yet.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-</div>
-
-<!-- ADD SKILL MODAL -->
-<div id="addSkillModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
-    <div class="saas-card" style="max-width: 480px; width: 100%; margin: 0;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-            <h3 style="font-size: 1.2rem; font-weight: 800; color: #0F172A; margin: 0;">Add Competency Skill</h3>
-            <button type="button" onclick="closeModal('addSkillModal')" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #64748B;">×</button>
         </div>
 
-        <form method="POST" action="/skills/add/">
-            {% csrf_token %}
-            <div style="margin-bottom: 14px;">
-                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Skill Name *</label>
-                <input type="text" name="skill_name" required placeholder="e.g. Python, Docker, Cloud Architecture" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
-            </div>
+        <!-- TAB 2: ASSESSMENTS & EVALUATIONS -->
+        <div id="tab_sk_assessments" class="tab-pane {% if active_tab == 'tab_sk_assessments' %}active{% endif %}">
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: flex-start;">
+                <!-- Record Assessment Form -->
+                <div class="saas-card">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0 0 6px 0;">Record Skill Assessment</h3>
+                    <p style="font-size: 0.84rem; color: #64748B; margin: 0 0 18px 0;">Evaluate employee proficiency and record verified assessment scores.</p>
 
-            <div style="margin-bottom: 14px;">
-                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Category</label>
-                <select name="category" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
-                    <option value="Technical">Technical</option>
-                    <option value="Leadership">Leadership</option>
-                    <option value="Domain">Domain</option>
-                    <option value="Soft Skills">Soft Skills</option>
-                </select>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;">
-                <div>
-                    <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Proficiency Level</label>
-                    <select name="proficiency" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
-                        <option value="Beginner">Beginner</option>
-                        <option value="Intermediate" selected>Intermediate</option>
-                        <option value="Advanced">Advanced</option>
-                        <option value="Expert">Expert</option>
-                    </select>
+                    <form method="POST" action="/skills/assess/">
+                        {% csrf_token %}
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Employee</label>
+                            <select name="employee_id" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
+                                {% for e in employees %}
+                                    <option value="{{ e.employee_id }}">{{ e.name }} ({{ e.employee_id }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Assessed Skill</label>
+                            <input type="text" name="skill_name" required placeholder="e.g. Python, Cloud Infrastructure" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                            <div>
+                                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Category</label>
+                                <select name="category" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
+                                    <option value="Technical">Technical</option>
+                                    <option value="Leadership">Leadership</option>
+                                    <option value="Domain">Domain</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Score (1.0 - 5.0)</label>
+                                <input type="number" name="score" value="4.5" min="1.0" max="5.0" step="0.1" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 18px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Evaluator Notes</label>
+                            <textarea name="notes" rows="3" placeholder="Demonstrated strong code quality and architecture..." style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;"></textarea>
+                        </div>
+                        <button type="submit" class="btn-saas btn-saas-primary" style="width: 100%;">Save Assessment Record</button>
+                    </form>
                 </div>
-                <div>
-                    <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Years Exp</label>
-                    <input type="number" step="0.5" min="0" name="years" value="1.0" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+
+                <!-- Assessments Table -->
+                <div class="saas-card" style="padding: 0; overflow: hidden;">
+                    <div style="padding: 18px 24px; border-bottom: 1px solid #E2E8F0;">
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0;">Recorded Assessment Evaluations</h3>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
+                            <thead>
+                                <tr style="background: #F8FAFC; border-bottom: 2px solid #E2E8F0; text-align: left; color: #64748B; font-size: 0.76rem; text-transform: uppercase;">
+                                    <th style="padding: 12px 18px;">Skill</th>
+                                    <th style="padding: 12px 18px;">Category</th>
+                                    <th style="padding: 12px 18px;">Score</th>
+                                    <th style="padding: 12px 18px;">Notes</th>
+                                    <th style="padding: 12px 18px;">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in assessments %}
+                                <tr style="border-bottom: 1px solid #F1F5F9;">
+                                    <td style="padding: 12px 18px; font-weight: 700; color: #0F172A;">{{ a.skill_name|default:a.category }}</td>
+                                    <td style="padding: 12px 18px;">{{ a.category }}</td>
+                                    <td style="padding: 12px 18px;">
+                                        <span style="font-weight: 800; color: #16A34A; background: #ECFDF5; padding: 2px 8px; border-radius: 6px;">{{ a.score }} / 5.0</span>
+                                    </td>
+                                    <td style="padding: 12px 18px; color: #64748B; font-size: 0.82rem; max-width: 200px;">{{ a.notes|default:"Verified" }}</td>
+                                    <td style="padding: 12px 18px; color: #64748B; font-size: 0.80rem;">{{ a.date|default:"Recent" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" style="padding: 32px; text-align: center; color: #94A3B8;">No assessments recorded.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button type="button" class="btn-saas btn-saas-secondary" onclick="closeModal('addSkillModal')">Cancel</button>
-                <button type="submit" class="btn-saas btn-saas-primary">Save Skill</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- ADD ASSESSMENT MODAL -->
-<div id="addAssessmentModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
-    <div class="saas-card" style="max-width: 480px; width: 100%; margin: 0;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-            <h3 style="font-size: 1.2rem; font-weight: 800; color: #0F172A; margin: 0;">Submit Competency Assessment</h3>
-            <button type="button" onclick="closeModal('addAssessmentModal')" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #64748B;">×</button>
         </div>
 
-        <form method="POST" action="/skills/assess/">
-            {% csrf_token %}
-            <div style="margin-bottom: 14px;">
-                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Evaluation Domain / Category *</label>
-                <input type="text" name="category" required placeholder="e.g. Backend Architecture, System Design" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
-            </div>
+        <!-- TAB 3: COMPETENCY GAPS -->
+        <div id="tab_sk_gaps" class="tab-pane {% if active_tab == 'tab_sk_gaps' %}active{% endif %}">
+            <div class="saas-card">
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0 0 8px 0;">Workforce Competency Gaps</h3>
+                <p style="font-size: 0.88rem; color: #64748B; margin: 0 0 20px 0;">Benchmark workforce skills against target roles to identify critical training opportunities.</p>
 
-            <div style="margin-bottom: 14px;">
-                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Target Skill</label>
-                <input type="text" name="skill_name" placeholder="e.g. Distributed Caching" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
+                        <thead>
+                            <tr style="background: #F8FAFC; border-bottom: 2px solid #E2E8F0; text-align: left; color: #64748B; font-size: 0.76rem; text-transform: uppercase;">
+                                <th style="padding: 12px 16px;">Target Role</th>
+                                <th style="padding: 12px 16px;">Required Competencies</th>
+                                <th style="padding: 12px 16px;">Qualified Headcount</th>
+                                <th style="padding: 12px 16px;">Gap Urgency</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom: 1px solid #F1F5F9;">
+                                <td style="padding: 14px 16px; font-weight: 700; color: #0F172A;">Senior Cloud Architect</td>
+                                <td style="padding: 14px 16px; color: #475569;">Kubernetes, Terraform, AWS, Microservices</td>
+                                <td style="padding: 14px 16px; font-weight: 700; color: #2563EB;">4 Engineers</td>
+                                <td style="padding: 14px 16px;"><span style="background: #FFFBEB; color: #D97706; padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">Moderate Gap</span></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #F1F5F9;">
+                                <td style="padding: 14px 16px; font-weight: 700; color: #0F172A;">Lead Machine Learning Engineer</td>
+                                <td style="padding: 14px 16px; color: #475569;">PyTorch, MLOps, LLM Fine-Tuning, Python</td>
+                                <td style="padding: 14px 16px; font-weight: 700; color: #2563EB;">2 Engineers</td>
+                                <td style="padding: 14px 16px;"><span style="background: #FEF2F2; color: #DC2626; padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">High Priority Gap</span></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid #F1F5F9;">
+                                <td style="padding: 14px 16px; font-weight: 700; color: #0F172A;">Engineering Manager</td>
+                                <td style="padding: 14px 16px; color: #475569;">Agile Execution, 1:1 Coaching, System Delivery</td>
+                                <td style="padding: 14px 16px; font-weight: 700; color: #2563EB;">6 Engineers</td>
+                                <td style="padding: 14px 16px;"><span style="background: #ECFDF5; color: #065F46; padding: 2px 8px; border-radius: 9999px; font-size: 0.72rem; font-weight: 700;">Optimal Pipeline</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+        </div>
 
-            <div style="margin-bottom: 14px;">
-                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Evaluation Score (1.0 - 5.0) *</label>
-                <input type="number" step="0.1" min="1.0" max="5.0" name="score" value="4.0" required style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
-            </div>
+        <!-- TAB 4: TRAINING MANAGEMENT & RECORDS -->
+        <div id="tab_sk_train" class="tab-pane {% if active_tab == 'tab_sk_train' %}active{% endif %}">
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: flex-start;">
+                <!-- Add Training Record Form -->
+                <div class="saas-card">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0 0 6px 0;">Record Workforce Training</h3>
+                    <p style="font-size: 0.84rem; color: #64748B; margin: 0 0 18px 0;">Log completed certifications and executive training sessions.</p>
 
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Assessment Notes</label>
-                <textarea name="notes" rows="2" placeholder="Self reflection and assessment evidence..." style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;"></textarea>
-            </div>
+                    <form method="POST" action="/skills/training/add/">
+                        {% csrf_token %}
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Employee *</label>
+                            <select name="employee_id" required style="width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
+                                {% for e in employees %}
+                                    <option value="{{ e.employee_id }}">{{ e.name }} ({{ e.employee_id }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Training Course Title *</label>
+                            <input type="text" name="training_title" required placeholder="e.g. AWS Solutions Architect Professional" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Training Provider</label>
+                            <input type="text" name="provider" placeholder="Coursera, O'Reilly, Internal Academy" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;">
+                            <div>
+                                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Completion Date</label>
+                                <input type="date" name="completion_date" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Status</label>
+                                <select name="status" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
+                                    <option value="Completed" selected>Completed</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Scheduled">Scheduled</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-saas btn-saas-primary" style="width: 100%;">Record Training Program</button>
+                    </form>
+                </div>
 
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button type="button" class="btn-saas btn-saas-secondary" onclick="closeModal('addAssessmentModal')">Cancel</button>
-                <button type="submit" class="btn-saas btn-saas-primary">Record Assessment</button>
+                <!-- Training Records Table -->
+                <div class="saas-card" style="padding: 0; overflow: hidden;">
+                    <div style="padding: 18px 24px; border-bottom: 1px solid #E2E8F0;">
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0;">Workforce Training Registrations</h3>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
+                            <thead>
+                                <tr style="background: #F8FAFC; border-bottom: 2px solid #E2E8F0; text-align: left; color: #64748B; font-size: 0.76rem; text-transform: uppercase;">
+                                    <th style="padding: 12px 18px;">Employee ID</th>
+                                    <th style="padding: 12px 18px;">Training Course</th>
+                                    <th style="padding: 12px 18px;">Provider</th>
+                                    <th style="padding: 12px 18px;">Status</th>
+                                    <th style="padding: 12px 18px;">Completion</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for t in trainings %}
+                                <tr style="border-bottom: 1px solid #F1F5F9;">
+                                    <td style="padding: 12px 18px; font-family: monospace; font-weight: 700;">{{ t.employee_id }}</td>
+                                    <td style="padding: 12px 18px; font-weight: 600; color: #0F172A;">{{ t.training_title }}</td>
+                                    <td style="padding: 12px 18px; color: #475569;">{{ t.provider|default:"Corporate" }}</td>
+                                    <td style="padding: 12px 18px;">
+                                        <span style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px;
+                                            {% if t.status == 'Completed' %}background: #ECFDF5; color: #065F46;
+                                            {% elif t.status == 'In Progress' %}background: #FFFBEB; color: #92400E;
+                                            {% else %}background: #EFF6FF; color: #1E40AF;{% endif %}">
+                                            {{ t.status }}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px 18px; color: #64748B; font-size: 0.80rem;">{{ t.completion_date|default:"Recent" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" style="padding: 32px; text-align: center; color: #94A3B8;">No training programs recorded.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </form>
-    </div>
+        </div>
+
+    {% else %}
+        <!-- EMPLOYEE / INDIVIDUAL SEGMENTED TABS (3 TABS) -->
+        <div class="nav-tabs-wrapper">
+            <button class="nav-tab-btn {% if active_tab == 'tab_emp_skills' or not active_tab %}active{% endif %}" data-tab-target="tab_emp_skills">
+                ⭐ My Competencies &amp; Skills
+            </button>
+            <button class="nav-tab-btn {% if active_tab == 'tab_emp_assessments' %}active{% endif %}" data-tab-target="tab_emp_assessments">
+                📋 Self-Evaluation &amp; Evidence
+            </button>
+            <button class="nav-tab-btn {% if active_tab == 'tab_emp_mcq' %}active{% endif %}" data-tab-target="tab_emp_mcq">
+                🧪 Interactive MCQ Skill Assessment Test
+            </button>
+        </div>
+
+        <!-- TAB 1: MY SKILLS -->
+        <div id="tab_emp_skills" class="tab-pane {% if active_tab == 'tab_emp_skills' or not active_tab %}active{% endif %}">
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: flex-start;">
+                <!-- Add Skill -->
+                <div class="saas-card">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0 0 6px 0;">Add Verified Skill</h3>
+                    <p style="font-size: 0.84rem; color: #64748B; margin: 0 0 18px 0;">Track your mastery across technical, leadership, and domain areas.</p>
+
+                    <form method="POST" action="/skills/add/">
+                        {% csrf_token %}
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Skill Name *</label>
+                            <input type="text" name="skill_name" required placeholder="e.g. React, Python, Cloud Architecture" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                            <div>
+                                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Category</label>
+                                <select name="category" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
+                                    <option value="Technical">Technical</option>
+                                    <option value="Leadership">Leadership</option>
+                                    <option value="Domain">Domain</option>
+                                    <option value="Communication">Communication</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Proficiency</label>
+                                <select name="proficiency" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
+                                    <option value="Beginner">Beginner</option>
+                                    <option value="Intermediate" selected>Intermediate</option>
+                                    <option value="Advanced">Advanced</option>
+                                    <option value="Expert">Expert</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 18px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Years Experience</label>
+                            <input type="number" name="years" value="2.0" step="0.5" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                        </div>
+                        <button type="submit" class="btn-saas btn-saas-primary" style="width: 100%;">Add to My Profile</button>
+                    </form>
+                </div>
+
+                <!-- My Skills Cards -->
+                <div class="saas-card" style="padding: 24px;">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0 0 16px 0;">My Registered Skill Portfolio</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px;">
+                        {% for s in skills %}
+                        <div style="border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; background: #FAFAFC; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                                    <div style="font-weight: 700; color: #0F172A; font-size: 0.95rem;">{{ s|skill_name }}</div>
+                                    <a href="/skills/{{ s|skill_id }}/delete/" onclick="return confirm('Remove skill?');" style="color: #94A3B8; text-decoration: none; font-size: 0.80rem;">✕</a>
+                                </div>
+                                <div style="font-size: 0.74rem; color: #64748B; text-transform: uppercase; font-weight: 600; margin-bottom: 10px;">{{ s.category|default:"Technical" }}</div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #F1F5F9; padding-top: 8px;">
+                                <span style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px; background: #EFF6FF; color: #2563EB;">
+                                    {{ s|skill_proficiency }}
+                                </span>
+                                <span style="font-size: 0.74rem; color: #64748B;">{{ s|skill_years }} yrs</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div style="grid-column: 1 / -1; padding: 32px; text-align: center; color: #94A3B8;">
+                            No skills registered yet. Add your core competencies using the form on the left!
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: SELF-EVALUATION -->
+        <div id="tab_emp_assessments" class="tab-pane {% if active_tab == 'tab_emp_assessments' %}active{% endif %}">
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: flex-start;">
+                <!-- Submit Assessment -->
+                <div class="saas-card">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0 0 6px 0;">Submit Self-Evaluation</h3>
+                    <p style="font-size: 0.84rem; color: #64748B; margin: 0 0 18px 0;">Record self-appraisal and evidence for performance review calibration.</p>
+
+                    <form method="POST" action="/skills/assess/">
+                        {% csrf_token %}
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Competency Area</label>
+                            <input type="text" name="skill_name" required placeholder="e.g. Distributed Systems Architecture" style="width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                        </div>
+                        <div style="margin-bottom: 14px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Self Rating (1.0 - 5.0)</label>
+                            <input type="number" name="score" value="4.5" min="1.0" max="5.0" step="0.1" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                        </div>
+                        <div style="margin-bottom: 18px;">
+                            <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Evidence &amp; Artifact Links</label>
+                            <textarea name="notes" rows="4" placeholder="Implemented low-latency cache layer reducing query latency by 45%. PR #142." style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;"></textarea>
+                        </div>
+                        <button type="submit" class="btn-saas btn-saas-primary" style="width: 100%;">Record Self-Evaluation</button>
+                    </form>
+                </div>
+
+                <!-- Self Assessments History Table -->
+                <div class="saas-card" style="padding: 0; overflow: hidden;">
+                    <div style="padding: 18px 24px; border-bottom: 1px solid #E2E8F0;">
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0;">Evaluation Records &amp; Calibration</h3>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
+                            <thead>
+                                <tr style="background: #F8FAFC; border-bottom: 2px solid #E2E8F0; text-align: left; color: #64748B; font-size: 0.76rem; text-transform: uppercase;">
+                                    <th style="padding: 12px 18px;">Area</th>
+                                    <th style="padding: 12px 18px;">Rating</th>
+                                    <th style="padding: 12px 18px;">Evidence Notes</th>
+                                    <th style="padding: 12px 18px;">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in assessments %}
+                                <tr style="border-bottom: 1px solid #F1F5F9;">
+                                    <td style="padding: 12px 18px; font-weight: 700; color: #0F172A;">{{ a.skill_name|default:a.category }}</td>
+                                    <td style="padding: 12px 18px;">
+                                        <span style="font-weight: 800; color: #16A34A; background: #ECFDF5; padding: 2px 8px; border-radius: 6px;">{{ a.score }} / 5.0</span>
+                                    </td>
+                                    <td style="padding: 12px 18px; color: #475569; font-size: 0.82rem; max-width: 250px;">{{ a.notes }}</td>
+                                    <td style="padding: 12px 18px; color: #64748B; font-size: 0.80rem;">{{ a.date|default:"Recent" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" style="padding: 32px; text-align: center; color: #94A3B8;">No self-evaluations submitted yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: INTERACTIVE MCQ ASSESSMENT TEST -->
+        <div id="tab_emp_mcq" class="tab-pane {% if active_tab == 'tab_emp_mcq' %}active{% endif %}">
+            <div style="display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 24px; align-items: flex-start;">
+                <!-- Test Selector & Active Quiz Box -->
+                <div class="saas-card">
+                    <h3 style="font-size: 1.20rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0;">Interactive Skill Verification Exam</h3>
+                    <p style="font-size: 0.84rem; color: #64748B; margin: 0 0 18px 0;">Select a competency area and take our 5-question verified MCQ assessment with instant score certification.</p>
+
+                    <!-- Selector -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Select Competency Exam Bank</label>
+                        <select id="mcq-skill-select" onchange="loadExamQuestions(this.value)" style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.90rem; background: #FFF; font-weight: 600; color: #2563EB;">
+                            {% for exam in all_mcq_available %}
+                                <option value="{{ exam.skill_name }}">{{ exam.skill_name }} ({{ exam.question_count }} Questions)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Dynamic Exam Container -->
+                    <form id="mcq-exam-form" method="POST" action="/skills/mcq-submit/">
+                        {% csrf_token %}
+                        <input type="hidden" name="skill_name" id="mcq-hidden-skill" value="Python">
+                        <div id="mcq-questions-box" style="margin-bottom: 20px;">
+                            <!-- Populated dynamically via JS -->
+                            <div style="padding: 20px; text-align: center; color: #64748B;">Loading assessment questions...</div>
+                        </div>
+                        <button type="submit" class="btn-saas btn-saas-primary" style="width: 100%; padding: 12px; font-size: 0.95rem;">Submit Exam for Instant Evaluation</button>
+                    </form>
+                </div>
+
+                <!-- Past MCQ Certifications History -->
+                <div class="saas-card" style="padding: 0; overflow: hidden;">
+                    <div style="padding: 18px 24px; border-bottom: 1px solid #E2E8F0;">
+                        <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0;">Verified Assessment Certificates</h3>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
+                            <thead>
+                                <tr style="background: #F8FAFC; border-bottom: 2px solid #E2E8F0; text-align: left; color: #64748B; font-size: 0.76rem; text-transform: uppercase;">
+                                    <th style="padding: 12px 18px;">Exam</th>
+                                    <th style="padding: 12px 18px;">Score</th>
+                                    <th style="padding: 12px 18px;">Verification</th>
+                                    <th style="padding: 12px 18px;">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for h in mcq_history %}
+                                <tr style="border-bottom: 1px solid #F1F5F9;">
+                                    <td style="padding: 12px 18px; font-weight: 700; color: #0F172A;">{{ h.skill_name }}</td>
+                                    <td style="padding: 12px 18px; font-weight: 800; color: #2563EB;">{{ h.score_percent }}%</td>
+                                    <td style="padding: 12px 18px;">
+                                        <span style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px;
+                                            {% if h.passed %}background: #ECFDF5; color: #065F46;
+                                            {% else %}background: #FEF2F2; color: #991B1B;{% endif %}">
+                                            {% if h.passed %}PASSED &amp; CERTIFIED{% else %}NEEDS REVIEW{% endif %}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px 18px; color: #64748B; font-size: 0.80rem;">{{ h.date|default:"Recent" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" style="padding: 32px; text-align: center; color: #94A3B8;">No verified exams completed yet. Choose an exam on the left to earn verified badges!</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function loadExamQuestions(skillName) {
+                document.getElementById('mcq-hidden-skill').value = skillName;
+                const container = document.getElementById('mcq-questions-box');
+                container.innerHTML = '<div style="padding: 20px; text-align: center; color: #64748B;">Fetching verified questions...</div>';
+
+                fetch(`/skills/mcq-test/?skill=${encodeURIComponent(skillName)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data.questions || data.questions.length === 0) {
+                            container.innerHTML = '<div style="color: #94A3B8;">No questions available for this module.</div>';
+                            return;
+                        }
+                        let html = '';
+                        data.questions.forEach((q, idx) => {
+                            html += `
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px;">
+                                    <div style="font-weight: 700; color: #0F172A; font-size: 0.88rem; margin-bottom: 10px;">${idx + 1}. ${q.question}</div>
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                            `;
+                            q.options.forEach((opt, optIdx) => {
+                                html += `
+                                    <label style="display: flex; align-items: center; gap: 8px; font-size: 0.84rem; color: #334155; cursor: pointer;">
+                                        <input type="radio" name="q_${idx}" value="${optIdx}" required>
+                                        <span>${opt}</span>
+                                    </label>
+                                `;
+                            });
+                            html += `</div></div>`;
+                        });
+                        container.innerHTML = html;
+                    })
+                    .catch(() => {
+                        container.innerHTML = '<div style="color: #DC2626;">Failed to load questions. Please check connection.</div>';
+                    });
+            }
+
+            // Auto-load initial exam on page load
+            document.addEventListener('DOMContentLoaded', () => {
+                const initSkill = document.getElementById('mcq-skill-select')?.value || 'Python';
+                loadExamQuestions(initSkill);
+            });
+        </script>
+    {% endif %}
+
 </div>
 {% endblock %}
