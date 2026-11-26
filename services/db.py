@@ -89,17 +89,9 @@ COLLECTION_NAMES = [
 _mongo_client: Optional[Any] = None
 _mongo_is_mock: bool = False
 
-DEFAULT_ATLAS_URI = (
-    "mongodb+srv://digisamakshmadhang_db_user:ckVaHfBp307OHqxV@cluster0.rewpdrw.mongodb.net/talent_management?retryWrites=true&w=majority"
-)
-
-DIRECT_ATLAS_URI = (
-    "mongodb://digisamakshmadhang_db_user:ckVaHfBp307OHqxV@ac-0o6zrla-shard-00-00.rewpdrw.mongodb.net:27017,ac-0o6zrla-shard-00-01.rewpdrw.mongodb.net:27017,ac-0o6zrla-shard-00-02.rewpdrw.mongodb.net:27017/talent_management?ssl=true&replicaSet=atlas-12exb5-shard-0&authSource=admin&retryWrites=true&w=majority"
-)
-
 
 def get_mongodb_uri() -> str:
-    """Reads MONGODB_URI from environment variables or Streamlit secrets."""
+    """Reads MONGODB_URI securely from environment variables or Streamlit secrets."""
     uri = os.getenv("MONGODB_URI") or os.getenv("MONGO_URI") or ""
     if not uri:
         try:
@@ -110,10 +102,47 @@ def get_mongodb_uri() -> str:
                     uri = st.secrets["mongo"].get("uri", "") or st.secrets["mongo"].get("url", "")
         except Exception:
             pass
-    uri = (uri or "").strip()
-    if not uri or not has_valid_atlas_credentials(uri):
-        uri = DEFAULT_ATLAS_URI
-    return uri
+    return (uri or "").strip()
+
+
+def get_direct_replica_uri(srv_uri: str) -> Optional[str]:
+    """
+    Dynamically constructs a direct replica set connection URI from a runtime mongodb+srv:// URI
+    without hardcoding any credentials in source code.
+    """
+    direct_env = (os.getenv("MONGODB_DIRECT_URI") or "").strip()
+    if direct_env and has_valid_atlas_credentials(direct_env):
+        return direct_env
+
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and "MONGODB_DIRECT_URI" in st.secrets:
+            sec_direct = str(st.secrets.get("MONGODB_DIRECT_URI", "")).strip()
+            if sec_direct and has_valid_atlas_credentials(sec_direct):
+                return sec_direct
+    except Exception:
+        pass
+
+    if not srv_uri or not has_valid_atlas_credentials(srv_uri):
+        return None
+
+    if srv_uri.startswith("mongodb://") and "replicaSet=" in srv_uri:
+        return srv_uri
+
+    try:
+        # e.g., mongodb+srv://username:password@cluster0.rewpdrw.mongodb.net/talent_management?retryWrites=true&w=majority
+        match = re.match(r"^mongodb\+srv://([^:]+):([^@]+)@([^/?]+)(?:/([^?]*))?(?:\?(.*))?$", srv_uri)
+        if match:
+            user = match.group(1)
+            pwd = match.group(2)
+            host = match.group(3)
+            db = match.group(4) or get_mongodb_dbname()
+            if "cluster0.rewpdrw.mongodb.net" in host:
+                nodes = "ac-0o6zrla-shard-00-00.rewpdrw.mongodb.net:27017,ac-0o6zrla-shard-00-01.rewpdrw.mongodb.net:27017,ac-0o6zrla-shard-00-02.rewpdrw.mongodb.net:27017"
+                return f"mongodb://{user}:{pwd}@{nodes}/{db}?ssl=true&replicaSet=atlas-12exb5-shard-0&authSource=admin&retryWrites=true&w=majority"
+    except Exception:
+        pass
+    return None
 
 
 def get_mongodb_dbname() -> str:
@@ -351,24 +380,18 @@ def get_client() -> Any:
     primary_uri = get_mongodb_uri()
     client = None
 
-    if PYMONGO_AVAILABLE:
+    if PYMONGO_AVAILABLE and has_valid_atlas_credentials(primary_uri):
         is_dns_offline = False
-        # 1. If targeting cluster0.rewpdrw.mongodb.net, prioritize DIRECT_ATLAS_URI!
+        direct_uri = get_direct_replica_uri(primary_uri)
+
+        # 1. Prioritize direct replica set connection if available (dynamically derived from user secrets) for 0.27s fast connect!
         # Direct replica set connection avoids DNS SRV resolution timeouts in cloud containers like Streamlit Cloud.
-        if "cluster0.rewpdrw.mongodb.net" in primary_uri:
-            client, is_dns_offline = _try_connect_atlas(DIRECT_ATLAS_URI, timeout_ms=1200)
+        if direct_uri:
+            client, is_dns_offline = _try_connect_atlas(direct_uri, timeout_ms=1200)
 
         # 2. Try configured/primary URI if direct replica wasn't used or failed (and host is resolvable)
-        if client is None and not is_dns_offline and has_valid_atlas_credentials(primary_uri):
+        if client is None and not is_dns_offline:
             client, is_dns_offline = _try_connect_atlas(primary_uri, timeout_ms=1200)
-
-        # 3. Try DIRECT_ATLAS_URI fallback
-        if client is None and not is_dns_offline and primary_uri != DIRECT_ATLAS_URI:
-            client, is_dns_offline = _try_connect_atlas(DIRECT_ATLAS_URI, timeout_ms=1200)
-
-        # 4. Try DEFAULT_ATLAS_URI fallback
-        if client is None and not is_dns_offline and primary_uri != DEFAULT_ATLAS_URI:
-            client, is_dns_offline = _try_connect_atlas(DEFAULT_ATLAS_URI, timeout_ms=1200)
 
     if client is not None:
         _mongo_client = client
