@@ -2722,17 +2722,28 @@ def get_employee_skill_gaps(employee_id: str, target_role: str, org_id: Optional
 
 ALLOWED_PROGRESS = [0, 25, 50, 75, 100]
 
-def calculate_goal_status(progress: int, target_date_str: Optional[str] = None) -> str:
-    if progress >= 100:
+def calculate_goal_status(progress: Any, target_date_str: Optional[Any] = None) -> str:
+    try:
+        prog = float(progress) if progress is not None else 0.0
+    except (ValueError, TypeError):
+        prog = 0.0
+
+    if prog >= 100.0:
         return "Completed"
+
     if target_date_str:
         try:
-            target_d = datetime.strptime(target_date_str, "%Y-%m-%d").date()
-            if target_d < date.today() and progress < 100:
+            if isinstance(target_date_str, (datetime, date)):
+                target_d = target_date_str.date() if isinstance(target_date_str, datetime) else target_date_str
+            else:
+                clean_date = str(target_date_str).strip().split("T")[0].split(" ")[0]
+                target_d = datetime.strptime(clean_date, "%Y-%m-%d").date()
+            if target_d < date.today() and prog < 100.0:
                 return "Overdue"
         except Exception:
             pass
-    if progress > 0:
+
+    if prog > 0.0:
         return "In Progress"
     return "Not Started"
 
@@ -2839,9 +2850,14 @@ def get_goals(
         query += " ORDER BY target_date ASC, id DESC"
         cursor.execute(query, params)
         rows = [dict(row) for row in cursor.fetchall()]
-        # Recalculate Overdue status dynamically
+        # Recalculate Overdue status dynamically with safe progress coercion
         for r in rows:
-            r["status"] = calculate_goal_status(r["progress"], r["target_date"])
+            raw_p = r.get("progress")
+            try:
+                r["progress"] = int(float(raw_p)) if raw_p is not None else 0
+            except (ValueError, TypeError):
+                r["progress"] = 0
+            r["status"] = calculate_goal_status(r["progress"], r.get("target_date"))
         return rows
     finally:
         conn.close()
@@ -2857,7 +2873,12 @@ def get_goal_by_id(goal_id: int, user_id: Optional[int] = None) -> Optional[Dict
         row = cursor.fetchone()
         if row:
             d = dict(row)
-            d["status"] = calculate_goal_status(d["progress"], d["target_date"])
+            raw_p = d.get("progress")
+            try:
+                d["progress"] = int(float(raw_p)) if raw_p is not None else 0
+            except (ValueError, TypeError):
+                d["progress"] = 0
+            d["status"] = calculate_goal_status(d["progress"], d.get("target_date"))
             return d
         return None
     finally:
@@ -2969,11 +2990,11 @@ def get_goal_stats(
     if total == 0:
         return {"total": 0, "completed": 0, "in_progress": 0, "not_started": 0, "overdue": 0, "avg_progress": 0}
 
-    completed = sum(1 for g in goals if g["status"] == "Completed")
-    in_prog = sum(1 for g in goals if g["status"] == "In Progress")
-    not_started = sum(1 for g in goals if g["status"] == "Not Started")
-    overdue = sum(1 for g in goals if g["status"] == "Overdue")
-    avg_prog = round(sum(g["progress"] for g in goals) / total)
+    completed = sum(1 for g in goals if g.get("status") == "Completed")
+    in_prog = sum(1 for g in goals if g.get("status") == "In Progress")
+    not_started = sum(1 for g in goals if g.get("status") == "Not Started")
+    overdue = sum(1 for g in goals if g.get("status") == "Overdue")
+    avg_prog = round(sum(int(float(g.get("progress") or 0)) for g in goals) / total)
 
     return {
         "total": total,

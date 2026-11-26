@@ -377,7 +377,37 @@ def get_svg_icon(name: str, size: int = 18, color: str = "#4F46E5", extra_style:
 # MODERN CORPORATE DESIGN SYSTEM & TOKENS (TalentManager / TalentPro Theme)
 # ------------------------------------------------------------------------------
 load_css()
-render_html('<div class="page-reload-progress-bar"><div class="page-reload-progress-glow"></div></div>')
+render_html(
+    """
+    <div id="circle-page-loader" class="circle-page-loader-overlay init-spin">
+        <div class="circle-loader-card">
+            <div class="circle-spinner-ring outer-ring"></div>
+            <div class="circle-spinner-ring inner-ring"></div>
+            <div class="circle-spinner-dot"></div>
+        </div>
+    </div>
+    <script>
+    (function() {
+        function attachCircleLoader() {
+            var loader = document.getElementById('circle-page-loader');
+            if (!loader) return;
+            document.addEventListener('click', function(e) {
+                var target = e.target.closest('button, [role="tab"], [role="radio"], a, input[type="submit"]');
+                if (target) {
+                    loader.classList.remove('init-spin');
+                    loader.classList.add('active');
+                }
+            }, true);
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', attachCircleLoader);
+        } else {
+            attachCircleLoader();
+        }
+    })();
+    </script>
+    """
+)
 
 # ------------------------------------------------------------------------------
 # TABLE COLORATION & BADGE UTILITIES
@@ -4677,28 +4707,36 @@ elif page in ["Employees", "Employee Management"]:
                 )
             else:
                 for c_item in codes_list:
-                    status_color = "#10B981" if c_item["status"] == "Active" else ("#EF4444" if c_item["status"] == "Revoked" else "#F59E0B")
+                    c_status = c_item.get("status") or "Active"
+                    status_color = "#10B981" if c_status == "Active" else ("#EF4444" if c_status == "Revoked" else "#F59E0B")
+                    c_prefix = c_item.get("code_prefix") or c_item.get("prefix") or (str(c_item.get("code") or "CODE")[:4] + "****")
+                    c_used = c_item.get("used_count", 0)
+                    c_max = c_item.get("max_uses", 1)
+                    c_expires = c_item.get("expires_at") or "Never"
+                    c_created = str(c_item.get("created_at") or "")[:10] or "Recently"
+                    c_id = c_item.get("id") or c_item.get("_id") or 1
+
                     col_code_info, col_code_action = st.columns([3, 1])
                     with col_code_info:
                         render_html(
                             f"""
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <span style="font-family: monospace; font-size: 0.96rem; font-weight: 800; color: #0F172A; background: #F8FAFC; padding: 2px 8px; border-radius: 6px; border: 1px solid #DCE5F1;">
-                                    {c_item['code_prefix']}
+                                    {c_prefix}
                                 </span>
                                 <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: {status_color}18; color: {status_color}; font-weight: 800; text-transform: uppercase;">
-                                    {c_item['status']}
+                                    {c_status}
                                 </span>
                             </div>
                             <div style="font-size: 0.80rem; color: #64748B; margin-top: 4px;">
-                                Uses: <strong>{c_item['used_count']} / {c_item['max_uses']}</strong> &bull; Expires: {c_item['expires_at']} &bull; Created: {c_item['created_at'][:10]}
+                                Uses: <strong>{c_used} / {c_max}</strong> &bull; Expires: {c_expires} &bull; Created: {c_created}
                             </div>
                             """
                         )
                     with col_code_action:
-                        if c_item["status"] == "Active":
-                            if st.button("Revoke", key=f"btn_revoke_{c_item['id']}", type="secondary", use_container_width=True):
-                                ok_rev, msg_rev = revoke_invitation_code(c_item["id"], org_id=org_id)
+                        if c_status == "Active":
+                            if st.button("Revoke", key=f"btn_revoke_{c_id}", type="secondary", use_container_width=True):
+                                ok_rev, msg_rev = revoke_invitation_code(c_id, org_id=org_id)
                                 if ok_rev:
                                     st.success(msg_rev)
                                     st.rerun()
