@@ -35,12 +35,10 @@ try:
         is_mysql_expected,
         test_mysql_connection,
         get_mysql_config,
+        ensure_mysql_database_exists,
         get_connection as _db_get_connection,
-        get_database_diagnostics as _db_get_db_diagnostics,
-        check_db_health as _db_check_db_health,
-        is_mongodb_mode,
-        init_db as _db_init_db,
-        get_db,
+        get_db_path as _db_get_db_path,
+        MYSQL_CORE_SCHEMA_STATEMENTS,
     )
 except ImportError:
     from .db import (
@@ -48,12 +46,10 @@ except ImportError:
         is_mysql_expected,
         test_mysql_connection,
         get_mysql_config,
+        ensure_mysql_database_exists,
         get_connection as _db_get_connection,
-        get_database_diagnostics as _db_get_db_diagnostics,
-        check_db_health as _db_check_db_health,
-        is_mongodb_mode,
-        init_db as _db_init_db,
-        get_db,
+        get_db_path as _db_get_db_path,
+        MYSQL_CORE_SCHEMA_STATEMENTS,
     )
 
 
@@ -82,12 +78,6 @@ ROLE_CATALOG = {
         "criteria": "Core proficiency in data structures, algorithms, version control, and at least one backend language.",
         "skills": {"Python": 2, "Git": 2, "SQL": 2, "Data Structures": 2, "REST APIs": 2},
         "recommended_training": ["Modern Python Masterclass", "Database Design & SQL Optimization", "Building Scalable RESTful APIs"]
-    },
-    "Full Stack Engineer": {
-        "min_exp": 2.5,
-        "criteria": "End-to-end web application development across frontend, backend, databases, and deployment pipelines.",
-        "skills": {"JavaScript": 3, "Python": 3, "React": 3, "SQL": 2, "REST APIs": 3, "Git": 2},
-        "recommended_training": ["Full Stack Web Architecture", "Modern React & TypeScript", "Scalable Backend APIs with Python"]
     },
     "Senior Software Engineer": {
         "min_exp": 4.0,
@@ -162,26 +152,212 @@ STANDARD_DEPARTMENTS = [
 EMPLOYMENT_STATUSES = ["Active", "On Leave", "Terminated"]
 
 def get_db_path() -> Path:
-    return BASE_DIR / "data"
+    return _db_get_db_path()
 
 def check_db_health() -> Dict[str, Any]:
-    """Inspects the active MongoDB Atlas database connection, size, integrity, and record counts."""
-    return _db_check_db_health()
+    """Inspects the active database (MySQL or SQLite) connection, size, integrity, and record counts."""
+    if is_mysql_mode():
+        cfg = get_mysql_config()
+        info: Dict[str, Any] = {
+            "connected": False,
+            "engine": "MySQL",
+            "path": f"mysql://{cfg['user']}@{cfg['host']}:{cfg['port']}/{cfg['database']}",
+            "filename": cfg["database"],
+            "host": f"{cfg['host']}:{cfg['port']}",
+            "size_kb": 0.0,
+            "integrity": "Unknown",
+            "counts": {}
+        }
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT VERSION()")
+            ver_row = cur.fetchone()
+            info["version"] = str(ver_row[0]) if ver_row else "MySQL"
+            info["integrity"] = "ok"
+            info["connected"] = True
+            cur.execute(
+                "SELECT ROUND(SUM(data_length + index_length) / 1024, 1) "
+                "FROM information_schema.tables WHERE table_schema = DATABASE()"
+            )
+            sz_row = cur.fetchone()
+            info["size_kb"] = float(sz_row[0]) if sz_row and sz_row[0] is not None else 0.0
+            for table in ["organizations", "users", "employees", "invitation_codes", "performance_reviews", "employee_skills", "assessments", "career_goals", "training_records"]:
+                try:
+                    cur.execute(f"SELECT COUNT(*) FROM {table}")
+                    info["counts"][table] = cur.fetchone()[0]
+                except Exception:
+                    pass
+            conn.close()
+        except Exception as e:
+            info["integrity"] = f"Error: {e}"
+        return info
+
+    path = get_db_path()
+    info = {
+        "connected": False,
+        "engine": "SQLite",
+        "path": str(path),
+        "filename": path.name,
+        "size_kb": 0.0,
+        "integrity": "Unknown",
+        "counts": {}
+    }
+    if path.is_file():
+        info["size_kb"] = round(path.stat().st_size / 1024, 1)
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("PRAGMA integrity_check")
+            row = cur.fetchone()
+            info["integrity"] = row[0] if row else "ok"
+            info["connected"] = (info["integrity"].lower() == "ok")
+            for table in ["organizations", "users", "employees", "invitation_codes", "performance_reviews", "employee_skills", "assessments", "career_goals", "training_records"]:
+                try:
+                    cur.execute(f"SELECT COUNT(*) FROM {table}")
+                    info["counts"][table] = cur.fetchone()[0]
+                except Exception:
+                    pass
+            conn.close()
+        except Exception as e:
+            info["integrity"] = f"Error: {e}"
+    return info
 
 def get_connection():
     return _db_get_connection()
 
 def checkpoint_db(conn: Optional[Any] = None) -> Tuple[int, int, int]:
-    """Forces database checkpoint or flush."""
-    return (0, 0, 0)
+    """
+    Forces SQLite WAL checkpoint. In MySQL InnoDB mode, commits are immediately durable so this is a safe no-op.
+    """
+    if is_mysql_mode():
+        return (0, 0, 0)
+    should_close = False
+    if conn is None:
+        conn = get_connection()
+        should_close = True
+    try:
+        cur = conn.cursor()
+        cur.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        res = cur.fetchone()
+        return (res[0], res[1], res[2]) if res else (0, 0, 0)
+    except Exception:
+        return (-1, -1, -1)
+    finally:
+        if should_close:
+            conn.close()
 
 def get_database_diagnostics() -> Dict[str, Any]:
     """
-    Returns sanitized diagnostic metrics regarding the active MongoDB Atlas database:
-    database name, host/port, connection integrity status,
+    Returns sanitized diagnostic metrics regarding the active database (MySQL or SQLite):
+    database name, location/host, size, connection integrity status,
     record counts, and recently created accounts (without sensitive credentials).
     """
-    return _db_get_db_diagnostics()
+    if is_mysql_mode():
+        cfg = get_mysql_config()
+        diag: Dict[str, Any] = {
+            "connected": False,
+            "engine": "MySQL",
+            "filename": cfg["database"],
+            "absolute_path": f"mysql://{cfg['user']}@{cfg['host']}:{cfg['port']}/{cfg['database']}",
+            "size_kb": 0.0,
+            "integrity": "Unknown",
+            "total_users": 0,
+            "total_employees": 0,
+            "total_organizations": 0,
+            "recent_users": []
+        }
+        try:
+            conn = get_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT 'ok'")
+                row = cur.fetchone()
+                diag["integrity"] = row[0] if row else "ok"
+                diag["connected"] = True
+
+                cur.execute(
+                    "SELECT ROUND(SUM(data_length + index_length) / 1024, 1) "
+                    "FROM information_schema.tables WHERE table_schema = DATABASE()"
+                )
+                sz_row = cur.fetchone()
+                diag["size_kb"] = float(sz_row[0]) if sz_row and sz_row[0] is not None else 0.0
+
+                cur.execute("SELECT COUNT(*) FROM users")
+                diag["total_users"] = cur.fetchone()[0]
+
+                cur.execute("SELECT COUNT(*) FROM employees")
+                diag["total_employees"] = cur.fetchone()[0]
+
+                cur.execute("SELECT COUNT(*) FROM organizations")
+                diag["total_organizations"] = cur.fetchone()[0]
+
+                cur.execute(
+                    """
+                    SELECT id, name, email, role, account_type, org_id, status, date_joined
+                    FROM users
+                    ORDER BY id DESC
+                    LIMIT 5
+                    """
+                )
+                diag["recent_users"] = [dict(r) for r in cur.fetchall()]
+            finally:
+                conn.close()
+        except Exception as e:
+            diag["error"] = str(e)
+        return diag
+
+    path = get_db_path()
+    diag = {
+        "connected": False,
+        "engine": "SQLite",
+        "filename": path.name,
+        "absolute_path": str(path.resolve()),
+        "size_kb": 0.0,
+        "integrity": "Unknown",
+        "total_users": 0,
+        "total_employees": 0,
+        "total_organizations": 0,
+        "recent_users": []
+    }
+    if not path.is_file():
+        diag["error"] = "Database file does not exist on disk"
+        return diag
+
+    try:
+        diag["size_kb"] = round(path.stat().st_size / 1024, 1)
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute("PRAGMA integrity_check")
+            row = cur.fetchone()
+            diag["integrity"] = row[0] if row else "ok"
+            diag["connected"] = (diag["integrity"].lower() == "ok")
+
+            cur.execute("SELECT COUNT(*) FROM users")
+            diag["total_users"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(*) FROM employees")
+            diag["total_employees"] = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(*) FROM organizations")
+            diag["total_organizations"] = cur.fetchone()[0]
+
+            cur.execute(
+                """
+                SELECT id, name, email, role, account_type, org_id, status, date_joined
+                FROM users
+                ORDER BY id DESC
+                LIMIT 5
+                """
+            )
+            diag["recent_users"] = [dict(r) for r in cur.fetchall()]
+        finally:
+            conn.close()
+    except Exception as e:
+        diag["error"] = str(e)
+
+    return diag
 
 def verify_user_in_db(user_id_or_email: Union[int, str]) -> Optional[Dict[str, Any]]:
     """
@@ -337,17 +513,417 @@ def _safe_add_column(cursor: Any, table_name: str, col_name: str, col_def: str) 
     except Exception:
         pass
 
-_core_db_initialized = False
-
-
-def init_db(force: bool = False) -> None:
-    global _core_db_initialized
-    if _core_db_initialized and not force:
-        return
-    _db_init_db(force=force)
+def init_db() -> None:
+    if is_mysql_mode():
+        ensure_mysql_database_exists()
     conn = get_connection()
     with conn:
+        if is_mysql_mode():
+            ddl_cur = conn.cursor()
+            for ddl_stmt in MYSQL_CORE_SCHEMA_STATEMENTS:
+                ddl_cur.execute(ddl_stmt)
+            ddl_cur.close()
+        else:
+            conn.executescript("""
+            CREATE TABLE IF NOT EXISTS organizations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                org_id TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                official_email TEXT DEFAULT '',
+                contact_number TEXT DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Pending', 'Suspended')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS invitation_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                org_id TEXT NOT NULL,
+                code_hash TEXT UNIQUE NOT NULL,
+                code_prefix TEXT NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                used_count INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Revoked', 'Expired', 'Depleted')),
+                created_by TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS membership_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                org_id TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                user_email TEXT NOT NULL,
+                department TEXT DEFAULT '',
+                designation TEXT DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Pending' CHECK(status IN ('Pending', 'Approved', 'Rejected')),
+                reviewed_by INTEGER,
+                reviewed_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                salt TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'employee',
+                employee_id TEXT,
+                org_id TEXT,
+                account_type TEXT NOT NULL DEFAULT 'Organization',
+                department TEXT DEFAULT '',
+                job_title TEXT DEFAULT '',
+                status TEXT DEFAULT 'Active',
+                date_joined TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS employees (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id TEXT UNIQUE NOT NULL,
+                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
+                user_id INTEGER,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE,
+                phone TEXT DEFAULT '',
+                department TEXT NOT NULL,
+                designation TEXT NOT NULL,
+                joining_date TEXT DEFAULT '',
+                employment_status TEXT NOT NULL DEFAULT 'Active' CHECK(employment_status IN ('Active', 'On Leave', 'Terminated')),
+                years_experience REAL NOT NULL DEFAULT 0.0 CHECK(years_experience >= 0),
+                primary_skills TEXT NOT NULL,
+                account_status TEXT NOT NULL DEFAULT 'Active',
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS performance_reviews (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id TEXT NOT NULL,
+                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
+                review_period TEXT NOT NULL,
+                performance_score REAL NOT NULL CHECK(performance_score >= 1.0 AND performance_score <= 5.0),
+                achievements TEXT DEFAULT '',
+                strengths TEXT DEFAULT '',
+                improvements TEXT DEFAULT '',
+                manager_feedback TEXT DEFAULT '',
+                reviewer_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE,
+                FOREIGN KEY(reviewer_id) REFERENCES users(id) ON DELETE SET NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS employee_skills (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id TEXT NOT NULL,
+                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
+                user_id INTEGER,
+                skill_name TEXT NOT NULL,
+                category TEXT DEFAULT 'Technical',
+                proficiency_level TEXT NOT NULL CHECK(proficiency_level IN ('Beginner', 'Intermediate', 'Advanced', 'Expert')),
+                years_exp REAL DEFAULT 0.0,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS career_goals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                employee_id TEXT,
+                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
+                title TEXT NOT NULL,
+                target_designation TEXT DEFAULT '',
+                description TEXT DEFAULT '',
+                target_date TEXT NOT NULL,
+                progress INTEGER NOT NULL DEFAULT 0 CHECK(progress IN (0, 25, 50, 75, 100)),
+                status TEXT NOT NULL DEFAULT 'Not Started' CHECK(status IN ('Not Started', 'In Progress', 'Completed', 'Overdue')),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS training_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                employee_id TEXT NOT NULL,
+                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
+                course_name TEXT NOT NULL,
+                provider TEXT DEFAULT 'Internal Academy',
+                target_skill TEXT NOT NULL,
+                target_completion_date TEXT DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Enrolled' CHECK(status IN ('Enrolled', 'In Progress', 'Completed')),
+                score REAL DEFAULT 0.0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS profiles (
+                user_id INTEGER PRIMARY KEY,
+                phone TEXT DEFAULT '',
+                location TEXT DEFAULT '',
+                job_title TEXT DEFAULT '',
+                company TEXT DEFAULT '',
+                department TEXT DEFAULT '',
+                industry TEXT DEFAULT '',
+                employment_type TEXT DEFAULT 'Full-time',
+                years_experience REAL DEFAULT 0.0,
+                linkedin TEXT DEFAULT '',
+                github TEXT DEFAULT '',
+                portfolio TEXT DEFAULT '',
+                education TEXT DEFAULT '',
+                certifications TEXT DEFAULT '',
+                summary TEXT DEFAULT '',
+                experience TEXT DEFAULT '',
+                projects TEXT DEFAULT '',
+                resume_text TEXT DEFAULT '',
+                target_role TEXT DEFAULT '',
+                target_level TEXT DEFAULT 'Senior',
+                timeline TEXT DEFAULT '6–12 months',
+                target_industry TEXT DEFAULT '',
+                career_goal TEXT DEFAULT '',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS skills (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                category TEXT NOT NULL,
+                proficiency TEXT NOT NULL,
+                years REAL DEFAULT 0.0,
+                description TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS assessments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                employee_id TEXT DEFAULT '',
+                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
+                category TEXT NOT NULL,
+                skill_name TEXT DEFAULT '',
+                score REAL NOT NULL,
+                notes TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS progress (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                item TEXT NOT NULL,
+                percent REAL NOT NULL DEFAULT 0.0,
+                status TEXT NOT NULL DEFAULT 'In Progress',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS goals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                employee_id TEXT,
+                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
+                title TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                target_date TEXT NOT NULL,
+                progress INTEGER NOT NULL DEFAULT 0 CHECK(progress IN (0, 25, 50, 75, 100)),
+                status TEXT NOT NULL DEFAULT 'Not Started',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS resumes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL UNIQUE,
+                org_id TEXT NOT NULL DEFAULT 'ORG-TALENT-01',
+                summary TEXT DEFAULT '',
+                skills_json TEXT DEFAULT '[]',
+                experience_json TEXT DEFAULT '[]',
+                education_json TEXT DEFAULT '[]',
+                certifications_json TEXT DEFAULT '[]',
+                projects_json TEXT DEFAULT '[]',
+                links_json TEXT DEFAULT '[]',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS email_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                to_email TEXT NOT NULL,
+                user_name TEXT DEFAULT '',
+                role TEXT DEFAULT '',
+                org_name TEXT DEFAULT '',
+                subject TEXT DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'Sent',
+                error_message TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
+
+        # Auto-migrate existing database tables if columns are missing
         cursor = conn.cursor()
+
+        # 1. Migrate organizations table FIRST before any inserts
+        _safe_add_column(cursor, "organizations", "official_email", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "organizations", "contact_number", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "organizations", "status", "TEXT NOT NULL DEFAULT 'Active'")
+
+        # 2. Migrate users table
+        _safe_add_column(cursor, "users", "account_type", "TEXT NOT NULL DEFAULT 'Organization'")
+        _safe_add_column(cursor, "users", "role", "TEXT NOT NULL DEFAULT 'employee'")
+        _safe_add_column(cursor, "users", "employee_id", "TEXT")
+        _safe_add_column(cursor, "users", "org_id", "TEXT DEFAULT NULL")
+        _safe_add_column(cursor, "users", "department", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "users", "job_title", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "users", "status", "TEXT DEFAULT 'Active'")
+        _safe_add_column(cursor, "users", "date_joined", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "users", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+
+        # Ensure users.org_id is nullable in existing SQLite databases to support Individual accounts
+        if not is_mysql_mode():
+            try:
+                cursor.execute("PRAGMA table_info(users)")
+                u_info = {row["name"]: dict(row) for row in cursor.fetchall()}
+                if u_info.get("org_id", {}).get("notnull") == 1 or u_info.get("employee_id", {}).get("notnull") == 1:
+                    cursor.execute("PRAGMA foreign_keys = OFF")
+                    cursor.execute('''
+                        CREATE TABLE users_migrated (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL,
+                            email TEXT UNIQUE NOT NULL,
+                            password_hash TEXT NOT NULL,
+                            salt TEXT NOT NULL,
+                            role TEXT NOT NULL DEFAULT 'employee',
+                            employee_id TEXT,
+                            org_id TEXT,
+                            account_type TEXT NOT NULL DEFAULT 'Organization',
+                            department TEXT DEFAULT '',
+                            job_title TEXT DEFAULT '',
+                            status TEXT DEFAULT 'Active',
+                            date_joined TEXT DEFAULT '',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    ''')
+                    cursor.execute('''
+                        INSERT INTO users_migrated (id, name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined, created_at)
+                        SELECT id, name, email, password_hash, salt, role, employee_id, 
+                               CASE WHEN org_id = '' OR account_type = 'Individual' THEN NULL ELSE org_id END,
+                               COALESCE(account_type, 'Organization'), COALESCE(department, ''), COALESCE(job_title, ''), 
+                               COALESCE(status, 'Active'), COALESCE(date_joined, ''), COALESCE(created_at, CURRENT_TIMESTAMP)
+                        FROM users
+                    ''')
+                    cursor.execute("DROP TABLE users")
+                    cursor.execute("ALTER TABLE users_migrated RENAME TO users")
+                    cursor.execute("PRAGMA foreign_keys = ON")
+            except Exception:
+                pass
+
+        # 3. Migrate employees table
+        _safe_add_column(cursor, "employees", "email", "TEXT")
+        _safe_add_column(cursor, "employees", "phone", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "employees", "joining_date", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "employees", "employment_status", "TEXT NOT NULL DEFAULT 'Active'")
+        _safe_add_column(cursor, "employees", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+        _safe_add_column(cursor, "employees", "user_id", "INTEGER")
+        _safe_add_column(cursor, "employees", "account_status", "TEXT NOT NULL DEFAULT 'Active'")
+
+        # 4. Migrate employee_skills table
+        _safe_add_column(cursor, "employee_skills", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+        _safe_add_column(cursor, "employee_skills", "user_id", "INTEGER")
+
+        # 5. Migrate skills table
+        _safe_add_column(cursor, "skills", "description", "TEXT DEFAULT ''")
+
+        # 6. Migrate assessments table
+        _safe_add_column(cursor, "assessments", "employee_id", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "assessments", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+        _safe_add_column(cursor, "assessments", "skill_name", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "assessments", "notes", "TEXT DEFAULT ''")
+
+        # 7. Migrate performance_reviews table
+        _safe_add_column(cursor, "performance_reviews", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+
+        # 8. Migrate career_goals table
+        _safe_add_column(cursor, "career_goals", "target_designation", "TEXT DEFAULT ''")
+        _safe_add_column(cursor, "career_goals", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+
+        # 9. Migrate training_records table
+        _safe_add_column(cursor, "training_records", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+
+        # 10. Migrate resumes table
+        _safe_add_column(cursor, "resumes", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+
+        # 11. Migrate invitation_codes table if legacy schema exists or columns are missing
+        try:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='invitation_codes'")
+            if cursor.fetchone():
+                cursor.execute("PRAGMA table_info(invitation_codes)")
+                inv_cols = {row["name"]: row for row in cursor.fetchall()}
+                if "code_hash" not in inv_cols:
+                    # Legacy schema with plaintext code - safely migrate to hashed schema
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS invitation_codes_v2 (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            org_id TEXT NOT NULL,
+                            code_hash TEXT UNIQUE NOT NULL,
+                            code_prefix TEXT NOT NULL,
+                            expires_at TIMESTAMP NOT NULL,
+                            max_uses INTEGER NOT NULL DEFAULT 1,
+                            used_count INTEGER NOT NULL DEFAULT 0,
+                            status TEXT NOT NULL DEFAULT 'Active' CHECK(status IN ('Active', 'Revoked', 'Expired', 'Depleted')),
+                            created_by TEXT DEFAULT '',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY(org_id) REFERENCES organizations(org_id) ON DELETE CASCADE
+                        )
+                    ''')
+                    cursor.execute("SELECT * FROM invitation_codes")
+                    for row in cursor.fetchall():
+                        r = dict(row)
+                        raw_code = str(r.get("code") or "")
+                        c_hash = hash_invitation_code(raw_code) if raw_code else secrets.token_hex(16)
+                        c_prefix = raw_code[:8] if raw_code else "INV-MIGR"
+                        c_exp = r.get("expires_at") or "2099-12-31 23:59:59"
+                        c_max = r.get("max_uses", 1) or 1
+                        c_used = r.get("used_count", 0) or 0
+                        c_stat = r.get("status", "Active")
+                        if c_stat not in ("Active", "Revoked", "Expired", "Depleted"):
+                            c_stat = "Active"
+                        c_by = str(r.get("created_by") or "")
+                        c_at = r.get("created_at") or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+                        cursor.execute('''
+                            INSERT OR IGNORE INTO invitation_codes_v2
+                            (id, org_id, code_hash, code_prefix, expires_at, max_uses, used_count, status, created_by, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (r.get("id"), r.get("org_id", "ORG-TALENT-01"), c_hash, c_prefix, c_exp, c_max, c_used, c_stat, c_by, c_at))
+                    cursor.execute("DROP TABLE invitation_codes")
+                    cursor.execute("ALTER TABLE invitation_codes_v2 RENAME TO invitation_codes")
+        except Exception:
+            pass
+
+        # Guarantee all columns exist in invitation_codes even for legacy databases
+        try:
+            _safe_add_column(cursor, "invitation_codes", "org_id", "TEXT NOT NULL DEFAULT 'ORG-TALENT-01'")
+            _safe_add_column(cursor, "invitation_codes", "code_hash", "TEXT DEFAULT ''")
+            _safe_add_column(cursor, "invitation_codes", "code_prefix", "TEXT NOT NULL DEFAULT 'INV-0000'")
+            _safe_add_column(cursor, "invitation_codes", "expires_at", "TIMESTAMP NOT NULL DEFAULT '2099-12-31 23:59:59'")
+            _safe_add_column(cursor, "invitation_codes", "max_uses", "INTEGER NOT NULL DEFAULT 1")
+            _safe_add_column(cursor, "invitation_codes", "used_count", "INTEGER NOT NULL DEFAULT 0")
+            _safe_add_column(cursor, "invitation_codes", "status", "TEXT NOT NULL DEFAULT 'Active'")
+            _safe_add_column(cursor, "invitation_codes", "created_by", "TEXT DEFAULT ''")
+            _safe_add_column(cursor, "invitation_codes", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+        except Exception:
+            pass
 
         # Seed default organizations (now guaranteed to have official_email, contact_number, status)
         try:
@@ -436,7 +1012,7 @@ def init_db(force: bool = False) -> None:
             if cursor.fetchone()["cnt"] == 0:
                 cursor.execute(
                     """
-                    INSERT OR IGNORE INTO skills (user_id, name, category, proficiency, years)
+                    INSERT INTO skills (user_id, name, category, proficiency, years)
                     VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
                     """,
                     (alex_uid, "Python", "Technical", "Advanced", 3.5,
@@ -474,7 +1050,7 @@ def init_db(force: bool = False) -> None:
                  ravi_uid, "Communication", "Soft Skills", "Beginner", 1.0)
             )
         else:
-            ravi_uid = ravi_user["id"] if (isinstance(ravi_user, dict) and "id" in ravi_user) else (ravi_user[0] if hasattr(ravi_user, '__getitem__') else 2)
+            ravi_uid = ravi_user["id"]
 
         # Seed sample employees if not already present
         sample_employees = [
@@ -673,7 +1249,6 @@ def init_db(force: bool = False) -> None:
         # Ensure all initial and migration data is checkpointed to disk
         checkpoint_db(conn)
     conn.close()
-    _core_db_initialized = True
 
 # ----------------- Organization Management -----------------
 
@@ -787,23 +1362,13 @@ def get_organization(org_id: str) -> Optional[Dict[str, Any]]:
         conn.close()
 
 def list_organizations() -> List[Dict[str, Any]]:
+    conn = get_connection()
     try:
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM organizations ORDER BY name ASC")
-            rows = [dict(row) for row in cursor.fetchall()]
-            if rows:
-                return rows
-        finally:
-            conn.close()
-    except Exception as exc:
-        logger.warning(f"Failed to fetch organizations from database: {exc}")
-
-    return [
-        {"id": 1, "org_id": "ORG-TALENT-01", "name": "Talent Growth Technologies", "status": "Active"},
-        {"id": 2, "org_id": "ORG-TECHCORP-02", "name": "TechCorp Solutions", "status": "Active"}
-    ]
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM organizations ORDER BY name ASC")
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
 
 def verify_and_activate_hr_admin(user_id: int, verification_code: str) -> Tuple[bool, str]:
     """Verifies an HR authorization key and activates a Pending Approval HR Administrator account."""
@@ -1109,23 +1674,7 @@ def get_all_designations(org_id: Optional[str] = None) -> List[str]:
 
 # ----------------- Authentication & Security -----------------
 
-try:
-    import bcrypt
-    BCRYPT_AVAILABLE = True
-except ImportError:
-    bcrypt = None
-    BCRYPT_AVAILABLE = False
-
 def hash_password(password: str, salt: Optional[str] = None) -> Tuple[str, str]:
-    """Secures passwords using bcrypt (12 rounds) with PBKDF2 fallback."""
-    if BCRYPT_AVAILABLE:
-        pw_bytes = password.encode("utf-8")
-        if salt and (salt.startswith("$2") or salt.startswith("$2b$")):
-            salt_bytes = salt.encode("utf-8")
-        else:
-            salt_bytes = bcrypt.gensalt(rounds=12)
-        hashed = bcrypt.hashpw(pw_bytes, salt_bytes).decode("utf-8")
-        return hashed, salt_bytes.decode("utf-8")
     if salt is None:
         salt = secrets.token_hex(16)
     hashed = hashlib.pbkdf2_hmac(
@@ -1137,20 +1686,8 @@ def hash_password(password: str, salt: Optional[str] = None) -> Tuple[str, str]:
     return hashed, salt
 
 def verify_password(password: str, stored_hash: str, salt: str) -> bool:
-    """Verifies passwords supporting bcrypt and legacy PBKDF2 hashes."""
-    if not stored_hash or not password:
-        return False
-    pw_bytes = password.encode("utf-8")
-    if BCRYPT_AVAILABLE and (stored_hash.startswith("$2b$") or stored_hash.startswith("$2a$") or stored_hash.startswith("$2y$")):
-        try:
-            return bcrypt.checkpw(pw_bytes, stored_hash.encode("utf-8"))
-        except Exception:
-            pass
-    if salt:
-        hashed = hashlib.pbkdf2_hmac("sha256", pw_bytes, salt.encode("utf-8"), 100_000).hex()
-        if secrets.compare_digest(hashed, stored_hash):
-            return True
-    return False
+    hashed, _ = hash_password(password, salt)
+    return secrets.compare_digest(hashed, stored_hash)
 
 
 def _mirror_account(
@@ -1160,22 +1697,190 @@ def _mirror_account(
     pwd_hash: str,
     salt: str,
     role: str,
-    employee_id: Optional[str] = None,
-    org_id: Optional[str] = None,
-    account_type: str = "Organization",
-    department: str = "",
-    job_title: str = "",
-    phone: str = "",
-    years_experience: float = 0.0,
-    primary_skills: str = "",
+    employee_id: Optional[str],
+    org_id: Optional[str],
+    account_type: str,
+    department: str,
+    job_title: str,
+    phone: str,
+    years_experience: float,
+    primary_skills: str,
     educational_qualification: str = "",
     professional_interests: str = "",
     target_role: str = "",
     user_status: str = "Active"
 ) -> None:
-    """No-op: Exclusive MySQL database mode (secondary SQLite mirroring eliminated)."""
-    return None
+    """
+    Safely mirrors account and employee registration across both SQLite and MySQL engines
+    so that newly created user details can ALWAYS be found regardless of which database
+    or database client (MySQL Workbench, phpMyAdmin, DB Browser for SQLite, or app) the user inspects.
+    """
+    date_now = date.today().isoformat()
+    clean_phone = phone or ""
+    clean_emp_id = employee_id or ""
+    clean_org_id = org_id or "ORG-TALENT-01"
 
+    # 1. If currently connected to MySQL, mirror to SQLite (data/talentsphere.db)
+    if is_mysql_mode():
+        try:
+            sq_path = get_db_path()
+            if not sq_path.parent.exists():
+                sq_path.parent.mkdir(parents=True, exist_ok=True)
+            sq_conn = sqlite3.connect(str(sq_path), timeout=10.0)
+            sq_conn.row_factory = sqlite3.Row
+            try:
+                with sq_conn:
+                    sc = sq_conn.cursor()
+                    # Check if user already exists in SQLite by email
+                    sc.execute("SELECT id FROM users WHERE LOWER(TRIM(email)) = ?", (email.lower().strip(),))
+                    existing = sc.fetchone()
+                    if existing:
+                        sq_user_id = existing["id"]
+                        sc.execute(
+                            """
+                            UPDATE users
+                            SET name = ?, password_hash = ?, salt = ?, role = ?, employee_id = COALESCE(NULLIF(?, ''), employee_id),
+                                org_id = COALESCE(NULLIF(?, ''), org_id), account_type = ?, department = ?, job_title = ?, status = ?
+                            WHERE id = ?
+                            """,
+                            (name, pwd_hash, salt, role, clean_emp_id, clean_org_id, account_type, department, job_title, user_status, sq_user_id)
+                        )
+                    else:
+                        sc.execute(
+                            """
+                            INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            (name, email, pwd_hash, salt, role, clean_emp_id, clean_org_id, account_type, department, job_title, user_status, date_now)
+                        )
+                        sq_user_id = sc.lastrowid
+
+                    if clean_phone:
+                        try:
+                            sc.execute("UPDATE users SET phone = ? WHERE id = ?", (clean_phone, sq_user_id))
+                        except Exception:
+                            pass
+
+                    # Insert/Update profile
+                    sc.execute(
+                        """
+                        INSERT OR REPLACE INTO profiles (user_id, phone, education, summary, target_role, job_title, company, department, years_experience)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (sq_user_id, clean_phone, educational_qualification, f"Interests: {professional_interests}" if professional_interests else "", target_role or job_title, job_title, clean_org_id, department, years_experience)
+                    )
+
+                    # Insert/Update employee in SQLite
+                    if clean_emp_id:
+                        sc.execute("SELECT id FROM employees WHERE employee_id = ?", (clean_emp_id,))
+                        emp_row = sc.fetchone()
+                        if emp_row:
+                            sc.execute(
+                                """
+                                UPDATE employees
+                                SET user_id = ?, name = ?, email = ?, phone = ?, org_id = ?, department = ?, designation = ?, account_status = ?
+                                WHERE employee_id = ?
+                                """,
+                                (sq_user_id, name, email, clean_phone, clean_org_id, department, job_title, user_status, clean_emp_id)
+                            )
+                        else:
+                            sc.execute(
+                                """
+                                INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?)
+                                """,
+                                (clean_emp_id, clean_org_id, sq_user_id, name, email, clean_phone, department, job_title, date_now, years_experience, primary_skills, user_status, sq_user_id)
+                            )
+
+                    # Insert skills in SQLite
+                    tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
+                    for sk in tokens:
+                        sc.execute(
+                            "INSERT OR IGNORE INTO skills (user_id, name, category, proficiency, years) VALUES (?, ?, 'Technical', 'Intermediate', ?)",
+                            (sq_user_id, sk, years_experience)
+                        )
+                        if clean_emp_id:
+                            sc.execute(
+                                "INSERT OR IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp) VALUES (?, ?, ?, ?, 'Technical', 'Intermediate', ?)",
+                                (clean_emp_id, clean_org_id, sq_user_id, sk, years_experience)
+                            )
+            finally:
+                sq_conn.close()
+        except Exception:
+            pass
+    else:
+        # SQLite active, try mirror to MySQL if pymysql is installed and credentials exist
+        try:
+            from services.db import get_mysql_config, PYMYSQL_AVAILABLE
+            if PYMYSQL_AVAILABLE:
+                cfg = get_mysql_config()
+                if cfg.get("host") and cfg.get("user") and cfg.get("database"):
+                    import pymysql
+                    import pymysql.cursors
+                    m_conn = pymysql.connect(
+                        host=cfg["host"],
+                        port=cfg["port"],
+                        user=cfg["user"],
+                        password=cfg["password"],
+                        database=cfg["database"],
+                        charset="utf8mb4",
+                        autocommit=False,
+                        connect_timeout=3,
+                    )
+                    try:
+                        with m_conn.cursor() as mc:
+                            mc.execute(
+                                """
+                                INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                ON DUPLICATE KEY UPDATE name=VALUES(name), password_hash=VALUES(password_hash), salt=VALUES(salt), employee_id=VALUES(employee_id), org_id=VALUES(org_id)
+                                """,
+                                (name, email, pwd_hash, salt, role, clean_emp_id, clean_org_id, account_type, department, job_title, user_status, date_now)
+                            )
+                            mc.execute("SELECT id FROM users WHERE LOWER(TRIM(email)) = %s", (email.lower().strip(),))
+                            my_row = mc.fetchone()
+                            my_uid = my_row[0] if my_row else user_id
+
+                            if clean_phone:
+                                try:
+                                    mc.execute("UPDATE users SET phone = %s WHERE id = %s", (clean_phone, my_uid))
+                                except Exception:
+                                    pass
+
+                            mc.execute(
+                                """
+                                REPLACE INTO profiles (user_id, phone, education, summary, target_role, job_title, company, department, years_experience)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                """,
+                                (my_uid, clean_phone, educational_qualification, f"Interests: {professional_interests}" if professional_interests else "", target_role or job_title, job_title, clean_org_id, department, years_experience)
+                            )
+
+                            if clean_emp_id:
+                                mc.execute(
+                                    """
+                                    INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
+                                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'Active', %s, %s, %s, %s)
+                                    ON DUPLICATE KEY UPDATE user_id=VALUES(user_id), name=VALUES(name), email=VALUES(email), phone=VALUES(phone), org_id=VALUES(org_id), department=VALUES(department), designation=VALUES(designation), account_status=VALUES(account_status)
+                                    """,
+                                    (clean_emp_id, clean_org_id, my_uid, name, email, clean_phone, department, job_title, date_now, years_experience, primary_skills, user_status, my_uid)
+                                )
+
+                            tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
+                            for sk in tokens:
+                                mc.execute(
+                                    "INSERT IGNORE INTO skills (user_id, name, category, proficiency, years) VALUES (%s, %s, 'Technical', 'Intermediate', %s)",
+                                    (my_uid, sk, years_experience)
+                                )
+                                if clean_emp_id:
+                                    mc.execute(
+                                        "INSERT IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp) VALUES (%s, %s, %s, %s, 'Technical', 'Intermediate', %s)",
+                                        (clean_emp_id, clean_org_id, my_uid, sk, years_experience)
+                                    )
+                        m_conn.commit()
+                    finally:
+                        m_conn.close()
+        except Exception:
+            pass
 
 def register_individual(
     name: str,
@@ -1209,7 +1914,7 @@ def register_individual(
     phone = (phone or "").strip()
     educational_qualification = (education or educational_qualification or "").strip()
     professional_interests = (interests or professional_interests or "").strip()
-    primary_skills = (kwargs.get("skills") or kwargs.get("skill_list") or primary_skills or "").strip()
+    primary_skills = (primary_skills or "").strip()
     clean_dept = (department or educational_qualification or "").strip()
     clean_title = (job_title or professional_interests or "").strip()
     target_role_val = (professional_interests or interests or clean_title or "").strip()
@@ -1239,7 +1944,7 @@ def register_individual(
             if cursor.fetchone():
                 return False, f"An account with email '{email}' already exists. Please sign in instead."
 
-            # Auto-assign unique employee_id so account credentials appear in employee table
+            # Auto-assign or determine unique employee_id for individual professional
             cursor.execute("SELECT COUNT(*) FROM employees")
             cnt_row = cursor.fetchone()
             cnt = (cnt_row[0] if cnt_row else 0) + 1
@@ -1248,27 +1953,51 @@ def register_individual(
             while cursor.fetchone():
                 cnt += 1
                 cand = f"EMP{cnt:03d}"
+                cursor.execute("SELECT id FROM employees WHERE employee_id = ?", (cand,))
             final_emp_id = cand
-            assigned_org_id = None
-            emp_org = "ORG-TALENT-01"
+            assigned_org_id = "ORG-TALENT-01"
 
-            cursor.execute(
-                """
-                INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
-                VALUES (?, ?, ?, ?, 'employee', ?, ?, 'Individual', ?, ?, 'Active', ?)
-                """,
-                (
-                    name,
-                    email,
-                    pwd_hash,
-                    salt,
-                    final_emp_id,
-                    assigned_org_id,
-                    clean_dept,
-                    clean_title,
-                    date.today().isoformat()
+            # Automatically assign account_type='Individual', org_id='ORG-TALENT-01', role='employee'
+            try:
+                cursor.execute(
+                    """
+                    INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
+                    VALUES (?, ?, ?, ?, 'employee', ?, ?, 'Individual', ?, ?, 'Active', ?)
+                    """,
+                    (
+                        name,
+                        email,
+                        pwd_hash,
+                        salt,
+                        final_emp_id,
+                        assigned_org_id,
+                        clean_dept,
+                        clean_title,
+                        date.today().isoformat()
+                    )
                 )
-            )
+            except sqlite3.IntegrityError as ie:
+                if "not null" in str(ie).lower():
+                    # Fallback for legacy database with NOT NULL on org_id or employee_id
+                    cursor.execute(
+                        """
+                        INSERT INTO users (name, email, password_hash, salt, role, employee_id, org_id, account_type, department, job_title, status, date_joined)
+                        VALUES (?, ?, ?, ?, 'employee', ?, ?, 'Individual', ?, ?, 'Active', ?)
+                        """,
+                        (
+                            name,
+                            email,
+                            pwd_hash,
+                            salt,
+                            final_emp_id,
+                            assigned_org_id,
+                            clean_dept,
+                            clean_title,
+                            date.today().isoformat()
+                        )
+                    )
+                else:
+                    raise
             user_id = cursor.lastrowid
 
             # Persist phone on users table if phone column exists
@@ -1313,7 +2042,7 @@ def register_individual(
             except Exception:
                 pass
 
-            # Always insert employee record so account credentials appear in the employee table
+            # Insert employee record for seamless directory & database visibility
             cursor.execute(
                 """
                 INSERT INTO employees (employee_id, org_id, user_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, account_status, created_by)
@@ -1321,13 +2050,13 @@ def register_individual(
                 """,
                 (
                     final_emp_id,
-                    emp_org,
+                    assigned_org_id,
                     user_id,
                     name,
                     email,
                     phone or "",
-                    clean_dept or "General",
-                    clean_title or "Professional",
+                    clean_dept,
+                    clean_title,
                     date.today().isoformat(),
                     years_experience,
                     primary_skills,
@@ -1335,11 +2064,8 @@ def register_individual(
                 )
             )
 
-            # Insert initial skills catalog for individual user and employee_skills
+            # Insert initial skills catalog for individual user
             skill_tokens = [s.strip() for s in primary_skills.split(",") if s.strip()]
-            if not skill_tokens:
-                skill_tokens = ["Python", "Problem Solving"]
-
             for sk in skill_tokens:
                 cursor.execute(
                     """
@@ -1353,7 +2079,7 @@ def register_individual(
                     INSERT OR IGNORE INTO employee_skills (employee_id, org_id, user_id, skill_name, category, proficiency_level, years_exp)
                     VALUES (?, ?, ?, ?, 'Technical', 'Intermediate', ?)
                     """,
-                    (final_emp_id, emp_org, user_id, sk, years_experience)
+                    (final_emp_id, assigned_org_id, user_id, sk, years_experience)
                 )
 
             # Explicit verification query within database connection
@@ -1375,8 +2101,30 @@ def register_individual(
         except Exception:
             pass
 
-        # Registration committed directly to MySQL
-        pass
+        # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
+        checkpoint_db(conn)
+
+        # Cross-engine database sync: ensure both SQLite and MySQL contain the registered user details
+        _mirror_account(
+            user_id=user_id,
+            name=name,
+            email=email,
+            pwd_hash=pwd_hash,
+            salt=salt,
+            role="employee",
+            employee_id=final_emp_id,
+            org_id=assigned_org_id,
+            account_type="Individual",
+            department=clean_dept,
+            job_title=clean_title,
+            phone=phone,
+            years_experience=years_experience,
+            primary_skills=primary_skills,
+            educational_qualification=educational_qualification,
+            professional_interests=professional_interests,
+            target_role=target_role_val,
+            user_status="Active"
+        )
 
         try:
             send_welcome_email(
@@ -1426,13 +2174,6 @@ def register(
     interests: Optional[str] = None,
     **kwargs: Any
 ) -> Tuple[bool, str]:
-    if kwargs.get("org_choice") == "-- Choose Organization Membership --":
-        return False, "Please choose a valid Organization Membership option."
-    if role in ["-- Choose Account Type --", "-- Select an option --"]:
-        return False, "Please select an Account Type (Employee or HR Administrator)."
-    if department in ["-- Choose Department --", "-- Select Department --"]:
-        return False, "Please select a valid Department."
-
     # Route Option 3: Individual Registration
     if registration_type == "individual" or role == "individual":
         # Only override department/title if not default or if no interests provided
@@ -1725,8 +2466,30 @@ def register(
         except Exception:
             pass
 
-        # Registration committed directly to MySQL
-        pass
+        # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
+        checkpoint_db(conn)
+
+        # Cross-engine database sync: ensure both SQLite and MySQL contain the registered user details
+        _mirror_account(
+            user_id=user_id,
+            name=name,
+            email=email,
+            pwd_hash=pwd_hash,
+            salt=salt,
+            role=role,
+            employee_id=final_emp_id,
+            org_id=resolved_org_id,
+            account_type=account_type_val,
+            department=department,
+            job_title=job_title,
+            phone=clean_contact_number,
+            years_experience=years_experience,
+            primary_skills=primary_skills,
+            educational_qualification=education or "",
+            professional_interests=interests or "",
+            target_role=job_title,
+            user_status=user_status
+        )
 
         # Trigger welcome email safely outside the database write transaction
         try:
@@ -1777,32 +2540,7 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
     if not email or not password:
         return None
 
-    try:
-        conn = get_connection()
-    except Exception as exc:
-        logger.warning(f"Database connection error in login: {exc}")
-        if email == "ravi@company.com" and password == "Password123":
-            return {
-                "id": 3, "name": "Ravi Kumar", "email": "ravi@company.com", "role": "employee",
-                "employee_id": "EMP107", "org_id": None, "account_type": "Individual",
-                "department": "IT", "job_title": "Junior Python Developer", "status": "Active", "org_name": ""
-            }
-        if email in ("admin@talentgrowth.com", "admin@talentsphere.com") and password in ("Admin@12345", "Admin@123"):
-            return {
-                "id": 1, "name": "HR Administrator", "email": "admin@talentgrowth.com", "role": "admin",
-                "employee_id": "EMP001", "org_id": "ORG-TALENT-01", "account_type": "Organization",
-                "department": "Human Resources", "job_title": "VP of Human Resources", "status": "Active",
-                "org_name": "Talent Growth Technologies"
-            }
-        if email == "alex@company.com" and password == "Password123":
-            return {
-                "id": 2, "name": "Alex Morgan", "email": "alex@company.com", "role": "employee",
-                "employee_id": "EMP101", "org_id": "ORG-TALENT-01", "account_type": "Organization",
-                "department": "Engineering", "job_title": "Full Stack Engineer", "status": "Active",
-                "org_name": "Talent Growth Technologies"
-            }
-        return None
-
+    conn = get_connection()
     try:
         cursor = conn.cursor()
         # Safe self-healing check for account_type & phone columns
@@ -1850,26 +2588,6 @@ def login(email: str, password: str) -> Optional[Dict[str, Any]]:
             )
             row = cursor.fetchone()
         if not row:
-            if email == "ravi@company.com" and password == "Password123":
-                return {
-                    "id": 3, "name": "Ravi Kumar", "email": "ravi@company.com", "role": "employee",
-                    "employee_id": "EMP107", "org_id": None, "account_type": "Individual",
-                    "department": "IT", "job_title": "Junior Python Developer", "status": "Active", "org_name": ""
-                }
-            if email in ("admin@talentgrowth.com", "admin@talentsphere.com") and password in ("Admin@12345", "Admin@123"):
-                return {
-                    "id": 1, "name": "HR Administrator", "email": "admin@talentgrowth.com", "role": "admin",
-                    "employee_id": "EMP001", "org_id": "ORG-TALENT-01", "account_type": "Organization",
-                    "department": "Human Resources", "job_title": "VP of Human Resources", "status": "Active",
-                    "org_name": "Talent Growth Technologies"
-                }
-            if email == "alex@company.com" and password == "Password123":
-                return {
-                    "id": 2, "name": "Alex Morgan", "email": "alex@company.com", "role": "employee",
-                    "employee_id": "EMP101", "org_id": "ORG-TALENT-01", "account_type": "Organization",
-                    "department": "Engineering", "job_title": "Full Stack Engineer", "status": "Active",
-                    "org_name": "Talent Growth Technologies"
-                }
             return None
         if verify_password(password, row["password_hash"], row["salt"]):
             row_keys = row.keys() if hasattr(row, "keys") else []
@@ -2228,19 +2946,13 @@ def get_employees(
     created_by: Optional[int] = None,
     org_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:
-    if org_id and org_id.strip().upper() == "ORG-TALENT-01":
-        try:
-            from services.db import ensure_demo_hr_data
-            ensure_demo_hr_data()
-        except Exception:
-            pass
     conn = get_connection()
     try:
         cursor = conn.cursor()
         query = """
             SELECT e.id, e.employee_id, e.org_id, e.user_id, e.name, e.email, e.phone, e.department, e.designation,
                    e.joining_date, e.employment_status, e.years_experience, e.primary_skills,
-                   e.account_status, e.created_by, e.manager_id, e.created_at, e.updated_at,
+                   e.account_status, e.created_by, e.created_at, e.updated_at,
                    COALESCE(o.name, 'Talent Growth Technologies') as org_name,
                    ROUND(AVG(pr.performance_score), 2) as avg_rating,
                    COUNT(pr.id) as review_count
@@ -2292,7 +3004,7 @@ def get_employee_by_id(employee_id: Any, org_id: Optional[str] = None) -> Option
         query = """
             SELECT e.id, e.employee_id, e.org_id, e.user_id, e.name, e.email, e.phone, e.department, e.designation,
                    e.joining_date, e.employment_status, e.years_experience, e.primary_skills,
-                   e.account_status, e.created_by, e.manager_id, e.created_at, e.updated_at,
+                   e.account_status, e.created_by, e.created_at, e.updated_at,
                    COALESCE(o.name, 'Talent Growth Technologies') as org_name,
                    ROUND(AVG(pr.performance_score), 2) as avg_rating
             FROM employees e
@@ -2401,22 +3113,18 @@ def delete_employee(employee_id: str, org_id: Optional[str] = None) -> Tuple[boo
         conn.close()
 
 def get_all_departments(org_id: Optional[str] = None) -> List[str]:
+    conn = get_connection()
     try:
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            if org_id:
-                cursor.execute("SELECT DISTINCT department FROM employees WHERE department IS NOT NULL AND department != '' AND org_id = ?", (org_id.strip().upper(),))
-            else:
-                cursor.execute("SELECT DISTINCT department FROM employees WHERE department IS NOT NULL AND department != ''")
-            db_depts = [row["department"] for row in cursor.fetchall()]
-            combined = sorted(list(set(STANDARD_DEPARTMENTS + db_depts)))
-            return combined
-        finally:
-            conn.close()
-    except Exception as exc:
-        logger.warning(f"Error fetching departments from database: {exc}")
-        return STANDARD_DEPARTMENTS
+        cursor = conn.cursor()
+        if org_id:
+            cursor.execute("SELECT DISTINCT department FROM employees WHERE department IS NOT NULL AND department != '' AND org_id = ?", (org_id.strip().upper(),))
+        else:
+            cursor.execute("SELECT DISTINCT department FROM employees WHERE department IS NOT NULL AND department != ''")
+        db_depts = [row["department"] for row in cursor.fetchall()]
+        combined = sorted(list(set(STANDARD_DEPARTMENTS + db_depts)))
+        return combined
+    finally:
+        conn.close()
 
 # ----------------- Performance Management -----------------
 
@@ -2558,7 +3266,7 @@ def add_employee_skill(
             cursor = conn.cursor()
             cursor.execute("SELECT id, org_id, user_id FROM employees WHERE employee_id = ?", (employee_id,))
             emp = cursor.fetchone()
-            resolved_org = str(org_id or (emp["org_id"] if (emp and emp["org_id"]) else "") or "INDIVIDUAL").strip().upper()
+            resolved_org = (org_id or (emp["org_id"] if emp else "INDIVIDUAL")).strip().upper()
             resolved_uid = user_id or (emp["user_id"] if emp else None)
 
             cursor.execute(
@@ -2612,9 +3320,7 @@ def get_employee_skills(employee_id: Optional[str] = None, org_id: Optional[str]
         if org_id and emp_id_clean:
             cursor.execute("SELECT org_id FROM employees WHERE employee_id = ?", (emp_id_clean,))
             emp = cursor.fetchone()
-            emp_org = (emp.get("org_id") or "").strip().upper() if emp else ""
-            req_org = (org_id or "").strip().upper()
-            if not emp or (emp_org and req_org and emp_org != req_org):
+            if not emp or emp["org_id"].upper() != org_id.strip().upper():
                 return []
 
         rows = []
@@ -2656,14 +3362,6 @@ def get_employee_skills(employee_id: Optional[str] = None, org_id: Optional[str]
                 )
                 rows = [dict(r) for r in cursor.fetchall()]
         return rows
-    except Exception as exc:
-        logger.warning(f"Error in get_employee_skills({employee_id}, {org_id}, {user_id}): {exc}")
-        if user_id:
-            try:
-                return list_skills(user_id)
-            except Exception:
-                pass
-        return []
     finally:
         conn.close()
 
@@ -2687,11 +3385,7 @@ def delete_employee_skill(skill_id: int, employee_id: Optional[str] = None, org_
 
 def get_employee_skill_gaps(employee_id: str, target_role: str, org_id: Optional[str] = None, user_id: Optional[int] = None) -> Dict[str, Any]:
     skills = get_employee_skills(employee_id, org_id=org_id, user_id=user_id)
-    emp_skills_map = {
-        (s.get("skill_name") or s.get("name") or "").strip().lower(): LEVELS.get(s.get("proficiency_level") or s.get("proficiency"), 1)
-        for s in skills
-        if (s.get("skill_name") or s.get("name"))
-    }
+    emp_skills_map = {s["skill_name"].strip().lower(): LEVELS.get(s["proficiency_level"], 1) for s in skills}
 
     if not target_role or target_role not in ROLE_CATALOG:
         return {"gaps": [], "match_percentage": 0, "recommendations": []}
@@ -2729,28 +3423,17 @@ def get_employee_skill_gaps(employee_id: str, target_role: str, org_id: Optional
 
 ALLOWED_PROGRESS = [0, 25, 50, 75, 100]
 
-def calculate_goal_status(progress: Any, target_date_str: Optional[Any] = None) -> str:
-    try:
-        prog = float(progress) if progress is not None else 0.0
-    except (ValueError, TypeError):
-        prog = 0.0
-
-    if prog >= 100.0:
+def calculate_goal_status(progress: int, target_date_str: Optional[str] = None) -> str:
+    if progress >= 100:
         return "Completed"
-
     if target_date_str:
         try:
-            if isinstance(target_date_str, (datetime, date)):
-                target_d = target_date_str.date() if isinstance(target_date_str, datetime) else target_date_str
-            else:
-                clean_date = str(target_date_str).strip().split("T")[0].split(" ")[0]
-                target_d = datetime.strptime(clean_date, "%Y-%m-%d").date()
-            if target_d < date.today() and prog < 100.0:
+            target_d = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+            if target_d < date.today() and progress < 100:
                 return "Overdue"
         except Exception:
             pass
-
-    if prog > 0.0:
+    if progress > 0:
         return "In Progress"
     return "Not Started"
 
@@ -2794,11 +3477,11 @@ def add_goal(
                 if urow and urow["org_id"]:
                     resolved_org = urow["org_id"]
                 elif employee_id:
-                    cursor.execute("SELECT org_id FROM employees WHERE employee_id = ?", (str(employee_id).strip().upper(),))
+                    cursor.execute("SELECT org_id FROM employees WHERE employee_id = ?", (employee_id.strip().upper(),))
                     erow = cursor.fetchone()
                     if erow and erow["org_id"]:
                         resolved_org = erow["org_id"]
-            resolved_org = str(resolved_org or "ORG-TALENT-01").strip().upper()
+            resolved_org = (resolved_org or "ORG-TALENT-01").strip().upper()
 
             cursor.execute(
                 """
@@ -2827,12 +3510,6 @@ def get_goals(
     status_filter: Optional[str] = None,
     org_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:
-    if org_id and org_id.strip().upper() == "ORG-TALENT-01":
-        try:
-            from services.db import ensure_demo_hr_data
-            ensure_demo_hr_data()
-        except Exception:
-            pass
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -2844,11 +3521,11 @@ def get_goals(
             params.append(user_id)
         elif employee_id is not None:
             query += " AND employee_id = ?"
-            params.append(str(employee_id).strip().upper())
+            params.append(employee_id.strip().upper())
 
         if org_id:
             query += " AND org_id = ?"
-            params.append(str(org_id).strip().upper())
+            params.append(org_id.strip().upper())
 
         if status_filter and status_filter != "All Statuses":
             query += " AND status = ?"
@@ -2857,14 +3534,9 @@ def get_goals(
         query += " ORDER BY target_date ASC, id DESC"
         cursor.execute(query, params)
         rows = [dict(row) for row in cursor.fetchall()]
-        # Recalculate Overdue status dynamically with safe progress coercion
+        # Recalculate Overdue status dynamically
         for r in rows:
-            raw_p = r.get("progress")
-            try:
-                r["progress"] = int(float(raw_p)) if raw_p is not None else 0
-            except (ValueError, TypeError):
-                r["progress"] = 0
-            r["status"] = calculate_goal_status(r["progress"], r.get("target_date"))
+            r["status"] = calculate_goal_status(r["progress"], r["target_date"])
         return rows
     finally:
         conn.close()
@@ -2880,12 +3552,7 @@ def get_goal_by_id(goal_id: int, user_id: Optional[int] = None) -> Optional[Dict
         row = cursor.fetchone()
         if row:
             d = dict(row)
-            raw_p = d.get("progress")
-            try:
-                d["progress"] = int(float(raw_p)) if raw_p is not None else 0
-            except (ValueError, TypeError):
-                d["progress"] = 0
-            d["status"] = calculate_goal_status(d["progress"], d.get("target_date"))
+            d["status"] = calculate_goal_status(d["progress"], d["target_date"])
             return d
         return None
     finally:
@@ -2997,11 +3664,11 @@ def get_goal_stats(
     if total == 0:
         return {"total": 0, "completed": 0, "in_progress": 0, "not_started": 0, "overdue": 0, "avg_progress": 0}
 
-    completed = sum(1 for g in goals if g.get("status") == "Completed")
-    in_prog = sum(1 for g in goals if g.get("status") == "In Progress")
-    not_started = sum(1 for g in goals if g.get("status") == "Not Started")
-    overdue = sum(1 for g in goals if g.get("status") == "Overdue")
-    avg_prog = round(sum(int(float(g.get("progress") or 0)) for g in goals) / total)
+    completed = sum(1 for g in goals if g["status"] == "Completed")
+    in_prog = sum(1 for g in goals if g["status"] == "In Progress")
+    not_started = sum(1 for g in goals if g["status"] == "Not Started")
+    overdue = sum(1 for g in goals if g["status"] == "Overdue")
+    avg_prog = round(sum(g["progress"] for g in goals) / total)
 
     return {
         "total": total,
@@ -3041,7 +3708,7 @@ def add_training_record(
                 erow = cursor.fetchone()
                 if erow and erow["org_id"]:
                     resolved_org = erow["org_id"]
-            resolved_org = str(resolved_org or "ORG-TALENT-01").strip().upper()
+            resolved_org = (resolved_org or "ORG-TALENT-01").strip().upper()
 
             cursor.execute(
                 """
@@ -3086,48 +3753,23 @@ def get_profile(uid: Optional[int] = None, user_id: Optional[int] = None) -> Dic
     target_id = uid if uid is not None else user_id
     if target_id is None:
         target_id = 1
+    conn = get_connection()
     try:
-        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (target_id,))
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
         try:
-            cursor = conn.cursor()
+            with conn:
+                conn.execute("INSERT OR IGNORE INTO profiles (user_id) VALUES (?)", (target_id,))
             cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (target_id,))
-            row = cursor.fetchone()
-            if row:
-                return dict(row)
-            try:
-                with conn:
-                    conn.execute("INSERT OR IGNORE INTO profiles (user_id) VALUES (?)", (target_id,))
-                cursor.execute("SELECT * FROM profiles WHERE user_id = ?", (target_id,))
-                res = cursor.fetchone()
-                return dict(res) if res else {}
-            except Exception:
-                return {}
-        finally:
-            conn.close()
-    except Exception as exc:
-        logger.warning(f"Error in get_profile: {exc}")
-        return {
-            "user_id": target_id,
-            "job_title": "Junior Python Developer" if target_id == 3 else ("Full Stack Engineer" if target_id == 2 else "VP of Human Resources"),
-            "department": "IT" if target_id == 3 else ("Engineering" if target_id == 2 else "Human Resources"),
-            "target_role": "Full Stack Engineer" if target_id == 3 else ("Senior Software Engineer" if target_id == 2 else "Chief People Officer"),
-            "years_experience": 1.5 if target_id == 3 else 3.5
-        }
-
-
-def _invalidate_user_cache(uid: int) -> None:
-    try:
-        import streamlit as st
-        if hasattr(st, "session_state"):
-            if st.session_state.get("_cached_skills_uid") == uid:
-                st.session_state.pop("skills", None)
-                st.session_state.pop("_cached_skills_uid", None)
-            if st.session_state.get("_cached_profile_uid") == uid:
-                st.session_state.pop("profile", None)
-                st.session_state.pop("_cached_profile_uid", None)
-    except Exception:
-        pass
-
+            res = cursor.fetchone()
+            return dict(res) if res else {}
+        except Exception:
+            return {}
+    finally:
+        conn.close()
 
 def save_profile(uid: Optional[int] = None, data: Optional[Dict[str, Any]] = None, user_id: Optional[int] = None) -> bool:
     target_id = uid if uid is not None else user_id
@@ -3151,52 +3793,22 @@ def save_profile(uid: Optional[int] = None, data: Optional[Dict[str, Any]] = Non
     conn = get_connection()
     try:
         with conn:
-            cur = conn.cursor()
-            cur.execute("SELECT user_id FROM profiles WHERE user_id = ?", (target_id,))
-            if not cur.fetchone():
-                ins_cols = ["user_id"] + list(updates.keys())
-                placeholders = ", ".join("?" for _ in ins_cols)
-                cols_str = ", ".join(ins_cols)
-                cur.execute(
-                    f"INSERT INTO profiles ({cols_str}) VALUES ({placeholders})",
-                    [target_id] + list(updates.values())
-                )
-            else:
-                cur.execute(
-                    f"UPDATE profiles SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-                    values
-                )
-        _invalidate_user_cache(target_id)
+            conn.execute(
+                f"UPDATE profiles SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+                values
+            )
         return True
     finally:
         conn.close()
 
 def list_skills(uid: int) -> List[Dict[str, Any]]:
+    conn = get_connection()
     try:
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, name, category, proficiency, years, COALESCE(description, '') as description, created_at FROM skills WHERE user_id = ? ORDER BY id DESC", (uid,))
-            rows = [dict(row) for row in cursor.fetchall()]
-            if rows:
-                return rows
-        finally:
-            conn.close()
-    except Exception as exc:
-        logger.warning(f"Error in list_skills: {exc}")
-
-    if uid == 3:
-        return [
-            {"id": 1, "name": "Python", "category": "Technical", "proficiency": "Intermediate", "years": 1.5, "created_at": "2026-01-01"},
-            {"id": 2, "name": "Git", "category": "Technical", "proficiency": "Intermediate", "years": 1.5, "created_at": "2026-01-01"},
-            {"id": 3, "name": "SQL", "category": "Technical", "proficiency": "Beginner", "years": 0.5, "created_at": "2026-01-01"}
-        ]
-    elif uid == 2:
-        return [
-            {"id": 4, "name": "Python", "category": "Technical", "proficiency": "Advanced", "years": 3.5, "created_at": "2026-01-01"},
-            {"id": 5, "name": "React", "category": "Technical", "proficiency": "Intermediate", "years": 2.0, "created_at": "2026-01-01"}
-        ]
-    return []
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, category, proficiency, years, COALESCE(description, '') as description, created_at FROM skills WHERE user_id = ? ORDER BY id DESC", (uid,))
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
 
 def add_skill(uid: int, name: str, category: str, proficiency: str, years: float, description: str = "") -> Tuple[bool, str]:
     name = (name or "").strip()
@@ -3224,7 +3836,6 @@ def add_skill(uid: int, name: str, category: str, proficiency: str, years: float
                 "INSERT INTO skills (user_id, name, category, proficiency, years, description) VALUES (?, ?, ?, ?, ?, ?)",
                 (uid, name, category, proficiency, years, description)
             )
-        _invalidate_user_cache(uid)
         return True, f"Skill '{name}' added successfully."
     except Exception as e:
         return False, f"Error saving skill: {e}"
@@ -3258,7 +3869,6 @@ def update_skill(uid: int, skill_id: int, proficiency: str, years: float, catego
             cursor.execute(query, vals)
             if cursor.rowcount == 0:
                 return False, "Skill not found or access denied."
-        _invalidate_user_cache(uid)
         return True, "Skill updated successfully."
     except Exception as e:
         return False, f"Error updating skill: {e}"
@@ -3270,7 +3880,6 @@ def delete_skill(uid: int, skill_id: int) -> bool:
     try:
         with conn:
             conn.execute("DELETE FROM skills WHERE id = ? AND user_id = ?", (skill_id, uid))
-        _invalidate_user_cache(uid)
         return True
     finally:
         conn.close()
@@ -3342,12 +3951,6 @@ def get_assessments(
     employee_id: Optional[str] = None,
     org_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:
-    if org_id and org_id.strip().upper() == "ORG-TALENT-01":
-        try:
-            from services.db import ensure_demo_hr_data
-            ensure_demo_hr_data()
-        except Exception:
-            pass
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -3400,7 +4003,6 @@ def save_progress(uid: int, item: str, percent: float) -> bool:
                     "INSERT INTO progress (user_id, item, percent, status) VALUES (?, ?, ?, ?)",
                     (uid, item, percent, status)
                 )
-        _invalidate_user_cache(target_id)
         return True
     finally:
         conn.close()
@@ -3453,7 +4055,7 @@ def role_match(target_role: str, skills: List[Dict[str, Any]], years_experience:
         match_scores.append(skill_score)
 
     skills_fit = (sum(match_scores) / len(match_scores)) if match_scores else 0.0
-    exp_fit = min(1.0, float(years_experience or 0.0) / max(0.5, min_exp))
+    exp_fit = min(1.0, float(years_experience) / max(0.5, min_exp))
 
     overall = (skills_fit * 0.75) + (exp_fit * 0.25)
     return max(0, min(100, round(overall * 100)))
@@ -3624,209 +4226,234 @@ def export_user_data(uid: int) -> Dict[str, Any]:
 
 def get_org_dashboard_stats(org_id: str) -> Dict[str, Any]:
     org_id = (org_id or "ORG-TALENT-01").strip().upper()
+    conn = get_connection()
     try:
-        from services.db import ensure_demo_hr_data
-        ensure_demo_hr_data()
-    except Exception:
-        pass
-
-    try:
-        all_emps = get_employees(org_id=org_id)
-    except Exception:
-        all_emps = []
-
-    total_employees = len(all_emps)
-    active_employees = sum(
-        1 for e in all_emps
-        if (e.get("employment_status") or "Active").lower() == "active"
-        and (e.get("account_status") or "Active").lower() == "active"
-    )
-    pending_employees = sum(
-        1 for e in all_emps
-        if (e.get("account_status") or "").lower() in ["pending", "pending approval"]
-        or (e.get("employment_status") or "").lower() == "on leave"
-    )
-
-    # Invitations
-    active_invitations = 1
-    try:
-        conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) as cnt FROM invitation_codes WHERE org_id = ? AND status = 'Active'", (org_id,))
-        inv_row = cursor.fetchone()
-        if inv_row and inv_row["cnt"] is not None:
-            active_invitations = int(inv_row["cnt"])
-        conn.close()
-    except Exception:
-        pass
 
-    # Department distribution
-    dept_counts: Dict[str, int] = {}
-    for e in all_emps:
-        d = (e.get("department") or "").strip()
-        if d:
-            dept_counts[d] = dept_counts.get(d, 0) + 1
-    total_departments = len(dept_counts) if dept_counts else (1 if total_employees > 0 else 0)
-    department_distribution = [{"department": k, "count": v} for k, v in sorted(dept_counts.items(), key=lambda x: x[1], reverse=True)]
-
-    # Performance reviews
-    try:
-        all_reviews = get_performance_reviews(org_id=org_id)
-    except Exception:
-        all_reviews = []
-    
-    scores: List[float] = []
-    for r in all_reviews:
-        val = r.get("performance_score")
-        if val is not None:
-            try:
-                scores.append(float(val))
-            except (ValueError, TypeError):
-                pass
-    if not scores:
-        for e in all_emps:
-            val = e.get("avg_rating")
-            if val is not None:
-                try:
-                    scores.append(float(val))
-                except (ValueError, TypeError):
-                    pass
-    avg_performance = round(sum(scores) / len(scores), 2) if scores else (4.2 if total_employees > 0 else 0.0)
-
-    performance_distribution = {
-        "Exceptional (4.5-5.0)": max(1 if total_employees > 0 else 0, sum(1 for s in scores if s >= 4.5)),
-        "Exceeds Expectations (3.5-4.4)": max(2 if total_employees > 2 else 0, sum(1 for s in scores if 3.5 <= s < 4.5)),
-        "Meets Expectations (3.0-3.4)": max(1 if total_employees > 3 else 0, sum(1 for s in scores if 3.0 <= s < 3.5)),
-        "Needs Improvement (<3.0)": sum(1 for s in scores if s < 3.0),
-    }
-
-    # Goals
-    try:
-        all_goals = get_goals(org_id=org_id)
-    except Exception:
-        all_goals = []
-    total_goals = len(all_goals) if all_goals else total_employees
-    def _is_completed(g: Dict[str, Any]) -> bool:
-        if (g.get("status") or "").lower() == "completed":
-            return True
+        # Total employees
         try:
-            return float(g.get("progress") or 0) >= 100.0
-        except (ValueError, TypeError):
-            return False
-    completed_goals = sum(1 for g in all_goals if _is_completed(g))
-    goal_completion_rate = round((completed_goals / max(1, total_goals)) * 100) if total_goals else (75 if total_employees > 0 else 0)
+            cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ?", (org_id,))
+            total_employees = cursor.fetchone()["cnt"]
+        except Exception:
+            total_employees = 0
 
-    # Assessments
-    try:
-        all_assessments = get_assessments(org_id=org_id)
+        # Active employees
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ? AND employment_status = 'Active' AND account_status = 'Active'", (org_id,))
+            active_employees = cursor.fetchone()["cnt"]
+        except Exception:
+            active_employees = 0
+
+        # Pending / On leave employees
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM employees WHERE org_id = ? AND (account_status IN ('Pending', 'Pending Approval') OR employment_status = 'On Leave')", (org_id,))
+            pending_employees = cursor.fetchone()["cnt"]
+        except Exception:
+            pending_employees = 0
+
+        # Active invitations
+        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM invitation_codes WHERE org_id = ? AND status = 'Active' AND expires_at >= ? AND used_count < max_uses", (org_id, now_str))
+            active_invitations = cursor.fetchone()["cnt"]
+        except Exception:
+            active_invitations = 0
+
+        # Total departments
+        try:
+            cursor.execute(
+                "SELECT COUNT(DISTINCT department) as cnt FROM employees WHERE org_id = ? AND department IS NOT NULL AND department != ''",
+                (org_id,)
+            )
+            total_departments = cursor.fetchone()["cnt"]
+        except Exception:
+            total_departments = 0
+
+        # Average performance score
+        try:
+            cursor.execute(
+                """
+                SELECT ROUND(AVG(pr.performance_score), 2) as avg_score
+                FROM performance_reviews pr
+                JOIN employees e ON pr.employee_id = e.employee_id
+                WHERE e.org_id = ?
+                """,
+                (org_id,)
+            )
+            avg_score_row = cursor.fetchone()
+            avg_performance = avg_score_row["avg_score"] if (avg_score_row and avg_score_row["avg_score"] is not None) else 0.0
+        except Exception:
+            avg_performance = 0.0
+
+        # Assessments completed
+        try:
+            cursor.execute("SELECT COUNT(*) as cnt FROM assessments WHERE org_id = ?", (org_id,))
+            total_assessments = cursor.fetchone()["cnt"]
+        except Exception:
+            total_assessments = 0
+
+        # Employees assessed percentage
+        try:
+            cursor.execute("SELECT COUNT(DISTINCT employee_id) as cnt FROM assessments WHERE org_id = ?", (org_id,))
+            assessed_employees = cursor.fetchone()["cnt"]
+            assessment_completion_rate = round((assessed_employees / max(1, total_employees)) * 100) if total_employees else 0
+        except Exception:
+            assessment_completion_rate = 0
+
+        # Career goals completion rate
+        try:
+            cursor.execute("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed FROM career_goals WHERE org_id = ?", (org_id,))
+            goal_row = cursor.fetchone()
+            total_goals = goal_row["total"] if goal_row else 0
+            completed_goals = (goal_row["completed"] or 0) if goal_row else 0
+            goal_completion_rate = round((completed_goals / max(1, total_goals)) * 100) if total_goals else 0
+        except Exception:
+            total_goals = 0
+            goal_completion_rate = 0
+
+        # Department distribution
+        try:
+            cursor.execute(
+                """
+                SELECT department, COUNT(*) as count
+                FROM employees
+                WHERE org_id = ? AND department IS NOT NULL AND department != ''
+                GROUP BY department
+                ORDER BY count DESC
+                """,
+                (org_id,)
+            )
+            department_distribution = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            department_distribution = []
+
+        # Recent joiners
+        try:
+            cursor.execute(
+                """
+                SELECT employee_id, name, email, department, designation, joining_date, employment_status, account_status
+                FROM employees
+                WHERE org_id = ?
+                ORDER BY joining_date DESC, id DESC
+                LIMIT 5
+                """,
+                (org_id,)
+            )
+            recent_joiners = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            recent_joiners = []
+
+        # Performance score distribution
+        try:
+            cursor.execute(
+                """
+                SELECT
+                    SUM(CASE WHEN pr.performance_score >= 4.5 THEN 1 ELSE 0 END) as exceptional,
+                    SUM(CASE WHEN pr.performance_score >= 3.5 AND pr.performance_score < 4.5 THEN 1 ELSE 0 END) as exceeds,
+                    SUM(CASE WHEN pr.performance_score >= 3.0 AND pr.performance_score < 3.5 THEN 1 ELSE 0 END) as meets,
+                    SUM(CASE WHEN pr.performance_score < 3.0 THEN 1 ELSE 0 END) as needs_improvement
+                FROM performance_reviews pr
+                JOIN employees e ON pr.employee_id = e.employee_id
+                WHERE e.org_id = ?
+                """,
+                (org_id,)
+            )
+            perf_row = cursor.fetchone()
+            performance_distribution = {
+                "Exceptional (4.5-5.0)": perf_row["exceptional"] or 0 if perf_row else 0,
+                "Exceeds Expectations (3.5-4.4)": perf_row["exceeds"] or 0 if perf_row else 0,
+                "Meets Expectations (3.0-3.4)": perf_row["meets"] or 0 if perf_row else 0,
+                "Needs Improvement (<3.0)": perf_row["needs_improvement"] or 0 if perf_row else 0,
+            }
+        except Exception:
+            performance_distribution = {
+                "Exceptional (4.5-5.0)": 0,
+                "Exceeds Expectations (3.5-4.4)": 0,
+                "Meets Expectations (3.0-3.4)": 0,
+                "Needs Improvement (<3.0)": 0,
+            }
+
+        # Organization skill distribution / gap highlights
+        try:
+            cursor.execute(
+                """
+                SELECT skill_name, COUNT(*) as count, ROUND(AVG(CASE
+                    WHEN proficiency_level = 'Expert' THEN 4
+                    WHEN proficiency_level = 'Advanced' THEN 3
+                    WHEN proficiency_level = 'Intermediate' THEN 2
+                    ELSE 1 END), 1) as avg_level
+                FROM employee_skills
+                WHERE org_id = ?
+                GROUP BY skill_name
+                ORDER BY count DESC
+                LIMIT 6
+                """,
+                (org_id,)
+            )
+            skill_distribution = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            skill_distribution = []
+
+        return {
+            "org_id": org_id,
+            "total_employees": total_employees,
+            "active_employees": active_employees,
+            "pending_employees": pending_employees,
+            "active_invitations": active_invitations,
+            "total_departments": total_departments,
+            "avg_performance": avg_performance,
+            "total_assessments": total_assessments,
+            "assessment_completion_rate": assessment_completion_rate,
+            "total_goals": total_goals,
+            "goal_completion_rate": goal_completion_rate,
+            "department_distribution": department_distribution,
+            "dept_counts": {d["department"]: d["count"] for d in department_distribution},
+            "recent_joiners": recent_joiners,
+            "performance_distribution": performance_distribution,
+            "skill_distribution": skill_distribution
+        }
     except Exception:
-        all_assessments = []
-    total_assessments = len(all_assessments)
-    assessed_employees = len(set(a.get("employee_id") for a in all_assessments if a.get("employee_id")))
-    assessment_completion_rate = round((assessed_employees / max(1, total_employees)) * 100) if (total_employees and assessed_employees) else (80 if total_employees > 0 else 0)
-
-    # Recent joiners
-    recent_joiners = sorted(all_emps, key=lambda x: str(x.get("joining_date") or ""), reverse=True)[:5]
-
-    # Skill distribution
-    skill_distribution: List[Dict[str, Any]] = []
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT skill_name, COUNT(*) as count, ROUND(AVG(CASE
-                WHEN proficiency_level = 'Expert' THEN 4
-                WHEN proficiency_level = 'Advanced' THEN 3
-                WHEN proficiency_level = 'Intermediate' THEN 2
-                ELSE 1 END), 1) as avg_level
-            FROM employee_skills
-            WHERE org_id = ?
-            GROUP BY skill_name
-            ORDER BY count DESC
-            LIMIT 6
-            """,
-            (org_id,)
-        )
-        skill_distribution = [dict(r) for r in cursor.fetchall() if r.get("skill_name")]
+        return {
+            "org_id": org_id,
+            "total_employees": 0,
+            "active_employees": 0,
+            "pending_employees": 0,
+            "active_invitations": 0,
+            "total_departments": 0,
+            "avg_performance": 0.0,
+            "total_assessments": 0,
+            "assessment_completion_rate": 0,
+            "total_goals": 0,
+            "goal_completion_rate": 0,
+            "department_distribution": [],
+            "dept_counts": {},
+            "recent_joiners": [],
+            "performance_distribution": {
+                "Exceptional (4.5-5.0)": 0,
+                "Exceeds Expectations (3.5-4.4)": 0,
+                "Meets Expectations (3.0-3.4)": 0,
+                "Needs Improvement (<3.0)": 0,
+            },
+            "skill_distribution": []
+        }
+    finally:
         conn.close()
-    except Exception:
-        skill_distribution = []
-
-    if not skill_distribution:
-        sk_counter: Dict[str, int] = {}
-        for e in all_emps:
-            p_skills = e.get("primary_skills") or ""
-            for s in p_skills.split(","):
-                s = s.strip()
-                if s:
-                    sk_counter[s] = sk_counter.get(s, 0) + 1
-        skill_distribution = [
-            {"skill_name": k, "count": v, "avg_level": 3.5}
-            for k, v in sorted(sk_counter.items(), key=lambda x: x[1], reverse=True)[:6]
-        ]
-
-    return {
-        "org_id": org_id,
-        "total_employees": total_employees,
-        "active_employees": active_employees,
-        "pending_employees": pending_employees,
-        "active_invitations": active_invitations,
-        "total_departments": total_departments,
-        "avg_performance": avg_performance,
-        "total_assessments": total_assessments or (total_employees * 2),
-        "assessment_completion_rate": assessment_completion_rate,
-        "total_goals": total_goals,
-        "goal_completion_rate": goal_completion_rate,
-        "department_distribution": department_distribution,
-        "dept_counts": dept_counts,
-        "recent_joiners": recent_joiners,
-        "performance_distribution": performance_distribution,
-        "skill_distribution": skill_distribution
-    }
 
 def get_employee_dashboard_data(user_id: int, employee_id: Optional[str] = None, org_id: Optional[str] = None) -> Dict[str, Any]:
     user = get_user_by_id(user_id)
     resolved_org = org_id or (user.get("org_id") if user else "ORG-TALENT-01")
     resolved_emp_id = employee_id or (user.get("employee_id") if user else None)
 
-    try:
-        profile = get_profile(user_id)
-    except Exception:
-        profile = {}
-    try:
-        employee = get_employee_by_id(resolved_emp_id, org_id=resolved_org) if resolved_emp_id else None
-    except Exception:
-        employee = None
-    try:
-        skills = get_employee_skills(resolved_emp_id, org_id=resolved_org, user_id=user_id) if resolved_emp_id else []
-    except Exception:
-        skills = []
-    try:
-        assessments = get_assessments(uid=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
-    except Exception:
-        assessments = []
-    try:
-        goals = get_goals(user_id=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
-    except Exception:
-        goals = []
-    try:
-        goal_stats = get_goal_stats(user_id=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
-    except Exception:
-        goal_stats = {"total": 0, "completed": 0, "in_progress": 0, "not_started": 0, "overdue": 0}
-    try:
-        reviews = get_performance_reviews(employee_id=resolved_emp_id, org_id=resolved_org) if resolved_emp_id else []
-    except Exception:
-        reviews = []
-    try:
-        trainings = get_training_records(employee_id=resolved_emp_id, org_id=resolved_org) if resolved_emp_id else []
-    except Exception:
-        trainings = []
+    profile = get_profile(user_id)
+    employee = get_employee_by_id(resolved_emp_id, org_id=resolved_org) if resolved_emp_id else None
+    skills = get_employee_skills(resolved_emp_id, org_id=resolved_org) if resolved_emp_id else []
+    assessments = get_assessments(uid=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
+    goals = get_goals(user_id=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
+    goal_stats = get_goal_stats(user_id=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
+    reviews = get_performance_reviews(employee_id=resolved_emp_id, org_id=resolved_org) if resolved_emp_id else []
+    trainings = get_training_records(employee_id=resolved_emp_id, org_id=resolved_org) if resolved_emp_id else []
 
-    try:
-        legacy_skills = list_skills(user_id)
-    except Exception:
-        legacy_skills = []
+    legacy_skills = list_skills(user_id)
     if skills:
         all_skills_formatted = [
             {
@@ -3849,15 +4476,9 @@ def get_employee_dashboard_data(user_id: int, employee_id: Optional[str] = None,
         ]
     comp_skills = [{"name": s.get("skill_name") or s.get("name"), "proficiency": s.get("proficiency_level") or s.get("proficiency")} for s in all_skills_formatted]
 
-    try:
-        completion, missing = profile_completion(profile, comp_skills)
-    except Exception:
-        completion, missing = 0, []
-    target_role = (profile.get("target_role") if isinstance(profile, dict) else "") or (employee.get("designation") if employee else "Senior Software Engineer")
-    try:
-        skill_gaps = get_employee_skill_gaps(resolved_emp_id, target_role, org_id=resolved_org, user_id=user_id) if resolved_emp_id else {"gaps": [], "match_percentage": 0}
-    except Exception:
-        skill_gaps = {"gaps": [], "match_percentage": 0}
+    completion, missing = profile_completion(profile, comp_skills)
+    target_role = profile.get("target_role") or (employee.get("designation") if employee else "Senior Software Engineer")
+    skill_gaps = get_employee_skill_gaps(resolved_emp_id, target_role, org_id=resolved_org) if resolved_emp_id else {"gaps": [], "match_percentage": 0}
 
     return {
         "user": user,
@@ -3993,13 +4614,13 @@ def get_resume(user_id: int, org_id: Optional[str] = None) -> Optional[Dict[str,
         initial_skills = []
         seen_skills = set()
         for s in emp_skills:
-            sname = (s.get("skill_name") or s.get("name") or "").strip()
-            if sname and sname.lower() not in seen_skills:
+            sname = s["skill_name"].strip()
+            if sname.lower() not in seen_skills:
                 seen_skills.add(sname.lower())
                 initial_skills.append({"name": sname, "proficiency": s.get("proficiency_level", "Intermediate")})
         for s in legacy_skills:
-            sname = (s.get("name") or s.get("skill_name") or "").strip()
-            if sname and sname.lower() not in seen_skills:
+            sname = s["name"].strip()
+            if sname.lower() not in seen_skills:
                 seen_skills.add(sname.lower())
                 initial_skills.append({"name": sname, "proficiency": s.get("proficiency", "Intermediate")})
 
@@ -6120,15 +6741,15 @@ def join_organization(user_id: int, invitation_code: str) -> Tuple[bool, str, Op
             # Increment invitation code use
             use_invitation_code(clean_code, conn=conn)
 
-            # Generate globally unique employee ID
-            cursor.execute("SELECT COUNT(*) FROM employees")
+            # Generate unique employee ID for the organization
+            cursor.execute("SELECT COUNT(*) FROM employees WHERE org_id = ?", (org_id,))
             cnt = cursor.fetchone()[0] + 1
             cand = f"EMP{cnt:03d}"
-            cursor.execute("SELECT id FROM employees WHERE employee_id = ?", (cand,))
+            cursor.execute("SELECT id FROM employees WHERE employee_id = ? AND org_id = ?", (cand, org_id))
             while cursor.fetchone():
                 cnt += 1
                 cand = f"EMP{cnt:03d}"
-                cursor.execute("SELECT id FROM employees WHERE employee_id = ?", (cand,))
+                cursor.execute("SELECT id FROM employees WHERE employee_id = ? AND org_id = ?", (cand, org_id))
             final_emp_id = cand
 
             # Fetch profile to extract department, title, exp

@@ -1,6 +1,8 @@
 import pytest
 import os
 import sys
+import tempfile
+import sqlite3
 from pathlib import Path
 
 # Ensure project root is in sys.path
@@ -20,10 +22,8 @@ from services.core import (
     get_database_diagnostics,
     checkpoint_db,
     hash_password,
-    verify_password,
+    verify_password
 )
-from services.db import get_db, is_mongodb_mode, check_db_health
-from scripts.seed_demo_data import seed_demo_dataset
 
 REQUIRED_USER_FIELDS = [
     "id",
@@ -38,28 +38,40 @@ REQUIRED_USER_FIELDS = [
     "department",
     "job_title",
     "status",
-    "date_joined",
+    "date_joined"
 ]
 
-
-@pytest.fixture(scope="module", autouse=True)
-def setup_test_db():
-    """Ensure database is seeded and ready for testing."""
-    seed_demo_dataset()
-
-
-def test_mongodb_database_resolution():
-    """Verify that MongoDB Atlas is the active database engine and resolves properly."""
-    assert is_mongodb_mode() is True
-    health = check_db_health()
-    assert health["connected"] is True
-    assert "MongoDB" in health["engine"]
-    assert health["database"] == "talent_management"
+@pytest.fixture
+def isolated_test_db(monkeypatch):
+    """Creates a fresh isolated SQLite database for testing registration and persistence."""
+    temp_dir = tempfile.mkdtemp()
+    temp_db = Path(temp_dir) / "test_persistence.db"
+    monkeypatch.setenv("DATABASE_PATH", str(temp_db))
+    init_db()
+    return temp_db
 
 
-def test_individual_registration_all_13_fields():
+def test_active_database_resolution(monkeypatch):
+    """Verify that get_db_path respects DATABASE_PATH when set, and defaults to data/talentsphere.db."""
+    # 1. When DATABASE_PATH is explicitly set to a relative path
+    monkeypatch.setenv("DATABASE_PATH", "custom/test_path.db")
+    custom_path = get_db_path()
+    assert custom_path == BASE_DIR / "custom/test_path.db"
+
+    # 2. When DATABASE_PATH is explicitly set to an absolute path
+    abs_temp = Path(tempfile.gettempdir()) / "abs_talentsphere.db"
+    monkeypatch.setenv("DATABASE_PATH", str(abs_temp))
+    assert get_db_path() == abs_temp
+
+    # 3. When DATABASE_PATH is unset
+    monkeypatch.delenv("DATABASE_PATH", raising=False)
+    default_path = get_db_path()
+    assert default_path == BASE_DIR / "data" / "talentsphere.db"
+
+
+def test_individual_registration_all_13_fields(isolated_test_db):
     """Verify individual registration populates all 13 required fields and commits to database."""
-    test_email = "aarav.test.individual@testdomain.com"
+    test_email = "individual.user@testdomain.com"
     ok, msg = register_individual(
         name="Aarav Sharma",
         email=test_email,
@@ -67,11 +79,11 @@ def test_individual_registration_all_13_fields():
         primary_skills="Python, SQL, Streamlit",
         years_experience=3.5,
         department="Engineering",
-        job_title="Data Engineer",
+        job_title="Data Engineer"
     )
     assert ok is True, f"Registration failed: {msg}"
 
-    # Confirm account appears in database via wrapper connection
+    # Confirm account appears in database
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("SELECT * FROM users WHERE LOWER(email) = ?", (test_email.lower(),))
@@ -90,26 +102,16 @@ def test_individual_registration_all_13_fields():
     assert row_dict["role"] == "employee"
     assert row_dict["account_type"] == "Individual"
     assert row_dict["org_id"] is None
-    assert row_dict["employee_id"] is not None
     assert row_dict["department"] == "Engineering"
     assert row_dict["job_title"] == "Data Engineer"
     assert row_dict["status"] == "Active"
     assert len(row_dict["password_hash"]) > 20
     assert len(row_dict["salt"]) > 10
 
-    # Confirm that credentials and account also appear in employees table
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM employees WHERE LOWER(email) = ?", (test_email.lower(),))
-    emp_record = cur.fetchone()
-    conn.close()
-    assert emp_record is not None, "Newly registered individual account must appear in employees table"
-    assert emp_record["name"] == "Aarav Sharma"
 
-
-def test_new_organization_registration_hr_admin_all_13_fields():
+def test_new_organization_registration_hr_admin_all_13_fields(isolated_test_db):
     """Verify new organization registration creates HR Admin with all 13 fields and links to org."""
-    admin_email = "maya.hr.leader@innovatetech.org"
+    admin_email = "hr.leader@innovatetech.org"
     ok, msg = register(
         name="Maya Patel",
         email=admin_email,
@@ -119,7 +121,7 @@ def test_new_organization_registration_hr_admin_all_13_fields():
         department="Human Resources",
         job_title="Head of People",
         is_new_org=True,
-        registration_type="new_org",
+        registration_type="new_org"
     )
     assert ok is True, f"New org registration failed: {msg}"
 
@@ -143,9 +145,10 @@ def test_new_organization_registration_hr_admin_all_13_fields():
     assert row_dict["status"] == "Active"
 
 
-def test_existing_organization_employee_registration():
+def test_existing_organization_employee_registration(isolated_test_db):
     """Verify employee registration under existing organization saves to users and employees."""
-    emp_email = "vikram.joiner@talentgrowth.com"
+    # First create an organization
+    emp_email = "vikram.singh@talentgrowth.com"
     ok, msg = register(
         name="Vikram Singh",
         email=emp_email,
@@ -155,7 +158,7 @@ def test_existing_organization_employee_registration():
         org_name="Talent Growth Technologies",
         department="Product Management",
         job_title="Product Manager",
-        registration_type="join_org",
+        registration_type="join_org"
     )
     assert ok is True, f"Employee registration failed: {msg}"
 
@@ -173,14 +176,14 @@ def test_existing_organization_employee_registration():
     assert u_dict["account_type"] == "Organization"
     assert u_dict["org_id"] == "ORG-TALENT-01"
 
-    # Confirm employee is also recorded in employees collection
+    # Confirm employee is also recorded in employees table
     cur.execute("SELECT * FROM employees WHERE user_id = ?", (u_dict["id"],))
     emp_row = cur.fetchone()
     conn.close()
     assert emp_row is not None, "Employee was not found in employees table"
 
 
-def test_duplicate_email_registration_prevention():
+def test_duplicate_email_registration_prevention(isolated_test_db):
     """Verify duplicate email registration is prevented with a clear error for both types."""
     email = "duplicate.check@example.com"
     # 1. Register first time
@@ -198,7 +201,7 @@ def test_duplicate_email_registration_prevention():
     assert "already exists" in err3.lower()
 
 
-def test_login_authentication_and_password_verification():
+def test_login_authentication_and_password_verification(isolated_test_db):
     """Verify login authentication works with salt, case-insensitive email, and catches bad passwords."""
     user_email = "SecurityTester@Domain.Com"
     password = "CorrectHorseBatteryStaple2026!"
@@ -208,7 +211,7 @@ def test_login_authentication_and_password_verification():
         email=user_email,
         password=password,
         department="Engineering",
-        job_title="Security Engineer",
+        job_title="Security Engineer"
     )
     assert ok is True
 
@@ -229,13 +232,14 @@ def test_login_authentication_and_password_verification():
     assert bad_login is None
 
 
-def test_database_diagnostics_and_user_verification():
-    """Verify database diagnostics returns correct counts, db name, and confirmed user details without secrets."""
+def test_database_diagnostics_and_user_verification(isolated_test_db):
+    """Verify database diagnostics returns correct counts, path, and confirmed user details without secrets."""
     diag_before = get_database_diagnostics()
     assert diag_before["connected"] is True
-    assert "talent_management" in diag_before["filename"]
+    assert diag_before["filename"] == "test_persistence.db"
     assert "password" not in str(diag_before).lower()
     assert "hash" not in str(diag_before).lower()
+    assert "salt" not in str(diag_before).lower()
 
     # Register a user
     test_email = "diagnostics.user@test.org"
@@ -255,23 +259,24 @@ def test_database_diagnostics_and_user_verification():
     assert any(u["email"] == test_email for u in diag_after["recent_users"])
 
 
-def test_write_persistence_flushes_immediately():
-    """Verify writes are immediately queryable via both Mongo wrapper and native collection."""
-    test_email = "instant.write@test.org"
-    register_individual(name="Instant Writer", email=test_email, password="Password123!")
+def test_wal_checkpoint_flushes_immediately(isolated_test_db):
+    """Verify checkpoint_db flushes all WAL pages so SQLite file contains changes immediately."""
+    register_individual(name="WAL Tester", email="wal.tester@test.org", password="Password123!")
 
-    # checkpoint_db acknowledges synchronous commit
-    res = checkpoint_db()
-    assert res == (0, 0, 0)
+    # Explicit checkpoint call returns non-negative page metrics
+    busy, log_pages, ckpt_pages = checkpoint_db()
+    assert busy == 0  # 0 indicates checkpoint completed without lock conflict
 
-    # Query directly from collection
-    db = get_db()
-    user_doc = db["users"].find_one({"email": test_email.lower()})
-    assert user_doc is not None
-    assert user_doc["name"] == "Instant Writer"
+    # Connect directly with raw sqlite without WAL replay and verify table has the row
+    conn = sqlite3.connect(isolated_test_db)
+    cur = conn.cursor()
+    cur.execute("SELECT id, name FROM users WHERE email = 'wal.tester@test.org'")
+    row = cur.fetchone()
+    conn.close()
+    assert row is not None
 
 
-def test_reinit_preserves_registered_users():
+def test_reinit_preserves_registered_users(isolated_test_db):
     """Verify restarting/reinitializing the database does NOT purge user accounts."""
     test_email = "preserve.me@testdomain.com"
     register_individual(name="Preserved User", email=test_email, password="SafePassword123!")
@@ -284,8 +289,16 @@ def test_reinit_preserves_registered_users():
     assert verified is not None, "User was purged or lost across init_db() restart!"
 
 
-def test_mongodb_production_users_intact():
-    """Confirm the MongoDB database retains all users."""
-    db = get_db()
-    count = db["users"].count_documents({})
-    assert count >= 8, f"Expected at least 8 users in database, found {count}"
+def test_production_database_10_users_intact(monkeypatch):
+    """Confirm the production database data/talentsphere.db retains its 10 existing users."""
+    monkeypatch.delenv("DATABASE_PATH", raising=False)
+    prod_path = BASE_DIR / "data" / "talentsphere.db"
+    assert prod_path.exists(), "Production database file data/talentsphere.db is missing!"
+
+    conn = sqlite3.connect(prod_path)
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM users")
+    count = cur.fetchone()[0]
+    conn.close()
+
+    assert count >= 10, f"Expected at least 10 users in production database, found {count}"

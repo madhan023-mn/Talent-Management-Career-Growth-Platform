@@ -1,0 +1,33 @@
+# Git & IDE
+.git
+.gitignore
+.devcontainer
+.idea
+.vscode
+
+# Python & Virtual Environments
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.venv
+venv
+ENV/
+.pytest_cache
+
+# Local Environments & Secrets (MUST NOT BE BAKED INTO IMAGES)
+.env
+.env.local
+.env.*
+!.env.example
+
+# Local Ephemeral Data (Live production mounts a persistent volume)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/backups/
+reports/*.pdf
+
+# Node / Vercel
+.vercel
+node_modules

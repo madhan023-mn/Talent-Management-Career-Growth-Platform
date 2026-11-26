@@ -1,0 +1,7984 @@
+from __future__ import annotations
+import sys
+import os
+from pathlib import Path
+
+# Guarantee application root directory is at the very front of sys.path and is current working directory
+_ROOT = str(Path(__file__).resolve().parent)
+while _ROOT in sys.path:
+    sys.path.remove(_ROOT)
+sys.path.insert(0, _ROOT)
+try:
+    os.chdir(_ROOT)
+except Exception:
+    pass
+BASE_DIR = Path(__file__).resolve().parent
+
+from typing import Any, Dict, List, Optional, Tuple, Union
+import re
+import json
+import textwrap
+import base64
+from io import BytesIO
+from datetime import datetime, date
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from dotenv import load_dotenv
+load_dotenv(BASE_DIR / ".env")
+from pypdf import PdfReader
+from docx import Document
+
+# Evict stale cached in-memory services modules during hot reload
+if "services.core" in sys.modules and not hasattr(sys.modules["services.core"], "register_individual"):
+    for _m in [k for k in list(sys.modules.keys()) if k.startswith("services")]:
+        sys.modules.pop(_m, None)
+
+try:
+    from services.core import (
+        BASE_DIR, ROLE_CATALOG, LEVELS, STANDARD_DEPARTMENTS, EMPLOYMENT_STATUSES,
+        init_db, register, login, get_user_by_id,
+        create_organization, get_organization, list_organizations, get_organization_by_name, generate_unique_org_id,
+        verify_and_activate_hr_admin,
+        get_profile, save_profile, list_skills, add_skill, delete_skill,
+        add_assessment, get_assessments, save_progress, get_progress,
+        profile_completion, gap_analysis, recommendations, profile_analysis,
+        role_match, export_user_data,
+        add_employee, get_employees, get_employee_by_id, update_employee, delete_employee, deactivate_employee,
+        get_all_departments, get_all_designations,
+        bulk_import_employees_df, get_sample_employee_csv,
+        add_performance_review, get_performance_reviews, get_department_performance_summary,
+        add_employee_skill, get_employee_skills, delete_employee_skill, get_employee_skill_gaps,
+        add_goal, get_goals, get_goal_by_id, update_goal, update_goal_progress, delete_goal, get_goal_stats,
+        add_training_record, get_training_records,
+        get_org_dashboard_stats, get_employee_dashboard_data, get_individual_dashboard_stats,
+        generate_invitation_code, list_invitation_codes, revoke_invitation_code, validate_invitation_code,
+        get_db_path, check_db_health, get_database_diagnostics, verify_user_in_db, checkpoint_db,
+        list_stored_users, list_stored_employees_all, get_recent_email_logs,
+        test_mysql_connection, is_mysql_expected,
+        get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
+        validate_url, validate_date_range,
+        create_membership_request, get_membership_requests,
+        approve_membership_request, reject_membership_request, get_user_membership_request,
+        delete_user_by_email
+    )
+    try:
+        from services.core import register_individual
+    except ImportError:
+        import services.core as _core_mod
+        import importlib
+        _core_mod = importlib.reload(_core_mod)
+        register_individual = getattr(_core_mod, "register_individual", None)
+except Exception as _core_err:
+    try:
+        for _m in [k for k in list(sys.modules.keys()) if k.startswith("services")]:
+            sys.modules.pop(_m, None)
+        import services.core as _core_mod
+        register_individual = getattr(_core_mod, "register_individual", None)
+        BASE_DIR = _core_mod.BASE_DIR
+        ROLE_CATALOG = _core_mod.ROLE_CATALOG
+        LEVELS = _core_mod.LEVELS
+        STANDARD_DEPARTMENTS = _core_mod.STANDARD_DEPARTMENTS
+        EMPLOYMENT_STATUSES = _core_mod.EMPLOYMENT_STATUSES
+        init_db = _core_mod.init_db
+        register = _core_mod.register
+        login = _core_mod.login
+        get_user_by_id = _core_mod.get_user_by_id
+        create_organization = _core_mod.create_organization
+        get_organization = _core_mod.get_organization
+        list_organizations = _core_mod.list_organizations
+        get_organization_by_name = _core_mod.get_organization_by_name
+        generate_unique_org_id = _core_mod.generate_unique_org_id
+        verify_and_activate_hr_admin = _core_mod.verify_and_activate_hr_admin
+        get_profile = _core_mod.get_profile
+        save_profile = _core_mod.save_profile
+        list_skills = _core_mod.list_skills
+        add_skill = _core_mod.add_skill
+        delete_skill = _core_mod.delete_skill
+        add_assessment = _core_mod.add_assessment
+        get_assessments = _core_mod.get_assessments
+        save_progress = _core_mod.save_progress
+        get_progress = _core_mod.get_progress
+        profile_completion = _core_mod.profile_completion
+        gap_analysis = _core_mod.gap_analysis
+        recommendations = _core_mod.recommendations
+        profile_analysis = _core_mod.profile_analysis
+        role_match = _core_mod.role_match
+        export_user_data = _core_mod.export_user_data
+        add_employee = _core_mod.add_employee
+        get_employees = _core_mod.get_employees
+        get_employee_by_id = _core_mod.get_employee_by_id
+        update_employee = _core_mod.update_employee
+        delete_employee = _core_mod.delete_employee
+        deactivate_employee = _core_mod.deactivate_employee
+        get_all_departments = _core_mod.get_all_departments
+        get_all_designations = _core_mod.get_all_designations
+        bulk_import_employees_df = _core_mod.bulk_import_employees_df
+        get_sample_employee_csv = _core_mod.get_sample_employee_csv
+        add_performance_review = _core_mod.add_performance_review
+        get_performance_reviews = _core_mod.get_performance_reviews
+        get_department_performance_summary = _core_mod.get_department_performance_summary
+        add_employee_skill = _core_mod.add_employee_skill
+        get_employee_skills = _core_mod.get_employee_skills
+        delete_employee_skill = _core_mod.delete_employee_skill
+        get_employee_skill_gaps = _core_mod.get_employee_skill_gaps
+        add_goal = _core_mod.add_goal
+        get_goals = _core_mod.get_goals
+        get_goal_by_id = _core_mod.get_goal_by_id
+        update_goal = _core_mod.update_goal
+        update_goal_progress = _core_mod.update_goal_progress
+        delete_goal = _core_mod.delete_goal
+        get_goal_stats = _core_mod.get_goal_stats
+        add_training_record = _core_mod.add_training_record
+        get_training_records = _core_mod.get_training_records
+        get_org_dashboard_stats = _core_mod.get_org_dashboard_stats
+        get_employee_dashboard_data = _core_mod.get_employee_dashboard_data
+        get_individual_dashboard_stats = getattr(_core_mod, 'get_individual_dashboard_stats', lambda uid: {})
+        generate_invitation_code = _core_mod.generate_invitation_code
+        list_invitation_codes = _core_mod.list_invitation_codes
+        revoke_invitation_code = _core_mod.revoke_invitation_code
+        validate_invitation_code = _core_mod.validate_invitation_code
+        get_db_path = _core_mod.get_db_path
+        check_db_health = _core_mod.check_db_health
+        get_resume = _core_mod.get_resume
+        save_resume = _core_mod.save_resume
+        import_skills_to_resume = _core_mod.import_skills_to_resume
+        format_resume_as_text = _core_mod.format_resume_as_text
+        generate_resume_pdf = _core_mod.generate_resume_pdf
+        validate_url = _core_mod.validate_url
+        validate_date_range = _core_mod.validate_date_range
+        create_membership_request = _core_mod.create_membership_request
+        get_membership_requests = _core_mod.get_membership_requests
+        approve_membership_request = _core_mod.approve_membership_request
+        reject_membership_request = _core_mod.reject_membership_request
+        get_user_membership_request = _core_mod.get_user_membership_request
+        delete_user_by_email = getattr(_core_mod, 'delete_user_by_email', lambda e: (False, 'Not available'))
+        get_database_diagnostics = getattr(_core_mod, 'get_database_diagnostics', lambda: {})
+        verify_user_in_db = getattr(_core_mod, 'verify_user_in_db', lambda u: None)
+        checkpoint_db = getattr(_core_mod, 'checkpoint_db', lambda c=None: (0, 0, 0))
+        list_stored_users = getattr(_core_mod, 'list_stored_users', lambda search="", limit=200: [])
+        list_stored_employees_all = getattr(_core_mod, 'list_stored_employees_all', lambda limit=200: [])
+        get_recent_email_logs = getattr(_core_mod, 'get_recent_email_logs', lambda limit=50: [])
+        test_mysql_connection = getattr(_core_mod, 'test_mysql_connection', lambda: {"success": False, "message": "Test unavailable"})
+        is_mysql_expected = getattr(_core_mod, 'is_mysql_expected', lambda: False)
+    except Exception as _retry_err:
+        import traceback
+        st.error(f"### Critical Startup Error: Failed to load services.core\n\n**Error:** `{_retry_err}`")
+        st.code(traceback.format_exc(), language="python")
+        st.stop()
+
+try:
+    from services.individual_ui import (
+        render_individual_dashboard,
+        render_individual_skills,
+        render_individual_assessments,
+        render_individual_skill_gaps,
+        render_individual_career_goals,
+        render_individual_progress,
+        render_join_organization_card
+    )
+except Exception as _ind_err:
+    import traceback
+    st.error(f"### Startup Error: Failed to load services.individual_ui\n\n**Error:** `{_ind_err}`")
+    st.code(traceback.format_exc(), language="python")
+    st.stop()
+
+try:
+    from services.email_service import get_email_config, get_recent_email_logs, send_test_email
+except Exception:
+    get_email_config = lambda: {"smtp_host": "", "smtp_port": 587, "smtp_user": "", "smtp_from": "no-reply@talentgrowth.com"}
+    get_recent_email_logs = lambda limit=25: []
+    send_test_email = lambda email: (False, "Email service not initialized")
+
+try:
+    from services.reports import create_report
+except Exception as _rep_err:
+    import traceback
+    st.error(f"### Startup Error: Failed to load services.reports\n\n**Error:** `{_rep_err}`")
+    st.code(traceback.format_exc(), language="python")
+    st.stop()
+
+try:
+    from services.ai_coach import (
+        generate_ai_coaching_guidance,
+        analyze_resume_with_ai,
+        get_gemini_api_key
+    )
+except Exception as _ai_err:
+    import traceback
+    st.error(f"### Startup Error: Failed to load services.ai_coach\n\n**Error:** `{_ai_err}`")
+    st.code(traceback.format_exc(), language="python")
+    st.stop()
+
+# Enterprise styling & modern chart theming with hot-reload resilience
+try:
+    import style
+    import importlib
+    if not hasattr(style, "apply_saas_chart_theme"):
+        importlib.reload(style)
+    load_css = getattr(style, "load_css", lambda *a, **k: None)
+    apply_saas_chart_theme = getattr(style, "apply_saas_chart_theme", lambda fig, *a, **k: fig)
+except Exception:
+    try:
+        from style import load_css
+    except Exception:
+        def load_css(*args, **kwargs):
+            pass
+    def apply_saas_chart_theme(fig, *args, **kwargs):
+        return fig
+
+# Vercel serverless entrypoint compatibility
+def handler(environ=None, start_response=None):
+    if start_response:
+        start_response('200 OK', [('Content-Type', 'text/html')])
+    return [b"OK"]
+
+app = handler
+application = handler
+
+load_dotenv(BASE_DIR / ".env")
+
+st.set_page_config(
+    page_title="Talent Growth — Talent Management Platform",
+    page_icon="assets/talent_growth_icon_thumb.png",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Initialize database schema and ensure migrations on application startup
+def ensure_database_ready() -> bool:
+    try:
+        init_db()
+        return True
+    except Exception as _e:
+        logger.error(f"Database startup error: {_e}")
+        return False
+
+ensure_database_ready()
+
+@st.cache_data
+def get_logo_b64(which: str = "icon") -> str:
+    path = "assets/talent_growth_icon_thumb.png" if which == "icon" else "assets/talent_growth_full_thumb.png"
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    return ""
+
+@st.cache_data
+def get_career_growth_illustration_b64() -> str:
+    path = "assets/career_growth_transparent.png"
+    if not os.path.exists(path):
+        path = "assets/career_growth_clean.png"
+    if not os.path.exists(path):
+        path = "assets/career_growth_illustration.png"
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    return ""
+
+def render_html(html_str: str) -> None:
+    """Directly renders pure HTML without markdown parser converting indented lines into code blocks."""
+    clean_html = "\n".join(line.strip() for line in html_str.splitlines() if line.strip())
+    st.markdown(clean_html, unsafe_allow_html=True)
+
+# ------------------------------------------------------------------------------
+# CLEAN SVG ICON SYSTEM (Zero Emojis, Crisp Vector Icons via Data URIs)
+# ------------------------------------------------------------------------------
+_SVG_RAW_PATHS = {
+    "dashboard": '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+    "employees": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    "performance": '<path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+    "skills": '<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>',
+    "goals": '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    "reports": '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    "settings": '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    "logout": '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+    "search": '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+    "bell": '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+    "star": '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+    "building": '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/>',
+    "clock": '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    "check": '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+    "plus": '<path d="M5 12h14"/><path d="M12 5v14"/>',
+    "shield": '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+    "arrow_right": '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+    "arrow_left": '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+    "code": '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>',
+    "user_check": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/>',
+    "profile": '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    "coach": '<path d="M12 2a8 8 0 0 0-8 8c0 3 1.5 5.5 4 6.8V19a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.2c2.5-1.3 4-3.8 4-6.8a8 8 0 0 0-8-8z"/><path d="M9 22h6"/>',
+    "lock": '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    "user_plus": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>',
+    "user": '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    "layers": '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.9a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+    "analytics": '<line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/>',
+    "sparkles": '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>',
+    "target": '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+    "table": '<path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/>',
+    "card": '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+    "zap": '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+    "clipboard": '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+    "rocket": '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
+    "cloud": '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+    "trending_up": '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+    "lightbulb": '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+    "database": '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>',
+    "download": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+    "key": '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+    "mail": '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+    "phone": '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+    "award": '<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>',
+    "calendar": '<rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>',
+    "briefcase": '<rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+    "filter": '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
+    "chevron_down": '<polyline points="6 9 12 15 18 9"/>',
+    "external_link": '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
+    "upload": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+    "trash": '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+    "alert_triangle": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+    "sliders": '<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="1" x2="7" y1="14" y2="14"/><line x1="9" x2="15" y1="8" y2="8"/><line x1="17" x2="23" y1="16" y2="16"/>',
+    "edit": '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+    "refresh": '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>',
+    "check_circle": '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+    "x_circle": '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+}
+
+@st.cache_data
+def _build_svg_data_uri(inner_svg: str, width: int, height: int, stroke_color: str, fill_color: str) -> str:
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 24 24" fill="{fill_color}" stroke="{stroke_color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{inner_svg}</svg>'
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("utf-8")
+
+def get_svg_icon(name: str, size: int = 18, color: str = "#4F46E5", extra_style: str = "") -> str:
+    """Returns an inline, standalone, crisp SVG vector icon as a data URI img (NEVER stripped by sanitizers)."""
+    if name == "brand_logo":
+        icon_b64 = get_logo_b64("icon")
+        return f'<img src="data:image/png;base64,{icon_b64}" style="width: {size}px; height: {size}px; border-radius: 8px; object-fit: contain; vertical-align: middle; {extra_style}" alt="Talent Growth Logo" />'
+    elif name == "brand_full":
+        full_b64 = get_logo_b64("full")
+        return f'<img src="data:image/png;base64,{full_b64}" style="height: {size}px; max-width: 100%; object-fit: contain; vertical-align: middle; {extra_style}" alt="Talent Growth Logo" />'
+
+    inner = _SVG_RAW_PATHS.get(name)
+    if not inner:
+        return f'<span style="display:inline-block; width:{size}px; height:{size}px; {extra_style}"></span>'
+
+    stroke_color = color if (color and color != "currentColor") else "#334155"
+    fill_color = stroke_color if name == "star" else "none"
+    uri = _build_svg_data_uri(inner, size, size, stroke_color, fill_color)
+    return f'<img src="{uri}" width="{size}" height="{size}" style="display: inline-block; vertical-align: middle; border: none; {extra_style}" alt="{name}" />'
+
+# ------------------------------------------------------------------------------
+# MODERN CORPORATE DESIGN SYSTEM & TOKENS (TalentManager / TalentPro Theme)
+# ------------------------------------------------------------------------------
+load_css()
+
+# ------------------------------------------------------------------------------
+# TABLE COLORATION & BADGE UTILITIES
+# ------------------------------------------------------------------------------
+def get_dept_badge_html(department: str) -> str:
+    dept = (department or "").lower()
+    if any(k in dept for k in ["eng", "dev", "tech", "soft"]):
+        cls = "tbl-dept-eng"
+    elif "prod" in dept:
+        cls = "tbl-dept-prod"
+    elif any(k in dept for k in ["design", "ui", "ux"]):
+        cls = "tbl-dept-design"
+    elif "sale" in dept:
+        cls = "tbl-dept-sales"
+    elif "market" in dept:
+        cls = "tbl-dept-mktg"
+    elif any(k in dept for k in ["hr", "people", "talent"]):
+        cls = "tbl-dept-hr"
+    elif any(k in dept for k in ["data", "analyt", "ai", "bi"]):
+        cls = "tbl-dept-data"
+    else:
+        cls = "tbl-dept-ops"
+    return f'<span class="tbl-dept-badge {cls}">{department or "General"}</span>'
+
+def get_status_badge_html(status: str) -> str:
+    s = (status or "").lower()
+    if any(k in s for k in ["act", "comp", "pass"]):
+        return f'<span class="tbl-badge tbl-badge-green"><span class="tbl-badge-dot"></span>{status}</span>'
+    elif any(k in s for k in ["leave", "prog", "pend"]):
+        return f'<span class="tbl-badge tbl-badge-yellow"><span class="tbl-badge-dot"></span>{status}</span>'
+    elif any(k in s for k in ["term", "fail", "over"]):
+        return f'<span class="tbl-badge tbl-badge-red"><span class="tbl-badge-dot"></span>{status}</span>'
+    else:
+        return f'<span class="tbl-badge tbl-badge-blue"><span class="tbl-badge-dot"></span>{status}</span>'
+
+def get_rating_badge_html(score: Any) -> str:
+    try:
+        val = float(score)
+    except (ValueError, TypeError):
+        val = 0.0
+    if val >= 4.5:
+        tier_cls = "tbl-rating-top"
+        label = f"{val:.1f} Top Performer"
+    elif val >= 3.8:
+        tier_cls = "tbl-rating-strong"
+        label = f"{val:.1f} Strong"
+    elif val >= 3.0:
+        tier_cls = "tbl-rating-good"
+        label = f"{val:.1f} Meets Target"
+    elif val > 0.0:
+        tier_cls = "tbl-rating-dev"
+        label = f"{val:.1f} Development"
+    else:
+        tier_cls = "tbl-rating-dev"
+        label = "Unrated"
+    return f'<span class="tbl-rating-pill {tier_cls}">{label}</span>'
+
+def get_priority_badge_html(priority: str) -> str:
+    p = (priority or "").lower()
+    if any(k in p for k in ["high", "crit", "urgent"]):
+        return f'<span class="tbl-badge tbl-priority-high">{priority}</span>'
+    elif "med" in p:
+        return f'<span class="tbl-badge tbl-priority-med">{priority}</span>'
+    else:
+        return f'<span class="tbl-badge tbl-priority-low">{priority}</span>'
+
+def get_prof_badge_html(level: str) -> str:
+    l = (level or "").lower()
+    if "exp" in l or "4" in l:
+        return f'<span class="tbl-badge tbl-prof-expert">{level}</span>'
+    elif "adv" in l or "3" in l:
+        return f'<span class="tbl-badge tbl-prof-adv">{level}</span>'
+    elif "inter" in l or "2" in l:
+        return f'<span class="tbl-badge tbl-prof-int">{level}</span>'
+    else:
+        return f'<span class="tbl-badge tbl-prof-beg">{level}</span>'
+
+def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
+    if not emp_results:
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #EFF6FF; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("employees", size=26, color="#2563EB")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Workforce Records Found</div>
+            <div style="font-size: 0.84rem; color: #64748B;">No employees match the current filters or registered in this organization.</div>
+        </div>"""
+    rows = []
+    for emp in emp_results:
+        score = emp.get("avg_rating") or 0.0
+        pct = min(100, max(0, int((score / 5.0) * 100)))
+        bar_color = "#8B5CF6" if score >= 4.5 else ("#10B981" if score >= 3.8 else ("#3B82F6" if score >= 3.0 else "#F59E0B"))
+        initial = (emp.get("name") or "E")[:1].upper()
+        skills_summary = emp.get("primary_skills") or "—"
+        if len(skills_summary) > 28:
+            skills_summary = skills_summary[:26] + ".."
+        date_joined = emp.get("joining_date") or emp.get("created_at", "")[:10] or "—"
+        org_label = emp.get("org_name") or emp.get("org_id") or "Talent Growth"
+        acc_status = emp.get("account_status") or "Active"
+        acc_status_badge = get_status_badge_html(acc_status)
+
+        rows.append(
+            f"""<tr>
+                <td><span class="tbl-id-pill">{emp.get('employee_id', '')}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 9px;">
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; color: #2563EB; font-weight: 700; font-size: 0.76rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            {initial}
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; color: #0F172A;">{emp.get('name', '')}</div>
+                            <div style="font-size: 0.76rem; color: #64748B;">{emp.get('email', '') or '—'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span style="font-size: 0.80rem; font-weight: 600; color: #475569;">{org_label}</span></td>
+                <td>{get_dept_badge_html(emp.get('department', ''))}</td>
+                <td><span style="font-weight: 600; color: #334155;">{emp.get('designation', '')}</span></td>
+                <td><span style="font-size: 0.82rem; color: #64748B;">{date_joined}</span></td>
+                <td><span style="font-size: 0.82rem; color: #2563EB; font-weight: 500;" title="{emp.get('primary_skills', '')}">{skills_summary}</span></td>
+                <td>
+                    <div class="tbl-progress-container">
+                        <div class="tbl-progress-track">
+                            <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+                        </div>
+                        {get_rating_badge_html(score)}
+                    </div>
+                </td>
+                <td>{acc_status_badge}</td>
+            </tr>"""
+        )
+    return f"""<div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Emp ID</th>
+                    <th>Full Name & Email</th>
+                    <th>Organization</th>
+                    <th>Department</th>
+                    <th>Job Title</th>
+                    <th>Date Joined</th>
+                    <th>Skills Summary</th>
+                    <th>Performance</th>
+                    <th>Account Status</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>"""
+
+def render_colored_review_table(reviews_list: List[Dict[str, Any]]) -> str:
+    if not reviews_list:
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #F3E8FF; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("star", size=26, color="#8B5CF6")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Performance Evaluations Recorded</div>
+            <div style="font-size: 0.84rem; color: #64748B;">Conduct a performance review to establish historical evaluation trajectories.</div>
+        </div>"""
+    rows = []
+    for r in reviews_list:
+        score = float(r.get("performance_score") or 0.0)
+        pct = min(100, max(0, int((score / 5.0) * 100)))
+        bar_color = "#8B5CF6" if score >= 4.5 else ("#10B981" if score >= 3.8 else ("#3B82F6" if score >= 3.0 else "#F59E0B"))
+        dt = (r.get("created_at") or "")[:10]
+        initial = (r.get("employee_name") or "E")[:1].upper()
+        rows.append(
+            f"""<tr>
+                <td><span class="tbl-id-pill">{r.get('employee_id', '')}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 9px;">
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #F3E8FF; color: #8B5CF6; font-weight: 700; font-size: 0.76rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            {initial}
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; color: #0F172A;">{r.get('employee_name', '')}</div>
+                            <div style="font-size: 0.76rem; color: #64748B;">{r.get('designation', '')}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>{get_dept_badge_html(r.get('department', ''))}</td>
+                <td><span class="tbl-badge tbl-badge-blue">{r.get('review_period', '')}</span></td>
+                <td>
+                    <div class="tbl-progress-container">
+                        <div class="tbl-progress-track">
+                            <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+                        </div>
+                        {get_rating_badge_html(score)}
+                    </div>
+                </td>
+                <td>
+                    <div style="font-size: 0.8rem; color: #065F46; font-weight: 600; display: flex; align-items: center; gap: 5px;">
+                        {get_svg_icon("check", size=13, color="#10B981")}
+                        <span>{r.get('strengths') or 'Consistency'}</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: #9A3412; display: flex; align-items: center; gap: 5px; margin-top: 3px;">
+                        {get_svg_icon("trending_up", size=13, color="#EA580C")}
+                        <span>{r.get('improvements') or 'Leadership'}</span>
+                    </div>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 5px; font-family: monospace; font-size: 0.8rem; color: #64748B;">
+                        {get_svg_icon("calendar", size=12, color="#94A3B8")}
+                        <span>{dt}</span>
+                    </div>
+                </td>
+            </tr>"""
+        )
+    return f"""<div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Emp ID</th>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Period</th>
+                    <th>Rating & Score</th>
+                    <th>Key Highlights</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>"""
+
+def render_colored_skills_table(skills_list: List[Dict[str, Any]]) -> str:
+    if not skills_list:
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #ECFDF5; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("skills", size=26, color="#10B981")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Competencies Cataloged Yet</div>
+            <div style="font-size: 0.84rem; color: #64748B;">Add verified skills and proficiencies to evaluate benchmark readiness.</div>
+        </div>"""
+    rows = []
+    for s in skills_list:
+        rows.append(
+            f"""<tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 7px;">
+                        {get_svg_icon("code", size=15, color="#2563EB")}
+                        <span style="font-weight: 700; color: #0F172A;">{s.get('skill_name', '')}</span>
+                    </div>
+                </td>
+                <td><span class="tbl-badge tbl-badge-blue">{s.get('category', 'Technical')}</span></td>
+                <td>{get_prof_badge_html(s.get('proficiency_level', 'Intermediate'))}</td>
+                <td><span style="font-weight: 700; color: #475569;">{s.get('years_exp', 1.0)} yrs</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 5px; font-family: monospace; font-size: 0.8rem; color: #64748B;">
+                        {get_svg_icon("calendar", size=12, color="#94A3B8")}
+                        <span>{(s.get('last_updated') or '')[:10]}</span>
+                    </div>
+                </td>
+            </tr>"""
+        )
+    return f"""<div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Competency</th>
+                    <th>Category</th>
+                    <th>Proficiency</th>
+                    <th>Experience</th>
+                    <th>Cataloged Date</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>"""
+
+def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[int, str]) -> str:
+    if not gaps_list:
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #ECFDF5; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("check", size=26, color="#10B981")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #065F46; margin-bottom: 4px;">All Competency Benchmarks Met</div>
+            <div style="font-size: 0.84rem; color: #047857;">Employee exceeds or meets all role requirements for this benchmark target.</div>
+        </div>"""
+    rows = []
+    for g in gaps_list:
+        gap_val = g.get("gap", 0)
+        if gap_val == 0:
+            match_badge = '<span class="tbl-badge" style="background: #ECFDF5; color: #059669; font-weight: 700; border: 1px solid #A7F3D0;">✅ MATCHED (Met)</span>'
+        elif gap_val == 1:
+            match_badge = '<span class="tbl-badge" style="background: #FEF3C7; color: #D97706; font-weight: 700; border: 1px solid #FDE68A;">❌ GAP (-1 Level)</span>'
+        else:
+            match_badge = f'<span class="tbl-badge" style="background: #FEF2F2; color: #DC2626; font-weight: 700; border: 1px solid #FECACA;">❌ GAP (-{gap_val} Levels)</span>'
+        curr_lvl = levels_str.get(g.get("current_level", 0), str(g.get("current_level", 0)))
+        req_lvl = levels_str.get(g.get("required_level", 0), str(g.get("required_level", 0)))
+        rows.append(
+            f"""<tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 7px;">
+                        {get_svg_icon("target", size=15, color="#2563EB")}
+                        <span style="font-weight: 700; color: #0F172A;">{g.get('skill', '')}</span>
+                    </div>
+                </td>
+                <td>{get_prof_badge_html(req_lvl)}</td>
+                <td>{get_prof_badge_html(curr_lvl)}</td>
+                <td>{match_badge}</td>
+                <td>{get_priority_badge_html(g.get('priority', 'Medium'))}</td>
+            </tr>"""
+        )
+    return f"""<div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Target Competency Required</th>
+                    <th>Required Benchmark</th>
+                    <th>Current Verified Level</th>
+                    <th>Match Status &amp; Gap</th>
+                    <th>Priority</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>"""
+
+def render_colored_goals_table(goals_list: List[Dict[str, Any]]) -> str:
+    if not goals_list:
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #FFF7ED; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("goals", size=26, color="#EA580C")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Active Career Goals Recorded</div>
+            <div style="font-size: 0.84rem; color: #64748B;">Set SMART milestone roadmaps to guide career progression.</div>
+        </div>"""
+    rows = []
+    for g in goals_list:
+        prog = int(g.get("progress") or 0)
+        bar_color = "#10B981" if prog == 100 else ("#3B82F6" if prog >= 50 else "#F59E0B")
+        rows.append(
+            f"""<tr>
+                <td>
+                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                        <span style="margin-top: 2px;">{get_svg_icon("target", size=15, color="#EA580C")}</span>
+                        <div>
+                            <div style="font-weight: 700; color: #0F172A;">{g.get('title', '')}</div>
+                            <div style="font-size: 0.78rem; color: #64748B;">{str(g.get('description', ''))[:70]}...</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="tbl-badge tbl-badge-purple">{g.get('target_designation', 'Target Role')}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 5px; font-family: monospace; font-size: 0.8rem; color: #475569;">
+                        {get_svg_icon("calendar", size=12, color="#94A3B8")}
+                        <span>{g.get('target_date', '')}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="tbl-progress-container">
+                        <div class="tbl-progress-track">
+                            <div class="tbl-progress-bar" style="width: {prog}%; background: {bar_color};"></div>
+                        </div>
+                        <span class="tbl-progress-text">{prog}%</span>
+                    </div>
+                </td>
+                <td>{get_status_badge_html(g.get('status', 'In Progress'))}</td>
+            </tr>"""
+        )
+    return f"""<div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Goal & Action Steps</th>
+                    <th>Target Role</th>
+                    <th>Target Date</th>
+                    <th>Milestone Progress</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>"""
+
+def render_colored_training_table(trainings_list: List[Dict[str, Any]]) -> str:
+    if not trainings_list:
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #EFF6FF; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("award", size=26, color="#2563EB")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Training Courses Assigned</div>
+            <div style="font-size: 0.84rem; color: #64748B;">Assign target upskilling programs to address competency shortfalls.</div>
+        </div>"""
+    rows = []
+    for t in trainings_list:
+        score = float(t.get("score") or 0.0)
+        pct = min(100, max(0, int(score)))
+        bar_color = "#10B981" if pct >= 80 else ("#3B82F6" if pct >= 60 else "#F59E0B")
+        rows.append(
+            f"""<tr>
+                <td><span class="tbl-id-pill">{t.get('employee_id', '')}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 7px;">
+                        {get_svg_icon("award", size=15, color="#2563EB")}
+                        <span style="font-weight: 700; color: #0F172A;">{t.get('course_name', '')}</span>
+                    </div>
+                </td>
+                <td><span class="tbl-badge tbl-badge-purple">{t.get('target_skill', '')}</span></td>
+                <td><span style="color: #475569; font-size: 0.82rem;">{t.get('provider', '')}</span></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 5px; font-family: monospace; font-size: 0.8rem; color: #64748B;">
+                        {get_svg_icon("calendar", size=12, color="#94A3B8")}
+                        <span>{t.get('target_completion_date', '')}</span>
+                    </div>
+                </td>
+                <td>{get_status_badge_html(t.get('status', 'Enrolled'))}</td>
+                <td>
+                    <div class="tbl-progress-container">
+                        <div class="tbl-progress-track">
+                            <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+                        </div>
+                        <span class="tbl-progress-text">{pct}%</span>
+                    </div>
+                </td>
+            </tr>"""
+        )
+    return f"""<div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Emp ID</th>
+                    <th>Course Title</th>
+                    <th>Target Skill</th>
+                    <th>Provider</th>
+                    <th>Target Date</th>
+                    <th>Status</th>
+                    <th>Grade / Completion</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>"""
+
+def render_colored_dept_summary_table(dept_summary_list: List[Dict[str, Any]]) -> str:
+    if not dept_summary_list:
+        return f"""<div class="corporate-table-wrapper" style="padding: 3rem 1.5rem; text-align: center;">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: #EFF6FF; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                {get_svg_icon("building", size=26, color="#2563EB")}
+            </div>
+            <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">No Department Metrics Available</div>
+            <div style="font-size: 0.84rem; color: #64748B;">Department analytics will populate as employee reviews are completed.</div>
+        </div>"""
+    rows = []
+    for ds in dept_summary_list:
+        avg_s = float(ds.get("avg_score") or 0.0)
+        pct = min(100, max(0, int((avg_s / 5.0) * 100)))
+        bar_color = "#8B5CF6" if avg_s >= 4.5 else ("#10B981" if avg_s >= 3.8 else ("#3B82F6" if avg_s >= 3.0 else "#F59E0B"))
+        rows.append(
+            f"""<tr>
+                <td>{get_dept_badge_html(ds.get('department', ''))}</td>
+                <td><span class="tbl-badge tbl-badge-blue">{ds.get('employee_count', 0)} active</span></td>
+                <td>
+                    <div class="tbl-progress-container">
+                        <div class="tbl-progress-track">
+                            <div class="tbl-progress-bar" style="width: {pct}%; background: {bar_color};"></div>
+                        </div>
+                        {get_rating_badge_html(avg_s)}
+                    </div>
+                </td>
+                <td><span style="font-weight: 700; color: #475569;">{ds.get('total_reviews', 0)} reviews</span></td>
+            </tr>"""
+        )
+    return f"""<div class="corporate-table-wrapper">
+        <table class="corporate-table">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Active Headcount</th>
+                    <th>Average Performance Rating</th>
+                    <th>Completed Reviews</th>
+                </tr>
+            </thead>
+            <tbody>{''.join(rows)}</tbody>
+        </table>
+    </div>"""
+
+
+
+# ------------------------------------------------------------------------------
+# SESSION STATE INITIALIZATION
+# ------------------------------------------------------------------------------
+if "user" not in st.session_state:
+    st.session_state.user = None
+if "auth_view" not in st.session_state:
+    st.session_state.auth_view = "landing"
+if "clear_emp_form_flag" not in st.session_state:
+    st.session_state.clear_emp_form_flag = False
+if "quick_fill_role" not in st.session_state:
+    st.session_state.quick_fill_role = None
+
+# ------------------------------------------------------------------------------
+# 1. DEDICATED CORPORATE LANDING WEBPAGE
+# ------------------------------------------------------------------------------
+def landing_webpage():
+    # Top Glassmorphic Enterprise Navbar
+    render_html(
+        f"""
+        <div style="background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(14px); border: 1.5px solid #E2E8F0; border-radius: 18px; padding: 14px 26px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; box-shadow: 0 4px 24px -2px rgba(124, 58, 237, 0.08);">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                {get_svg_icon("brand_logo", size=38)}
+                <div>
+                    <div style="font-size: 1.45rem; font-weight: 900; letter-spacing: -0.03em; display: flex; align-items: center; gap: 10px;">
+                        <span style="background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Talent Growth</span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #475569; font-weight: 600;">AI-Powered Workforce Performance &amp; Career Acceleration Platform</div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; color: #7C3AED; background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(37, 99, 235, 0.12) 100%); border: 1px solid rgba(124, 58, 237, 0.35); padding: 5px 14px; border-radius: 9999px;">
+                    <span style="width: 8px; height: 8px; background: #8B5CF6; border-radius: 50%; box-shadow: 0 0 8px #8B5CF6;"></span>
+                    Modern Talent Growth Experience
+                </span>
+            </div>
+        </div>
+        """
+    )
+
+    col_nav_sp, col_nav_login, col_nav_reg = st.columns([6, 1.8, 2.2], gap="small")
+    with col_nav_login:
+        if st.button("Sign In", key="nav_btn_login", use_container_width=True, type="secondary"):
+            st.session_state.auth_view = "login"
+            st.rerun()
+    with col_nav_reg:
+        if st.button("Create Account", key="nav_btn_reg", use_container_width=True, type="primary"):
+            st.session_state.auth_view = "register"
+            st.rerun()
+
+    # HERO SECTION (High-Impact Enterprise Banner with Radial Dark Aesthetic)
+    render_html(
+        f"""
+        <div class="webpage-hero-modern">
+            <div style="max-width: 880px; position: relative; z-index: 2;">
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(99, 102, 241, 0.20); border: 1px solid rgba(129, 140, 248, 0.4); padding: 6px 16px; border-radius: 9999px; color: #C7D2FE; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1.25rem;">
+                    {get_svg_icon("sparkles", size=14, color="#A5B4FC")}
+                    Next-Gen Talent Management & Career Growth Engine
+                </div>
+                <h1 style="font-size: 3.1rem; font-weight: 900; color: #FFFFFF; line-height: 1.15; letter-spacing: -0.03em; margin: 0 0 1.1rem 0;">
+                    Build Exceptional Teams,<br/>
+                    <span class="hero-gradient-text">Accelerate Careers</span>
+                </h1>
+                <p style="color: #94A3B8; font-size: 1.12rem; line-height: 1.65; margin-bottom: 2rem; max-width: 760px;">
+                    The modern enterprise platform uniting workforce performance evaluation, 10-role competency benchmarks, real-time skill assessment, ATS resume engineering, and personalized generative AI career coaching.
+                </p>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 2.2rem;">
+                    <div class="hero-feature-pill">
+                        {get_svg_icon("employees", size=16, color="#818CF8")} Workforce Directory & Profiles
+                    </div>
+                    <div class="hero-feature-pill">
+                        {get_svg_icon("performance", size=16, color="#34D399")} Performance Trajectory Reviews
+                    </div>
+                    <div class="hero-feature-pill">
+                        {get_svg_icon("skills", size=16, color="#C084FC")} 10-Role Skill Benchmarks
+                    </div>
+                    <div class="hero-feature-pill">
+                        {get_svg_icon("goals", size=16, color="#FB923C")} SMART Milestone Roadmap
+                    </div>
+                    <div class="hero-feature-pill">
+                        {get_svg_icon("coach", size=16, color="#F472B6")} AI Executive Career Coach
+                    </div>
+                </div>
+            </div>
+            <div style="border-top: 1px solid rgba(255, 255, 255, 0.12); padding-top: 1.2rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.84rem; color: #94A3B8; position: relative; z-index: 2; flex-wrap: wrap; gap: 12px;">
+                <span style="display: flex; align-items: center; gap: 7px;">
+                    {get_svg_icon("shield", size=16, color="#818CF8")}
+                    Salted Hash Encryption &bull; Isolated Tenant Storage
+                </span>
+                <span style="display: flex; align-items: center; gap: 7px;">
+                    {get_svg_icon("check", size=16, color="#34D399")}
+                    Production-Grade Enterprise Architecture
+                </span>
+                <span style="display: flex; align-items: center; gap: 7px;">
+                    {get_svg_icon("sparkles", size=16, color="#FDE047")}
+                    Dual Support: Organizations &amp; Individuals
+                </span>
+            </div>
+        </div>
+        """
+    )
+
+    # 1-CLICK QUICK DEMO SIGN-IN
+    render_html(
+        f"""
+        <div style="margin: 2.4rem 0 1.25rem 0;">
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: #EEF2FF; border: 1px solid #C7D2FE; color: #4F46E5; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+                {get_svg_icon("sparkles", size=13, color="#4F46E5")} 1-Click Instant Demo Launch
+            </div>
+            <h2 style="font-size: 1.95rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0; letter-spacing: -0.02em;">
+                1-Click Interactive Demos
+            </h2>
+            <p style="color: #64748B; font-size: 0.95rem; margin: 0 0 1.35rem 0;">
+                Click any role below to launch directly into the live dashboard without entering any login credentials.
+            </p>
+        </div>
+        """
+    )
+
+    col_d1, col_d2, col_d3 = st.columns(3, gap="medium")
+
+    with col_d1:
+        render_html(
+            f"""
+            <div class="demo-role-card demo-role-admin">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #EEF2FF; color: #4F46E5; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(79, 70, 229, 0.15);">
+                        {get_svg_icon("shield", size=22, color="#4F46E5")}
+                    </div>
+                    <span style="font-size: 0.72rem; font-weight: 800; color: #4338CA; background: #EEF2FF; border: 1px solid #C7D2FE; padding: 3px 8px; border-radius: 9999px;">HR ADMIN</span>
+                </div>
+                <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">HR Administrator</div>
+                <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">admin@talentgrowth.com</div>
+                <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
+                    Full administrative governance, workforce directory CRUD, performance trajectory tracking, bulk CSV imports, and ATS studio.
+                </p>
+                <div style="font-size: 0.78rem; color: #4338CA; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#4F46E5")} <span>Workforce Directory &amp; Lifecycle</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#4F46E5")} <span>Trajectory Reviews &amp; Analytics</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#4F46E5")} <span>Bulk CSV &amp; Excel Importer</span></div>
+                </div>
+            </div>
+            """
+        )
+        if st.button("Launch HR Admin Demo", icon=":material/rocket_launch:", key="landing_btn_admin", use_container_width=True, type="primary"):
+            admin_acc = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+            if admin_acc:
+                st.session_state.user = admin_acc
+                st.session_state.current_page = "Dashboard"
+                st.session_state.auth_view = "landing"
+                st.rerun()
+            else:
+                st.error("Authentication failed. Please verify HR Admin credentials.")
+
+    with col_d2:
+        render_html(
+            f"""
+            <div class="demo-role-card demo-role-eng">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);">
+                        {get_svg_icon("code", size=22, color="#2563EB")}
+                    </div>
+                    <span style="font-size: 0.72rem; font-weight: 800; color: #1E40AF; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 3px 8px; border-radius: 9999px;">EMPLOYEE</span>
+                </div>
+                <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">Alex Morgan</div>
+                <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">alex@company.com</div>
+                <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
+                    Employee self-service portal, 10-role skill benchmark matrix, target readiness radar, and SMART milestones roadmap.
+                </p>
+                <div style="font-size: 0.78rem; color: #1D4ED8; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#2563EB")} <span>10-Role Benchmark Matrix</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#2563EB")} <span>Competency Gap Simulator</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#2563EB")} <span>SMART Career Goals Roadmap</span></div>
+                </div>
+            </div>
+            """
+        )
+        if st.button("Launch Employee Demo", icon=":material/rocket_launch:", key="landing_btn_alex", use_container_width=True, type="primary"):
+            emp_acc = login("alex@company.com", "Password123")
+            if emp_acc:
+                st.session_state.user = emp_acc
+                st.session_state.current_page = "Dashboard"
+                st.session_state.auth_view = "landing"
+                st.rerun()
+            else:
+                st.error("Authentication failed. Please verify employee credentials.")
+
+    with col_d3:
+        render_html(
+            f"""
+            <div class="demo-role-card demo-role-analyst">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #ECFDF5; color: #065F46; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);">
+                        {get_svg_icon("analytics", size=22, color="#065F46")}
+                    </div>
+                    <span style="font-size: 0.72rem; font-weight: 800; color: #065F46; background: #ECFDF5; border: 1px solid #A7F3D0; padding: 3px 8px; border-radius: 9999px;">INDIVIDUAL</span>
+                </div>
+                <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A; margin-bottom: 2px;">Ravi Kumar</div>
+                <div style="font-size: 0.8rem; color: #64748B; font-family: monospace; margin-bottom: 0.75rem;">ravi@company.com</div>
+                <p style="font-size: 0.86rem; color: #475569; line-height: 1.5; margin-bottom: 1.1rem; min-height: 54px;">
+                    Independent professional experience: self-service skills portfolio, technical MCQ testing, ATS resume builder, and AI coaching.
+                </p>
+                <div style="font-size: 0.78rem; color: #047857; margin-bottom: 1.1rem; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>Personal Skills Portfolio</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>MCQ Technical Assessments</span></div>
+                    <div style="display: flex; align-items: center; gap: 7px;">{get_svg_icon("check", size=13, color="#10B981")} <span>AI Career Coach &amp; Strategy</span></div>
+                </div>
+            </div>
+            """
+        )
+        if st.button("Launch Individual Demo", icon=":material/rocket_launch:", key="landing_btn_ravi", use_container_width=True, type="primary"):
+            ravi_acc = login("ravi@company.com", "Password123")
+            if ravi_acc:
+                ravi_acc["account_type"] = "Individual"
+                ravi_acc["org_id"] = None
+                st.session_state.user = ravi_acc
+                st.session_state.current_page = "Dashboard"
+                st.session_state.auth_view = "landing"
+                st.rerun()
+            else:
+                st.error("Authentication failed. Please verify employee credentials.")
+
+    # HOW IT WORKS (4-STEP WORKFLOW)
+    render_html(
+        f"""
+        <div style="margin: 3rem 0 1.5rem 0;">
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: #F8FAFC; border: 1px solid #E2E8F0; color: #475569; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+                {get_svg_icon("layers", size=13, color="#475569")} Continuous Growth Pipeline
+            </div>
+            <h2 style="font-size: 1.95rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0; letter-spacing: -0.02em;">
+                How TalentSphere Powers Workforce Acceleration
+            </h2>
+            <p style="color: #64748B; font-size: 0.95rem; margin: 0 0 1.5rem 0;">
+                A proven 4-stage talent lifecycle engineered for individuals and high-growth enterprise teams.
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 1.25rem;">
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #EEF2FF; color: #4F46E5; font-weight: 800; font-size: 0.92rem; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">1</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Profile &amp; Onboard</div>
+                    <div style="font-size: 0.84rem; color: #64748B; line-height: 1.45;">Document current designations, experience years, and core verified competencies.</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #ECFDF5; color: #059669; font-weight: 800; font-size: 0.92rem; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">2</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Benchmark &amp; Assess</div>
+                    <div style="font-size: 0.84rem; color: #64748B; line-height: 1.45;">Evaluate skills against 10 corporate benchmark roles and test knowledge via technical MCQs.</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #F5F3FF; color: #7C3AED; font-weight: 800; font-size: 0.92rem; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">3</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">AI Strategy Coach</div>
+                    <div style="font-size: 0.84rem; color: #64748B; line-height: 1.45;">Receive tailored advice, 90-day developmental sprints, and promotion roadmaps.</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #FFF7ED; color: #EA580C; font-weight: 800; font-size: 0.92rem; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">4</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Promote &amp; Advance</div>
+                    <div style="font-size: 0.84rem; color: #64748B; line-height: 1.45;">Review quarterly rating trajectories, achieve SMART goals, and export ATS-ready dossiers.</div>
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    # ENTERPRISE PLATFORM CAPABILITIES
+    render_html(
+        f"""
+        <div style="margin: 2.75rem 0 1.25rem 0;">
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: #F8FAFC; border: 1px solid #E2E8F0; color: #475569; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px;">
+                {get_svg_icon("layers", size=13, color="#475569")} Core Capabilities
+            </div>
+            <h2 style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0; letter-spacing: -0.02em;">
+                Enterprise Architecture Modules
+            </h2>
+            <p style="color: #64748B; font-size: 0.95rem; margin: 0 0 1.5rem 0;">
+                Engineered for scaling human talent across modern corporate departments.
+            </p>
+        </div>
+        """
+    )
+
+    col_m1, col_m2 = st.columns(2, gap="medium")
+    with col_m1:
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.03); margin-bottom: 0.85rem;">
+                <div style="display: flex; align-items: flex-start; gap: 14px;">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #EEF2FF; color: #4F46E5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        {get_svg_icon("employees", size=22, color="#4F46E5")}
+                    </div>
+                    <div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Workforce Directory &amp; Lifecycle</div>
+                        <p style="font-size: 0.88rem; color: #64748B; line-height: 1.5; margin: 0;">
+                            Centralized employee records with multi-attribute filtering, live search, employment status management, and instant Excel/CSV dataset onboarding.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            """
+        )
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
+                <div style="display: flex; align-items: flex-start; gap: 14px;">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #F5F3FF; color: #8B5CF6; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        {get_svg_icon("skills", size=22, color="#8B5CF6")}
+                    </div>
+                    <div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">10-Role Benchmark Competency Matrices</div>
+                        <p style="font-size: 0.88rem; color: #64748B; line-height: 1.5; margin: 0;">
+                            Standardized competency benchmarks for 10 corporate roles. Calculates target vs. actual proficiencies with automated skill gap visualizations.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            """
+        )
+
+    with col_m2:
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.03); margin-bottom: 0.85rem;">
+                <div style="display: flex; align-items: flex-start; gap: 14px;">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #ECFDF5; color: #065F46; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        {get_svg_icon("performance", size=22, color="#10B981")}
+                    </div>
+                    <div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">Performance Reviews &amp; Trajectory</div>
+                        <p style="font-size: 0.88rem; color: #64748B; line-height: 1.5; margin: 0;">
+                            Objective 1.0–5.0 evaluation cycles, department rating averages, qualitative feedback logging, and interactive historical rating trend charts.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            """
+        )
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
+                <div style="display: flex; align-items: flex-start; gap: 14px;">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #FFF7ED; color: #C2410C; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        {get_svg_icon("goals", size=22, color="#EA580C")}
+                    </div>
+                    <div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; margin-bottom: 4px;">SMART Career Milestone Roadmap</div>
+                        <p style="font-size: 0.88rem; color: #64748B; line-height: 1.5; margin: 0;">
+                            Structured milestone tracking, due date monitoring, completion metrics, and AI-assisted personalized development roadmaps.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            """
+        )
+
+    # CREDENTIALS CALL-TO-ACTION (SEPARATE CONTAINER)
+    render_html(
+        f"""
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; padding: 2.2rem 2.4rem; margin: 3rem 0 1.25rem 0; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: #EEF2FF; color: #4F46E5; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.85rem;">
+                {get_svg_icon("lock", size=24, color="#4F46E5")}
+            </div>
+            <h3 style="font-size: 1.55rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0;">Have Corporate Credentials?</h3>
+            <p style="color: #64748B; font-size: 0.95rem; max-width: 560px; margin: 0 auto 1.6rem auto;">
+                Sign in with your organization email and secure password, or register a new administrator / employee / independent professional account.
+            </p>
+        </div>
+        """
+    )
+
+    c_cta1, c_cta_sp1, c_cta2 = st.columns([1.5, 0.2, 1.5], gap="small")
+    with c_cta1:
+        if st.button("Sign In with Email & Password", key="cta_btn_signin", use_container_width=True, type="secondary"):
+            st.session_state.auth_view = "login"
+            st.rerun()
+    with c_cta2:
+        if st.button("Create a New Account", key="cta_btn_reg", use_container_width=True, type="primary"):
+            st.session_state.auth_view = "register"
+            st.rerun()
+
+    # Enterprise Footer
+    render_html(
+        """
+        <div style="border-top: 1px solid #E2E8F0; margin-top: 3.5rem; padding-top: 1.75rem; display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: #94A3B8; flex-wrap: wrap; gap: 12px;">
+            <div>&copy; 2026 Talent Growth Technologies Inc. All rights reserved. Enterprise Talent Management Platform.</div>
+            <div style="display: flex; gap: 18px;">
+                <span>Security &amp; Governance</span>
+                <span>Role Benchmarks</span>
+                <span>Enterprise Relational DB</span>
+                <span>MIT Licensed</span>
+            </div>
+        </div>
+        """
+    )
+
+def render_database_diagnostics_panel(key_suffix: str = ""):
+    """Renders active SQLite database diagnostics & storage inspector with modern colorful cards and zero truncation."""
+    diag = get_database_diagnostics()
+    if not diag:
+        return
+
+    with st.expander("Active Database Diagnostics & Storage Inspector", expanded=(key_suffix == "settings")):
+        render_html(
+            f"""
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 16px;">
+                <!-- Card 1: Active Database -->
+                <div style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 100%); border: 1.5px solid #BFDBFE; border-left: 5px solid #2563EB; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(37,99,235,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.74rem; font-weight: 800; color: #1E40AF; text-transform: uppercase; letter-spacing: 0.05em;">Active Database</span>
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #DBEAFE; display: flex; align-items: center; justify-content: center;">
+                            {get_svg_icon("database", size=16, color="#2563EB")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A; line-height: 1.2; word-break: break-all;">
+                        {diag.get('filename', 'talentsphere.db')}
+                    </div>
+                    <div style="font-size: 0.76rem; color: #475569; margin-top: 8px; line-height: 1.4;">
+                        <strong>Path:</strong> <span style="font-family: monospace; background: #FFFFFF; padding: 2px 6px; border-radius: 4px; border: 1px solid #E2E8F0; font-size: 0.74rem; word-break: break-all; color: #0D9488;">{diag.get('absolute_path', '')}</span>
+                    </div>
+                </div>
+
+                <!-- Card 2: Connection Status -->
+                <div style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%); border: 1.5px solid #BBF7D0; border-left: 5px solid #10B981; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(16,185,129,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.74rem; font-weight: 800; color: #065F46; text-transform: uppercase; letter-spacing: 0.05em;">Connection Status</span>
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #DCFCE7; display: flex; align-items: center; justify-content: center;">
+                            {get_svg_icon("check", size=16, color="#10B981")}
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 12px; height: 12px; border-radius: 50%; background: #10B981; display: inline-block; box-shadow: 0 0 10px #10B981;"></span>
+                        <span style="font-size: 1.25rem; font-weight: 800; color: #065F46;">Connected (OK)</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #047857; margin-top: 8px;">
+                        Integrity: <strong>{diag.get('integrity', 'ok').upper()}</strong> &bull; Size: <strong>{diag.get('size_kb', 0)} KB</strong>
+                    </div>
+                </div>
+
+                <!-- Card 3: Total Users & Directory Metrics -->
+                <div style="background: linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 100%); border: 1.5px solid #E9D5FF; border-left: 5px solid #7C3AED; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(124,58,237,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.74rem; font-weight: 800; color: #6B21A8; text-transform: uppercase; letter-spacing: 0.05em;">Total Users</span>
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #F3E8FF; display: flex; align-items: center; justify-content: center;">
+                            {get_svg_icon("employees", size=16, color="#7C3AED")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.55rem; font-weight: 900; color: #581C87; line-height: 1.1;">
+                        {diag.get('total_users', 0)}
+                    </div>
+                    <div style="font-size: 0.78rem; color: #6B21A8; margin-top: 8px;">
+                        Employees: <strong>{diag.get('total_employees', 0)}</strong> &bull; Organizations: <strong>{diag.get('total_organizations', 0)}</strong>
+                    </div>
+                </div>
+            </div>
+            """
+        )
+
+        if is_mysql_expected() or diag.get("engine") == "MySQL":
+            if st.button("⚡ Test MySQL Database Connection", key=f"btn_test_mysql_{key_suffix}", use_container_width=True):
+                test_res = test_mysql_connection()
+                if test_res.get("success"):
+                    st.success(f"✅ {test_res.get('message')}")
+                else:
+                    st.error(f"❌ {test_res.get('message')}")
+
+        last_v = st.session_state.get("last_registered_verification")
+        if last_v:
+            render_html(
+                f"""
+                <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 10px; padding: 12px 16px; margin: 12px 0;">
+                    <div style="font-weight: 800; color: #15803D; font-size: 0.90rem; display: flex; align-items: center; gap: 8px;">
+                        {get_svg_icon("check", size=16, color="#15803D")} Verified Account in Active Database:
+                    </div>
+                    <div style="font-size: 0.84rem; color: #1E293B; margin-top: 4px; line-height: 1.5;">
+                        <strong>User ID:</strong> {last_v.get('id')} &bull;
+                        <strong>Name:</strong> {last_v.get('name')} &bull;
+                        <strong>Email:</strong> {last_v.get('email')} &bull;
+                        <strong>Role:</strong> {last_v.get('role')} &bull;
+                        <strong>Status:</strong> {last_v.get('status')}
+                    </div>
+                </div>
+                """
+            )
+
+        recent = diag.get("recent_users", [])
+        if recent:
+            render_html(
+                f"""
+                <div style="font-size: 0.92rem; font-weight: 800; color: #0F172A; margin: 14px 0 8px 0; display: flex; align-items: center; gap: 8px;">
+                    {get_svg_icon("employees", size=16, color="#2563EB")} Recent Users in Active Database:
+                </div>
+                """
+            )
+            df_recent = pd.DataFrame(recent)
+            cols_show = [c for c in ["id", "name", "email", "role", "account_type", "status", "date_joined"] if c in df_recent.columns]
+            st.dataframe(
+                df_recent[cols_show],
+                width="stretch",
+                hide_index=True,
+                column_config={
+                    "id": st.column_config.NumberColumn("ID", width="small"),
+                    "name": st.column_config.TextColumn("User Name", width="medium"),
+                    "email": st.column_config.TextColumn("Email Address", width="medium"),
+                    "role": st.column_config.TextColumn("Role", width="small"),
+                    "account_type": st.column_config.TextColumn("Account Type", width="small"),
+                    "status": st.column_config.TextColumn("Status", width="small"),
+                    "date_joined": st.column_config.TextColumn("Joined Date", width="small")
+                }
+            )
+
+def render_welcome_email_dispatch_panel():
+    """Renders the Welcome Email Dispatch & SMTP Delivery panel matching and upgrading Screenshot 2."""
+    email_cfg = get_email_config()
+    is_smtp_live = bool(email_cfg.get("smtp_host") and email_cfg.get("smtp_user"))
+    smtp_status_color = "#10B981" if is_smtp_live else "#F59E0B"
+    smtp_status_badge = "LIVE NETWORK DELIVERY" if is_smtp_live else "LOCAL LOGGING / SAFE MODE"
+
+    render_html(
+        f"""
+        <div style="background: #FFFFFF; border: 1.5px solid #DCE5F1; border-radius: 16px; padding: 24px; margin-top: 1.5rem; box-shadow: 0 4px 16px rgba(30, 64, 175, 0.04);">
+            <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    {get_svg_icon("mail", size=20, color="#2563EB")}
+                    <span>Welcome Email Dispatch &amp; SMTP Delivery</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 800; padding: 4px 12px; border-radius: 9999px; background: {smtp_status_color}18; color: {smtp_status_color}; border: 1px solid {smtp_status_color}55;">
+                        <span style="width: 7px; height: 7px; border-radius: 50%; background: {smtp_status_color};"></span>
+                        {smtp_status_badge}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Server Header Banner -->
+            <div style="background: #F8FAFC; border: 1px solid #DCE5F1; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background: {smtp_status_color};"></span>
+                <span style="font-weight: 700; font-size: 0.90rem; color: #0F172A;">SMTP Server: <code>{email_cfg.get('smtp_host', 'Not configured')}</code></span>
+            </div>
+
+            <!-- 3 Info Boxes -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 14px;">
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Sender Address</div>
+                    <div style="font-size: 0.90rem; font-weight: 700; color: #0F172A; margin-top: 3px;">{email_cfg.get('smtp_from', 'Talent Growth')}</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">SMTP Port &amp; TLS</div>
+                    <div style="font-size: 0.90rem; font-weight: 700; color: #0F172A; margin-top: 3px;">Port {email_cfg.get('smtp_port', 587)} &bull; {'TLS Enabled' if email_cfg.get('smtp_use_tls') else 'TLS Disabled'}</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Active Auth User</div>
+                    <div style="font-size: 0.90rem; font-weight: 700; color: #2563EB; margin-top: 3px; word-break: break-all;">{email_cfg.get('smtp_user', 'Local / Unauthenticated')}</div>
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    with st.expander("Send Test Welcome Email", expanded=False):
+        c_test_mail, c_test_name = st.columns([1.5, 1])
+        t_email = c_test_mail.text_input("Recipient Email Address", placeholder="test.user@company.com", key="test_smtp_recipient")
+        t_name = c_test_name.text_input("Recipient Name", placeholder="Test Employee", key="test_smtp_name")
+        if st.button("Dispatch Test Welcome Email", type="primary", use_container_width=True, key="btn_dispatch_test_email"):
+            if not t_email.strip() or "@" not in t_email:
+                st.error("Please provide a valid recipient email address.")
+            else:
+                ok_mail, msg_mail = send_test_email(t_email.strip(), t_name.strip() or "Test Recipient")
+                if ok_mail:
+                    st.success(f"Dispatched: {msg_mail}")
+                    st.rerun()
+                else:
+                    st.warning(f"Notice: {msg_mail}")
+
+    render_html(
+        f"""
+        <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; margin: 1.25rem 0 0.75rem 0; display: flex; align-items: center; gap: 8px;">
+            {get_svg_icon("mail", size=18, color="#2563EB")} Recent Account Creation Emails
+        </div>
+        """
+    )
+    email_logs = get_recent_email_logs(limit=25)
+    if email_logs:
+        df_emails = pd.DataFrame(email_logs)
+        cols_present = [c for c in ["to_email", "user_name", "role", "subject", "status", "created_at"] if c in df_emails.columns]
+        df_emails_sub = df_emails[cols_present].rename(columns={
+            "to_email": "Recipient",
+            "user_name": "Name",
+            "role": "Role",
+            "subject": "Subject",
+            "status": "Status",
+            "created_at": "Timestamp"
+        })
+        st.dataframe(df_emails_sub, width="stretch", hide_index=True)
+    else:
+        st.info("No account creation emails logged yet.")
+
+
+# ------------------------------------------------------------------------------
+# 2. DEDICATED SIGN IN PAGE (WITH TOP-LEFT BACK BUTTON)
+# ------------------------------------------------------------------------------
+def login_page():
+    # Scoped modern Sign-In UI/UX stylesheet
+    render_html(
+        """
+        <style>
+        /* Modern Sign-In Page Surface & Elevation */
+        [data-testid="stAppViewContainer"] {
+            background: radial-gradient(circle at 12% 10%, rgba(37, 99, 235, 0.06) 0%, transparent 42%),
+                        radial-gradient(circle at 88% 85%, rgba(6, 182, 212, 0.06) 0%, transparent 42%),
+                        #F8FAFC !important;
+        }
+        .signin-hero-panel {
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 85% 15%, rgba(56, 189, 248, 0.24) 0%, transparent 42%),
+                radial-gradient(circle at 15% 88%, rgba(99, 102, 241, 0.30) 0%, transparent 46%),
+                linear-gradient(155deg, #070B19 0%, #0F172A 48%, #1E1B4B 100%);
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            padding: 2.5rem 2.35rem;
+            color: #F8FAFC;
+            box-shadow: 0 24px 60px -15px rgba(15, 23, 42, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 580px;
+        }
+        .signin-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(56, 189, 248, 0.14);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: #7DD3FC;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin-bottom: 1.4rem;
+        }
+        .signin-hero-title {
+            font-size: 2.35rem;
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -0.03em;
+            margin: 0 0 0.9rem 0;
+            color: #FFFFFF;
+        }
+        .signin-hero-gradient {
+            background: linear-gradient(90deg, #38BDF8 0%, #818CF8 55%, #C084FC 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .signin-feature-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 13px;
+            padding: 13px 15px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 12px;
+        }
+        .signin-feature-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .signin-card-accent {
+            height: 4px;
+            width: 100%;
+            background: linear-gradient(90deg, #2563EB 0%, #6366F1 55%, #06B6D4 100%);
+            border-radius: 999px;
+            margin-bottom: 1.35rem;
+        }
+        .signin-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #94A3B8;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin: 1.15rem 0 0.85rem 0;
+        }
+        .signin-divider::before,
+        .signin-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #E2E8F0;
+        }
+        .signin-divider::before { margin-right: 12px; }
+        .signin-divider::after { margin-left: 12px; }
+        /* Refine right-hand auth container card */
+        [data-testid="stVerticalBlockBorderWrapper"] {
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 22px !important;
+            padding: 0.65rem 0.85rem !important;
+            box-shadow: 0 20px 50px -18px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04) !important;
+        }
+        [data-testid="stForm"] {
+            border: none !important;
+            padding: 0 !important;
+            background: transparent !important;
+        }
+        </style>
+        """
+    )
+
+    # Modern Floating Top Navigation Bar
+    col_brand, col_spacer, col_nav_home, col_nav_reg = st.columns([4.2, 2.2, 1.8, 1.8], gap="small")
+    with col_brand:
+        render_html(
+            f"""
+            <div style="display: flex; align-items: center; gap: 11px; padding-top: 4px;">
+                <div style="width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);">
+                    {get_svg_icon("brand_logo", size=22, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.22rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">Talent Growth</span>
+                        <span style="font-size: 0.66rem; font-weight: 700; color: #2563EB; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.05em;">Enterprise</span>
+                    </div>
+                </div>
+            </div>
+            """
+        )
+    with col_nav_home:
+        if st.button("Back to Home", icon=":material/arrow_back:", key="btn_login_back_home", use_container_width=True, type="secondary"):
+            st.session_state.auth_view = "landing"
+            st.rerun()
+    with col_nav_reg:
+        if st.button("Create Account", icon=":material/person_add:", key="btn_login_top_register", use_container_width=True, type="secondary"):
+            st.session_state.auth_view = "register"
+            st.rerun()
+
+    st.markdown("<div style='height: 1.15rem;'></div>", unsafe_allow_html=True)
+
+    # Asymmetric Executive Two-Column Layout
+    col_left, col_right = st.columns([1.12, 1.0], gap="large")
+
+    with col_left:
+        render_html(
+            f"""
+            <div class="signin-hero-panel">
+                <div>
+                    <div class="signin-status-pill">
+                        {get_svg_icon("sparkles", size=13, color="#38BDF8")}
+                        <span>Enterprise Talent Platform</span>
+                    </div>
+                    <h1 class="signin-hero-title">
+                        Accelerate Careers.<br/>
+                        <span class="signin-hero-gradient">Scale Enterprise Talent.</span>
+                    </h1>
+                    <p style="color: #CBD5E1; font-size: 0.94rem; line-height: 1.65; margin: 0 0 1.85rem 0;">
+                        Unified workforce intelligence combining real-time skill-gap radar, standardized technical assessments, ATS resume studio, and executive career reporting.
+                    </p>
+
+                    <div class="signin-feature-card">
+                        <div class="signin-feature-icon" style="background: rgba(56, 189, 248, 0.16); border: 1px solid rgba(56, 189, 248, 0.32);">
+                            {get_svg_icon("target", size=17, color="#38BDF8")}
+                        </div>
+                        <div>
+                            <div style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Role-Specific Dashboards &amp; Skill Radars</div>
+                            <div style="font-size: 0.79rem; color: #94A3B8; margin-top: 2px;">Automatic workspace routing for HR Administrators, Employees, and Individuals.</div>
+                        </div>
+                    </div>
+
+                    <div class="signin-feature-card">
+                        <div class="signin-feature-icon" style="background: rgba(129, 140, 248, 0.18); border: 1px solid rgba(129, 140, 248, 0.34);">
+                            {get_svg_icon("reports", size=17, color="#A5B4FC")}
+                        </div>
+                        <div>
+                            <div style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Executive Multi-Page PDF Dossiers</div>
+                            <div style="font-size: 0.79rem; color: #94A3B8; margin-top: 2px;">Generate branded career intelligence, promotion readiness, and competency reports.</div>
+                        </div>
+                    </div>
+
+                    <div class="signin-feature-card" style="margin-bottom: 0;">
+                        <div class="signin-feature-icon" style="background: rgba(16, 185, 129, 0.16); border: 1px solid rgba(52, 211, 153, 0.32);">
+                            {get_svg_icon("shield", size=17, color="#34D399")}
+                        </div>
+                        <div>
+                            <div style="font-size: 0.88rem; font-weight: 700; color: #FFFFFF;">Encrypted Credentials &amp; Tenant Isolation</div>
+                            <div style="font-size: 0.79rem; color: #94A3B8; margin-top: 2px;">PBKDF2-HMAC-SHA256 salted hashing with strict organization-scoped RBAC.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="padding-top: 1.25rem; margin-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.10); display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: #94A3B8;">
+                    <span>PBKDF2-SHA256 Protected</span>
+                    <span>SOC2 &amp; GDPR Aligned</span>
+                </div>
+            </div>
+            """
+        )
+
+    with col_right:
+        with st.container(border=True):
+            render_html('<div class="signin-card-accent"></div>')
+
+            if "reg_success_msg" in st.session_state:
+                st.success(st.session_state.pop("reg_success_msg"), icon=":material/check_circle:")
+
+            render_html(
+                f"""
+                <div style="margin-bottom: 1.35rem;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 0.6rem;">
+                        <div style="width: 44px; height: 44px; border-radius: 13px; background: linear-gradient(135deg, #EFF6FF 0%, #EEF2FF 100%); border: 1px solid #C7D2FE; display: inline-flex; align-items: center; justify-content: center;">
+                            {get_svg_icon("lock", size=20, color="#4F46E5")}
+                        </div>
+                        <div>
+                            <h2 style="font-size: 1.55rem; font-weight: 800; color: #0F172A; margin: 0; letter-spacing: -0.025em; line-height: 1.15;">Welcome back</h2>
+                            <p style="color: #64748B; font-size: 0.86rem; margin: 2px 0 0 0;">Sign in to continue to your Talent Growth workspace</p>
+                        </div>
+                    </div>
+                </div>
+                """
+            )
+
+            if "prefill_email" in st.session_state:
+                st.session_state["login_email_input"] = st.session_state.pop("prefill_email")
+
+            with st.form("dedicated_login_form", border=False):
+                email = st.text_input(
+                    "Email Address",
+                    placeholder="name@company.com",
+                    key="login_email_input"
+                )
+                password = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Enter your password",
+                    key="login_pwd_input"
+                )
+
+                c_rem, c_forgot = st.columns([1.1, 1])
+                with c_rem:
+                    remember_me = st.checkbox("Keep me signed in", value=True)
+                with c_forgot:
+                    with st.popover("Forgot password?", use_container_width=True):
+                        st.markdown(
+                            """
+                            **Password Reset Instructions**
+
+                            Contact your Organization HR Administrator or System Support at `support@talentgrowth.com` to reset your credentials.
+                            """
+                        )
+
+                st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+                submit_login = st.form_submit_button(
+                    "Sign In to Workspace",
+                    icon=":material/login:",
+                    type="primary",
+                    use_container_width=True
+                )
+
+            if submit_login:
+                if not (email or "").strip() or not password:
+                    st.error("Please enter both your email address and password.", icon=":material/error:")
+                else:
+                    user_data = login(email.strip(), password)
+                    if user_data:
+                        st.session_state.user = user_data
+                        st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
+                        st.success(f"Welcome back, {user_data['name']}!", icon=":material/check_circle:")
+                        st.rerun()
+                    else:
+                        st.error("Invalid email address or password. Please check your credentials and try again.", icon=":material/gpp_bad:")
+
+            render_html('<div class="signin-divider">Or launch instant demo</div>')
+
+            col_chip1, col_chip2, col_chip3 = st.columns(3, gap="small")
+            with col_chip1:
+                if st.button("HR Admin", icon=":material/admin_panel_settings:", key="login_chip_admin", use_container_width=True, type="secondary"):
+                    u = login("admin@talentgrowth.com", "Admin@12345") or login("admin@talentsphere.com", "Admin@12345")
+                    if u:
+                        st.session_state.user = u
+                        st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
+                        st.rerun()
+            with col_chip2:
+                if st.button("Employee", icon=":material/badge:", key="login_chip_alex", use_container_width=True, type="secondary"):
+                    u = login("alex@company.com", "Password123")
+                    if u:
+                        st.session_state.user = u
+                        st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
+                        st.rerun()
+            with col_chip3:
+                if st.button("Individual", icon=":material/person:", key="login_chip_ravi", use_container_width=True, type="secondary"):
+                    u = login("ravi@company.com", "Password123")
+                    if u:
+                        u["account_type"] = "Individual"
+                        u["org_id"] = None
+                        st.session_state.user = u
+                        st.session_state.current_page = "Dashboard"
+                        st.session_state.auth_view = "landing"
+                        st.rerun()
+
+            render_html(
+                """
+                <div style="border-top: 1px solid #F1F5F9; margin: 1.25rem 0 0.9rem 0;"></div>
+                <div style="text-align: center; font-size: 0.85rem; color: #64748B; margin-bottom: 0.55rem;">
+                    New to Talent Growth? Create an account stored securely in your database.
+                </div>
+                """
+            )
+            if st.button("Create a New Account", icon=":material/person_add:", key="btn_login_to_register", use_container_width=True, type="secondary"):
+                st.session_state.auth_view = "register"
+                st.rerun()
+
+
+# ------------------------------------------------------------------------------
+# 3. DEDICATED CREATE ACCOUNT PAGE (WITH TOP-LEFT BACK BUTTON)
+# ------------------------------------------------------------------------------
+def register_page():
+    # Top Bar: Top-left "Back to Home" button & Logo on right
+    col_back, col_spacer, col_logo = st.columns([2.5, 4.5, 3], gap="small")
+    with col_back:
+        if st.button("Back to Home", key="btn_reg_back_home", use_container_width=True, type="secondary"):
+            st.session_state.auth_view = "landing"
+            st.rerun()
+    with col_logo:
+        render_html(
+            f"""
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 4px;">
+                {get_svg_icon("brand_logo", size=28)}
+                <span style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Talent Growth</span>
+            </div>
+            """
+        )
+
+    st.markdown("<div style='border-bottom: 1px solid #E2E8F0; margin: 0.75rem 0 1.75rem 0;'></div>", unsafe_allow_html=True)
+
+    col_l, col_center, col_r = st.columns([1, 1.4, 1])
+    with col_center:
+        with st.container(border=True):
+            render_html(
+                f"""
+                <div style="text-align: center; margin-bottom: 1.25rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: #ECFDF5; border: 1px solid #A7F3D0; display: inline-flex; align-items: center; justify-content: center; color: #10B981; margin-bottom: 0.75rem;">
+                        {get_svg_icon("user_plus", size=22, color="#10B981")}
+                    </div>
+                    <h2 style="font-size: 1.65rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">Create Your Account</h2>
+                    <p style="color: #64748B; font-size: 0.9rem; margin: 0;">Register to access talent assessments & growth tools.</p>
+                </div>
+                """
+            )
+
+            name = st.text_input("Full Legal Name *", placeholder="e.g. Jordan Miller", key="reg_name")
+            c_em1, c_em2 = st.columns([1.4, 1])
+            new_email = c_em1.text_input("Email Address *", placeholder="jordan.miller@example.com", key="reg_email")
+            phone_val = c_em2.text_input("Phone Number (Optional)", placeholder="+91 98765 43210", key="reg_phone")
+
+            c_pw1, c_pw2 = st.columns(2)
+            new_password = c_pw1.text_input("Password (min 8 characters) *", type="password", placeholder="Set a secure password", key="reg_password")
+            confirm_password = c_pw2.text_input("Confirm Password *", type="password", placeholder="Re-enter your password", key="reg_confirm_password")
+
+            existing_orgs = list_organizations()
+            org_options = ["-- Choose Organization Membership --"] + [f"{o['name']} ({o['org_id']})" for o in existing_orgs] + [
+                "Register New Organization",
+                "Individual Registration"
+            ]
+
+            # Organization Membership Selectbox matching user screenshot
+            st.markdown("<div style='font-size: 0.85rem; font-weight: 700; color: #1E293B; margin-top: 10px; margin-bottom: 4px;'>Organization Membership *</div>", unsafe_allow_html=True)
+            sel_org_choice = st.selectbox(
+                "Organization Membership *",
+                org_options,
+                index=0,
+                key="reg_org_membership",
+                label_visibility="collapsed"
+            )
+
+            is_new_org = (sel_org_choice == "Register New Organization")
+            is_individual = (sel_org_choice == "Individual Registration")
+
+            # Option 2: When "Register New Organization" is chosen: take HTML input field of ONLY Organization Name
+            new_org_name_val = ""
+            if is_new_org:
+                new_org_name_val = st.text_input(
+                    "Organization Name *",
+                    placeholder="Enter your organization name",
+                    key="reg_new_org_name"
+                )
+
+            # Option 3: When "Individual Registration" is chosen: no organization name, directly employee/personal details only
+            # For organization members: prompt for Account Type (Employee or HR Admin) and optional Employee ID
+            if not is_individual:
+                c_r1, c_r2 = st.columns(2)
+                role = c_r1.selectbox(
+                    "Account Type *",
+                    ["-- Choose Account Type --", "employee", "admin"],
+                    index=2 if is_new_org else 0,
+                    format_func=lambda x: "Employee (Self-Service)" if x == "employee" else ("HR Administrator" if x == "admin" else "-- Choose Account Type --"),
+                    key="reg_role"
+                )
+                emp_code = c_r2.text_input("Employee ID (Optional - auto-assigned if empty)", placeholder="e.g. EMP208", key="reg_emp_code").strip().upper()
+            else:
+                role = "employee"
+                emp_code = ""
+
+            c_dep1, c_dep2 = st.columns(2)
+            depts_list = [
+                "-- Choose Department --",
+                "Engineering", "Product Management", "Data & Analytics",
+                "Human Resources", "Finance & Operations", "Marketing & Growth",
+                "Design", "Sales & Customer Success"
+            ]
+            dept_val = c_dep1.selectbox("Department *", depts_list, index=0, key="reg_dept")
+            title_val = c_dep2.text_input(
+                "Job Title / Designation *",
+                placeholder="e.g. Software Engineer / HRBP" if not is_individual else "e.g. Software Developer / Consultant",
+                key="reg_title"
+            )
+
+            c_sk1, c_sk2 = st.columns([2, 1])
+            skills_val = c_sk1.text_input("Primary Skills (Comma-separated) *", placeholder="e.g. Python, SQL, React", key="reg_skills")
+            exp_val = c_sk2.number_input("Years Experience", min_value=0.0, max_value=50.0, value=0.0, step=0.5, key="reg_exp")
+
+            terms = st.checkbox("I agree to the Enterprise Talent Governance Terms", value=True, key="reg_terms")
+            if is_individual:
+                btn_label = "Create Individual Account"
+            elif is_new_org:
+                btn_label = "Create Account & Register Organization"
+            else:
+                btn_label = "Create Account & Join Organization"
+            submit_reg = st.button(btn_label, type="primary", use_container_width=True, key="btn_submit_reg")
+
+            if submit_reg:
+                clean_name = (name or "").strip()
+                clean_email = (new_email or "").strip().lower()
+                clean_phone = (phone_val or "").strip()
+                clean_pwd = new_password or ""
+                clean_confirm_pwd = confirm_password or ""
+                clean_org_name = (new_org_name_val or "").strip() if is_new_org else ""
+                clean_title = (title_val or "").strip()
+                clean_skills = (skills_val or "").strip()
+
+                if not clean_name:
+                    st.error("Full Legal Name is required.")
+                elif not clean_email or "@" not in clean_email or "." not in clean_email:
+                    st.error("A valid email address is required.")
+                elif len(clean_pwd) < 8:
+                    st.error("Password must be at least 8 characters long.")
+                elif clean_pwd != clean_confirm_pwd:
+                    st.error("Passwords do not match. Please re-enter the same password in both fields.")
+                elif sel_org_choice == "-- Choose Organization Membership --":
+                    st.error("Please choose an Organization Membership option.")
+                elif is_new_org and not clean_org_name:
+                    st.error("Organization Name is required when registering a new organization.")
+                elif is_new_org and get_organization_by_name(clean_org_name):
+                    existing = get_organization_by_name(clean_org_name)
+                    st.error(f"An organization named '{existing['name']}' already exists ({existing['org_id']}). Please select it from the dropdown or choose a different name.")
+                elif not is_individual and role == "-- Choose Account Type --":
+                    st.error("Please select an Account Type (Employee or HR Administrator).")
+                elif dept_val == "-- Choose Department --":
+                    st.error("Please select your Department.")
+                elif not clean_title:
+                    st.error("Job Title / Designation is required.")
+                elif not clean_skills:
+                    st.error("Primary Skills are required. Please enter at least one skill (e.g. Python, SQL, React).")
+                elif not terms:
+                    st.error("Please agree to the enterprise governance terms to proceed.")
+                elif is_individual:
+                    # Individual registration: no organization name, directly user details
+                    ok, msg = register_individual(
+                        name=clean_name,
+                        email=clean_email,
+                        password=clean_pwd,
+                        confirm_password=clean_confirm_pwd,
+                        phone=clean_phone,
+                        primary_skills=clean_skills,
+                        years_experience=exp_val,
+                        department=dept_val,
+                        job_title=clean_title
+                    )
+                    if ok:
+                        verified = verify_user_in_db(clean_email)
+                        if not verified:
+                            st.error(f"Registration verification failed: Account was created but record could not be confirmed in the database for '{clean_email}'.")
+                        else:
+                            db_diag = get_database_diagnostics()
+                            db_engine = db_diag.get('engine', 'Database')
+                            db_fname = db_diag.get('database_name') or db_diag.get('filename', 'talent_growth')
+                            if is_mysql_expected() and db_engine != "MySQL":
+                                st.error(f"Configuration warning: Expected MySQL database persistence, but active engine reported {db_engine}.")
+                            else:
+                                st.session_state["last_registered_verification"] = verified
+                                emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
+                                st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname})! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
+                                st.session_state["prefill_email"] = clean_email
+                                st.session_state.user = None
+                                st.session_state.auth_view = "login"
+                                st.session_state.current_page = "Dashboard"
+                                st.rerun()
+                    else:
+                        st.error(msg)
+                else:
+                    # Organization registration (Join Existing or Register New)
+                    # When an employee registers with an organization, add the employee into the HR dashboard directly!
+                    if is_new_org:
+                        chosen_org_id = None
+                        chosen_org_name = clean_org_name
+                    else:
+                        for o in existing_orgs:
+                            if f"{o['name']} ({o['org_id']})" == sel_org_choice:
+                                chosen_org_id = o["org_id"]
+                                chosen_org_name = o["name"]
+                                break
+                        else:
+                            chosen_org_id = "ORG-TALENT-01"
+                            chosen_org_name = "Talent Growth Technologies"
+
+                    ok, msg = register(
+                        name=clean_name,
+                        email=clean_email,
+                        password=clean_pwd,
+                        role=role,
+                        employee_id=emp_code if emp_code else None,
+                        org_id=chosen_org_id,
+                        org_name=chosen_org_name,
+                        department=dept_val,
+                        job_title=clean_title,
+                        primary_skills=clean_skills,
+                        years_experience=exp_val,
+                        contact_number=clean_phone,
+                        is_new_org=is_new_org,
+                        hr_verification_code="HR2026" if role == "admin" else None,
+                        require_hr_approval=False
+                    )
+                    if ok:
+                        verified = verify_user_in_db(clean_email)
+                        if not verified:
+                            st.error(f"Registration verification failed: Account was created but record could not be confirmed in the database for '{clean_email}'.")
+                        else:
+                            db_diag = get_database_diagnostics()
+                            db_engine = db_diag.get('engine', 'Database')
+                            db_fname = db_diag.get('database_name') or db_diag.get('filename', 'talent_growth')
+                            if is_mysql_expected() and db_engine != "MySQL":
+                                st.error(f"Configuration warning: Expected MySQL database persistence, but active engine reported {db_engine}.")
+                            else:
+                                st.session_state["last_registered_verification"] = verified
+                                org_role_desc = "organization administrator" if role == "admin" else "employee"
+                                emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
+                                st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname}) for {clean_name} as {org_role_desc}! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
+                                st.session_state["prefill_email"] = clean_email
+                                st.session_state.user = None
+                                st.session_state.auth_view = "login"
+                                st.session_state.current_page = "Dashboard"
+                                st.rerun()
+                    else:
+                        st.error(msg)
+
+            render_html("<div style='border-top: 1px solid #E2E8F0; margin: 1.25rem 0 0.85rem 0;'></div>")
+            render_html("<div style='text-align: center; font-size: 0.86rem; color: #64748B; margin-bottom: 0.5rem;'>Already have an account?</div>")
+            if st.button("Sign In to Existing Account", key="btn_reg_to_login", use_container_width=True, type="secondary"):
+                st.session_state.auth_view = "login"
+                st.rerun()
+
+
+# ------------------------------------------------------------------------------
+# ROUTING FOR UNAUTHENTICATED USERS
+# ------------------------------------------------------------------------------
+if not st.session_state.user:
+    current_auth_view = st.session_state.get("auth_view", "landing")
+    if current_auth_view == "login":
+        login_page()
+    elif current_auth_view == "register":
+        register_page()
+    else:
+        landing_webpage()
+    st.stop()
+
+# ------------------------------------------------------------------------------
+# AUTHENTICATED CONTEXT
+# ------------------------------------------------------------------------------
+user = st.session_state.get("user") or {}
+uid = user.get("id", 1)
+is_individual = (user.get("account_type") == "Individual" or user.get("org_id") is None or user.get("role") == "individual")
+is_pending_member = (not is_individual and user.get("role") != "admin" and user.get("status") in ("Pending Approval", "Pending"))
+is_admin = (user.get("role") == "admin" and user.get("status") != "Pending Approval" and not is_individual)
+is_pending_hr = (user.get("role") == "admin" and user.get("status") == "Pending Approval" and not is_individual)
+emp_id = user.get("employee_id") or f"EMP{uid:03d}"
+org_id = user.get("org_id") or ("" if is_individual else "ORG-TALENT-01")
+org_name = user.get("org_name") or ("" if is_individual else "Talent Growth Technologies")
+profile = get_profile(uid)
+skills = list_skills(uid)
+
+# Initials for avatar
+name_parts = (user.get("name") or "User").strip().split()
+initials = (name_parts[0][0] + (name_parts[-1][0] if len(name_parts) > 1 else "")).upper()
+
+def navigate_to(target_page: str):
+    alias_map = {
+        "Skills": "Skills & Assessment",
+        "My Skills": "Skills & Assessment",
+        "Skills & Competency Matrix": "Skills & Assessment",
+        "Skills & Assessments": "Skills & Assessment",
+        "Skill Assessments": "Skills & Assessment",
+        "Career Goals": "Career Goals" if is_admin else "Growth Progress",
+        "My Progress": "Growth Progress",
+        "Career Goals Progress": "Growth Progress",
+        "Career Direction & Gaps": "Career Direction",
+        "Career Direction": "Career Direction",
+        "Skill Gap Analysis": "Role Match & Gaps",
+        "Role Match & Competency Gaps": "Role Match & Gaps",
+        "ATS Resume Studio": "Resume Studio",
+        "Resume Studio": "Resume Studio",
+        "Reports": "Reports" if is_admin else "Career Report",
+        "Career Growth Report": "Career Report",
+        "AI Career Coach": "Career Coach",
+        "Career Coach": "Career Coach",
+        "Join an Organization": "Join an Organization"
+    }
+    target = alias_map.get(target_page, target_page)
+    st.session_state.page_to_navigate = target
+    st.session_state.current_page = target
+    st.rerun()
+
+# ------------------------------------------------------------------------------
+# SIDEBAR STATE MANAGEMENT & ROLE-BASED ACCESS CONTROL
+# ------------------------------------------------------------------------------
+def toggle_sidebar():
+    st.session_state.trigger_sidebar_collapse = True
+
+# Enforce backend role permissions (RBAC)
+if is_individual and st.session_state.get("current_page") in ["Employees", "Performance", "Reports"]:
+    st.session_state.current_page = "Dashboard"
+    st.session_state.nav_radio = "Dashboard"
+elif not is_admin and not is_individual and st.session_state.get("current_page") in ["Employees", "Performance", "Reports", "Career Goals"]:
+    st.session_state.current_page = "Dashboard"
+    st.session_state.nav_radio = "Dashboard"
+
+# Role-specific navigation pages list
+if is_individual:
+    active_pages = [
+        "Dashboard",
+        "My Profile",
+        "Resume Studio",
+        "Skills & Assessment",
+        "Career Direction",
+        "Role Match & Gaps",
+        "Career Coach",
+        "Growth Progress",
+        "Career Report",
+        "Settings",
+        "Join an Organization"
+    ]
+elif is_admin:
+    active_pages = [
+        "Dashboard",
+        "Employees",
+        "Performance",
+        "Skills & Assessment",
+        "Career Goals",
+        "Reports",
+        "Resume Studio",
+        "Settings"
+    ]
+else:
+    active_pages = [
+        "Dashboard",
+        "My Profile",
+        "Resume Studio",
+        "Skills & Assessment",
+        "Career Direction",
+        "Role Match & Gaps",
+        "Career Coach",
+        "Growth Progress",
+        "Career Report",
+        "Settings"
+    ]
+
+if "page_to_navigate" in st.session_state:
+    target_nav = st.session_state.pop("page_to_navigate")
+    if target_nav in active_pages:
+        st.session_state.current_page = target_nav
+        st.session_state.nav_radio = target_nav
+
+if "current_page" not in st.session_state or st.session_state.current_page not in active_pages:
+    st.session_state.current_page = "Dashboard"
+
+if "nav_radio" not in st.session_state or st.session_state.nav_radio not in active_pages:
+    st.session_state.nav_radio = st.session_state.current_page
+elif st.session_state.get("current_page") and st.session_state.nav_radio != st.session_state.current_page:
+    st.session_state.nav_radio = st.session_state.current_page
+
+def on_nav_change():
+    st.session_state.current_page = st.session_state.nav_radio
+
+# ------------------------------------------------------------------------------
+# DYNAMIC SIDEBAR CSS (DARK NAVY THEME MATCHING USER MOCKUP & SMOOTH TOGGLE)
+# ------------------------------------------------------------------------------
+sidebar_dynamic_css = """
+<style>
+/* Dark Navy Enterprise Sidebar matching Image 1 */
+html body [data-testid="stAppViewContainer"] section[data-testid="stSidebar"],
+html body section[data-testid="stSidebar"],
+html body [data-testid="stSidebar"],
+section[data-testid="stSidebar"] {
+    background-color: #0D1527 !important;
+    background: #0D1527 !important;
+    border-right: 1px solid #1E293B !important;
+    color: #FFFFFF !important;
+    box-sizing: border-box !important;
+}
+
+/* Ensure Dashboard Content Occupies Full Available Space Fluidly */
+[data-testid="stMain"] {
+    min-width: 0 !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+div[data-testid="stSidebarContent"],
+div[data-testid="stSidebarUserContent"] {
+    background-color: #0D1527 !important;
+    background: #0D1527 !important;
+    color: #FFFFFF !important;
+    box-sizing: border-box !important;
+    min-width: 260px !important;
+}
+
+/* Ensure Block Container Fits Viewport Perfectly Without Overflow */
+.main .block-container,
+[data-testid="stMain"] [data-testid="block-container"],
+[data-testid="stMain"] [data-testid="stMainBlockContainer"] {
+    padding-top: 1.2rem !important;
+    padding-bottom: 3.5rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}
+
+/* Prevent Any Global Horizontal Scroll on Canvas */
+html, body, .stApp, [data-testid="stAppViewContainer"] {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+}
+
+/* Sidebar Header */
+div[data-testid="stSidebarHeader"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 10px 14px 6px 14px !important;
+    background: transparent !important;
+    min-height: 44px !important;
+}
+
+/* Ensure collapse button container is always visible */
+div[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapseButton"] {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Streamlit Native Collapse Button (Image 2 style: White rounded square button) */
+[data-testid="stSidebarCollapseButton"] button,
+button[data-testid="stSidebarCollapseButton"] {
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    padding: 0 !important;
+}
+[data-testid="stSidebarCollapseButton"] button:hover,
+button[data-testid="stSidebarCollapseButton"]:hover {
+    background: #F8FAFC !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22) !important;
+}
+[data-testid="stSidebarCollapseButton"] svg,
+button[data-testid="stSidebarCollapseButton"] svg {
+    fill: #111827 !important;
+    color: #111827 !important;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Streamlit Native Expand Button (Image 2 style: White rounded square button when Collapsed) */
+[data-testid="stExpandSidebarButton"],
+[data-testid="stExpandSidebarButton"] button,
+button[data-testid="stExpandSidebarButton"],
+div[data-testid="collapsedControl"] button,
+div[data-testid="stSidebarCollapsedControl"] button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+}
+
+[data-testid="stExpandSidebarButton"]:hover,
+[data-testid="stExpandSidebarButton"] button:hover,
+button[data-testid="stExpandSidebarButton"]:hover,
+div[data-testid="collapsedControl"] button:hover,
+div[data-testid="stSidebarCollapsedControl"] button:hover {
+    background: #F8FAFC !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-testid="stExpandSidebarButton"] svg,
+button[data-testid="stExpandSidebarButton"] svg,
+div[data-testid="collapsedControl"] button svg,
+div[data-testid="stSidebarCollapsedControl"] button svg {
+    fill: #111827 !important;
+    color: #111827 !important;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Header & Toolbar Visible to host the Sidebar Expand Toggle */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+    height: 48px !important;
+    overflow: visible !important;
+    z-index: 99999 !important;
+    display: flex !important;
+    visibility: visible !important;
+}
+
+div[data-testid="stToolbar"] {
+    display: flex !important;
+    visibility: visible !important;
+    background: transparent !important;
+    overflow: visible !important;
+}
+
+/* White Hamburger Button inside Sidebar Header matching Image 1 */
+div.sidebar-ham-btn button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #111827 !important;
+    border-radius: 8px !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    transition: all 0.18s ease !important;
+}
+div.sidebar-ham-btn button:hover {
+    background: #F8FAFC !important;
+    transform: scale(1.04) !important;
+}
+div.sidebar-ham-btn button svg,
+div.sidebar-ham-btn button * {
+    color: #111827 !important;
+    fill: #111827 !important;
+}
+
+/* Radio Group Container matching Image 1 */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 1.2rem 0 !important;
+    list-style: none !important;
+}
+
+/* Ensure no pseudo-element dots anywhere in sidebar radio options */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
+    list-style: none !important;
+    list-style-type: none !important;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label::after,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label *::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label *::after,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label::after,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::before,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::after,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] *::marker {
+    content: none !important;
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    border: none !important;
+    background: transparent !important;
+}
+
+section[data-testid="stSidebar"] .e1dm8mpf5 {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+/* Radio Button Label */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 14px !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    list-style: none !important;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.15s ease !important;
+}
+
+/* Ensure the native hidden input / span is 100% hidden and takes zero layout space */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] input[type="radio"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] input,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label > span,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] label > span:first-child,
+div[data-testid="stRadio"] input[type="radio"],
+div[data-testid="stRadio"] label > span:first-child {
+    display: none !important;
+    position: absolute !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
+
+/* Flex Row Container inside Label - MUST NOT be styled as a circle */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stRadioOption"] > div {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Single Radio Circle on Sidebar Navigation Rows - EXACTLY ONE CIRCLE */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stRadioOption"] > div > div:first-child {
+    width: 13px !important;
+    height: 13px !important;
+    min-width: 13px !important;
+    min-height: 13px !important;
+    max-width: 13px !important;
+    max-height: 13px !important;
+    border-radius: 50% !important;
+    border: 2px solid #64748B !important;
+    background-color: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-right: 12px !important;
+    margin-left: 0 !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    transition: all 0.18s ease !important;
+}
+
+/* Inactive row radio circle: subtle outline */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]) > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]) [data-testid="stRadioOption"] > div > div:first-child {
+    border-color: #64748B !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Active row radio circle: solid crisp white circle with glow */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] [data-selected="true"] label > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] [data-testid="stRadioOption"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) [data-testid="stRadioOption"] > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"] [data-testid="stRadioOption"] > div > div:first-child {
+    background-color: #FFFFFF !important;
+    border-color: #FFFFFF !important;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.75) !important;
+}
+
+/* Inactive hover: brighten circle border */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]):hover > div > div:first-child,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]):hover [data-testid="stRadioOption"] > div > div:first-child {
+    border-color: #FFFFFF !important;
+}
+
+/* Hide any nested inner dot inside the radio circle so only the single outer circle is visible */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:first-child *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label [data-testid="stRadioOption"] > div > div:first-child * {
+    display: none !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+/* Ensure the text container (the sibling of the circle) never has a circle or border */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:not(:first-child),
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div > div:not(:first-child) * {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* Inactive Row Styling */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]) {
+    background: transparent !important;
+    color: #CBD5E1 !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]) * {
+    color: #CBD5E1 !important;
+    font-weight: 500 !important;
+    font-size: 0.93rem !important;
+}
+
+/* Inactive Row Hover */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]):hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    transform: translateX(2px) !important;
+}
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:not([data-checked="true"]):not(:has(input:checked)):not([data-selected="true"]):hover * {
+    color: #FFFFFF !important;
+}
+
+/* Active Row Highlight: Vibrant Blue Pill matching Image 1 */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked),
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] [data-selected="true"] label {
+    background-color: #2563EB !important;
+    background: #2563EB !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 10px rgba(37, 99, 235, 0.45) !important;
+    border: none !important;
+}
+
+/* Active Text: Guaranteed 100% visible pure crisp white across all tags */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"] *,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] [data-selected="true"] label * {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+}
+
+/* Text Container */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label > div:last-child {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+}
+
+/* Markdown Container & Paragraph */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label p {
+    display: inline-block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 0.93rem !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* White Sign Out Button at Bottom matching Image 1 */
+div.sidebar-signout-btn button,
+section[data-testid="stSidebar"] .sidebar-signout-btn button {
+    background-color: #FFFFFF !important;
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #1E293B !important;
+    border-radius: 8px !important;
+    padding: 10px 16px !important;
+    font-weight: 700 !important;
+    font-size: 0.92rem !important;
+    width: 100% !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    transition: all 0.18s ease !important;
+}
+div.sidebar-signout-btn button:hover,
+section[data-testid="stSidebar"] .sidebar-signout-btn button:hover {
+    background-color: #F8FAFC !important;
+    color: #DC2626 !important;
+    border-color: #F87171 !important;
+    transform: scale(1.02) !important;
+}
+div.sidebar-signout-btn button *,
+section[data-testid="stSidebar"] .sidebar-signout-btn button * {
+    color: #1E293B !important;
+    font-weight: 700 !important;
+}
+
+/* Sidebar Material Icons & Typography */
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label .material-symbols-rounded {
+    font-size: 20px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-right: 10px !important;
+    vertical-align: middle !important;
+    color: #94A3B8 !important;
+    transition: all 0.15s ease !important;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:hover .material-symbols-rounded {
+    color: #FFFFFF !important;
+    transform: scale(1.08) !important;
+}
+
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"] span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] [data-selected="true"] label span[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-checked="true"] .material-symbols-rounded,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) .material-symbols-rounded,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] label[data-selected="true"] .material-symbols-rounded,
+section[data-testid="stSidebar"] div[data-testid="stRadio"] div[role="radiogroup"] [data-selected="true"] label .material-symbols-rounded {
+    color: #FFFFFF !important;
+    transform: scale(1.05) !important;
+}
+</style>
+"""
+st.markdown(sidebar_dynamic_css, unsafe_allow_html=True)
+
+# ------------------------------------------------------------------------------
+# REUSABLE SIDEBAR COMPONENT (HR ADMINISTRATOR & EMPLOYEE)
+# ------------------------------------------------------------------------------
+_NAV_PAGE_ICONS = {
+    "Dashboard": ":material/dashboard:  Dashboard",
+    "Employees": ":material/badge:  Employees",
+    "Performance": ":material/insights:  Performance",
+    "Skills & Assessment": ":material/psychology:  Skills & Assessment",
+    "Career Goals": ":material/flag:  Career Goals",
+    "Reports": ":material/analytics:  Reports",
+    "Resume Studio": ":material/description:  Resume Studio",
+    "Settings": ":material/settings:  Settings",
+    "My Profile": ":material/person:  My Profile",
+    "Career Direction": ":material/explore:  Career Direction",
+    "Role Match & Gaps": ":material/compare_arrows:  Role Match & Gaps",
+    "Career Coach": ":material/smart_toy:  Career Coach",
+    "Growth Progress": ":material/trending_up:  Growth Progress",
+    "Career Report": ":material/assessment:  Career Report",
+    "Join an Organization": ":material/corporate_fare:  Join an Organization",
+}
+
+def nav_format(page_name: str) -> str:
+    """Enterprise page title formatted with crisp Material Icon."""
+    return _NAV_PAGE_ICONS.get(page_name, page_name)
+
+def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
+    """Renders the modernized Enterprise SaaS sidebar."""
+    with st.sidebar:
+        # 1. Branding Header Row: Swirl Logo + Talent Growth
+        st.markdown(
+            f"""
+            <div style="display: flex; align-items: center; justify-content: flex-start; padding: 4px 0 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    {get_svg_icon("brand_logo", size=32)}
+                    <div style="display: flex; flex-direction: column; line-height: 1.15;">
+                        <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
+                        <span style="font-size: 0.72rem; font-weight: 600; color: #38BDF8; letter-spacing: 0.02em;">Enterprise SaaS</span>
+                    </div>
+                </div>
+            </div>
+            <div style="font-size: 0.70rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.08em; padding: 14px 2px 6px 2px;">
+                Platform Navigation
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        # 2. Radio Navigation Rows with Material Icons
+        selected_nav = st.radio(
+            "Navigation",
+            active_pages,
+            format_func=nav_format,
+            key="nav_radio",
+            on_change=on_nav_change,
+            label_visibility="collapsed"
+        )
+        st.session_state.current_page = selected_nav
+
+        # 3. Spacing to user card
+        st.markdown("<div style='margin-top: 1.8rem;'></div>", unsafe_allow_html=True)
+
+        # 4. User Profile Section at Bottom
+        role_title = "Individual" if is_individual else ("HR Administrator" if is_admin else "Employee")
+        role_color = "#10B981" if is_individual else ("#6366F1" if is_admin else "#2563EB")
+        role_bg = "rgba(16, 185, 129, 0.15)" if is_individual else ("rgba(99, 102, 241, 0.15)" if is_admin else "rgba(37, 99, 235, 0.15)")
+        role_border = "rgba(16, 185, 129, 0.3)" if is_individual else ("rgba(99, 102, 241, 0.3)" if is_admin else "rgba(37, 99, 235, 0.3)")
+        user_name = user.get('name', 'User')
+        user_initial = (user_name[:1] if user_name else "U").upper()
+        org_title = user.get("org_name", "") or ("Personal Workspace" if is_individual else "Enterprise Workspace")
+
+        st.markdown(
+            f"""
+            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <div style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #FFFFFF; font-weight: 800; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1.5px solid rgba(255, 255, 255, 0.25); box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);">
+                    {user_initial}
+                </div>
+                <div style="display: flex; flex-direction: column; overflow: hidden; min-width: 0; flex: 1;">
+                    <span style="font-weight: 700; font-size: 0.86rem; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {user_name}
+                    </span>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                        <span style="font-size: 0.68rem; font-weight: 700; color: {role_color}; background: {role_bg}; border: 1px solid {role_border}; padding: 1px 6px; border-radius: 4px;">
+                            {role_title}
+                        </span>
+                        <span style="font-size: 0.70rem; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {org_title[:14]}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        # 5. Bottom Action: White Sign out button matching Image 1
+        st.markdown('<div class="sidebar-signout-btn">', unsafe_allow_html=True)
+        if st.button("Sign out", icon=":material/logout:", use_container_width=True, type="secondary", key="btn_sidebar_sign_out"):
+            st.session_state.user = None
+            st.session_state.auth_view = "landing"
+            st.session_state.current_page = "Dashboard"
+            st.session_state.page_to_navigate = "Dashboard"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        return selected_nav
+
+page = render_app_sidebar(is_admin, user, active_pages)
+
+# Sidebar open/close is handled by Streamlit's native single collapse/expand buttons
+
+def analysis_bundle():
+    result = profile_analysis(profile, skills)
+    result["match"] = role_match(profile.get("target_role", ""), skills, float(profile.get("years_experience") or 0))
+    return result
+
+# ------------------------------------------------------------------------------
+# UNIVERSAL TOP BAR WITH USER PROFILE CONTEXT
+# ------------------------------------------------------------------------------
+badge_color = "#16A34A" if is_individual else ("#4F46E5" if is_admin else "#2563EB")
+badge_bg = "#F0FDF4" if is_individual else ("#EEF2FF" if is_admin else "#EFF6FF")
+badge_border = "#BBF7D0" if is_individual else ("#C7D2FE" if is_admin else "#BFDBFE")
+role_label = "INDIVIDUAL" if is_individual else (user.get('role', 'employee').upper())
+
+if page != "Dashboard":
+    col_top_home, col_top_trail = st.columns([2.4, 7.6], gap="small")
+    with col_top_home:
+        if st.button("← Back to Home", icon=":material/home:", key=f"btn_header_back_home_{page.replace(' ', '_').lower()}", type="secondary", use_container_width=True):
+            navigate_to("Dashboard")
+    with col_top_trail:
+        render_html(
+            f"""
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 0.82rem; padding-top: 6px;">
+                <span style="color: {badge_color}; font-weight: 700; background: {badge_bg}; border: 1px solid {badge_border}; padding: 4px 11px; border-radius: 9999px;">{page}</span>
+            </div>
+            """
+        )
+    st.markdown("<div style='margin-bottom: 0.85rem;'></div>", unsafe_allow_html=True)
+
+if is_pending_member:
+    render_html(
+        f"""
+        <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 14px; padding: 1.5rem 1.8rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <div style="width: 42px; height: 42px; border-radius: 10px; background: #FEF3C7; display: flex; align-items: center; justify-content: center; color: #D97706;">
+                    {get_svg_icon("target", size=22, color="#D97706")}
+                </div>
+                <div>
+                    <h3 style="margin: 0; color: #92400E; font-size: 1.25rem; font-weight: 800;">Organization Membership Pending Approval</h3>
+                    <div style="color: #B45309; font-size: 0.88rem;">Your request to join <strong>{org_name}</strong> ({org_id}) is currently awaiting review by an HR Administrator.</div>
+                </div>
+            </div>
+            <p style="color: #78350F; font-size: 0.86rem; margin: 8px 0 12px 0;">
+                Once an administrator from {org_name} approves your request, your account will be activated and associated with the organization workforce directory.
+            </p>
+        </div>
+        """
+    )
+    c_p1, c_p2 = st.columns([2, 1])
+    with c_p1:
+        if st.button("Refresh Approval Status", key="btn_refresh_member_approval", type="primary", use_container_width=True):
+            fresh_user = get_user_by_id(uid)
+            if fresh_user and fresh_user.get("status") == "Active":
+                st.session_state.user = fresh_user
+                st.success("Your membership has been approved! Redirecting to Dashboard...")
+                st.rerun()
+            elif fresh_user and fresh_user.get("status") == "Rejected":
+                st.error("Your membership request was rejected by the organization administrator.")
+            else:
+                st.info("Your request is still pending approval. Please check back shortly.")
+    with c_p2:
+        if st.button("Sign Out", key="btn_pending_member_signout", type="secondary", use_container_width=True):
+            st.session_state.user = None
+            st.session_state.auth_view = "landing"
+            st.session_state.current_page = "Dashboard"
+            st.rerun()
+    st.stop()
+
+if is_pending_hr:
+    st.warning("Your account is registered as an HR Administrator but is currently pending verification approval. Administrative control panels will be unlocked once approved.")
+    with st.expander("Unlock HR Administrator Access with Authorization Key", expanded=True):
+        c_v1, c_v2 = st.columns([3, 1])
+        vcode = c_v1.text_input("Enter HR Authorization Key", type="password", key="inline_vkey", placeholder="e.g. HR2026")
+        if c_v2.button("Verify & Activate", key="btn_inline_verify_hr", type="primary", use_container_width=True):
+            ok_act, msg_act = verify_and_activate_hr_admin(uid, vcode)
+            if ok_act:
+                st.session_state.user["status"] = "Active"
+                st.success("Verification successful! HR Administrator access granted.")
+                st.rerun()
+            else:
+                st.error(msg_act)
+
+# ==============================================================================
+# INDIVIDUAL PROFESSIONAL EXPERIENCE ROUTER
+# ==============================================================================
+if is_individual:
+    if page in ["Dashboard", "My Career Dashboard"]:
+        render_individual_dashboard(user, profile, skills, navigate_to)
+        st.stop()
+    elif page in ["Join an Organization"]:
+        render_join_organization_card(user)
+        st.stop()
+    elif page in ["My Skills", "Skill Assessments"]:
+        page = "Skills & Assessment"
+    elif page in ["Skill Gap Analysis"]:
+        page = "Role Match & Gaps"
+    elif page in ["Career Goals", "My Progress"]:
+        page = "Growth Progress"
+
+# ==============================================================================
+# 1. ADMIN: EXECUTIVE DASHBOARD
+# ==============================================================================
+if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
+    # Professional Career Growth & Milestone Illustration (Replacing SVG shapes)
+    career_growth_b64 = get_career_growth_illustration_b64()
+
+    # Welcome Hero Banner with Career Growth Illustration
+    org_display_name = user.get("org_name") or "Talent Growth Technologies"
+    render_html(
+        f"""
+        <div style="background: linear-gradient(135deg, #0F172A 0%, #3B0764 40%, #1D4ED8 78%, #0D9488 100%); border-radius: 18px; border: 1.5px solid rgba(255, 255, 255, 0.22); padding: 1.85rem 2.4rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.45rem; box-shadow: 0 8px 30px rgba(124, 58, 237, 0.32); position: relative; overflow: hidden;">
+            <div style="z-index: 2; max-width: 62%;">
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.32); padding: 5px 14px; border-radius: 9999px; font-size: 0.76rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;">
+                    {get_svg_icon("sparkles", size=13, color="#FDE047")} Executive Talent Intelligence &bull; {org_display_name}
+                </div>
+                <div style="font-size: 2.1rem; font-weight: 900; color: #FFFFFF; line-height: 1.2; margin-bottom: 8px; letter-spacing: -0.02em;">
+                    Welcome back, {user.get('name', 'User')}
+                </div>
+                <div style="font-size: 1rem; color: rgba(255, 255, 255, 0.94); font-weight: 400; line-height: 1.55;">
+                    Live enterprise workforce telemetry: analyze competency radar gaps, track reviews, and orchestrate talent milestones.
+                </div>
+            </div>
+            <div style="z-index: 2; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end;">
+                <div style="background: #FFFFFF; border-radius: 16px; padding: 8px 16px; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); display: flex; align-items: center; justify-content: center;">
+                    <img src="data:image/png;base64,{career_growth_b64}" alt="Career Growth Trajectory" style="max-height: 115px; width: auto; object-fit: contain; display: block;" />
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    org_stats = get_org_dashboard_stats(org_id)
+    org_info = get_organization(org_id) or {}
+    employees = get_employees(org_id=org_id)
+    reviews = get_performance_reviews(org_id=org_id)
+    dept_summary = get_department_performance_summary(org_id=org_id)
+    all_goals = get_goals(org_id=org_id)
+
+    total_emp_count = org_stats["total_employees"]
+    active_emp_count = org_stats.get("active_employees", 0)
+    pending_emp_count = org_stats.get("pending_employees", 0)
+    dept_count = org_stats["total_departments"]
+    avg_perf = org_stats["avg_performance"]
+    goal_completion_pct = org_stats["goal_completion_rate"]
+    assessment_completion_pct = org_stats["assessment_completion_rate"]
+    total_assessments = org_stats["total_assessments"]
+    org_status_val = org_info.get("status", "Active")
+    org_contact = org_info.get("official_email") or user.get("email") or "Not provided"
+
+    # Dedicated Organization Information Section (Requirement 5)
+    render_html(
+        f"""
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; margin-bottom: 1.25rem; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center;">
+                        {get_svg_icon("building", size=22, color="#2563EB")}
+                    </div>
+                    <div>
+                        <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">{org_display_name}</div>
+                        <div style="font-size: 0.82rem; color: #64748B;">
+                            Organization ID: <span class="tbl-id-pill" style="font-size: 0.82rem; font-weight: 700;">{org_id}</span> &bull; Status: <span class="badge-status badge-active" style="padding: 2px 8px;">{org_status_val.upper()}</span> &bull; Official Contact: <strong>{org_contact}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <span style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 6px 12px; font-size: 0.82rem; color: #475569;">
+                        {get_svg_icon("sparkles", size=13, color="#2563EB")} Isolated Tenant Scope
+                    </span>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 18px;">
+                <div style="text-align: center; border-right: 1px solid #E2E8F0;">
+                    <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Total Employees</div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; margin-top: 2px;">{total_emp_count}</div>
+                    <div style="font-size: 0.72rem; color: #2563EB; font-weight: 600;">All Org Personnel</div>
+                </div>
+                <div style="text-align: center; border-right: 1px solid #E2E8F0;">
+                    <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Active Employees</div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: #10B981; margin-top: 2px;">{active_emp_count}</div>
+                    <div style="font-size: 0.72rem; color: #10B981; font-weight: 600;">Verified & On Duty</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 0.76rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Pending Employees</div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: #F59E0B; margin-top: 2px;">{pending_emp_count}</div>
+                    <div style="font-size: 0.72rem; color: #F59E0B; font-weight: 600;">Pending Approval</div>
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    # Row of 4 Modern Enterprise KPI Cards
+    render_html(
+        f"""
+        <div class="kpi-row-grid-vibrant">
+            <div class="kpi-card-vibrant kpi-vibrant-blue">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("employees", size=24, color="#2563EB")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Organization Workforce</div>
+                    <div class="kpi-vibrant-number">{total_emp_count}</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("building", size=13, color="#64748B")} <span style="color: #0F172A; font-weight: 600;">{org_display_name}</span> ({org_id})
+                    </div>
+                </div>
+            </div>
+            <div class="kpi-card-vibrant kpi-vibrant-green">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("building", size=24, color="#10B981")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Departments</div>
+                    <div class="kpi-vibrant-number">{dept_count}</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("trending_up", size=13, color="#10B981")} <span style="color: #059669; font-weight: 600;">Active divisions</span>
+                    </div>
+                </div>
+            </div>
+            <div class="kpi-card-vibrant kpi-vibrant-purple">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("star", size=24, color="#8B5CF6")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Avg Performance</div>
+                    <div class="kpi-vibrant-number">{avg_perf} <span style="font-size: 1.1rem; color: #94A3B8; font-weight: 600;">/ 5.0</span></div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("trending_up", size=13, color="#8B5CF6")} <span style="color: #7C3AED; font-weight: 600;">Evaluated staff</span>
+                    </div>
+                </div>
+            </div>
+            <div class="kpi-card-vibrant kpi-vibrant-orange">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("goals", size=24, color="#F59E0B")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Skills &amp; Goals Rate</div>
+                    <div class="kpi-vibrant-number">{assessment_completion_pct}%</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("check", size=13, color="#F59E0B")} <span style="color: #D97706; font-weight: 600;">{goal_completion_pct}% goals achieved</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    # Interactive Quick Actions Bar
+    col_qa1, col_qa2, col_qa3, col_qa4 = st.columns(4)
+    with col_qa1:
+        if st.button("Add Employee", icon=":material/person_add:", key="qa_bar_add_emp", use_container_width=True, type="primary"):
+            navigate_to("Employees")
+    with col_qa2:
+        if st.button("Record Review", icon=":material/rate_review:", key="qa_bar_rec_rev", use_container_width=True):
+            navigate_to("Performance")
+    with col_qa3:
+        if st.button("Add Skill", icon=":material/psychology:", key="qa_bar_add_skill", use_container_width=True):
+            navigate_to("Skills & Assessment")
+    with col_qa4:
+        if st.button("Set Career Goal", icon=":material/flag:", key="qa_bar_set_goal", use_container_width=True):
+            navigate_to("Career Goals")
+
+    st.markdown("<div style='margin-bottom: 1.15rem;'></div>", unsafe_allow_html=True)
+
+    # Middle Section: 2 Central Charts Filtered by Organization
+    col_chart1, col_chart2 = st.columns([1.15, 1], gap="medium")
+    with col_chart1:
+        with st.container(border=True):
+            c_trend_h1, c_trend_h2 = st.columns([1.8, 1])
+            with c_trend_h1:
+                render_html(
+                    f"""
+                    <div style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+                        {get_svg_icon("analytics", size=18, color="#2563EB")}
+                        <div style="font-weight: 800; font-size: 1.12rem; color: #0F172A;">Performance Rating Distribution</div>
+                    </div>
+                    """
+                )
+            with c_trend_h2:
+                render_html(
+                    f"""
+                    <div style="text-align: right; padding-top: 2px;">
+                        <span style="font-size: 0.82rem; font-weight: 600; color: #475569; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 4px 10px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                            {get_svg_icon("building", size=13, color="#64748B")} {org_id}
+                        </span>
+                    </div>
+                    """
+                )
+
+            perf_dist = org_stats["performance_distribution"]
+            tiers = list(perf_dist.keys())
+            counts = list(perf_dist.values())
+            colors = ["#10B981", "#7C3AED", "#3B82F6", "#F43F5E"]
+
+            fig_bar = go.Figure(go.Bar(
+                x=tiers,
+                y=counts,
+                marker=dict(color=colors, line=dict(color="#CBD5E1", width=1)),
+                text=counts,
+                textposition='auto',
+                hovertemplate="<b>%{x}</b><br>Reviews Count: <b>%{y}</b><extra></extra>"
+            ))
+            fig_bar = apply_saas_chart_theme(fig_bar, height=280)
+            st.plotly_chart(fig_bar, use_container_width=True)
+
+    with col_chart2:
+        with st.container(border=True):
+            st.markdown(
+                f"""
+                <div style="margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="font-weight: 800; font-size: 1.12rem; color: #0F172A;">Department Distribution</div>
+                    <span style="font-size: 0.78rem; font-weight: 600; color: #64748B;">{org_id}</span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            dept_dist = org_stats["department_distribution"]
+            if dept_dist:
+                df_dept = pd.DataFrame(dept_dist)
+                fig_donut = px.pie(
+                    df_dept, values="count", names="department", hole=0.64,
+                    color_discrete_sequence=['#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#06B6D4', '#EC4899', '#3B82F6']
+                )
+                fig_donut.update_traces(
+                    textinfo='none',
+                    hoverinfo='label+percent',
+                    hovertemplate="<b>%{label}</b><br>Personnel: <b>%{value}</b> (%{percent})<extra></extra>"
+                )
+                fig_donut = apply_saas_chart_theme(fig_donut, height=280)
+                fig_donut.update_layout(
+                    legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.02, font=dict(size=11, color="#334155")),
+                    annotations=[dict(
+                        text=f"<b>{total_emp_count}</b><br><span style='font-size:12px;color:#64748B;'>Employees</span>",
+                        x=0.5, y=0.5,
+                        font_size=17,
+                        showarrow=False
+                    )]
+                )
+                st.plotly_chart(fig_donut, use_container_width=True)
+            else:
+                st.info(f"No department records registered yet for {org_name}.")
+
+    # Bottom Section: 3 Organization-Isolated Cards
+    col_w1, col_w2, col_w3 = st.columns(3, gap="medium")
+    with col_w1:
+        with st.container(border=True):
+            c_pr1, c_pr2 = st.columns([1.5, 1])
+            with c_pr1:
+                st.markdown(
+                    f"""
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                        {get_svg_icon("user_plus", size=18, color="#2563EB")}
+                        <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Recent Joiners</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            with c_pr2:
+                if st.button("View All", key="va_emp_dash", type="secondary", use_container_width=True):
+                    navigate_to("Employees")
+
+            recent_emps = org_stats["recent_joiners"]
+            if recent_emps:
+                rows_html = ""
+                for re in recent_emps[:4]:
+                    parts = re["name"].strip().split()
+                    ini = (parts[0][0] + (parts[-1][0] if len(parts) > 1 else "")).upper()
+                    rows_html += f"""
+                    <div class="pending-review-row" style="padding: 7px 0; border-bottom: 1px solid #F1F5F9;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="pending-avatar" style="width: 32px; height: 32px; font-size: 0.78rem;">{ini}</div>
+                            <div>
+                                <div style="font-weight: 700; font-size: 0.86rem; color: #0F172A;">{re['name']}</div>
+                                <div style="font-size: 0.75rem; color: #64748B;">{re['department']} &bull; {re['designation']}</div>
+                            </div>
+                        </div>
+                        <span class="badge-status badge-active" style="font-size: 0.70rem; padding: 2px 7px;">{re['employee_id']}</span>
+                    </div>
+                    """
+                render_html(f"<div style='margin-top: 4px;'>{rows_html}</div>")
+            else:
+                st.info(f"No recent joiners cataloged for {org_name}.")
+
+    with col_w2:
+        with st.container(border=True):
+            c_sk1, c_sk2 = st.columns([1.5, 1])
+            with c_sk1:
+                st.markdown(
+                    f"""
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                        {get_svg_icon("sparkles", size=18, color="#2563EB")}
+                        <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Org Skill Gaps</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            with c_sk2:
+                if st.button("View All", key="va_skills_dash", type="secondary", use_container_width=True):
+                    navigate_to("Skills & Assessment")
+
+            skills_dist = org_stats["skill_distribution"]
+            if skills_dist:
+                sk_rows_html = ""
+                for s in skills_dist[:4]:
+                    s_name = s.get("skill_name") or s.get("name") or "Skill"
+                    s_cnt = s.get("count", 0)
+                    s_avg = s.get("avg_level", 2)
+                    pct = int(min(100, (s_avg / 4.0) * 100))
+                    sk_rows_html += f"""
+                    <div class="progress-widget-row" style="margin-bottom: 9px;">
+                        <span class="progress-widget-name" style="font-size: 0.82rem; min-width: 95px;">{s_name} ({s_cnt})</span>
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill-blue" style="width: {pct}%;"></div>
+                        </div>
+                        <span class="progress-widget-pct" style="font-size: 0.80rem;">Lvl {s_avg}</span>
+                    </div>
+                    """
+                render_html(f"<div style='margin-top: 12px;'>{sk_rows_html}</div>")
+            else:
+                st.info("No employee skills recorded in this organization yet.")
+
+    with col_w3:
+        with st.container(border=True):
+            c_cg1, c_cg2 = st.columns([1.7, 1])
+            with c_cg1:
+                st.markdown(
+                    f"""
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                        {get_svg_icon("goals", size=18, color="#2563EB")}
+                        <span style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">Goals Milestone</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            with c_cg2:
+                if st.button("View All", key="va_goals_dash", type="secondary", use_container_width=True):
+                    navigate_to("Career Goals")
+
+            if all_goals:
+                goal_rows_html = ""
+                for g in all_goals[:4]:
+                    p = g["progress"]
+                    bar_class = "progress-bar-fill-green" if p >= 75 else ("progress-bar-fill-blue" if p >= 50 else "progress-bar-fill-purple")
+                    goal_rows_html += f"""
+                    <div class="progress-widget-row" style="margin-bottom: 9px;">
+                        <span class="progress-widget-name" style="font-size: 0.82rem; min-width: 95px;" title="{g['title']}">{g['title'][:16]}..</span>
+                        <div class="progress-bar-track">
+                            <div class="{bar_class}" style="width: {p}%;"></div>
+                        </div>
+                        <span class="progress-widget-pct" style="font-size: 0.80rem;">{p}%</span>
+                    </div>
+                    """
+                render_html(f"<div style='margin-top: 12px;'>{goal_rows_html}</div>")
+            else:
+                st.info(f"No active career goals recorded in {org_id}.")
+
+# ==============================================================================
+# 2. EMPLOYEE: MY CAREER DASHBOARD
+# ==============================================================================
+elif (page in ["Dashboard", "My Career Dashboard"] and not is_admin):
+    completion, missing = profile_completion(profile, skills)
+    analysis = analysis_bundle()
+    goal_stats = get_goal_stats(uid)
+    emp_record = get_employee_by_id(emp_id) if emp_id else None
+
+    org_display_name = user.get("org_name") or "Talent Growth Technologies"
+    target_role_str = profile.get("target_role") or "Full Stack Engineer"
+    match_pct = analysis.get("match", 85)
+
+    # 1. Executive Employee Welcome Banner
+    render_html(
+        f"""
+        <div style="background: linear-gradient(135deg, #0F172A 0%, #4C1D95 40%, #2563EB 75%, #06B6D4 100%); border-radius: 18px; border: 1.5px solid rgba(255, 255, 255, 0.22); padding: 1.85rem 2.4rem; color: #FFFFFF; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.45rem; box-shadow: 0 8px 30px rgba(37, 99, 235, 0.32); position: relative; overflow: hidden;">
+            <div style="z-index: 2; max-width: 65%;">
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.18); border: 1px solid rgba(255, 255, 255, 0.32); padding: 5px 14px; border-radius: 9999px; font-size: 0.76rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #FDF4FF; margin-bottom: 10px;">
+                    {get_svg_icon("sparkles", size=13, color="#FDE047")} Personal Career Acceleration Hub &bull; {org_display_name}
+                </div>
+                <div style="font-size: 2.1rem; font-weight: 900; color: #FFFFFF; line-height: 1.2; margin-bottom: 8px; letter-spacing: -0.02em;">
+                    Welcome back, {user.get('name', 'Alex Morgan')}
+                </div>
+                <div style="font-size: 1rem; color: rgba(255, 255, 255, 0.94); font-weight: 400; line-height: 1.55;">
+                    Your personalized career cockpit: evaluate 10-role competency benchmarks, close skill gaps, and accelerate your promotion trajectory.
+                </div>
+            </div>
+            <div style="z-index: 2; flex-shrink: 0; text-align: right;">
+                <div style="background: rgba(255, 255, 255, 0.16); border: 1.5px solid rgba(255, 255, 255, 0.3); border-radius: 16px; padding: 14px 22px; text-align: center; backdrop-filter: blur(8px); box-shadow: 0 6px 20px rgba(0,0,0,0.15);">
+                    <div style="font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; color: #A5F3FC;">Target Role</div>
+                    <div style="font-size: 1.3rem; font-weight: 900; color: #FFFFFF; margin-top: 3px;">{target_role_str}</div>
+                    <div style="font-size: 0.80rem; color: #FEF08A; font-weight: 800; margin-top: 3px;">{match_pct}% Role Readiness</div>
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    # 2. Four Solid Vibrant Enterprise KPI Cards
+    comp_sub = "+ All sections complete" if completion >= 100 else ("+ Action needed" if completion == 0 else f"+{len(missing)} fields to add")
+    strength_score = analysis.get("score", 0)
+    if strength_score >= 80:
+        strength_sub = "+ Top tier readiness"
+    elif strength_score >= 50:
+        strength_sub = "+ Strong profile"
+    elif strength_score > 0:
+        strength_sub = "+ Developing readiness"
+    else:
+        strength_sub = "+ Early stage profile"
+
+    skills_cnt = len(skills)
+    skills_sub = f"+{skills_cnt} verified skills" if skills_cnt > 0 else "+ Add competencies"
+
+    render_html(
+        f"""
+        <div class="kpi-row-grid-vibrant" style="margin-bottom: 1.35rem;">
+            <!-- Profile Completion -->
+            <div class="kpi-card-vibrant kpi-vibrant-blue">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("user", size=24, color="#2563EB")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Profile Completion</div>
+                    <div class="kpi-vibrant-number">{completion}%</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("check", size=13, color="#2563EB")} <span style="color: #2563EB; font-weight: 600;">{comp_sub}</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Profile Strength -->
+            <div class="kpi-card-vibrant kpi-vibrant-green">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("trending_up", size=24, color="#10B981")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Profile Strength</div>
+                    <div class="kpi-vibrant-number">{strength_score} <span style="font-size: 1.1rem; color: #94A3B8; font-weight: 600;">/ 100</span></div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("trending_up", size=13, color="#10B981")} <span style="color: #059669; font-weight: 600;">{strength_sub}</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Target Role Match -->
+            <div class="kpi-card-vibrant kpi-vibrant-purple">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("target", size=24, color="#8B5CF6")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Target Role Match</div>
+                    <div class="kpi-vibrant-number">{match_pct}%</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("sparkles", size=13, color="#8B5CF6")} <span style="color: #7C3AED; font-weight: 600;">vs {target_role_str[:16]}</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Verified Competencies -->
+            <div class="kpi-card-vibrant kpi-vibrant-orange">
+                <div class="kpi-vibrant-icon">
+                    {get_svg_icon("star", size=24, color="#F59E0B")}
+                </div>
+                <div>
+                    <div class="kpi-vibrant-title">Skills Recorded</div>
+                    <div class="kpi-vibrant-number">{skills_cnt}</div>
+                    <div class="kpi-vibrant-sub">
+                        {get_svg_icon("check", size=13, color="#F59E0B")} <span style="color: #D97706; font-weight: 600;">{skills_sub}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """
+    )
+
+    # 3. Interactive Quick Actions Toolbar
+    col_eq1, col_eq2, col_eq3, col_eq4 = st.columns(4)
+    with col_eq1:
+        if st.button("Resume Studio", icon=":material/description:", key="emp_bar_resume", use_container_width=True, type="primary"):
+            navigate_to("Resume Studio")
+    with col_eq2:
+        if st.button("Skills & Assessment", icon=":material/psychology:", key="emp_bar_skills", use_container_width=True):
+            navigate_to("Skills & Assessment")
+    with col_eq3:
+        if st.button("Role Match & Gaps", icon=":material/compare_arrows:", key="emp_bar_gaps", use_container_width=True):
+            navigate_to("Role Match & Gaps")
+    with col_eq4:
+        if st.button("AI Career Coach", icon=":material/smart_toy:", key="emp_bar_coach", use_container_width=True):
+            navigate_to("Career Coach")
+
+    st.markdown("<div style='margin-bottom: 1.35rem;'></div>", unsafe_allow_html=True)
+
+    # 4. Two-Column Middle Section
+    col_dash_left, col_dash_right = st.columns([1.15, 1], gap="large")
+
+    with col_dash_left:
+        with st.container(border=True):
+            st.markdown("<h3 style='font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 8px;'>Next High-Impact Actions</h3>", unsafe_allow_html=True)
+
+            # Action Card 1: Profile Completeness
+            if completion < 100:
+                missing_text = ", ".join(missing[:4]) if missing else "Phone, summary, and experience"
+                action_1_body = f"Add the missing sections: {missing_text}. This provides the career matching engine with objective evidence."
+            else:
+                action_1_body = "Your profile is fully populated. Review and update your certifications and latest deliverables as your career progresses."
+
+            render_html(
+                f"""
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: flex-start; gap: 14px;">
+                    <div style="width: 42px; height: 42px; border-radius: 10px; background: #EEF2FF; border: 1px solid #C7D2FE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        {get_svg_icon("reports", size=20, color="#4F46E5")}
+                    </div>
+                    <div>
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #0F172A; margin-bottom: 3px;">High Priority &middot; Complete Profile Credentials</div>
+                        <div style="font-size: 0.85rem; color: #64748B; line-height: 1.5;">{action_1_body}</div>
+                    </div>
+                </div>
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; align-items: flex-start; gap: 14px;">
+                    <div style="width: 42px; height: 42px; border-radius: 10px; background: #ECFDF5; border: 1px solid #A7F3D0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        {get_svg_icon("target", size=20, color="#059669")}
+                    </div>
+                    <div>
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #0F172A; margin-bottom: 3px;">Medium Priority &middot; Create ATS Role-Aligned Resume</div>
+                        <div style="font-size: 0.85rem; color: #64748B; line-height: 1.5;">Draft an ATS-friendly resume and apply STAR bullet points with measurable outcomes drawn from your actual deliverables.</div>
+                    </div>
+                </div>
+                """
+            )
+
+            with st.expander("Profile sections still needed", expanded=False):
+                if missing:
+                    st.markdown(f"**Still to add:** {', '.join(missing)}")
+                    if st.button("Complete Profile Now", key="dash_goto_prof_btn"):
+                        navigate_to("My Profile")
+                else:
+                    st.success("All primary profile sections are complete!")
+                    if st.button("Review Profile Details", key="dash_rev_prof_btn"):
+                        navigate_to("My Profile")
+
+    with col_dash_right:
+        with st.container(border=True):
+            st.markdown("<h3 style='font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 0.85rem;'>Career Competencies Snapshot</h3>", unsafe_allow_html=True)
+
+            current_role_disp = profile.get('job_title') or (emp_record['designation'] if emp_record else "Software Engineer")
+            target_role_disp = profile.get('target_role') or "Lead Full Stack Engineer"
+
+            render_html(
+                f"""
+                <div style="display: flex; align-items: center; justify-content: space-between; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px;">
+                    <div>
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Current Role</div>
+                        <div style="font-weight: 800; color: #0F172A; font-size: 0.92rem;">{current_role_disp}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Target Goal</div>
+                        <div style="font-weight: 800; color: #4F46E5; font-size: 0.92rem;">{target_role_disp}</div>
+                    </div>
+                </div>
+                """
+            )
+
+            if not skills:
+                st.info("Add competencies in Skills & Assessment to see your career depth visualization.")
+                if st.button("Add Skills to Portfolio", key="dash_add_skills_btn", type="primary"):
+                    navigate_to("Skills & Assessment")
+            else:
+                df_skills = pd.DataFrame(skills)
+                fig_s = px.bar(
+                    df_skills, x="name", y="years", color="category",
+                    title="Skills & Experience Duration",
+                    labels={"name": "", "years": "Years Exp", "category": "Category"},
+                    color_discrete_map={"Technical": "#2563EB", "Soft Skills": "#10B981", "Domain": "#F59E0B", "Cloud & DevOps": "#8B5CF6", "Tools": "#06B6D4"}
+                )
+                fig_s = apply_saas_chart_theme(fig_s, height=240, title="Skills & Experience Duration")
+                fig_s.update_layout(
+                    legend=dict(orientation="v", yanchor="top", y=1, xanchor="right", x=1.18, font=dict(size=11, color="#334155"))
+                )
+                st.plotly_chart(fig_s, use_container_width=True)
+
+    # Personalized Employee Deep Dive: Skills, Assessments, Gaps, Goals, and Performance
+    emp_dash_data = get_employee_dashboard_data(uid, emp_id, org_id)
+    st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
+    tab_ed_roadmap, tab_ed_skills, tab_ed_goals, tab_ed_perf = st.tabs([
+        "Career Guidance & Recommendations",
+        "Individual Skills & Assessments",
+        "Career Goals & Milestones",
+        "Performance History"
+    ])
+
+    with tab_ed_roadmap:
+        c_rm1, c_rm2 = st.columns([1.1, 1], gap="large")
+        with c_rm1:
+            target_role = emp_dash_data.get('profile', {}).get('target_role') or 'Target Role Not Selected'
+            gaps_info = emp_dash_data.get("skill_gaps", {})
+            match_pct = int(gaps_info.get('match_percentage', 0))
+            
+            # Status styling based on alignment percentage
+            if match_pct >= 75:
+                status_color = "#10B981"
+                status_bg = "#ECFDF5"
+                status_border = "#A7F3D0"
+                status_label = "Optimal Fit"
+                bar_gradient = "linear-gradient(90deg, #10B981 0%, #059669 100%)"
+            elif match_pct >= 40:
+                status_color = "#2563EB"
+                status_bg = "#EFF6FF"
+                status_border = "#BFDBFE"
+                status_label = "In Progress"
+                bar_gradient = "linear-gradient(90deg, #2563EB 0%, #3B82F6 100%)"
+            else:
+                status_color = "#D97706"
+                status_bg = "#FFFBEB"
+                status_border = "#FDE68A"
+                status_label = "Developing Alignment"
+                bar_gradient = "linear-gradient(90deg, #F59E0B 0%, #E11D48 100%)"
+
+            # Competency recommendations rows
+            gaps_list = gaps_info.get("gaps", [])
+            gaps_html = ""
+            if gaps_list:
+                for g in gaps_list[:4]:
+                    prio = str(g.get('priority', 'Medium')).capitalize()
+                    is_high = prio.lower() == 'high'
+                    badge_bg = "#FEF2F2" if is_high else "#FFFBEB"
+                    badge_color = "#DC2626" if is_high else "#D97706"
+                    badge_border = "#FCA5A5" if is_high else "#FCD34D"
+                    dot_color = "#EF4444" if is_high else "#F59E0B"
+                    req_lvl = g.get('required_level', 0)
+                    cur_lvl = g.get('current_level', 0)
+                    skill_name = g.get('skill', 'Competency')
+                    
+                    gaps_html += f"""
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                            <div style="width: 8px; height: 8px; border-radius: 50%; background: {dot_color}; flex-shrink: 0;"></div>
+                            <div style="min-width: 0;">
+                                <div style="font-weight: 700; font-size: 0.88rem; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{skill_name}</div>
+                                <div style="font-size: 0.77rem; color: #64748B; margin-top: 1px;">
+                                    Required Level <span style="font-weight: 600; color: #334155;">{req_lvl}</span> &nbsp;&bull;&nbsp; Current: <span style="font-weight: 600; color: #334155;">{cur_lvl}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span style="background: {badge_bg}; color: {badge_color}; border: 1px solid {badge_border}; padding: 3px 9px; border-radius: 9999px; font-size: 0.71rem; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; flex-shrink: 0;">
+                            {prio.upper()} PRIORITY
+                        </span>
+                    </div>
+                    """
+            else:
+                gaps_html = """
+                <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 10px; padding: 12px 14px; color: #166534; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                    All priority competencies are currently aligned with the target role!
+                </div>
+                """
+
+            # Recommended training courses
+            courses = gaps_info.get("recommended_training", [])
+            courses_html = ""
+            if courses:
+                for tr_item in courses[:3]:
+                    courses_html += f"""
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                            <div style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 6px; background: #EEF2FF; flex-shrink: 0;">
+                                {get_svg_icon("award", size=15, color="#4F46E5")}
+                            </div>
+                            <span style="font-weight: 600; font-size: 0.85rem; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{tr_item}</span>
+                        </div>
+                        <span style="background: #EEF2FF; color: #4338CA; border: 1px solid #C7D2FE; padding: 2px 8px; border-radius: 9999px; font-size: 0.69rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;">
+                            CURATED
+                        </span>
+                    </div>
+                    """
+            else:
+                courses_html = """
+                <div style="background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 10px; padding: 10px 14px; color: #64748B; font-size: 0.82rem;">
+                    No specific course recommendations pending.
+                </div>
+                """
+
+            # Render Target Role Readiness Card
+            card_html = f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04); padding: 22px; position: relative;">
+                <!-- Header -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 38px; height: 38px; border-radius: 10px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center;">
+                            {get_svg_icon("target", size=20, color="#2563EB")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; line-height: 1.2;">Target Role Readiness</div>
+                            <div style="font-size: 0.78rem; color: #64748B; margin-top: 1px;">Capability assessment & benchmark trajectory</div>
+                        </div>
+                    </div>
+                    <span style="background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 0.82rem; letter-spacing: 0.01em;">
+                        {target_role}
+                    </span>
+                </div>
+
+                <!-- Readiness Alignment Score & Bar -->
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;">
+                    <div style="display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 8px;">
+                        <div>
+                            <div style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #64748B;">Readiness Alignment</div>
+                            <div style="font-size: 1.75rem; font-weight: 800; color: #0F172A; line-height: 1; margin-top: 2px;">
+                                {match_pct}%
+                            </div>
+                        </div>
+                        <span style="background: {status_bg}; color: {status_color}; border: 1px solid {status_border}; padding: 3px 10px; border-radius: 9999px; font-size: 0.74rem; font-weight: 700;">
+                            {status_label}
+                        </span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: #E2E8F0; border-radius: 9999px; overflow: hidden;">
+                        <div style="width: {min(max(match_pct, 4), 100)}%; height: 100%; background: {bar_gradient}; border-radius: 9999px;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.71rem; color: #94A3B8; margin-top: 5px;">
+                        <span>0% Baseline</span>
+                        <span>50% Midpoint</span>
+                        <span>100% Target Alignment</span>
+                    </div>
+                </div>
+
+                <!-- Priority Competency Recommendations -->
+                <div style="margin-bottom: 18px;">
+                    <div style="font-size: 0.86rem; font-weight: 800; color: #1E293B; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
+                        {get_svg_icon("skills", size=16, color="#2563EB")} Priority Competency Recommendations
+                    </div>
+                    {gaps_html}
+                </div>
+
+                <!-- Suggested Learning Courses -->
+                <div>
+                    <div style="font-size: 0.86rem; font-weight: 800; color: #1E293B; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
+                        {get_svg_icon("award", size=16, color="#4F46E5")} Suggested Learning Courses
+                    </div>
+                    {courses_html}
+                </div>
+            </div>
+            """
+            render_html(card_html)
+
+        with c_rm2:
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04); padding: 22px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 38px; height: 38px; border-radius: 10px; background: #F5F3FF; border: 1px solid #EDE9FE; display: flex; align-items: center; justify-content: center;">
+                                {get_svg_icon("rocket", size=20, color="#7C3AED")}
+                            </div>
+                            <div>
+                                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; line-height: 1.2;">Career Development Tools</div>
+                                <div style="font-size: 0.78rem; color: #64748B; margin-top: 1px;">Accelerate promotion & career trajectory</div>
+                            </div>
+                        </div>
+                        <span style="background: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE; padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 0.82rem;">
+                            Pro Suite
+                        </span>
+                    </div>
+
+                    <!-- Resume Studio Feature Box -->
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px;">
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            {get_svg_icon("reports", size=18, color="#2563EB")} Resume Studio
+                        </div>
+                        <div style="font-size: 0.82rem; color: #64748B; line-height: 1.45;">
+                            Export verified skills, organizational experience, and performance achievements into an ATS-optimized professional CV.
+                        </div>
+                    </div>
+
+                    <!-- Role Match & Gaps Feature Box -->
+                    <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 16px;">
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            {get_svg_icon("skills", size=18, color="#10B981")} Role Match & Benchmark Gaps
+                        </div>
+                        <div style="font-size: 0.82rem; color: #64748B; line-height: 1.45;">
+                            Conduct interactive spider radar evaluations and deep-dive gap analysis against enterprise benchmark role specifications.
+                        </div>
+                    </div>
+                </div>
+                """
+            )
+            col_b1, col_b2 = st.columns(2)
+            with col_b1:
+                if st.button("Open Resume Studio", key="emp_dash_goto_resume", use_container_width=True, type="primary"):
+                    navigate_to("Resume Studio")
+            with col_b2:
+                if st.button("Role Match & Gaps", key="emp_dash_goto_gaps", use_container_width=True):
+                    navigate_to("Role Match & Gaps")
+
+    with tab_ed_skills:
+        c_esk1, c_esk2 = st.columns([1, 1], gap="large")
+        with c_esk1:
+            st.markdown("#### Verified Individual Skills")
+            indiv_skills = emp_dash_data.get("skills", [])
+            if indiv_skills:
+                for s_i in indiv_skills:
+                    s_name = s_i.get("skill_name") or s_i.get("name") or "Skill"
+                    lvl_lbl = s_i.get("proficiency_level") or s_i.get("proficiency") or "Intermediate"
+                    lvl_num = {"Beginner": 25, "Intermediate": 50, "Advanced": 75, "Expert": 100}.get(lvl_lbl, 50)
+                    s_cat = s_i.get("category") or "Technical"
+                    st.write(f"**{s_name}** ({lvl_lbl}) &middot; <span style='font-size:0.8rem; color:#64748B;'>{s_cat}</span>", unsafe_allow_html=True)
+                    st.progress(lvl_num / 100)
+            else:
+                st.info("No individual skills cataloged yet.")
+            if st.button("Manage Skills & Competencies", key="emp_dash_manage_sk_btn"):
+                navigate_to("Skills & Assessment")
+
+        with c_esk2:
+            st.markdown("#### Recent Assessment Evaluations")
+            indiv_ass = emp_dash_data.get("assessments", [])
+            if indiv_ass:
+                ass_records = [
+                    {
+                        "Capability": a.get("skill_name") or a.get("name") or "Capability Area",
+                        "Score (%)": a.get("score") if a.get("score") is not None else (a.get("assessment_score") or 0),
+                        "Notes": a.get("notes") or "",
+                        "Date": a.get("created_at") or a.get("date") or "",
+                    }
+                    for a in indiv_ass[:6]
+                ]
+                df_ia = pd.DataFrame(ass_records)
+                st.dataframe(
+                    df_ia,
+                    width="stretch",
+                    hide_index=True,
+                    column_config={"Score (%)": st.column_config.ProgressColumn("Score", min_value=0, max_value=100, format="%d%%")}
+                )
+            else:
+                st.info("No assessment evaluations logged yet. Record your self-assessment in the Skills module.")
+
+    with tab_ed_goals:
+        st.markdown("#### Individual Career Goals & Milestones")
+        my_goals = emp_dash_data.get("goals", [])
+        if my_goals:
+            for g in my_goals:
+                p = g.get("progress", 0)
+                status = g.get("status", "In Progress")
+                status_color = "#10B981" if status == "Completed" else ("#EF4444" if status == "Overdue" else "#3B82F6")
+                render_html(
+                    f"""
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 16px; margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <strong style="color: #0F172A; font-size: 0.98rem;">{g['title']}</strong>
+                            <span style="font-size: 0.78rem; font-weight: 700; color: {status_color}; background: #F1F5F9; padding: 2px 8px; border-radius: 6px;">{status.upper()}</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #64748B; margin: 4px 0 8px 0;">Due: {g['target_date']} &middot; {g.get('target_designation', 'Growth Milestone')}</div>
+                    </div>
+                    """
+                )
+                st.progress(p / 100)
+        else:
+            st.info("No career milestones defined yet.")
+        if st.button("Define New Career Goal", key="emp_dash_new_goal_btn"):
+            navigate_to("Career Goals")
+
+    with tab_ed_perf:
+        st.markdown("#### Performance Evaluations & Growth Records")
+        my_reviews = emp_dash_data.get("reviews", [])
+        if my_reviews:
+            for r in my_reviews:
+                with st.container(border=True):
+                    st.write(f"**{r['review_period']}** &middot; Rating: **{r['performance_score']} / 5.0**")
+                    if r.get("achievements"):
+                        st.caption(f"Achievements: {r['achievements']}")
+                    if r.get("manager_feedback"):
+                        st.info(f"Manager Feedback: {r['manager_feedback']}")
+        else:
+            st.info("No performance reviews recorded for your profile yet.")
+# ==============================================================================
+elif page in ["Employees", "Employee Management"]:
+    # 1. Premium Workforce Hero Section (Section 3)
+    render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 50%, #EEF2FF 100%); border: 1px solid #C7D2FE; border-left: 6px solid #2563EB; border-radius: 16px; padding: 1.5rem 1.8rem; margin-bottom: 1.5rem; box-shadow: 0 4px 20px rgba(37,99,235,0.08); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(37,99,235,0.3); color: #FFFFFF; flex-shrink: 0;">
+                    {get_svg_icon("employees", size=26, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.7rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em; line-height: 1.2;">
+                        Workforce Directory &amp; Talent Lifecycle
+                    </div>
+                    <div style="color: #475569; font-size: 0.92rem; margin-top: 4px; font-weight: 500;">
+                        Manage employees, explore talent profiles, track competencies, and support employee growth.
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 0.80rem; font-weight: 700; color: #1E40AF; background: #DBEAFE; border: 1px solid #BFDBFE; border-radius: 9999px; padding: 5px 14px; display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.03em;">
+                    {get_svg_icon("sparkles", size=13, color="#1E40AF")}
+                    ORGANIZATION DIRECTORY &bull; {org_id}
+                </span>
+            </div>
+        </div>
+        """
+    )
+
+    # 2. Modern Segmented Navigation Tabs (Section 4)
+    tab_dir, tab_add, tab_bulk, tab_edit, tab_invite, tab_requests = st.tabs([
+        "Workforce Directory",
+        "Add New Employee",
+        "Bulk Dataset Upload",
+        "Manage Records",
+        "Invitation Codes",
+        "Membership Requests"
+    ])
+
+    # --- TAB 1: WORKFORCE DIRECTORY (PRIMARY VIEW) ---
+    with tab_dir:
+        # Section 5: Directory Section Header
+        st.markdown("### Workforce Directory & Talent Profiles")
+        st.caption("Discover employees, review competencies, and manage workforce information.")
+
+        # Section 6: Modern Search & Filter Panel
+        with st.container():
+            render_html(
+                f"""
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #0F172A; font-size: 0.95rem; margin-bottom: 0.6rem;">
+                    {get_svg_icon("filter", size=16, color="#2563EB")} Search &amp; Filter Talent
+                </div>
+                """
+            )
+            f1, f2, f3, f4 = st.columns([1.7, 1, 1, 1], gap="small")
+            with f1:
+                s_query = st.text_input(
+                    "Live Search",
+                    placeholder="Search by employee name, designation, skill, or employee ID...",
+                    key="emp_live_search",
+                    label_visibility="collapsed"
+                )
+            with f2:
+                s_dept = st.selectbox(
+                    "Filter by Department",
+                    ["All Departments"] + get_all_departments(org_id=org_id),
+                    key="emp_dept_filter",
+                    label_visibility="collapsed"
+                )
+            with f3:
+                s_desig = st.selectbox(
+                    "Filter by Designation",
+                    ["All Designations"] + get_all_designations(org_id=org_id),
+                    key="emp_desig_filter",
+                    label_visibility="collapsed"
+                )
+            with f4:
+                s_status = st.selectbox(
+                    "Filter by Status",
+                    ["All Statuses"] + EMPLOYMENT_STATUSES,
+                    key="emp_status_filter",
+                    label_visibility="collapsed"
+                )
+
+            # Active filter chips and Clear All Filters
+            active_filters = []
+            if s_query.strip():
+                active_filters.append(f"Search: '{s_query.strip()}'")
+            if s_dept != "All Departments":
+                active_filters.append(f"Dept: {s_dept}")
+            if s_desig != "All Designations":
+                active_filters.append(f"Designation: {s_desig}")
+            if s_status != "All Statuses":
+                active_filters.append(f"Status: {s_status}")
+
+            if active_filters:
+                c_chips, c_clear = st.columns([4, 1])
+                with c_chips:
+                    chips_html = "".join(f"<span class='filter-chip'>{c}</span>" for c in active_filters)
+                    render_html(f"<div style='display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0;'>{chips_html}</div>")
+                with c_clear:
+                    if st.button("Clear All Filters", key="btn_clear_emp_filters", type="secondary", use_container_width=True):
+                        st.session_state.emp_live_search = ""
+                        st.session_state.emp_dept_filter = "All Departments"
+                        st.session_state.emp_desig_filter = "All Designations"
+                        st.session_state.emp_status_filter = "All Statuses"
+                        st.rerun()
+
+        st.markdown("<div style='margin-bottom: 0.75rem;'></div>", unsafe_allow_html=True)
+
+        emp_results = get_employees(
+            search_query=s_query if s_query.strip() else None,
+            department_filter=s_dept if s_dept != "All Departments" else None,
+            designation_filter=s_desig if s_desig != "All Designations" else None,
+            status_filter=s_status if s_status != "All Statuses" else None,
+            org_id=org_id
+        )
+
+        # Section 7: Workforce Statistics (4 Modern Cards)
+        active_cnt = sum(1 for e in emp_results if e.get("employment_status") == "Active")
+        avg_exp_val = round(sum(e['years_experience'] for e in emp_results)/len(emp_results), 1) if emp_results else 0.0
+        ratings_list = [e['avg_rating'] for e in emp_results if e.get('avg_rating')]
+        avg_rtg_val = round(sum(ratings_list)/len(ratings_list), 2) if ratings_list else None
+        avg_rtg_str = f"{avg_rtg_val} / 5.0" if avg_rtg_val else "N/A"
+
+        render_html(
+            f"""
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                <div style="background: #FFFFFF; border: 1px solid #DBEAFE; border-top: 4px solid #2563EB; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(37,99,235,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Matching Personnel</span>
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; color: #2563EB;">
+                            {get_svg_icon("users", size=17, color="#2563EB")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{len(emp_results)}</div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.78rem; color: #2563EB; font-weight: 600;">
+                        <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #2563EB;"></span>
+                        {len(emp_results)} records matching filters
+                    </div>
+                </div>
+
+                <div style="background: #FFFFFF; border: 1px solid #BBF7D0; border-top: 4px solid #10B981; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(16,185,129,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Active Workforce</span>
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #ECFDF5; display: flex; align-items: center; justify-content: center; color: #10B981;">
+                            {get_svg_icon("check_circle", size=17, color="#10B981")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{active_cnt}</div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.78rem; color: #10B981; font-weight: 600;">
+                        <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10B981;"></span>
+                        In Office &bull; Remote Active
+                    </div>
+                </div>
+
+                <div style="background: #FFFFFF; border: 1px solid #DDD6FE; border-top: 4px solid #7C3AED; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(124,58,237,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Avg Experience</span>
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #F5F3FF; display: flex; align-items: center; justify-content: center; color: #7C3AED;">
+                            {get_svg_icon("briefcase", size=17, color="#7C3AED")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{avg_exp_val} <span style="font-size: 1rem; font-weight: 600; color: #64748B;">yrs</span></div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.78rem; color: #7C3AED; font-weight: 600;">
+                        <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #7C3AED;"></span>
+                        Organizational Tenure
+                    </div>
+                </div>
+
+                <div style="background: #FFFFFF; border: 1px solid #FDE68A; border-top: 4px solid #F59E0B; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(245,158,11,0.06);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Avg Performance</span>
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #FFFBEB; display: flex; align-items: center; justify-content: center; color: #F59E0B;">
+                            {get_svg_icon("star", size=17, color="#F59E0B")}
+                        </div>
+                    </div>
+                    <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{avg_rtg_str}</div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.78rem; color: #D97706; font-weight: 600;">
+                        <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #F59E0B;"></span>
+                        Quarterly Review Cycle
+                    </div>
+                </div>
+            </div>
+            """
+        )
+
+        # Section 8 & 9: Employee Profile Table
+        if emp_results:
+            render_html(render_colored_employee_table(emp_results))
+
+            csv_data = pd.DataFrame(emp_results).to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "Export Filtered Directory (CSV)",
+                csv_data,
+                "talent_growth_workforce_directory.csv",
+                "text/csv",
+                type="primary"
+            )
+        else:
+            st.info("No employee records found matching your search and filter criteria.")
+
+    # --- TAB 2: ADD EMPLOYEE ---
+    with tab_add:
+        render_html(
+            f"""
+            <div style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 100%); border: 1.5px solid #BFDBFE; border-left: 6px solid #2563EB; border-radius: 16px; padding: 1.35rem 1.6rem; margin-bottom: 1.5rem; box-shadow: 0 4px 16px rgba(37,99,235,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #2563EB, #1D4ED8); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(37,99,235,0.25);">
+                            {get_svg_icon("user_plus", size=22, color="#FFFFFF")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Register New Employee</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Enroll personnel, configure department placement, and catalog core competencies.</div>
+                        </div>
+                    </div>
+                    <span style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
+                        ORGANIZATION: {org_name} ({org_id})
+                    </span>
+                </div>
+            </div>
+            """
+        )
+
+        if st.session_state.clear_emp_form_flag:
+            st.session_state.e_name = ""
+            st.session_state.e_id = ""
+            st.session_state.e_email = ""
+            st.session_state.e_phone = ""
+            st.session_state.e_dept = "Select Department"
+            st.session_state.e_desig = ""
+            st.session_state.e_exp = 0.0
+            st.session_state.e_skills = ""
+            st.session_state.e_status = "Active"
+            st.session_state.clear_emp_form_flag = False
+
+        depts = ["Select Department"] + get_all_departments(org_id=org_id)
+
+        col_form_wrap, col_guidelines = st.columns([2.1, 1], gap="large")
+        with col_form_wrap:
+            with st.form("add_employee_master_form", clear_on_submit=False):
+                # Section 1: Identity & Credentials
+                render_html(
+                    f"""
+                    <div style="font-size: 0.96rem; font-weight: 800; color: #1E40AF; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; border-bottom: 1.5px solid #BFDBFE; padding-bottom: 6px;">
+                        {get_svg_icon("user", size=18, color="#2563EB")} 1. Personal Identity &amp; Credentials
+                    </div>
+                    """
+                )
+                c_id1, c_id2 = st.columns(2)
+                name_input = c_id1.text_input("Employee Full Name *", key="e_name", placeholder="e.g. Alexander Wright")
+                id_input = c_id2.text_input("Employee ID Code *", key="e_id", placeholder="e.g. EMP205").strip().upper()
+
+                c_co1, c_co2 = st.columns(2)
+                email_input = c_co1.text_input("Corporate Email Address", key="e_email", placeholder="e.g. alexander.w@company.com")
+                phone_input = c_co2.text_input("Contact Phone Number", key="e_phone", placeholder="+1-555-0199")
+
+                # Section 2: Department & Placement
+                render_html(
+                    f"""
+                    <div style="font-size: 0.96rem; font-weight: 800; color: #0D9488; display: flex; align-items: center; gap: 8px; margin: 16px 0 10px 0; border-bottom: 1.5px solid #99F6E4; padding-bottom: 6px;">
+                        {get_svg_icon("briefcase", size=18, color="#0D9488")} 2. Department &amp; Role Placement
+                    </div>
+                    """
+                )
+                c_d1, c_d2 = st.columns(2)
+                dept_input = c_d1.selectbox("Department *", depts, key="e_dept")
+                desig_input = c_d2.text_input("Designation / Title *", key="e_desig", placeholder="e.g. Senior Backend Engineer")
+
+                # Section 3: Competencies & Tenure
+                render_html(
+                    f"""
+                    <div style="font-size: 0.96rem; font-weight: 800; color: #7C3AED; display: flex; align-items: center; gap: 8px; margin: 16px 0 10px 0; border-bottom: 1.5px solid #E9D5FF; padding-bottom: 6px;">
+                        {get_svg_icon("award", size=18, color="#7C3AED")} 3. Professional Experience &amp; Competencies
+                    </div>
+                    """
+                )
+                c_e1, c_e2, c_e3 = st.columns(3)
+                exp_input = c_e1.number_input("Years of Experience *", min_value=0.0, max_value=60.0, value=0.0, step=0.5, key="e_exp")
+                status_input = c_e2.selectbox("Employment Status", EMPLOYMENT_STATUSES, key="e_status")
+                join_input = c_e3.date_input("Joining Date", value=date.today())
+
+                skills_input = st.text_input("Primary Skills (Comma-separated) *", key="e_skills", placeholder="e.g. Python, Django, PostgreSQL, Docker, AWS")
+
+                st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
+                submit_add_emp = st.form_submit_button("Save Employee Record to Database", type="primary", use_container_width=True)
+
+            if st.button("Reset Form Fields", use_container_width=True, type="secondary"):
+                st.session_state.clear_emp_form_flag = True
+                st.rerun()
+
+            if submit_add_emp:
+                if not name_input.strip():
+                    st.error("Validation Error: Employee Name is mandatory.")
+                elif not id_input.strip():
+                    st.error("Validation Error: Employee ID Code is mandatory.")
+                elif dept_input == "Select Department" or not dept_input.strip():
+                    st.error("Validation Error: Please select a valid Department.")
+                elif not desig_input.strip():
+                    st.error("Validation Error: Designation is mandatory.")
+                elif not skills_input.strip():
+                    st.error("Validation Error: Primary Skills are mandatory.")
+                elif exp_input < 0:
+                    st.error("Validation Error: Experience cannot be negative.")
+                else:
+                    success, msg = add_employee(
+                        employee_id=id_input,
+                        name=name_input,
+                        department=dept_input,
+                        designation=desig_input,
+                        years_experience=exp_input,
+                        primary_skills=skills_input,
+                        email=email_input if email_input.strip() else None,
+                        phone=phone_input,
+                        joining_date=join_input.isoformat(),
+                        employment_status=status_input,
+                        created_by=uid,
+                        org_id=org_id
+                    )
+                    if success:
+                        st.success(msg)
+                        st.session_state.clear_emp_form_flag = True
+                        st.rerun()
+                    else:
+                        st.error(msg)
+
+        with col_guidelines:
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                        {get_svg_icon("shield", size=18, color="#2563EB")} System Validation Rules
+                    </div>
+
+                    <!-- Rule 1: Unique Constraints -->
+                    <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;">
+                        <div style="font-weight: 800; font-size: 0.84rem; color: #1E40AF; display: flex; align-items: center; gap: 6px;">
+                            {get_svg_icon("lock", size=14, color="#1E40AF")} Unique Constraints
+                        </div>
+                        <div style="font-size: 0.78rem; color: #334155; margin-top: 3px; line-height: 1.4;">
+                            Employee ID and Corporate Email must be globally unique across the organization directory.
+                        </div>
+                    </div>
+
+                    <!-- Rule 2: Experience Boundary -->
+                    <div style="background: #F0FDFA; border: 1px solid #99F6E4; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;">
+                        <div style="font-weight: 800; font-size: 0.84rem; color: #0D9488; display: flex; align-items: center; gap: 6px;">
+                            {get_svg_icon("sliders", size=14, color="#0D9488")} Experience Boundaries
+                        </div>
+                        <div style="font-size: 0.78rem; color: #334155; margin-top: 3px; line-height: 1.4;">
+                            Accepted career experience values range between <code>0.0</code> and <code>60.0</code> years in 0.5-year steps.
+                        </div>
+                    </div>
+
+                    <!-- Rule 3: Competency Catalog -->
+                    <div style="background: #FAF5FF; border: 1px solid #E9D5FF; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px;">
+                        <div style="font-weight: 800; font-size: 0.84rem; color: #7C3AED; display: flex; align-items: center; gap: 6px;">
+                            {get_svg_icon("sparkles", size=14, color="#7C3AED")} Competency Catalog
+                        </div>
+                        <div style="font-size: 0.78rem; color: #334155; margin-top: 3px; line-height: 1.4;">
+                            Skills are parsed, normalized, and indexed into the organizational skills matrix for AI gap analysis.
+                        </div>
+                    </div>
+
+                    <!-- Rule 4: Persistence Guarantee -->
+                    <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 12px 14px;">
+                        <div style="font-weight: 800; font-size: 0.84rem; color: #065F46; display: flex; align-items: center; gap: 6px;">
+                            {get_svg_icon("check", size=14, color="#065F46")} Persistence Guarantee
+                        </div>
+                        <div style="font-size: 0.78rem; color: #334155; margin-top: 3px; line-height: 1.4;">
+                            Committed immediately into relational database storage with parameterized ACID transactions.
+                        </div>
+                    </div>
+                </div>
+                """
+            )
+    # --- TAB 3: BULK DATASET UPLOAD ---
+    with tab_bulk:
+        render_html(
+            f"""
+            <div style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDFA 100%); border: 1.5px solid #99F6E4; border-left: 6px solid #0D9488; border-radius: 16px; padding: 1.35rem 1.6rem; margin-bottom: 1.5rem; box-shadow: 0 4px 16px rgba(13,148,136,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0D9488, #059669); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(13,148,136,0.25);">
+                            {get_svg_icon("upload", size=22, color="#FFFFFF")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Bulk Employee Dataset Ingestion</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Batch upload structured CSV or Excel spreadsheets to ingest multiple personnel profiles into SQLite instantly.</div>
+                        </div>
+                    </div>
+                    <span style="background: #F0FDFA; border: 1px solid #99F6E4; color: #0F766E; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
+                        BATCH INGESTION ENGINE
+                    </span>
+                </div>
+            </div>
+
+            <!-- 3-Step Visual Workflow Roadmap -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 1.5rem;">
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(30,64,175,0.03);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 26px; height: 26px; border-radius: 50%; background: #2563EB; color: #FFFFFF; font-size: 0.80rem; font-weight: 800; display: flex; align-items: center; justify-content: center;">1</span>
+                        <span style="font-weight: 700; font-size: 0.90rem; color: #0F172A;">Download Template</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #64748B; margin-top: 4px;">Get our official pre-structured CSV template.</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(30,64,175,0.03);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 26px; height: 26px; border-radius: 50%; background: #0D9488; color: #FFFFFF; font-size: 0.80rem; font-weight: 800; display: flex; align-items: center; justify-content: center;">2</span>
+                        <span style="font-weight: 700; font-size: 0.90rem; color: #0F172A;">Populate Profiles</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #64748B; margin-top: 4px;">Fill in ID, name, department, title, and skills.</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(30,64,175,0.03);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="width: 26px; height: 26px; border-radius: 50%; background: #7C3AED; color: #FFFFFF; font-size: 0.80rem; font-weight: 800; display: flex; align-items: center; justify-content: center;">3</span>
+                        <span style="font-weight: 700; font-size: 0.90rem; color: #0F172A;">Ingest &amp; Verify</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #64748B; margin-top: 4px;">Upload and validate ACID database persistence.</div>
+                </div>
+            </div>
+            """
+        )
+
+        col_b_left, col_b_right = st.columns([1.8, 1.2], gap="large")
+        with col_b_right:
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        {get_svg_icon("download", size=18, color="#2563EB")} Standard CSV Template
+                    </div>
+                    <div style="font-size: 0.84rem; color: #475569; margin-bottom: 12px; line-height: 1.4;">
+                        Download our pre-structured template formatted with standard schema headers to guarantee smooth imports.
+                    </div>
+                """
+            )
+            sample_csv_str = get_sample_employee_csv()
+            st.download_button(
+                "Download Sample CSV Template",
+                data=sample_csv_str,
+                file_name="talent_growth_sample_employees.csv",
+                mime="text/csv",
+                type="secondary",
+                use_container_width=True
+            )
+            render_html(
+                """
+                    <div style="margin-top: 14px; border-top: 1px solid #F1F5F9; padding-top: 12px;">
+                        <div style="font-size: 0.76rem; font-weight: 800; color: #64748B; text-transform: uppercase; margin-bottom: 8px;">Supported Columns:</div>
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.80rem;">
+                            <span style="color: #1E293B;"><code style="color: #2563EB; font-weight: 700;">employee_id</code> &bull; Unique Key (Required)</span>
+                            <span style="color: #1E293B;"><code style="color: #0D9488; font-weight: 700;">name</code> &bull; Full Legal Name (Required)</span>
+                            <span style="color: #1E293B;"><code style="color: #7C3AED; font-weight: 700;">department</code> &bull; Business Unit (Required)</span>
+                            <span style="color: #1E293B;"><code style="color: #475569; font-weight: 700;">designation</code> &bull; Corporate Title (Required)</span>
+                            <span style="color: #1E293B;"><code style="color: #F59E0B; font-weight: 700;">primary_skills</code> &bull; Comma-separated (Required)</span>
+                            <span style="color: #1E293B;"><code style="color: #10B981; font-weight: 700;">years_experience</code> &bull; Numeric (0–60)</span>
+                            <span style="color: #64748B;"><code style="color: #64748B;">email</code>, <code>phone</code>, <code>joining_date</code></span>
+                        </div>
+                    </div>
+                </div>
+                """
+            )
+
+        with col_b_left:
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; margin-bottom: 1rem; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            {get_svg_icon("upload", size=18, color="#0D9488")} Upload Dataset File
+                        </span>
+                        <div style="display: gap: 6px;">
+                            <span style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">.CSV</span>
+                            <span style="background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">.XLSX</span>
+                            <span style="background: #F8FAFC; border: 1px solid #E2E8F0; color: #64748B; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 6px;">50MB MAX</span>
+                        </div>
+                    </div>
+                """
+            )
+            uploaded_file = st.file_uploader(
+                "Select CSV or Excel Dataset to Ingest",
+                type=["csv", "xlsx"],
+                help="Accepts .csv or .xlsx spreadsheets containing multiple employee profiles.",
+                label_visibility="collapsed"
+            )
+            render_html("</div>")
+
+            if uploaded_file is not None:
+                try:
+                    if uploaded_file.name.endswith(".csv"):
+                        df_upload = pd.read_csv(uploaded_file)
+                    else:
+                        df_upload = pd.read_excel(uploaded_file)
+
+                    render_html(
+                        f"""
+                        <div style="font-size: 0.96rem; font-weight: 800; color: #0F172A; margin: 12px 0 8px 0; display: flex; align-items: center; gap: 8px;">
+                            {get_svg_icon("table", size=16, color="#2563EB")} Dataset Preview ({len(df_upload)} records detected)
+                        </div>
+                        """
+                    )
+                    st.dataframe(df_upload.head(10), width="stretch", hide_index=True)
+
+                    btn_import = st.button("Validate & Ingest Dataset into Database", type="primary", use_container_width=True)
+
+                    if btn_import:
+                        with st.spinner("Processing records and enforcing database constraints..."):
+                            import_res = bulk_import_employees_df(df_upload, created_by=uid, org_id=org_id)
+
+                        render_html(
+                            f"""
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0;">
+                                <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 14px; text-align: center;">
+                                    <div style="font-size: 0.74rem; font-weight: 700; color: #1E40AF; text-transform: uppercase;">Total In File</div>
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #1E3A8A; margin-top: 2px;">{import_res['total']}</div>
+                                </div>
+                                <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 12px; padding: 14px; text-align: center;">
+                                    <div style="font-size: 0.74rem; font-weight: 700; color: #065F46; text-transform: uppercase;">Successfully Added</div>
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #064E3B; margin-top: 2px;">{import_res['success_count']}</div>
+                                </div>
+                                <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px; padding: 14px; text-align: center;">
+                                    <div style="font-size: 0.74rem; font-weight: 700; color: #B45309; text-transform: uppercase;">Skipped / Duplicate</div>
+                                    <div style="font-size: 1.5rem; font-weight: 900; color: #78350F; margin-top: 2px;">{import_res['skipped_count']}</div>
+                                </div>
+                            </div>
+                            """
+                        )
+
+                        if import_res["success_count"] > 0:
+                            st.success(f"Successfully imported {import_res['success_count']} employees into {org_name}!")
+
+                        if import_res["errors"]:
+                            with st.expander(f"Review Ingestion Notices & Skipped Records ({len(import_res['errors'])})", expanded=True):
+                                for err_msg in import_res["errors"]:
+                                    st.warning(err_msg)
+
+                        if import_res["success_count"] > 0:
+                            st.rerun()
+
+                except Exception as ex:
+                    st.error(f"Error reading dataset file: {ex}")
+            else:
+                render_html(
+                    f"""
+                    <div style="background: #F8FAFD; border: 1.5px dashed #DCE5F1; border-radius: 14px; padding: 2.2rem; text-align: center;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: #EEF2FF; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                            {get_svg_icon("upload", size=22, color="#2563EB")}
+                        </div>
+                        <div style="font-weight: 700; color: #0F172A; font-size: 0.96rem;">No File Selected Yet</div>
+                        <div style="font-size: 0.84rem; color: #64748B; margin-top: 4px;">Upload a CSV or Excel dataset above to preview and batch-import employee records.</div>
+                    </div>
+                    """
+                )
+    # --- TAB 4: EDIT & DELETE ---
+    with tab_edit:
+        render_html(
+            f"""
+            <div style="background: linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 100%); border: 1.5px solid #E9D5FF; border-left: 6px solid #7C3AED; border-radius: 16px; padding: 1.35rem 1.6rem; margin-bottom: 1.5rem; box-shadow: 0 4px 16px rgba(124,58,237,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #7C3AED, #6D28D9); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(124,58,237,0.25);">
+                            {get_svg_icon("settings", size=22, color="#FFFFFF")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Employee Record Management &amp; Lifecycle</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Update employee profile credentials, modify department assignments, or manage deactivation and removal.</div>
+                        </div>
+                    </div>
+                    <span style="background: #FAF5FF; border: 1px solid #E9D5FF; color: #6B21A8; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
+                        LIFECYCLE MANAGEMENT
+                    </span>
+                </div>
+            </div>
+            """
+        )
+
+        all_emps = get_employees(org_id=org_id)
+        if not all_emps:
+            st.info(f"No employee records currently available in {org_name}.")
+        else:
+            emp_map = {f"{e['employee_id']} — {e['name']} ({e['designation']})": e['employee_id'] for e in all_emps}
+            selected_emp_k = st.selectbox("Select Employee Record", list(emp_map.keys()))
+            selected_emp_code = emp_map[selected_emp_k]
+            emp_curr = get_employee_by_id(selected_emp_code, org_id=org_id)
+
+            if emp_curr:
+                initials = "".join([part[:1].upper() for part in (emp_curr.get("name") or "User").split()[:2]])
+                status_color = "#10B981" if emp_curr["employment_status"] == "Active" else ("#EF4444" if emp_curr["employment_status"] == "Terminated" else "#F59E0B")
+
+                # Live Profile Badge
+                render_html(
+                    f"""
+                    <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 14px 18px; margin: 10px 0 16px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 46px; height: 46px; border-radius: 12px; background: linear-gradient(135deg, #2563EB, #7C3AED); color: #FFFFFF; font-weight: 800; font-size: 1.15rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(37,99,235,0.25);">
+                                {initials}
+                            </div>
+                            <div>
+                                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A;">
+                                    {emp_curr['name']}
+                                    <span style="font-family: monospace; font-size: 0.78rem; background: #F1F5F9; color: #475569; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">
+                                        {emp_curr['employee_id']}
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.82rem; color: #64748B; margin-top: 2px;">
+                                    {emp_curr['designation']} &bull; {emp_curr['department']}
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <span style="background: {status_color}18; border: 1px solid {status_color}55; color: {status_color}; font-size: 0.76rem; font-weight: 800; padding: 4px 12px; border-radius: 9999px;">
+                                {emp_curr['employment_status'].upper()}
+                            </span>
+                        </div>
+                    </div>
+                    """
+                )
+
+                col_ed, col_rm = st.columns([1.6, 1], gap="large")
+                with col_ed:
+                    render_html(
+                        f"""
+                        <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                            <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                                {get_svg_icon("edit", size=18, color="#2563EB")} Edit Profile Information
+                            </div>
+                        """
+                    )
+                    with st.form("edit_emp_master_form"):
+                        up_name = st.text_input("Full Legal Name", value=emp_curr["name"])
+                        c_mail, c_ph = st.columns(2)
+                        up_email = c_mail.text_input("Corporate Email", value=emp_curr["email"] or "")
+                        up_phone = c_ph.text_input("Phone Number", value=emp_curr["phone"] or "")
+
+                        d_list = get_all_departments(org_id=org_id)
+                        d_idx = d_list.index(emp_curr["department"]) if emp_curr["department"] in d_list else 0
+                        c_dept, c_des = st.columns(2)
+                        up_dept = c_dept.selectbox("Department", d_list, index=d_idx)
+                        up_desig = c_des.text_input("Designation / Title", value=emp_curr["designation"])
+
+                        s_idx = EMPLOYMENT_STATUSES.index(emp_curr["employment_status"]) if emp_curr["employment_status"] in EMPLOYMENT_STATUSES else 0
+                        c_st, c_xp = st.columns(2)
+                        up_status = c_st.selectbox("Employment Status", EMPLOYMENT_STATUSES, index=s_idx)
+                        up_exp = c_xp.number_input("Years of Experience", min_value=0.0, max_value=60.0, value=float(emp_curr["years_experience"]), step=0.5)
+                        up_skills = st.text_input("Primary Skills", value=emp_curr["primary_skills"])
+
+                        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+                        update_save_btn = st.form_submit_button("Update Employee Record", type="primary", use_container_width=True)
+
+                    render_html("</div>")
+
+                    if update_save_btn:
+                        ok_upd, msg_upd = update_employee(
+                            employee_id=emp_curr["employee_id"],
+                            name=up_name,
+                            department=up_dept,
+                            designation=up_desig,
+                            years_experience=up_exp,
+                            primary_skills=up_skills,
+                            email=up_email if up_email.strip() else None,
+                            phone=up_phone,
+                            joining_date=emp_curr["joining_date"],
+                            employment_status=up_status,
+                            org_id=org_id
+                        )
+                        if ok_upd:
+                            st.success(msg_upd)
+                            st.rerun()
+                        else:
+                            st.error(msg_upd)
+
+                with col_rm:
+                    # Deactivation Box
+                    render_html(
+                        f"""
+                        <div style="background: #FFFBEB; border: 1.5px solid #FDE68A; border-radius: 16px; padding: 20px; margin-bottom: 1.2rem; box-shadow: 0 4px 14px rgba(245,158,11,0.06);">
+                            <div style="font-size: 0.98rem; font-weight: 800; color: #92400E; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                {get_svg_icon("alert_triangle", size=18, color="#F59E0B")} Action 1: Deactivate Account
+                            </div>
+                            <div style="font-size: 0.80rem; color: #78350F; line-height: 1.4; margin-bottom: 12px;">
+                                Suspends active login and marks employment status as Terminated while preserving past evaluations and skill records.
+                            </div>
+                        """
+                    )
+                    if st.button("Deactivate Employee", key=f"btn_deact_{emp_curr['employee_id']}", type="secondary", use_container_width=True):
+                        ok_dea, msg_dea = deactivate_employee(emp_curr["employee_id"], org_id=org_id)
+                        if ok_dea:
+                            st.success(msg_dea)
+                            st.rerun()
+                        else:
+                            st.error(msg_dea)
+                    render_html("</div>")
+
+                    # Danger Box: Permanent Deletion
+                    render_html(
+                        f"""
+                        <div style="background: #FEF2F2; border: 1.5px solid #FECACA; border-radius: 16px; padding: 20px; box-shadow: 0 4px 14px rgba(239,68,68,0.06);">
+                            <div style="font-size: 0.98rem; font-weight: 800; color: #991B1B; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                {get_svg_icon("trash", size=18, color="#EF4444")} Action 2: Permanent Removal
+                            </div>
+                            <div style="font-size: 0.80rem; color: #7F1D1D; line-height: 1.4; margin-bottom: 10px;">
+                                Irreversibly deletes this employee record and all associated performance reviews, assessments, and logs.
+                            </div>
+                        """
+                    )
+                    confirm_deletion = st.checkbox("I confirm permanent deletion of this record.", key=f"chk_del_{emp_curr['employee_id']}")
+                    if st.button("Permanently Delete", type="secondary", disabled=not confirm_deletion, key=f"btn_del_{emp_curr['employee_id']}", use_container_width=True):
+                        ok_del, msg_del = delete_employee(emp_curr["employee_id"], org_id=org_id)
+                        if ok_del:
+                            st.success(msg_del)
+                            st.rerun()
+                        else:
+                            st.error(msg_del)
+                    render_html("</div>")
+    # --- TAB 5: INVITATION CODES ---
+    with tab_invite:
+        render_html(
+            f"""
+            <div style="background: linear-gradient(135deg, #FFFFFF 0%, #FFFBEB 100%); border: 1.5px solid #FDE68A; border-left: 6px solid #F59E0B; border-radius: 16px; padding: 1.35rem 1.6rem; margin-bottom: 1.5rem; box-shadow: 0 4px 16px rgba(245,158,11,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #F59E0B, #D97706); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(245,158,11,0.25);">
+                            {get_svg_icon("key", size=22, color="#FFFFFF")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Organization Employee Invitation Codes</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Generate secure, expiring onboarding codes to automatically map new employees to your organization.</div>
+                        </div>
+                    </div>
+                    <span style="background: #FFFBEB; border: 1px solid #FDE68A; color: #B45309; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
+                        ORG CODE ENGINE
+                    </span>
+                </div>
+            </div>
+            """
+        )
+
+        c_inv_l, c_inv_r = st.columns([1.2, 1.8], gap="large")
+        with c_inv_l:
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        {get_svg_icon("key", size=18, color="#F59E0B")} Generate New Invitation Code
+                    </div>
+                    <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 12px;">
+                        Issuing for: <strong style="color: #0F172A;">{org_name}</strong> (<code>{org_id}</code>)
+                    </div>
+                """
+            )
+            inv_expiry_days = st.slider("Expiration Period (Days)", min_value=1, max_value=90, value=14, step=1, key="inv_gen_exp")
+            inv_max_uses = st.number_input("Maximum Allowed Uses", min_value=1, max_value=500, value=10, step=1, key="inv_gen_max")
+
+            st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+            if st.button("Generate Invitation Code", type="primary", use_container_width=True, key="btn_gen_inv_code"):
+                ok_inv, inv_data = generate_invitation_code(
+                    org_id=org_id,
+                    created_by=user.get("name", "HR Admin"),
+                    expiry_days=inv_expiry_days,
+                    max_uses=inv_max_uses
+                )
+                if ok_inv:
+                    st.session_state["latest_inv_code"] = inv_data["code"]
+                    st.success("New invitation code generated successfully!")
+                else:
+                    st.error(inv_data.get("error", "Failed to generate code"))
+
+            if "latest_inv_code" in st.session_state:
+                st.markdown("<div style='margin-top: 12px; border-top: 1px solid #F1F5F9; padding-top: 12px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='font-size: 0.82rem; font-weight: 700; color: #0F172A;'>Share this code with onboarding employees:</div>", unsafe_allow_html=True)
+                st.code(st.session_state["latest_inv_code"], language="text")
+                st.caption("Entering this code during employee registration automatically links their account to your organization directory.")
+
+            render_html("</div>")
+
+        with c_inv_r:
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 16px; padding: 22px; box-shadow: 0 4px 16px rgba(30,64,175,0.04);">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+                        {get_svg_icon("clipboard", size=18, color="#2563EB")} Active &amp; Historical Invitation Codes
+                    </div>
+                """
+            )
+            codes_list = list_invitation_codes(org_id=org_id)
+            if not codes_list:
+                render_html(
+                    f"""
+                    <div style="background: #F8FAFD; border: 1.5px dashed #DCE5F1; border-radius: 14px; padding: 2.2rem; text-align: center;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: #FEF3C7; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                            {get_svg_icon("key", size=22, color="#D97706")}
+                        </div>
+                        <div style="font-weight: 700; color: #0F172A; font-size: 0.96rem;">No Invitation Codes Generated Yet</div>
+                        <div style="font-size: 0.84rem; color: #64748B; margin-top: 4px;">Use the generator on the left to issue your first organization onboarding code.</div>
+                    </div>
+                    """
+                )
+            else:
+                for c_item in codes_list:
+                    status_color = "#10B981" if c_item["status"] == "Active" else ("#EF4444" if c_item["status"] == "Revoked" else "#F59E0B")
+                    col_code_info, col_code_action = st.columns([3, 1])
+                    with col_code_info:
+                        render_html(
+                            f"""
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-family: monospace; font-size: 0.96rem; font-weight: 800; color: #0F172A; background: #F8FAFC; padding: 2px 8px; border-radius: 6px; border: 1px solid #DCE5F1;">
+                                    {c_item['code_prefix']}
+                                </span>
+                                <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: {status_color}18; color: {status_color}; font-weight: 800; text-transform: uppercase;">
+                                    {c_item['status']}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.80rem; color: #64748B; margin-top: 4px;">
+                                Uses: <strong>{c_item['used_count']} / {c_item['max_uses']}</strong> &bull; Expires: {c_item['expires_at']} &bull; Created: {c_item['created_at'][:10]}
+                            </div>
+                            """
+                        )
+                    with col_code_action:
+                        if c_item["status"] == "Active":
+                            if st.button("Revoke", key=f"btn_revoke_{c_item['id']}", type="secondary", use_container_width=True):
+                                ok_rev, msg_rev = revoke_invitation_code(c_item["id"], org_id=org_id)
+                                if ok_rev:
+                                    st.success(msg_rev)
+                                    st.rerun()
+                                else:
+                                    st.error(msg_rev)
+                    st.markdown("<div style='border-bottom: 1px solid #F1F5F9; margin: 10px 0;'></div>", unsafe_allow_html=True)
+
+            render_html("</div>")
+    # --- TAB 6: ORGANIZATION MEMBERSHIP REQUESTS ---
+    with tab_requests:
+        render_html(
+            f"""
+            <div style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 100%); border: 1.5px solid #BFDBFE; border-left: 6px solid #2563EB; border-radius: 16px; padding: 1.35rem 1.6rem; margin-bottom: 1.5rem; box-shadow: 0 4px 16px rgba(37,99,235,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #2563EB, #1D4ED8); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(37,99,235,0.25);">
+                            {get_svg_icon("user_check", size=22, color="#FFFFFF")}
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #0F172A;">Organization Membership Requests</div>
+                            <div style="color: #64748B; font-size: 0.88rem;">Review, verify, and approve employee registration requests seeking to join this organization.</div>
+                        </div>
+                    </div>
+                    <span style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #1E40AF; font-size: 0.78rem; font-weight: 700; padding: 4px 12px; border-radius: 9999px;">
+                        VERIFICATION PORTAL
+                    </span>
+                </div>
+            </div>
+            """
+        )
+
+        col_req_filter, col_req_spacer = st.columns([1.5, 2.5])
+        with col_req_filter:
+            req_filter = st.selectbox(
+                "Filter Requests by Status",
+                ["Pending", "All Statuses", "Approved", "Rejected"],
+                key="membership_req_filter"
+            )
+        requests_list = get_membership_requests(org_id=org_id, status_filter=req_filter)
+
+        if not requests_list:
+            render_html(
+                f"""
+                <div style="background: #F8FAFD; border: 1.5px dashed #DCE5F1; border-radius: 16px; padding: 2.5rem; text-align: center; margin: 1rem 0;">
+                    <div style="width: 48px; height: 48px; border-radius: 14px; background: #DCFCE7; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                        {get_svg_icon("check_circle", size=24, color="#16A34A")}
+                    </div>
+                    <div style="font-weight: 800; color: #0F172A; font-size: 1.05rem;">All Caught Up!</div>
+                    <div style="font-size: 0.86rem; color: #64748B; margin-top: 4px;">
+                        There are currently no {req_filter.lower()} employee registration requests awaiting action for <strong>{org_name}</strong>.
+                    </div>
+                </div>
+                """
+            )
+        else:
+            for req in requests_list:
+                status_color = "#F59E0B" if req["status"] == "Pending" else ("#10B981" if req["status"] == "Approved" else "#EF4444")
+                initials = "".join([part[:1].upper() for part in (req.get("user_name") or "User").split()[:2]])
+                render_html(
+                    f"""
+                    <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 16px 20px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(30,64,175,0.03);">
+                    """
+                )
+                col_info, col_acts = st.columns([3, 1.2], gap="medium")
+                with col_info:
+                    render_html(
+                        f"""
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #2563EB, #7C3AED); color: #FFFFFF; font-weight: 800; font-size: 1.05rem; display: flex; align-items: center; justify-content: center;">
+                                {initials}
+                            </div>
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <strong style="font-size: 1.05rem; color: #0F172A;">{req['user_name']}</strong>
+                                    <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: {status_color}18; color: {status_color}; font-weight: 800; text-transform: uppercase;">
+                                        {req['status']}
+                                    </span>
+                                </div>
+                                <div style="font-size: 0.84rem; color: #475569; margin-top: 2px;">
+                                    <strong>Email:</strong> {req['user_email']} &bull;
+                                    <strong>Department:</strong> {req.get('department') or 'General'} &bull;
+                                    <strong>Designation:</strong> {req.get('designation') or 'Employee'}
+                                </div>
+                                <div style="font-size: 0.76rem; color: #94A3B8; margin-top: 2px;">
+                                    Requested: {req.get('created_at', '')}
+                                    {f" &bull; Reviewed by: {req.get('reviewer_name') or 'HR Admin'}" if req.get('reviewed_by') else ""}
+                                </div>
+                            </div>
+                        </div>
+                        """
+                    )
+                with col_acts:
+                    if req["status"] == "Pending":
+                        c_appr, c_rej = st.columns(2)
+                        with c_appr:
+                            if st.button("Approve", key=f"btn_appr_req_{req['id']}", type="primary", use_container_width=True):
+                                ok_appr, msg_appr = approve_membership_request(req["id"], reviewer_id=uid)
+                                if ok_appr:
+                                    st.success(msg_appr)
+                                    st.rerun()
+                                else:
+                                    st.error(msg_appr)
+                        with c_rej:
+                            if st.button("Reject", key=f"btn_rej_req_{req['id']}", type="secondary", use_container_width=True):
+                                ok_rej, msg_rej = reject_membership_request(req["id"], reviewer_id=uid)
+                                if ok_rej:
+                                    st.info(msg_rej)
+                                    st.rerun()
+                                else:
+                                    st.error(msg_rej)
+
+                render_html("</div>")
+# ==============================================================================
+# 4. PERFORMANCE REVIEWS & EVALUATIONS
+# ==============================================================================
+elif page in ["Performance", "Performance Reviews", "My Performance Reviews"]:
+    render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 60%, #FCE7F3 100%); border-left: 6px solid #9333EA;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #9333EA 0%, #EC4899 100%);">
+                    {get_svg_icon("performance", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        Performance Evaluations &amp; Trends
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Structured review cycles, quantitative ratings (1.0–5.0), and trajectory analytics.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #9333EA, #EC4899);">
+                    PERFORMANCE INTELLIGENCE
+                </span>
+            </div>
+        </div>
+        """
+    )
+
+    if is_admin:
+        tab_rev_list, tab_rev_add, tab_rev_trends = st.tabs(["Evaluation Records", "Record New Evaluation", "Distribution Analytics"])
+
+        with tab_rev_list:
+            all_reviews = get_performance_reviews(org_id=org_id)
+            if all_reviews:
+                c_head1, c_head2 = st.columns([2.2, 1.3])
+                with c_head1:
+                    st.markdown("#### Performance Review Records & Highlights")
+                    st.caption("Quantitative evaluations (1.0 - 5.0), achievement highlights, and manager feedback.")
+                with c_head2:
+                    rev_view_mode = st.radio("Review Layout", ["Cards View", "Table View"], horizontal=True, key="rev_layout_mode", label_visibility="collapsed")
+
+                # Filter by rating tier
+                c_rf1, c_rf2 = st.columns([2, 1.5])
+                rating_filter = c_rf1.selectbox("Filter by Performance Tier", ["All Evaluations", "Top Performers (4.5–5.0)", "Exceeds Expectations (4.0–4.4)", "Meets Expectations (3.0–3.9)", "Needs Development (< 3.0)"], key="rev_tier_filter")
+
+                filtered_reviews = all_reviews
+                if rating_filter == "Top Performers (4.5–5.0)":
+                    filtered_reviews = [r for r in all_reviews if r["performance_score"] >= 4.5]
+                elif rating_filter == "Exceeds Expectations (4.0–4.4)":
+                    filtered_reviews = [r for r in all_reviews if 4.0 <= r["performance_score"] < 4.5]
+                elif rating_filter == "Meets Expectations (3.0–3.9)":
+                    filtered_reviews = [r for r in all_reviews if 3.0 <= r["performance_score"] < 4.0]
+                elif rating_filter == "Needs Development (< 3.0)":
+                    filtered_reviews = [r for r in all_reviews if r["performance_score"] < 3.0]
+
+                if rev_view_mode == "Cards View":
+                    card_cols = st.columns(2, gap="medium")
+                    for i, r in enumerate(filtered_reviews):
+                        with card_cols[i % 2]:
+                            score = float(r.get("performance_score") or 0.0)
+                            if score >= 4.5:
+                                tier_label = "TOP PERFORMER"
+                                tier_border = "#10B981"
+                                tier_bg = "#ECFDF5"
+                                tier_border_light = "#A7F3D0"
+                                tier_text = "#047857"
+                                tier_grad = "linear-gradient(135deg, #059669 0%, #10B981 100%)"
+                                tier_bar = "#10B981"
+                            elif score >= 4.0:
+                                tier_label = "EXCEEDS GOALS"
+                                tier_border = "#2563EB"
+                                tier_bg = "#EFF6FF"
+                                tier_border_light = "#BFDBFE"
+                                tier_text = "#1D4ED8"
+                                tier_grad = "linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%)"
+                                tier_bar = "#2563EB"
+                            elif score >= 3.0:
+                                tier_label = "MEETS STANDARDS"
+                                tier_border = "#F59E0B"
+                                tier_bg = "#FFFBEB"
+                                tier_border_light = "#FDE68A"
+                                tier_text = "#B45309"
+                                tier_grad = "linear-gradient(135deg, #D97706 0%, #F59E0B 100%)"
+                                tier_bar = "#F59E0B"
+                            else:
+                                tier_label = "NEEDS DEVELOPMENT"
+                                tier_border = "#EF4444"
+                                tier_bg = "#FEF2F2"
+                                tier_border_light = "#FECACA"
+                                tier_text = "#B91C1C"
+                                tier_grad = "linear-gradient(135deg, #DC2626 0%, #EF4444 100%)"
+                                tier_bar = "#EF4444"
+
+                            n_parts = (r.get("employee_name") or "User").strip().split()
+                            init = (n_parts[0][0] + (n_parts[-1][0] if len(n_parts) > 1 else "")).upper()
+                            score_pct = min(max((score / 5.0) * 100, 0), 100)
+
+                            mgr_html = ""
+                            if r.get("manager_feedback"):
+                                mgr_html = f"""
+                                <div style="background: #FAF5FF; border: 1px solid #E9D5FF; border-left: 3px solid #7C3AED; border-radius: 8px; padding: 7px 11px; margin-top: 9px;">
+                                    <div style="font-size: 0.68rem; font-weight: 800; color: #7C3AED; text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                                        {get_svg_icon("user", size=12, color="#7C3AED")} Manager Feedback
+                                    </div>
+                                    <div style="font-size: 0.82rem; color: #4C1D95; line-height: 1.4;">
+                                        {r['manager_feedback']}
+                                    </div>
+                                </div>
+                                """
+
+                            render_html(
+                                f"""
+                                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-top: 4px solid {tier_border}; border-radius: 14px; padding: 1.25rem 1.4rem; margin-bottom: 1.15rem; box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04); min-height: 295px; display: flex; flex-direction: column; justify-content: space-between;">
+                                    <div>
+                                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px;">
+                                            <div style="display: flex; align-items: center; gap: 11px;">
+                                                <div style="width: 42px; height: 42px; border-radius: 12px; background: {tier_grad}; color: #FFFFFF; font-weight: 800; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                                                    {init}
+                                                </div>
+                                                <div>
+                                                    <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A; line-height: 1.25;">{r['employee_name']}</div>
+                                                    <div style="font-size: 0.76rem; color: #475569; font-weight: 600; margin-top: 2px;">
+                                                        <span style="background: #F1F5F9; border: 1px solid #E2E8F0; padding: 1px 7px; border-radius: 5px;">{r['department']}</span>
+                                                        <span style="color: #2563EB; margin-left: 4px;">{r['designation']}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0;">
+                                                <span style="display: inline-flex; align-items: center; gap: 4px; background: {tier_bg}; border: 1px solid {tier_border_light}; color: {tier_text}; font-weight: 800; font-size: 0.78rem; padding: 3px 9px; border-radius: 9999px;">
+                                                    {get_svg_icon("star", size=12, color=tier_text)} {score} / 5.0 &bull; {tier_label}
+                                                </span>
+                                                <span style="font-size: 0.70rem; font-weight: 700; color: #64748B; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 2px 7px; border-radius: 9999px;">
+                                                    {r['review_period']}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div style="margin-bottom: 11px;">
+                                            <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px;">
+                                                <span>Rating Meter</span>
+                                                <span style="color: {tier_text}; font-weight: 800;">{score} / 5.0 ({score_pct:.0f}%)</span>
+                                            </div>
+                                            <div style="background: #F1F5F9; border-radius: 9999px; height: 5px; width: 100%; overflow: hidden;">
+                                                <div style="background: {tier_bar}; height: 100%; width: {score_pct}%; border-radius: 9999px;"></div>
+                                            </div>
+                                        </div>
+
+                                        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-left: 3px solid #2563EB; border-radius: 8px; padding: 8px 12px; margin-bottom: 9px;">
+                                            <div style="font-size: 0.66rem; font-weight: 800; color: #2563EB; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                                                {get_svg_icon("sparkles", size=11, color="#2563EB")} Key Achievements &amp; Impact
+                                            </div>
+                                            <div style="font-size: 0.84rem; color: #1E293B; font-style: italic; line-height: 1.4;">
+                                                &ldquo;{r['achievements'] or 'Demonstrated strong commitment to team outcomes and technical delivery.'}&rdquo;
+                                            </div>
+                                        </div>
+
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                            <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 7px 9px;">
+                                                <div style="font-size: 0.66rem; font-weight: 800; color: #16A34A; text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                                                    {get_svg_icon("check_circle", size=11, color="#16A34A")} Strengths
+                                                </div>
+                                                <div style="font-size: 0.78rem; color: #14532D; font-weight: 600; line-height: 1.3;">
+                                                    {r['strengths'] or 'Consistency, technical proficiency'}
+                                                </div>
+                                            </div>
+                                            <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 7px 9px;">
+                                                <div style="font-size: 0.66rem; font-weight: 800; color: #D97706; text-transform: uppercase; letter-spacing: 0.04em; display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
+                                                    {get_svg_icon("target", size=11, color="#D97706")} Growth Areas
+                                                </div>
+                                                <div style="font-size: 0.78rem; color: #78350F; font-weight: 600; line-height: 1.3;">
+                                                    {r['improvements'] or 'Leadership and cross-team alignment'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {mgr_html}
+                                </div>
+                                """
+                            )
+                else:
+                    render_html(render_colored_review_table(filtered_reviews))
+
+                # Performance Trajectory Chart (Compact Rectangle Bars)
+                st.markdown("<div style='margin-top: 1.25rem;'></div>", unsafe_allow_html=True)
+                st.markdown("##### Performance Evaluation Trajectory & Scores")
+                df_trend = pd.DataFrame(all_reviews)
+                if not df_trend.empty and "review_period" in df_trend.columns:
+                    periods = [p for p in df_trend["review_period"].dropna().unique() if str(p).strip()]
+                    fig_trend = go.Figure()
+                    if len(periods) > 1:
+                        trend_agg = df_trend.groupby("review_period").agg(
+                            avg_score=("performance_score", "mean"),
+                            cnt=("performance_score", "count")
+                        ).reset_index()
+                        bar_colors = [
+                            "#10B981" if s >= 4.5 else ("#2563EB" if s >= 4.0 else ("#F59E0B" if s >= 3.0 else "#EF4444"))
+                            for s in trend_agg["avg_score"]
+                        ]
+                        fig_trend.add_trace(go.Bar(
+                            x=trend_agg["review_period"],
+                            y=trend_agg["avg_score"],
+                            text=[f"★ {s:.2f} ({c} revs)" for s, c in zip(trend_agg["avg_score"], trend_agg["cnt"])],
+                            textposition="outside",
+                            textfont=dict(size=10.5, color="#334155"),
+                            marker=dict(
+                                color=bar_colors,
+                                line=dict(color="#1E293B", width=0.8),
+                                cornerradius=6
+                            ),
+                            width=0.32 if len(trend_agg) <= 2 else None,
+                            name="Cycle Average"
+                        ))
+                        cycle_avg = df_trend["performance_score"].mean()
+                        fig_trend.add_hline(
+                            y=cycle_avg,
+                            line_dash="dash",
+                            line_color="#475569",
+                            line_width=1.2,
+                            annotation_text=f"Avg: {cycle_avg:.2f}",
+                            annotation_position="top right",
+                            annotation_font=dict(size=10, color="#475569")
+                        )
+                        fig_trend.update_layout(
+                            yaxis=dict(range=[0, 5.5], tickvals=[1, 2, 3, 4, 5], tickfont=dict(size=10)),
+                            xaxis=dict(tickfont=dict(size=10.5)),
+                            bargap=0.25,
+                            height=200,
+                            margin=dict(l=10, r=10, t=25, b=15)
+                        )
+                    else:
+                        cycle_label = periods[0] if periods else "Evaluation Cycle"
+                        df_sorted = df_trend.sort_values(by="performance_score", ascending=False).reset_index(drop=True)
+                        bar_colors = [
+                            "#10B981" if s >= 4.5 else ("#2563EB" if s >= 4.0 else ("#F59E0B" if s >= 3.0 else "#EF4444"))
+                            for s in df_sorted["performance_score"]
+                        ]
+                        fig_trend.add_trace(go.Bar(
+                            x=df_sorted["employee_name"],
+                            y=df_sorted["performance_score"],
+                            text=[f"★ {s:.1f}" for s in df_sorted["performance_score"]],
+                            textposition="outside",
+                            textfont=dict(size=10.5, color="#334155"),
+                            marker=dict(
+                                color=bar_colors,
+                                line=dict(color="#1E293B", width=0.5),
+                                cornerradius=6
+                            ),
+                            name="Employee Score"
+                        ))
+                        cycle_avg = df_sorted["performance_score"].mean()
+                        fig_trend.add_hline(
+                            y=cycle_avg,
+                            line_dash="dash",
+                            line_color="#2563EB",
+                            line_width=1.2,
+                            annotation_text=f"Avg: {cycle_avg:.2f} / 5.0",
+                            annotation_position="top right",
+                            annotation_font=dict(size=10, color="#2563EB")
+                        )
+                        fig_trend.update_layout(
+                            yaxis=dict(range=[0, 5.5], tickvals=[1, 2, 3, 4, 5], tickfont=dict(size=10)),
+                            xaxis=dict(tickfont=dict(size=10.5)),
+                            bargap=0.25,
+                            height=200,
+                            margin=dict(l=10, r=10, t=25, b=15)
+                        )
+
+                    fig_trend = apply_saas_chart_theme(fig_trend, height=200)
+                    col_bar_widget, _ = st.columns([1.4, 1.6], gap="large")
+                    with col_bar_widget:
+                        st.plotly_chart(fig_trend, use_container_width=True)
+            else:
+                st.info("No performance evaluations recorded yet.")
+
+        with tab_rev_add:
+            st.markdown("#### Record Performance Evaluation")
+            emps = get_employees(org_id=org_id)
+            if not emps:
+                st.warning("Please add employees first in Employee Management.")
+            else:
+                emp_choices = {f"{e['employee_id']} — {e['name']} ({e['designation']})": e['employee_id'] for e in emps}
+                with st.form("add_review_form"):
+                    chosen_emp = st.selectbox("Select Employee *", list(emp_choices.keys()))
+                    rev_period = st.text_input("Review Period *", placeholder="e.g. Q1 2026 or 2025 Annual Review")
+                    rev_score = st.slider("Performance Rating (1.0 = Needs Improvement, 5.0 = Exceptional) *", min_value=1.0, max_value=5.0, value=4.0, step=0.1)
+                    achieve = st.text_area("Key Achievements & Deliverables", placeholder="Projects completed, measurable impact, KPI results...")
+                    strengths_txt = st.text_area("Demonstrated Core Strengths", placeholder="Competencies, leadership, teamwork...")
+                    improve_txt = st.text_area("Areas for Growth & Upskilling", placeholder="Skills to develop, training needs...")
+                    feedback_txt = st.text_area("Executive Feedback & Summary Notes", placeholder="Overall evaluation summary and next steps...")
+
+                    save_rev_btn = st.form_submit_button("Save Performance Evaluation", type="primary")
+
+                if save_rev_btn:
+                    if not rev_period.strip():
+                        st.error("Validation Error: Review Period is required.")
+                    else:
+                        ok_r, msg_r = add_performance_review(
+                            employee_id=emp_choices[chosen_emp],
+                            review_period=rev_period,
+                            performance_score=rev_score,
+                            achievements=achieve,
+                            strengths=strengths_txt,
+                            improvements=improve_txt,
+                            manager_feedback=feedback_txt,
+                            reviewer_id=uid,
+                            org_id=org_id
+                        )
+                        if ok_r:
+                            st.success(msg_r)
+                            st.rerun()
+                        else:
+                            st.error(msg_r)
+
+        with tab_rev_trends:
+            st.markdown("#### Workforce Performance Rating Distribution")
+            all_revs = get_performance_reviews(org_id=org_id)
+            if all_revs:
+                df_r = pd.DataFrame(all_revs)
+                fig_hist = px.histogram(
+                    df_r, x="performance_score", nbins=10,
+                    title="Distribution of Ratings across Workforce",
+                    labels={"performance_score": "Rating (1.0 - 5.0)", "count": "Count"},
+                    color_discrete_sequence=["#2563EB"]
+                )
+                fig_hist.update_layout(margin=dict(l=10, r=10, t=35, b=10), height=320)
+                st.plotly_chart(fig_hist, use_container_width=True)
+            else:
+                st.info("No evaluation data available to chart.")
+    else:
+        my_revs = get_performance_reviews(employee_id=emp_id, org_id=org_id)
+        st.markdown(f"#### Evaluation History for Employee ({emp_id})")
+        if my_revs:
+            avg_my = round(sum(r["performance_score"] for r in my_revs) / len(my_revs), 2)
+            st.metric("Your Average Performance Rating", f"{avg_my} / 5.0")
+            for r in my_revs:
+                with st.container(border=True):
+                    st.markdown(
+                        f"""
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <strong style="font-size: 1.05rem; color: #0F172A;">{r['review_period']}</strong>
+                            <span class="badge-status badge-progress" style="font-size: 0.9rem;">Rating: {r['performance_score']} / 5.0</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    if r.get("achievements"):
+                        st.write(f"**Key Achievements:** {r['achievements']}")
+                    if r.get("strengths"):
+                        st.write(f"**Recognized Strengths:** {r['strengths']}")
+                    if r.get("improvements"):
+                        st.write(f"**Growth Opportunities:** {r['improvements']}")
+                    if r.get("manager_feedback"):
+                        st.info(f"**Executive Feedback:** {r['manager_feedback']}")
+        else:
+            st.info("No performance evaluations recorded for your profile yet.")
+
+# ==============================================================================
+# 5. SKILLS & COMPETENCY MATRIX / SKILLS & ASSESSMENTS
+# ==============================================================================
+elif page in ["Skills & Assessment", "Skills and assessments", "Skills", "Skills & Competency Matrix", "Skills & Assessments"]:
+    if not is_admin:
+        render_html(
+            f"""
+            <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDFA 60%, #EFF6FF 100%); border-left: 6px solid #0D9488;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div class="hero-icon-container" style="background: linear-gradient(135deg, #0D9488 0%, #2563EB 100%);">
+                        {get_svg_icon("skills", size=24, color="#FFFFFF")}
+                    </div>
+                    <div>
+                        <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                            Skills &amp; Assessment Center
+                        </div>
+                        <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                            Verified competencies, standardized technical MCQ assessments, and role benchmark readiness.
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <span class="hero-badge-pill" style="background: linear-gradient(135deg, #0D9488, #2563EB);">
+                        COMPETENCY MATRIX
+                    </span>
+                </div>
+            </div>
+            """
+        )
+
+        tab_emp_skills, tab_emp_assessments, tab_emp_mcq = st.tabs([
+            "My Competencies & Skills",
+            "Self-Evaluation & Evidence",
+            "Technical MCQ Assessments"
+        ])
+
+        with tab_emp_skills:
+            st.markdown("#### Add or Update Verified Competency")
+            with st.form("add_inline_skill_form"):
+                c_s1, c_s2, c_s3, c_s4 = st.columns([3, 2, 2, 1.5])
+                with c_s1:
+                    new_sk_name = st.text_input("Skill Name *", placeholder="e.g. Python, SQL, Communication, Leadership, Data Analysis")
+                with c_s2:
+                    new_sk_cat = st.selectbox("Category", ["Technical", "Soft Skill", "Leadership", "Tools", "Domain", "Business"])
+                with c_s3:
+                    new_sk_prof = st.selectbox("Proficiency Level", list(LEVELS.keys()))
+                with c_s4:
+                    new_sk_yrs = st.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.0, step=0.5, format="%.1f")
+
+                btn_add_sk = st.form_submit_button("Save Competency", type="primary")
+
+            if btn_add_sk:
+                if new_sk_name.strip():
+                    ok_sk, msg_sk = add_employee_skill(
+                        emp_id if emp_id else f"EMP-{uid}",
+                        new_sk_name.strip(),
+                        new_sk_prof,
+                        new_sk_cat,
+                        new_sk_yrs,
+                        org_id=org_id,
+                        user_id=uid
+                    )
+                    add_skill(uid, new_sk_name.strip(), new_sk_cat, new_sk_prof, new_sk_yrs)
+                    if ok_sk:
+                        st.success(f"Added competency '{new_sk_name.strip()}' successfully!")
+                        st.rerun()
+                    else:
+                        st.error(msg_sk)
+                else:
+                    st.error("Please enter a skill name.")
+
+            user_emp_skills = get_employee_skills(emp_id if emp_id else f"EMP-{uid}", org_id=org_id)
+            if user_emp_skills:
+                st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+                st.markdown(f"#### Verified Skills Profile ({len(user_emp_skills)} Competencies)")
+                render_html(render_colored_skills_table(user_emp_skills))
+
+                # Visual Proficiency Progress Bars for Individual Skills
+                st.markdown("##### Skill Proficiency Levels")
+                p_cols = st.columns(2)
+                for i, s_item in enumerate(user_emp_skills):
+                    col_target = p_cols[i % 2]
+                    lvl_label = s_item.get("proficiency_level") or s_item.get("proficiency") or "Intermediate"
+                    lvl_pct = {"Beginner": 25, "Intermediate": 50, "Advanced": 75, "Expert": 100}.get(lvl_label, 50)
+                    s_name = s_item.get("skill_name") or s_item.get("name") or "Skill"
+                    s_cat = s_item.get("category") or "Technical"
+                    with col_target:
+                        st.write(f"**{s_name}** &middot; <span style='font-size:0.8rem; color:#64748B;'>{s_cat} ({lvl_label} — {lvl_pct}%)</span>", unsafe_allow_html=True)
+                        st.progress(lvl_pct / 100)
+
+                col_d1, col_d2 = st.columns([3, 1])
+                with col_d1:
+                    sk_del_map = {f"{s.get('skill_name') or s.get('name') or 'Skill'} ({s.get('proficiency_level') or s.get('proficiency') or 'Intermediate'})": s.get("id") for s in user_emp_skills}
+                    sel_del_sk = st.selectbox("Select skill to remove", ["Choose a skill to delete..."] + list(sk_del_map.keys()))
+                with col_d2:
+                    st.write("")
+                    st.write("")
+                    if sel_del_sk != "Choose a skill to delete..." and st.button("Delete Skill", type="secondary"):
+                        delete_employee_skill(sk_del_map[sel_del_sk], employee_id=emp_id, org_id=org_id)
+                        delete_skill(uid, sk_del_map[sel_del_sk])
+                        st.success("Skill removed.")
+                        st.rerun()
+            else:
+                st.info("No skills cataloged yet. Add your competencies above.")
+
+        with tab_emp_assessments:
+            st.markdown("#### Record Skill Assessment")
+            st.caption("Perform a self-evaluation on key capabilities or review your verified assessment score history.")
+
+            c_as1, c_as2 = st.columns([1.1, 1], gap="large")
+            with c_as1:
+                with st.form("emp_rec_assessment_form"):
+                    cap_areas = ["Python", "SQL", "Communication", "Leadership", "Data Analysis", "System Design", "Problem Solving", "Project Management", "Domain Knowledge", "Cloud Architecture"]
+                    cap_area = st.selectbox("Capability / Skill Area *", cap_areas)
+                    conf_score = st.slider("Evaluated Proficiency / Confidence Score (0–100%) *", min_value=0, max_value=100, value=75, step=5)
+                    ass_notes = st.text_area("Assessment Evidence & Key Deliverables", placeholder="Describe practical experience, projects, or certifications supporting this assessment...")
+                    btn_save_ass = st.form_submit_button("Record Assessment to Profile", type="primary")
+
+                if btn_save_ass:
+                    ok_ass = add_assessment(
+                        uid=uid,
+                        category=cap_area,
+                        score=float(conf_score),
+                        employee_id=emp_id,
+                        org_id=org_id,
+                        skill_name=cap_area,
+                        notes=ass_notes
+                    )
+                    if ok_ass:
+                        st.success(f"Assessment recorded for {cap_area} ({conf_score}%) successfully!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to record assessment. Please try again.")
+
+            with c_as2:
+                prev_assessments = get_assessments(uid=uid, employee_id=emp_id, org_id=org_id)
+                st.markdown(f"#### Individual Assessment Results ({len(prev_assessments)})")
+                if prev_assessments:
+                    # Spider/Radar or Bar Chart of Assessments
+                    chart_skills = [a.get("skill_name") or a.get("category") for a in prev_assessments[:8]]
+                    chart_scores = [a.get("score", 0.0) for a in prev_assessments[:8]]
+                    
+                    if len(chart_skills) >= 3:
+                        fig_ass = go.Figure()
+                        fig_ass.add_trace(go.Scatterpolar(
+                            r=chart_scores + [chart_scores[0]],
+                            theta=chart_skills + [chart_skills[0]],
+                            fill='toself',
+                            fillcolor='rgba(16, 185, 129, 0.15)',
+                            line=dict(color='#10B981', width=2),
+                            name='Assessment Score'
+                        ))
+                        fig_ass = apply_saas_chart_theme(fig_ass, height=270, show_legend=False)
+                        fig_ass.update_layout(
+                            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                            margin=dict(l=25, r=25, t=25, b=25)
+                        )
+                        st.plotly_chart(fig_ass, use_container_width=True)
+                    else:
+                        df_ass_chart = pd.DataFrame({"Capability": chart_skills, "Score": chart_scores})
+                        fig_bar_ass = px.bar(df_ass_chart, x="Capability", y="Score", range_y=[0, 100], color_discrete_sequence=["#10B981"])
+                        fig_bar_ass = apply_saas_chart_theme(fig_bar_ass, height=240, show_legend=False)
+                        st.plotly_chart(fig_bar_ass, use_container_width=True)
+                else:
+                    st.info("No assessment scores logged yet. Complete the form to start your assessment baseline.")
+
+            # Full Assessment Log Table
+            if prev_assessments:
+                st.markdown("##### Assessment History Log")
+                ass_log_records = [
+                    {
+                        "Skill / Capability": a.get("skill_name") or a.get("name") or "Capability Area",
+                        "Score (%)": a.get("score") if a.get("score") is not None else (a.get("assessment_score") or 0),
+                        "Notes / Evidence": a.get("notes") or "",
+                        "Evaluation Date": a.get("created_at") or a.get("date") or "",
+                    }
+                    for a in prev_assessments
+                ]
+                df_ass_log = pd.DataFrame(ass_log_records)
+                st.dataframe(
+                    df_ass_log,
+                    width="stretch",
+                    hide_index=True,
+                    column_config={
+                        "Skill / Capability": st.column_config.TextColumn("Capability Area", width="medium"),
+                        "Score (%)": st.column_config.ProgressColumn("Assessment Score", min_value=0, max_value=100, format="%d%%"),
+                        "Notes / Evidence": st.column_config.TextColumn("Notes / Feedback", width="large"),
+                        "Evaluation Date": st.column_config.DateColumn("Recorded On", format="YYYY-MM-DD")
+                    }
+                )
+
+        with tab_emp_mcq:
+            render_individual_assessments(user, skills)
+    else:
+        # Admin View with Full Organization Competency Matrix Tabs
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.25rem 1.6rem; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                <div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
+                        {get_svg_icon("skills", size=24, color="#10B981")} Skills Management & Organization Assessments
+                    </div>
+                    <div style="color: #64748B; font-size: 0.92rem; margin-top: 4px;">
+                        Manage employee competencies, record formal skills assessments, and track role gap analytics for {org_name}.
+                    </div>
+                </div>
+                <div>
+                    <span class="badge-status badge-active">{org_id}</span>
+                </div>
+            </div>
+            """
+        )
+
+        tab_sk_matrix, tab_sk_assessments, tab_sk_gaps, tab_sk_train = st.tabs([
+            "Skills Portfolio",
+            "Assessments & Evaluations",
+            "Role Gap Analysis",
+            "Training & Upskilling"
+        ])
+
+        all_emps = get_employees(org_id=org_id)
+        if all_emps:
+            emp_sk_map = {f"{e['employee_id']} — {e['name']} ({e['designation']})": e['employee_id'] for e in all_emps}
+        else:
+            emp_sk_map = {}
+
+        with tab_sk_matrix:
+            if not emp_sk_map:
+                st.warning(f"No employees found in organization {org_id}. Please register or add employees first.")
+            else:
+                selected_sk_emp = st.selectbox("Select Employee Profile", list(emp_sk_map.keys()), key="hr_sel_sk_emp")
+                target_code = emp_sk_map[selected_sk_emp]
+
+                col_sk_form, col_sk_table = st.columns([1, 1.5])
+                with col_sk_form:
+                    with st.form("add_sk_form"):
+                        st.markdown(f"##### Add Competency for `{target_code}`")
+                        sk_name = st.text_input("Skill Name *", placeholder="e.g. Python, SQL, Docker, React, AWS")
+                        sk_cat = st.selectbox("Skill Category", ["Technical", "Domain", "Soft Skill", "Leadership", "Tool", "Business"])
+                        sk_prof = st.selectbox("Proficiency Level", list(LEVELS.keys()))
+                        sk_yrs = st.number_input("Years Experience", min_value=0.0, max_value=50.0, value=1.5, step=0.5)
+                        submit_sk = st.form_submit_button("Add Skill to Portfolio", type="primary")
+
+                    if submit_sk:
+                        ok_sk, msg_sk = add_employee_skill(target_code, sk_name, sk_prof, sk_cat, sk_yrs, org_id=org_id)
+                        if ok_sk:
+                            st.success(msg_sk)
+                            st.rerun()
+                        else:
+                            st.error(msg_sk)
+
+                with col_sk_table:
+                    emp_skills = get_employee_skills(target_code, org_id=org_id)
+                    st.markdown(f"##### Verified Skills Catalog ({len(emp_skills)})")
+                    if emp_skills:
+                        render_html(render_colored_skills_table(emp_skills))
+                        sk_del_map = {f"{s.get('skill_name') or s.get('name') or 'Skill'} ({s.get('proficiency_level') or s.get('proficiency') or 'Intermediate'})": s.get("id") for s in emp_skills}
+                        sel_del_sk = st.selectbox("Remove Competency", ["Select skill to remove..."] + list(sk_del_map.keys()), key="hr_del_sk_sel")
+                        if sel_del_sk != "Select skill to remove..." and st.button("Delete Skill", key="hr_del_sk_btn"):
+                            delete_employee_skill(sk_del_map[sel_del_sk], employee_id=target_code, org_id=org_id)
+                            st.success("Skill removed successfully.")
+                            st.rerun()
+                    else:
+                        st.info("No skills cataloged for this employee profile yet.")
+
+        with tab_sk_assessments:
+            st.markdown("#### HR Skills Assessment & Capability Evaluation")
+            st.caption("Record formal skills evaluations and monitor assessment score history for employees in your organization.")
+
+            if not emp_sk_map:
+                st.warning("No employees available to evaluate.")
+            else:
+                sel_ass_emp = st.selectbox("Select Employee to Assess", list(emp_sk_map.keys()), key="hr_sel_ass_emp")
+                target_ass_code = emp_sk_map[sel_ass_emp]
+
+                c_haf1, c_haf2 = st.columns([1.1, 1], gap="large")
+                with c_haf1:
+                    with st.form("hr_rec_assessment_form"):
+                        st.markdown(f"##### Record Assessment for `{target_ass_code}`")
+                        hr_cap_areas = ["Python", "SQL", "Communication", "Leadership", "Data Analysis", "System Design", "Problem Solving", "Project Management", "Domain Knowledge", "Cloud Architecture"]
+                        hr_cap_area = st.selectbox("Capability / Competency *", hr_cap_areas, key="hr_ass_cap")
+                        hr_conf_score = st.slider("Assessment Score (0–100%) *", min_value=0, max_value=100, value=80, step=5, key="hr_ass_score")
+                        hr_ass_notes = st.text_area("HR / Manager Evaluation Notes", placeholder="Demonstrated skills in recent sprint, code review scores, technical proficiency...", key="hr_ass_notes")
+                        btn_hr_ass = st.form_submit_button("Submit Assessment Record", type="primary")
+
+                    if btn_hr_ass:
+                        ok_hr_ass = add_assessment(
+                            category=hr_cap_area,
+                            score=float(hr_conf_score),
+                            employee_id=target_ass_code,
+                            org_id=org_id,
+                            skill_name=hr_cap_area,
+                            notes=hr_ass_notes
+                        )
+                        if ok_hr_ass:
+                            st.success(f"Assessment score of {hr_conf_score}% recorded for {target_ass_code} ({hr_cap_area})!")
+                            st.rerun()
+                        else:
+                            st.error("Failed to record assessment.")
+
+                with c_haf2:
+                    hr_emp_ass = get_assessments(employee_id=target_ass_code, org_id=org_id)
+                    st.markdown(f"##### Assessment Trajectory for `{target_ass_code}` ({len(hr_emp_ass)})")
+                    if hr_emp_ass:
+                        chart_skills = [a.get("skill_name") or a.get("category") for a in hr_emp_ass[:8]]
+                        chart_scores = [a.get("score", 0.0) for a in hr_emp_ass[:8]]
+                        if len(chart_skills) >= 3:
+                            fig_hr_ass = go.Figure()
+                            fig_hr_ass.add_trace(go.Scatterpolar(
+                                r=chart_scores + [chart_scores[0]],
+                                theta=chart_skills + [chart_skills[0]],
+                                fill='toself',
+                                fillcolor='rgba(16, 185, 129, 0.15)',
+                                line=dict(color='#10B981', width=2),
+                                name='Assessment Score'
+                            ))
+                            fig_hr_ass.update_layout(
+                                polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                                showlegend=False,
+                                height=270,
+                                margin=dict(l=25, r=25, t=25, b=25),
+                                paper_bgcolor="#FFFFFF"
+                            )
+                            st.plotly_chart(fig_hr_ass, use_container_width=True)
+                        else:
+                            df_h_chart = pd.DataFrame({"Capability": chart_skills, "Score": chart_scores})
+                            fig_bar_h = px.bar(df_h_chart, x="Capability", y="Score", range_y=[0, 100], color_discrete_sequence=["#10B981"])
+                            fig_bar_h.update_layout(height=240, margin=dict(l=10, r=10, t=10, b=10))
+                            st.plotly_chart(fig_bar_h, use_container_width=True)
+                    else:
+                        st.info(f"No assessments recorded for {target_ass_code} yet.")
+
+                if hr_emp_ass:
+                    st.markdown("##### Assessment Records Log")
+                    hr_ass_records = [
+                        {
+                            "Skill / Competency": a.get("skill_name") or a.get("name") or "Competency Area",
+                            "Score (%)": a.get("score") if a.get("score") is not None else (a.get("assessment_score") or 0),
+                            "Manager Notes": a.get("notes") or "",
+                            "Evaluation Date": a.get("created_at") or a.get("date") or "",
+                        }
+                        for a in hr_emp_ass
+                    ]
+                    df_h_log = pd.DataFrame(hr_ass_records)
+                    st.dataframe(df_h_log, width="stretch", hide_index=True)
+
+        with tab_sk_gaps:
+            st.markdown("#### Benchmark Role Gap Analysis & Competency Radar")
+            st.caption("Compare current verified competencies against 10 corporate benchmark roles to pinpoint development priorities.")
+            if emp_sk_map:
+                sel_gap_emp = st.selectbox("Select Employee for Gap Analysis", list(emp_sk_map.keys()), key="hr_sel_gap_emp")
+                target_gap_code = emp_sk_map[sel_gap_emp]
+            else:
+                target_gap_code = emp_id
+
+            all_roles = list(ROLE_CATALOG.keys())
+            target_role_eval = st.selectbox("Benchmark Target Role", ["-- Choose Benchmark Role --"] + all_roles, key="sel_bench_role")
+
+            if target_role_eval == "-- Choose Benchmark Role --":
+                st.info("🎯 **Please choose a benchmark target role from the dropdown above** to evaluate employee competency match and display the radar gap analysis.")
+            else:
+                gap_result = get_employee_skill_gaps(target_gap_code, target_role_eval, org_id=org_id)
+                
+                c_radar1, c_radar2 = st.columns([1.1, 1])
+                with c_radar1:
+                    st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
+                    st.progress(gap_result['match_percentage'] / 100)
+
+                    # Interactive Spider/Radar Chart
+                    if gap_result["gaps"]:
+                        top_gaps = gap_result["gaps"][:6]
+                        cat_names = [g["skill"] for g in top_gaps]
+                        c_vals = [g["current_level"] for g in top_gaps]
+                        r_vals = [g["required_level"] for g in top_gaps]
+
+                        fig_radar = go.Figure()
+                        fig_radar.add_trace(go.Scatterpolar(
+                            r=c_vals + [c_vals[0]],
+                            theta=cat_names + [cat_names[0]],
+                            fill='toself',
+                            fillcolor='rgba(37, 99, 235, 0.15)',
+                            name='Current Level',
+                            line=dict(color='#2563EB', width=2)
+                        ))
+                        fig_radar.add_trace(go.Scatterpolar(
+                            r=r_vals + [r_vals[0]],
+                            theta=cat_names + [cat_names[0]],
+                            fill='toself',
+                            fillcolor='rgba(16, 185, 129, 0.10)',
+                            name='Target Benchmark',
+                            line=dict(color='#10B981', width=2, dash='dot')
+                        ))
+                        fig_radar.update_layout(
+                            polar=dict(
+                                radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
+                            ),
+                            showlegend=True,
+                            height=290,
+                            margin=dict(l=25, r=25, t=25, b=25),
+                            paper_bgcolor="#FFFFFF"
+                        )
+                        st.plotly_chart(fig_radar, use_container_width=True)
+
+                with c_radar2:
+                    st.markdown(f"**Benchmark Role Standard:**")
+                    st.info(f"{gap_result['criteria']}")
+                    
+                    # Interactive Skill Growth Simulator
+                    st.markdown(f"##### {get_svg_icon('zap', size=16, color='#2563EB')} Interactive Growth Simulator", unsafe_allow_html=True)
+                    st.caption("Simulate upgrading a competency to see projected role match improvement:")
+                    if gap_result["gaps"]:
+                        sim_skill = st.selectbox("Select Competency to Boost", [g["skill"] for g in gap_result["gaps"]], key="sim_sk_sel")
+                        sim_level = st.select_slider("Target Simulated Level", options=[1, 2, 3, 4], value=3, format_func=lambda x: ['None', 'Beginner', 'Intermediate', 'Advanced', 'Expert'][x], key="sim_sk_lvl")
+                        old_m = gap_result['match_percentage']
+                        boosted_m = min(100, old_m + (sim_level * 5))
+                        st.markdown(
+                            f"""
+                            <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-top: 8px;">
+                                <span style="font-size: 0.84rem; color: #1E40AF; display: inline-flex; align-items: center; gap: 6px;">
+                                    Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> {get_svg_icon("arrow_right", size=14, color="#1D4ED8")} <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
+                                </span>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
+                if gap_result["gaps"]:
+                    st.markdown("##### Detailed Priority Competency Breakdown")
+                    levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
+                    render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
+
+                if gap_result.get("recommended_training"):
+                    st.markdown("##### Recommended Targeted Training Courses")
+                    for t_item in gap_result["recommended_training"]:
+                        st.markdown(f"• **{t_item}** — Focus program to close competency gaps.")
+
+        with tab_sk_train:
+            st.markdown("#### Training & Course Assignments")
+            if is_admin:
+                with st.form("assign_train_form"):
+                    st.markdown("##### Assign Upskilling Course")
+                    t_emp = st.selectbox("Assignee Employee", list(emp_sk_map.keys()) if all_emps else [target_code])
+                    t_emp_code = emp_sk_map[t_emp] if all_emps else target_code
+                    t_course = st.text_input("Course Title *", placeholder="e.g. Enterprise System Design Architecture")
+                    t_skill = st.text_input("Target Skill *", placeholder="e.g. System Design")
+                    t_provider = st.text_input("Training Provider", value="Talent Growth Academy")
+                    t_due = st.date_input("Target Completion Date", value=date.today())
+                    submit_train = st.form_submit_button("Assign Course", type="primary")
+
+                if submit_train:
+                    ok_tr, msg_tr = add_training_record(t_emp_code, t_course, t_skill, t_provider, t_due.isoformat(), "Enrolled", org_id=org_id)
+                    if ok_tr:
+                        st.success(msg_tr)
+                        st.rerun()
+                    else:
+                        st.error(msg_tr)
+
+            trainings = get_training_records(org_id=org_id)
+            if trainings:
+                render_html(render_colored_training_table(trainings))
+            else:
+                st.info(f"No active training courses recorded for {org_id}.")
+
+# ==============================================================================
+# 5B. ROLE MATCH & GAPS
+# ==============================================================================
+elif page in ["Role Match & Gaps", "Role Match & Competency Gaps", "Competency Gaps"]:
+    render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 60%, #FDF2F8 100%); border-left: 6px solid #7C3AED;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);">
+                    {get_svg_icon("target", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        Role Match &amp; Competency Gaps
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Compare verified competencies against 10 corporate benchmark roles to identify shortfalls and plan development.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #7C3AED, #EC4899);">
+                    10-ROLE RADAR BENCHMARK
+                </span>
+            </div>
+        </div>
+        """
+    )
+
+    all_roles = list(ROLE_CATALOG.keys())
+    saved_target_role = profile.get("target_role") or ""
+    role_options = ["-- Choose Benchmark Role --"] + all_roles
+    default_role_idx = (role_options.index(saved_target_role)) if saved_target_role in all_roles else 0
+    target_role_eval = st.selectbox("Benchmark Target Role", role_options, index=default_role_idx, key="sel_role_match_page")
+
+    has_selected_role = (target_role_eval != "-- Choose Benchmark Role --")
+
+    if not has_selected_role:
+        st.info("🎯 **Please choose a benchmark target role from the dropdown above** to evaluate your competency match and visualize your radar gap analysis.")
+    else:
+        gap_result = get_employee_skill_gaps(emp_id if emp_id else f"EMP-{uid}", target_role_eval, org_id=org_id, user_id=uid)
+
+        c_radar1, c_radar2 = st.columns([1.1, 1], gap="large")
+        with c_radar1:
+            st.metric(f"Match Readiness for {target_role_eval}", f"{gap_result['match_percentage']}%", delta=f"{gap_result['match_percentage']}% Target Alignment")
+            st.progress(gap_result['match_percentage'] / 100)
+
+            if gap_result["gaps"]:
+                top_gaps = gap_result["gaps"][:6]
+                cat_names = [g["skill"] for g in top_gaps]
+                c_vals = [g["current_level"] for g in top_gaps]
+                r_vals = [g["required_level"] for g in top_gaps]
+
+                fig_radar = go.Figure()
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=c_vals + [c_vals[0]],
+                    theta=cat_names + [cat_names[0]],
+                    fill='toself',
+                    fillcolor='rgba(37, 99, 235, 0.15)',
+                    name='Current Level',
+                    line=dict(color='#2563EB', width=2)
+                ))
+                fig_radar.add_trace(go.Scatterpolar(
+                    r=r_vals + [r_vals[0]],
+                    theta=cat_names + [cat_names[0]],
+                    fill='toself',
+                    fillcolor='rgba(16, 185, 129, 0.10)',
+                    name='Target Benchmark',
+                    line=dict(color='#10B981', width=2, dash='dot')
+                ))
+                fig_radar = apply_saas_chart_theme(fig_radar, height=290)
+                fig_radar.update_layout(
+                    polar=dict(
+                        radialaxis=dict(visible=True, range=[0, 4], tickvals=[1, 2, 3, 4], ticktext=['Beg', 'Int', 'Adv', 'Exp'])
+                    ),
+                    margin=dict(l=25, r=25, t=25, b=25)
+                )
+                st.plotly_chart(fig_radar, use_container_width=True)
+
+        with c_radar2:
+            st.markdown(f"**Benchmark Role Standard:**")
+            st.info(f"{gap_result['criteria']}")
+            
+            st.markdown(f"##### {get_svg_icon('zap', size=16, color='#2563EB')} Interactive Growth Simulator", unsafe_allow_html=True)
+            st.caption("Simulate upgrading a competency to see projected role match improvement:")
+            if gap_result["gaps"]:
+                sim_skill = st.selectbox("Select Competency to Boost", [g["skill"] for g in gap_result["gaps"]], key="sim_sk_sel_page")
+                sim_level = st.select_slider("Target Simulated Level", options=[1, 2, 3, 4], value=3, format_func=lambda x: ['None', 'Beginner', 'Intermediate', 'Advanced', 'Expert'][x], key="sim_sk_lvl_page")
+                old_m = gap_result['match_percentage']
+                boosted_m = min(100, old_m + (sim_level * 5))
+                st.markdown(
+                    f"""
+                    <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 14px; margin-top: 8px;">
+                        <span style="font-size: 0.84rem; color: #1E40AF; display: inline-flex; align-items: center; gap: 6px;">
+                            Advancing <strong>{sim_skill}</strong> to level {sim_level} projects role readiness from <strong>{old_m}%</strong> {get_svg_icon("arrow_right", size=14, color="#1D4ED8")} <strong style="color: #10B981;">{boosted_m}%</strong> (+{boosted_m - old_m}% gain).
+                        </span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+        if gap_result["gaps"]:
+            matched_count = sum(1 for g in gap_result["gaps"] if g.get("gap", 0) == 0)
+            total_count = len(gap_result["gaps"])
+            st.markdown(f"##### Detailed Competency Match & Gap Breakdown ({matched_count} of {total_count} Matched &bull; {gap_result['match_percentage']}%)")
+            levels_str = {0: "None (0)", 1: "Beginner (1)", 2: "Intermediate (2)", 3: "Advanced (3)", 4: "Expert (4)"}
+            render_html(render_colored_gaps_table(gap_result["gaps"], levels_str))
+
+        if gap_result.get("recommended_training"):
+            st.markdown("##### Recommended Targeted Training Courses")
+            for t_item in gap_result["recommended_training"]:
+                st.markdown(f"• **{t_item}** — Focus program to close competency gaps.")
+
+# ==============================================================================
+# 6. CAREER DEVELOPMENT & SMART GOALS / GROWTH PROGRESS
+# ==============================================================================
+elif page in ["Growth Progress", "Career Goals", "Career Development Plans", "My Career Goals"]:
+    render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #FFF7ED 60%, #FEF2F2 100%); border-left: 6px solid #F97316;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #F97316 0%, #F43F5E 100%);">
+                    {get_svg_icon("goals", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        Growth Progress &amp; SMART Goals
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Define target designations, track milestone completion, and monitor achievement roadmaps.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #F97316, #F43F5E);">
+                    CAREER ROADMAP
+                </span>
+            </div>
+        </div>
+        """
+    )
+
+
+    goal_user_id = None if is_admin else uid
+    goal_stats = get_goal_stats(user_id=goal_user_id, org_id=org_id)
+
+    avg_pct = goal_stats.get("avg_progress", 0)
+    total_g = goal_stats.get("total", 0)
+    comp_g = goal_stats.get("completed", 0)
+    prog_g = goal_stats.get("in_progress", 0)
+    over_g = goal_stats.get("overdue", 0)
+    not_start_g = goal_stats.get("not_started", 0)
+
+    if avg_pct >= 75:
+        vel_status = "Ahead of Target Pace"
+        vel_color = "#10B981"
+        vel_bg = "#ECFDF5"
+        vel_border = "#A7F3D0"
+    elif avg_pct >= 40:
+        vel_status = "Active Flight Momentum"
+        vel_color = "#2563EB"
+        vel_bg = "#EFF6FF"
+        vel_border = "#BFDBFE"
+    elif avg_pct > 0:
+        vel_status = "Early Acceleration"
+        vel_color = "#F59E0B"
+        vel_bg = "#FFFBEB"
+        vel_border = "#FDE68A"
+    else:
+        vel_status = "Planning & Initiation"
+        vel_color = "#64748B"
+        vel_bg = "#F8FAFC"
+        vel_border = "#E2E8F0"
+
+    if "cg_status_sel" not in st.session_state:
+        st.session_state.cg_status_sel = "All Statuses"
+
+    curr_filter = st.session_state.cg_status_sel
+
+    # 1. Sleek 4-Card Executive KPI Row
+    render_html(
+        f"""
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.15rem;">
+            <div style="background: #FFFFFF; border: 1px solid #DBEAFE; border-top: 4px solid #2563EB; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(37,99,235,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Total Goals</span>
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; color: #2563EB;">
+                        {get_svg_icon("target", size=17, color="#2563EB")}
+                    </div>
+                </div>
+                <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{total_g}</div>
+                <div style="margin-top: 8px; font-size: 0.76rem; color: #2563EB; font-weight: 600;">Active Milestone Pool</div>
+            </div>
+
+            <div style="background: #FFFFFF; border: 1px solid #BFDBFE; border-top: 4px solid #3B82F6; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(59,130,246,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">In Progress</span>
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; color: #3B82F6;">
+                        {get_svg_icon("clock", size=17, color="#3B82F6")}
+                    </div>
+                </div>
+                <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{prog_g}</div>
+                <div style="margin-top: 8px; font-size: 0.76rem; color: #3B82F6; font-weight: 600;">25% &ndash; 75% Execution</div>
+            </div>
+
+            <div style="background: #FFFFFF; border: 1px solid #BBF7D0; border-top: 4px solid #10B981; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(16,185,129,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Completed</span>
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #ECFDF5; display: flex; align-items: center; justify-content: center; color: #10B981;">
+                        {get_svg_icon("check", size=17, color="#10B981")}
+                    </div>
+                </div>
+                <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{comp_g}</div>
+                <div style="margin-top: 8px; font-size: 0.76rem; color: #10B981; font-weight: 600;">100% Achieved</div>
+            </div>
+
+            <div style="background: #FFFFFF; border: 1px solid #FECACA; border-top: 4px solid #EF4444; border-radius: 14px; padding: 1.1rem 1.25rem; box-shadow: 0 2px 8px rgba(239,68,68,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Overdue</span>
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #FEF2F2; display: flex; align-items: center; justify-content: center; color: #EF4444;">
+                        {get_svg_icon("shield", size=17, color="#EF4444")}
+                    </div>
+                </div>
+                <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; line-height: 1;">{over_g}</div>
+                <div style="margin-top: 8px; font-size: 0.76rem; color: #EF4444; font-weight: 600;">Past Target Deadline</div>
+            </div>
+        </div>
+
+        <!-- Overall Milestone Completion Banner -->
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; padding: 1.2rem 1.5rem; margin-bottom: 1.35rem; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 42px; height: 42px; border-radius: 12px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center; color: #2563EB;">
+                        {get_svg_icon("goals", size=20, color="#2563EB")}
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.15rem; font-weight: 800; color: #0F172A;">Overall Milestone Completion</span>
+                            <span style="font-size: 1.1rem; font-weight: 900; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 1px 9px; border-radius: 6px;">{avg_pct}%</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #64748B; margin-top: 2px;">
+                            <strong>{comp_g} of {total_g}</strong> milestones achieved ({avg_pct}% weighted completion across career roadmap)
+                        </div>
+                    </div>
+                </div>
+                <span style="display: inline-flex; align-items: center; gap: 5px; background: {vel_bg}; border: 1px solid {vel_border}; color: {vel_color}; font-weight: 700; font-size: 0.78rem; padding: 4px 11px; border-radius: 9999px;">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: {vel_color};"></span>
+                    {vel_status}
+                </span>
+            </div>
+
+            <div style="background: #F1F5F9; border-radius: 9999px; height: 9px; width: 100%; overflow: hidden;">
+                <div style="background: linear-gradient(90deg, #3B82F6 0%, #2563EB 55%, #10B981 100%); height: 100%; width: {avg_pct}%; border-radius: 9999px;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 0.72rem; color: #94A3B8; font-weight: 600;">
+                <span>0% Defined</span>
+                <span>25% Initiated</span>
+                <span>50% Mid-Point</span>
+                <span>75% Advanced</span>
+                <span>100% Achieved</span>
+            </div>
+        </div>
+        """
+    )
+
+    tab_g_view, tab_g_create, tab_g_edit = st.tabs(["Goals Dashboard & Tracking", "Create SMART Career Goal", "Manage Milestones (Edit / Delete)"])
+
+    # --- TAB 1: DASHBOARD ---
+    with tab_g_view:
+        c_ghead1, c_ghead2 = st.columns([2.2, 1.3])
+        with c_ghead1:
+            st.markdown("#### Active Career Goals & Milestone Roadmap")
+            st.caption("SMART goals aligned with career objectives, target milestones, and completion schedules.")
+        with c_ghead2:
+            goal_view_mode = st.radio("Goal View Layout", ["Roadmap View", "Table View"], horizontal=True, key="goal_view_mode", label_visibility="collapsed")
+
+        status_options = ["All Statuses", "In Progress", "Completed", "Overdue", "Not Started"]
+        if st.session_state.cg_status_sel not in status_options:
+            st.session_state.cg_status_sel = "All Statuses"
+
+        c_flt1, c_flt2 = st.columns([3, 1])
+        with c_flt1:
+            cg_sel = st.session_state.get("cg_status_sel", "All Statuses")
+            cg_idx = status_options.index(cg_sel) if cg_sel in status_options else 0
+            status_filter = st.selectbox(
+                "Filter Goals by Status",
+                status_options,
+                index=cg_idx,
+                key="cg_status_sel_box"
+            )
+            if status_filter != st.session_state.cg_status_sel:
+                st.session_state.cg_status_sel = status_filter
+                st.rerun()
+
+        with c_flt2:
+            st.write("")
+            st.write("")
+            if status_filter != "All Statuses":
+                if st.button("Clear Filter", key="btn_inline_reset_filter", use_container_width=True):
+                    st.session_state.cg_status_sel = "All Statuses"
+                    st.rerun()
+
+        goals_data = get_goals(user_id=goal_user_id, status_filter=status_filter if status_filter != "All Statuses" else None, org_id=org_id)
+
+        if goals_data:
+            if goal_view_mode == "Roadmap View":
+                for g in goals_data:
+                    status = g.get("status", "In Progress")
+                    progress = int(g.get("progress") or 0)
+
+                    if status == "Completed":
+                        status_color = "#10B981"
+                        status_bg = "#ECFDF5"
+                        status_border = "#A7F3D0"
+                        status_text = "#047857"
+                        card_top_border = "#10B981"
+                        bar_grad = "linear-gradient(90deg, #10B981 0%, #059669 100%)"
+                    elif status == "Overdue":
+                        status_color = "#EF4444"
+                        status_bg = "#FEF2F2"
+                        status_border = "#FECACA"
+                        status_text = "#B91C1C"
+                        card_top_border = "#EF4444"
+                        bar_grad = "linear-gradient(90deg, #F59E0B 0%, #EF4444 100%)"
+                    elif status == "In Progress":
+                        status_color = "#2563EB"
+                        status_bg = "#EFF6FF"
+                        status_border = "#BFDBFE"
+                        status_text = "#1D4ED8"
+                        card_top_border = "#2563EB"
+                        bar_grad = "linear-gradient(90deg, #3B82F6 0%, #2563EB 100%)"
+                    else:
+                        status_color = "#64748B"
+                        status_bg = "#F8FAFC"
+                        status_border = "#E2E8F0"
+                        status_text = "#475569"
+                        card_top_border = "#94A3B8"
+                        bar_grad = "#94A3B8"
+
+                    with st.container(border=True):
+                        render_html(
+                            f"""
+                            <div style="border-top: 3.5px solid {card_top_border}; margin: -0.85rem -0.95rem 0.65rem -0.95rem; border-radius: 12px 12px 0 0;"></div>
+                            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div style="width: 38px; height: 38px; border-radius: 10px; background: {status_bg}; border: 1px solid {status_border}; display: flex; align-items: center; justify-content: center; color: {status_color}; flex-shrink: 0;">
+                                        {get_svg_icon("target", size=18, color=status_color)}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 800; font-size: 1.10rem; color: #0F172A; line-height: 1.25;">
+                                            {g['title']}
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 3px;">
+                                            <span style="font-size: 0.74rem; font-weight: 700; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 2px 8px; border-radius: 6px;">
+                                                {g['target_designation'] or 'General Growth'}
+                                            </span>
+                                            <span style="font-size: 0.76rem; color: #64748B; font-weight: 500;">
+                                                Target: <strong style="color: #334155;">{g['target_date']}</strong>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                                    <span style="display: inline-flex; align-items: center; gap: 5px; background: {status_bg}; border: 1px solid {status_border}; color: {status_text}; font-weight: 800; font-size: 0.76rem; padding: 3px 9px; border-radius: 9999px; text-transform: uppercase;">
+                                        <span style="width: 6px; height: 6px; border-radius: 50%; background: {status_color};"></span>
+                                        {status}
+                                    </span>
+                                    <span style="font-size: 0.88rem; font-weight: 800; color: #0F172A; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 2px 9px; border-radius: 8px;">
+                                        {progress}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div style="font-size: 0.88rem; color: #475569; line-height: 1.5; margin: 8px 0 12px 0;">
+                                {g['description'] or 'Delivering measurable impact toward professional promotion benchmarks and leadership expectations.'}
+                            </div>
+
+                            <div style="margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.70rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
+                                    <span>Milestone Execution</span>
+                                    <span style="color: {status_color}; font-weight: 800;">{progress}% Complete</span>
+                                </div>
+                                <div style="background: #F1F5F9; border-radius: 9999px; height: 7px; width: 100%; overflow: hidden;">
+                                    <div style="background: {bar_grad}; height: 100%; width: {progress}%; border-radius: 9999px;"></div>
+                                </div>
+                            </div>
+                            """
+                        )
+
+                        col_lbl, col_adv, col_done = st.columns([3.2, 1.1, 1.1], gap="small")
+                        with col_lbl:
+                            if progress == 100:
+                                st.markdown("<span style='font-size: 0.82rem; font-weight: 700; color: #059669;'>✓ Goal Fully Achieved</span>", unsafe_allow_html=True)
+                            elif status == "Overdue":
+                                st.markdown(f"<span style='font-size: 0.78rem; font-weight: 600; color: #B91C1C;'>⚠️ Deadline passed on {g['target_date']}</span>", unsafe_allow_html=True)
+                            else:
+                                st.markdown(f"<span style='font-size: 0.78rem; font-weight: 600; color: #64748B;'>Target completion scheduled for {g['target_date']}</span>", unsafe_allow_html=True)
+
+                        with col_adv:
+                            if progress < 100:
+                                new_val = min(100, progress + 25)
+                                if st.button(f"Advance +25%", key=f"adv_btn_{g['id']}", use_container_width=True, type="secondary"):
+                                    update_goal_progress(g["id"], uid, new_val)
+                                    st.rerun()
+                        with col_done:
+                            if progress < 100:
+                                if st.button("Complete ✓", key=f"comp_btn_{g['id']}", type="primary", use_container_width=True):
+                                    update_goal_progress(g["id"], uid, 100)
+                                    st.rerun()
+
+                    st.markdown("<div style='margin-bottom: 0.75rem;'></div>", unsafe_allow_html=True)
+            else:
+                render_html(render_colored_goals_table(goals_data))
+
+            fig_goals = px.bar(
+                pd.DataFrame(goals_data),
+                x="title", y="progress", color="status",
+                range_y=[0, 100],
+                labels={"title": "Career Goal", "progress": "Progress (%)", "status": "Status"},
+                color_discrete_map={"Not Started": "#94A3B8", "In Progress": "#3B82F6", "Completed": "#10B981", "Overdue": "#EF4444"},
+                height=220
+            )
+            fig_goals = apply_saas_chart_theme(fig_goals, height=220, title="Goal Progress & Milestone Completion (%)")
+            fig_goals.update_traces(marker_cornerradius=6)
+            st.plotly_chart(fig_goals, use_container_width=True)
+
+            # Quick Milestone Updater
+            st.divider()
+            st.markdown("##### Quick Progress Milestone Updater")
+            q1, q2, q3 = st.columns([2, 1, 1])
+            with q1:
+                q_map = {f"{g['title']} (Current: {g['progress']}%)": g["id"] for g in goals_data}
+                sel_q_goal = st.selectbox("Select Goal to Update", list(q_map.keys()))
+                q_gid = q_map[sel_q_goal]
+            with q2:
+                curr_g_obj = next((g for g in goals_data if g.get("id") == q_gid), {})
+                milestone_opts = [0, 25, 50, 75, 100]
+                cur_prog = curr_g_obj.get("progress", 0)
+                m_idx = milestone_opts.index(cur_prog) if cur_prog in milestone_opts else 0
+                new_prog_val = st.selectbox(
+                    "New Milestone", milestone_opts,
+                    index=m_idx
+                )
+            with q3:
+                st.write("")
+                st.write("")
+                if st.button("Update Milestone", type="primary", use_container_width=True):
+                    ok_qp, msg_qp = update_goal_progress(q_gid, uid, new_prog_val)
+                    if ok_qp:
+                        st.success(msg_qp)
+                        st.rerun()
+                    else:
+                        st.error(msg_qp)
+        else:
+            render_html(f"""
+            <div style="background: #FFFFFF; border: 1px dashed #CBD5E1; border-radius: 14px; padding: 2.25rem 1.5rem; text-align: center; margin: 1.25rem 0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="width: 48px; height: 48px; border-radius: 12px; background: #EFF6FF; color: #2563EB; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                    {get_svg_icon("goals", size=24, color="#2563EB")}
+                </div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 4px;">No Goals with Status '{status_filter}'</div>
+                <div style="font-size: 0.88rem; color: #64748B; max-width: 460px; margin: 0 auto 1.25rem auto;">
+                    There are currently no career milestones matching this status filter. You can reset filters to view all active objectives.
+                </div>
+            </div>
+            """)
+            c_e1, c_e2, c_e3 = st.columns([1.5, 1, 1.5])
+            with c_e2:
+                if st.button("Show All Career Goals", key="btn_empty_show_all", use_container_width=True, type="primary"):
+                    st.session_state.cg_status_sel = "All Statuses"
+                    st.rerun()
+
+    # --- TAB 2: CREATE GOAL ---
+    with tab_g_create:
+        st.markdown("#### Create SMART Career Goal")
+        st.caption("Define target role, action steps, completion deadline, and discrete progress milestone.")
+
+        with st.form("create_career_goal_form"):
+            cg_title = st.text_input("Goal Title *", placeholder="e.g. Master Enterprise System Design & Distributed Systems")
+            cg_role = st.selectbox("Target Designation", ["Not Specified"] + list(ROLE_CATALOG.keys()))
+            cg_desc = st.text_area("Action Steps & Deliverables", placeholder="Specific certifications, projects, or milestones to achieve...")
+            cg_date = st.date_input("Target Completion Date *", min_value=date.today())
+            cg_prog = st.select_slider(
+                "Initial Progress Milestone", options=[0, 25, 50, 75, 100], value=0,
+                format_func=lambda x: f"{x}% ({'Not Started' if x==0 else ('Completed' if x==100 else 'In Progress')})"
+            )
+
+            submit_cg = st.form_submit_button("Save Career Goal to Database", type="primary", use_container_width=True)
+
+        if submit_cg:
+            if not cg_title.strip():
+                st.error("Validation Error: Goal Title is required.")
+            elif not cg_date:
+                st.error("Validation Error: Target Date is required.")
+            else:
+                ok_cg, msg_cg = add_goal(
+                    user_id=uid,
+                    title=cg_title,
+                    description=cg_desc,
+                    target_date=cg_date.isoformat(),
+                    progress=cg_prog,
+                    employee_id=emp_id,
+                    target_designation="" if cg_role == "Not Specified" else cg_role,
+                    org_id=org_id
+                )
+                if ok_cg:
+                    st.success(msg_cg)
+                    st.rerun()
+                else:
+                    st.error(msg_cg)
+
+    # --- TAB 3: MANAGE GOALS ---
+    with tab_g_edit:
+        st.markdown("#### Edit or Delete Career Goals")
+        my_all_goals = get_goals(user_id=goal_user_id, org_id=org_id)
+        if not my_all_goals:
+            st.info("No goals available to manage.")
+        else:
+            g_edit_map = {f"{g['title']} (Due: {g['target_date']})": g["id"] for g in my_all_goals}
+            sel_g_label = st.selectbox("Select Goal to Modify", list(g_edit_map.keys()))
+            sel_gid = g_edit_map[sel_g_label]
+            target_g_obj = get_goal_by_id(sel_gid)
+
+            if target_g_obj:
+                c_ged, c_gdel = st.columns([1.6, 1])
+                with c_ged:
+                    with st.form("edit_career_goal_form"):
+                        st.markdown(f"##### Edit Details for *{target_g_obj['title']}*")
+                        ed_title = st.text_input("Goal Title", value=target_g_obj["title"])
+                        role_keys = ["Not Specified"] + list(ROLE_CATALOG.keys())
+                        curr_rk_idx = role_keys.index(target_g_obj.get("target_designation")) if target_g_obj.get("target_designation") in role_keys else 0
+                        ed_role = st.selectbox("Target Designation", role_keys, index=curr_rk_idx)
+                        ed_desc = st.text_area("Action Steps", value=target_g_obj["description"])
+                        try:
+                            def_d = datetime.strptime(target_g_obj["target_date"], "%Y-%m-%d").date()
+                        except Exception:
+                            def_d = date.today()
+                        ed_date = st.date_input("Target Date", value=def_d)
+                        ed_prog = st.select_slider(
+                            "Milestone Progress",
+                            options=[0, 25, 50, 75, 100],
+                            value=target_g_obj["progress"],
+                            format_func=lambda x: f"{x}% ({'Not Started' if x==0 else ('Completed' if x==100 else 'In Progress')})"
+                        )
+                        update_g_btn = st.form_submit_button("Update Goal", type="primary")
+
+                    if update_g_btn:
+                        ok_gu, msg_gu = update_goal(
+                            goal_id=sel_gid,
+                            user_id=uid,
+                            title=ed_title,
+                            description=ed_desc,
+                            target_date=ed_date.isoformat(),
+                            progress=ed_prog,
+                            target_designation="" if ed_role == "Not Specified" else ed_role
+                        )
+                        if ok_gu:
+                            st.success(msg_gu)
+                            st.rerun()
+                        else:
+                            st.error(msg_gu)
+
+                with c_gdel:
+                    with st.container(border=True):
+                        st.markdown("##### Remove Career Goal")
+                        st.write(f"Are you sure you want to delete **{target_g_obj['title']}**?")
+                        st.caption("Permanent action. Associated progress logs will be purged.")
+                        confirm_g_del = st.checkbox("I confirm deletion of this career goal.")
+                        if st.button("Delete Goal", type="secondary", disabled=not confirm_g_del):
+                            ok_gdel, msg_gdel = delete_goal(sel_gid, uid)
+                            if ok_gdel:
+                                st.success(msg_gdel)
+                                st.rerun()
+                            else:
+                                st.error(msg_gdel)
+
+# ==============================================================================
+# 7. REPORTS & ANALYTICS / CAREER REPORT
+# ==============================================================================
+elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth Report"]:
+    if not is_admin:
+        # ----------------------------------------------------------------------
+        # INDIVIDUAL / EMPLOYEE PERSONAL CAREER REPORT & TALENT DOSSIER
+        # ----------------------------------------------------------------------
+        my_emp_id = emp_id or user.get("employee_id") or f"EMP{uid:03d}"
+        my_profile = dict(profile)
+        my_profile["name"] = user.get("name") or "Employee"
+        my_profile["email"] = user.get("email") or ""
+        my_profile["employee_id"] = my_emp_id
+
+        my_skills = list_skills(uid)
+        my_reviews = get_performance_reviews(employee_id=my_emp_id, org_id=org_id) if not is_individual else []
+        my_goals = get_goals(user_id=uid, org_id=org_id) if not is_individual else get_goals(user_id=uid)
+        my_assessments = get_assessments(uid=uid, employee_id=my_emp_id, org_id=org_id) if not is_individual else get_assessments(uid=uid)
+        my_progress = get_progress(uid)
+
+        all_catalog_roles = list(ROLE_CATALOG.keys())
+        saved_role = my_profile.get("target_role") or ""
+        role_select_options = ["-- Choose Target Role --"] + all_catalog_roles
+        default_role_idx = (role_select_options.index(saved_role)) if saved_role in all_catalog_roles else 0
+
+        render_html(
+            f"""
+            <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #EFF6FF 60%, #F5F3FF 100%); border-left: 6px solid #2563EB;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div class="hero-icon-container" style="background: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%);">
+                        {get_svg_icon("reports", size=24, color="#FFFFFF")}
+                    </div>
+                    <div>
+                        <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                            Personal Career Report &amp; Performance Dossier
+                        </div>
+                        <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                            Individual career trajectory, verified performance evaluations, goal milestones, and competency dossier for <b>{user.get('name', 'Employee')}</b>.
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <span class="hero-badge-pill" style="background: linear-gradient(135deg, #2563EB, #4F46E5);">
+                        TALENT DOSSIER
+                    </span>
+                </div>
+            </div>
+            """
+        )
+
+        # ----------------------------------------------------------------------
+        # Target Role Selection with non-empty validation
+        # ----------------------------------------------------------------------
+        c_rsel1, c_rsel2 = st.columns([2.8, 1.2], gap="medium")
+        with c_rsel1:
+            chosen_report_role = st.selectbox(
+                "🎯 Benchmark Target Role for Evaluation & Report Dossier:",
+                role_select_options,
+                index=default_role_idx,
+                key="career_report_sel_role",
+                help="Select your target benchmark role to evaluate competency matches and generate your tailored talent dossier."
+            )
+        with c_rsel2:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            if chosen_report_role != "-- Choose Target Role --" and chosen_report_role != saved_role:
+                if st.button("💾 Set as Primary Target Role", key="btn_save_report_role", use_container_width=True, type="secondary"):
+                    save_profile(uid, {"target_role": chosen_report_role})
+                    my_profile["target_role"] = chosen_report_role
+                    st.success(f"Saved '{chosen_report_role}' as primary target role!")
+                    st.rerun()
+
+        has_target_role = (chosen_report_role != "-- Choose Target Role --")
+        if has_target_role:
+            target_role = chosen_report_role
+            my_profile["target_role"] = target_role
+            match_score = role_match(target_role, my_skills, float(my_profile.get("years_experience") or 0))
+            gaps = gap_analysis(target_role, my_skills)
+            recs = recommendations(my_profile, my_skills)
+            comp_profile = profile_completion(my_profile, my_skills)[0]
+            a = {"match": match_score, "score": comp_profile, "completion": comp_profile}
+            safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", str(user.get("name") or "Employee"))
+
+            try:
+                pdf_bytes = create_report(
+                    profile=my_profile,
+                    skills=my_skills,
+                    analysis=a,
+                    gaps=gaps,
+                    recommendations=recs,
+                    assessments=my_assessments,
+                    progress=my_progress,
+                    goals=my_goals,
+                    reviews=my_reviews,
+                    org_id=org_id
+                )
+            except Exception:
+                pdf_bytes = None
+        else:
+            target_role = "Target Role Not Selected"
+            match_score = 0
+            gaps = []
+            recs = []
+            comp_profile = profile_completion(my_profile, my_skills)[0]
+            a = {"match": 0, "score": comp_profile, "completion": comp_profile}
+            safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", str(user.get("name") or "Employee"))
+            pdf_bytes = None
+
+        tab_emp_overview, tab_emp_pdf = st.tabs(["Career Overview & Performance", "Download Report"])
+
+        with tab_emp_overview:
+            if not has_target_role:
+                st.info("ℹ️ **Choose a Target Role above** to evaluate which competencies match, inspect skill gaps, and unlock your downloadable publication-grade talent dossier.")
+
+            # Metric Calculation
+            comp_score = a.get("score", 0)
+            total_sk = len(my_skills)
+            total_g = len(my_goals)
+            comp_g = sum(1 for g in my_goals if g.get("status") == "Completed")
+            avg_prog = round(sum(float(g.get("progress") or 0) for g in my_goals) / total_g) if total_g else 0
+
+            if my_reviews:
+                latest_rev = my_reviews[0]
+                latest_score = float(latest_rev.get("performance_score") or 0.0)
+                rating_text = f"{latest_score:.1f} / 5.0"
+                cycle_text = latest_rev.get("review_period") or "Performance Review"
+                if latest_score >= 4.5:
+                    badge_text = "Top Performer"
+                    badge_bg = "#ECFDF5"
+                    badge_color = "#059669"
+                elif latest_score >= 4.0:
+                    badge_text = "Exceeds Goals"
+                    badge_bg = "#EEF2FF"
+                    badge_color = "#2563EB"
+                elif latest_score >= 3.0:
+                    badge_text = "Meets Expectations"
+                    badge_bg = "#FEF3C7"
+                    badge_color = "#D97706"
+                else:
+                    badge_text = "Needs Development"
+                    badge_bg = "#FEE2E2"
+                    badge_color = "#DC2626"
+            else:
+                rating_text = "Unrated"
+                cycle_text = "No Reviews Recorded"
+                badge_text = "Pending Cycle"
+                badge_bg = "#F1F5F9"
+                badge_color = "#64748B"
+
+            # Quick Action & KPI Header
+            c_hdr1, c_hdr2 = st.columns([6.8, 3.2], gap="small")
+            with c_hdr1:
+                render_html(
+                    f"""
+                    <div style="font-size: 1.12rem; font-weight: 800; color: #0F172A; margin: 4px 0 2px 0;">
+                        Personal Career &amp; Competency Intelligence
+                    </div>
+                    <div style="font-size: 0.85rem; color: #64748B;">
+                        Track your performance trajectory, goal progress, and download your publication-grade talent dossier.
+                    </div>
+                    """
+                )
+            with c_hdr2:
+                if pdf_bytes:
+                    st.download_button(
+                        "📄 Download Report",
+                        pdf_bytes,
+                        file_name=f"talent_growth_report_{my_emp_id}_{safe_name}.pdf",
+                        mime="application/pdf",
+                        type="primary",
+                        use_container_width=True,
+                        key="btn_emp_quick_pdf_dl"
+                    )
+
+            # 4 KPI Cards
+            readiness_disp = f"{match_score}%" if has_target_role else "--"
+            role_disp = target_role if has_target_role else "Choose target role above"
+            render_html(
+                f"""
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0.5rem 0 1.25rem 0;">
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;">
+                            <span>Target Role Readiness</span>
+                            {get_svg_icon("target", size=16, color="#2563EB")}
+                        </div>
+                        <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 6px 0 2px 0;">{readiness_disp}</div>
+                        <div style="font-size: 0.82rem; color: #475569; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            Role: <b>{role_disp}</b>
+                        </div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;">
+                            <span>Performance Score</span>
+                            {get_svg_icon("award", size=16, color="#059669")}
+                        </div>
+                        <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 6px 0 2px 0; display: flex; align-items: center; gap: 8px;">
+                            <span>{rating_text}</span>
+                            <span style="font-size: 0.75rem; font-weight: 700; background: {badge_bg}; color: {badge_color}; padding: 3px 8px; border-radius: 9999px;">{badge_text}</span>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #475569; font-weight: 500;">
+                            Cycle: <b>{cycle_text}</b>
+                        </div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;">
+                            <span>Career Goals &amp; Milestones</span>
+                            {get_svg_icon("growth", size=16, color="#F59E0B")}
+                        </div>
+                        <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 6px 0 2px 0;">{avg_prog}% <span style="font-size: 0.95rem; font-weight: 600; color: #64748B;">Avg</span></div>
+                        <div style="font-size: 0.82rem; color: #475569; font-weight: 500;">
+                            <b>{comp_g} of {total_g}</b> milestones achieved
+                        </div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;">
+                            <span>Verified Competencies</span>
+                            {get_svg_icon("skills", size=16, color="#8B5CF6")}
+                        </div>
+                        <div style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 6px 0 2px 0;">{total_sk} <span style="font-size: 0.95rem; font-weight: 600; color: #64748B;">Skills</span></div>
+                        <div style="font-size: 0.82rem; color: #475569; font-weight: 500;">
+                            Profile Readiness: <b>{comp_profile}%</b>
+                        </div>
+                    </div>
+                </div>
+                """
+            )
+
+            # Section 1: Performance Evaluation History
+            render_html(
+                f"""
+                <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.85rem 0;">
+                    {get_svg_icon("award", size=20, color="#2563EB")} My Performance Evaluation History
+                </div>
+                """
+            )
+            if my_reviews:
+                for rev in my_reviews:
+                    rev_score = float(rev.get("performance_score") or 0.0)
+                    r_bg = "#ECFDF5" if rev_score >= 4.0 else ("#FEF3C7" if rev_score >= 3.0 else "#FEE2E2")
+                    r_color = "#059669" if rev_score >= 4.0 else ("#D97706" if rev_score >= 3.0 else "#DC2626")
+                    r_tag = "Exceeds Goals" if rev_score >= 4.0 else ("Meets Expectations" if rev_score >= 3.0 else "Needs Improvement")
+                    rev_date = str(rev.get("created_at") or "")[:10]
+                    reviewer = rev.get("reviewer_name") or "HR Administrator"
+
+                    render_html(
+                        f"""
+                        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; border-bottom: 1px solid #F1F5F9; padding-bottom: 12px;">
+                                <div>
+                                    <div style="font-size: 1.1rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 10px;">
+                                        <span>{rev.get('review_period', 'Annual Review')}</span>
+                                        <span style="font-size: 0.82rem; font-weight: 700; background: {r_bg}; color: {r_color}; padding: 3px 10px; border-radius: 9999px;">
+                                            ★ {rev_score:.1f} / 5.0 · {r_tag}
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 0.83rem; color: #64748B; margin-top: 4px;">
+                                        Evaluated by <b>{reviewer}</b> · Date: {rev_date} · Department: <b>{rev.get('department', 'Engineering')}</b>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+                                    <div style="font-size: 0.78rem; font-weight: 700; color: #059669; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
+                                        Key Achievements
+                                    </div>
+                                    <div style="font-size: 0.88rem; color: #1E293B; line-height: 1.45;">
+                                        {rev.get('achievements') or 'No achievements logged.'}
+                                    </div>
+                                </div>
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+                                    <div style="font-size: 0.78rem; font-weight: 700; color: #2563EB; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
+                                        Core Strengths
+                                    </div>
+                                    <div style="font-size: 0.88rem; color: #1E293B; line-height: 1.45;">
+                                        {rev.get('strengths') or 'No strengths logged.'}
+                                    </div>
+                                </div>
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+                                    <div style="font-size: 0.78rem; font-weight: 700; color: #D97706; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
+                                        Areas for Growth &amp; Development
+                                    </div>
+                                    <div style="font-size: 0.88rem; color: #1E293B; line-height: 1.45;">
+                                        {rev.get('improvements') or 'No improvement areas logged.'}
+                                    </div>
+                                </div>
+                                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 14px;">
+                                    <div style="font-size: 0.78rem; font-weight: 700; color: #4F46E5; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px;">
+                                        Manager &amp; Leadership Feedback
+                                    </div>
+                                    <div style="font-size: 0.88rem; color: #1E293B; line-height: 1.45;">
+                                        {rev.get('manager_feedback') or 'No manager feedback logged.'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        """
+                    )
+            else:
+                st.info("No formal performance evaluations recorded yet for your profile. Official reviews submitted by your evaluator will appear here.")
+
+            # Section 2: Career Goals & Milestone Roadmap
+            render_html(
+                f"""
+                <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.5rem 0 0.85rem 0;">
+                    {get_svg_icon("target", size=20, color="#10B981")} My Career Goals &amp; Milestone Trajectory
+                </div>
+                """
+            )
+            if my_goals:
+                for g in my_goals:
+                    g_prog = int(g.get("progress") or 0)
+                    g_stat = g.get("status") or "In Progress"
+                    if g_stat == "Completed":
+                        s_bg = "#ECFDF5"
+                        s_color = "#059669"
+                    elif g_stat == "In Progress":
+                        s_bg = "#EFF6FF"
+                        s_color = "#2563EB"
+                    elif g_stat == "Overdue":
+                        s_bg = "#FEE2E2"
+                        s_color = "#DC2626"
+                    else:
+                        s_bg = "#F1F5F9"
+                        s_color = "#64748B"
+
+                    target_desig = g.get("target_designation") or "Career Milestone"
+                    t_date = str(g.get("target_date") or "Not set")
+
+                    render_html(
+                        f"""
+                        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px 20px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 1rem; font-weight: 800; color: #0F172A;">{g.get('title')}</span>
+                                    <span style="font-size: 0.78rem; font-weight: 700; background: #EEF2FF; color: #4F46E5; padding: 2px 8px; border-radius: 6px;">
+                                        {target_desig}
+                                    </span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 0.8rem; font-weight: 700; background: {s_bg}; color: {s_color}; padding: 3px 9px; border-radius: 9999px;">
+                                        {g_stat.upper()}
+                                    </span>
+                                    <span style="font-size: 0.88rem; font-weight: 800; color: #0F172A;">{g_prog}% Complete</span>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.85rem; color: #475569; margin-bottom: 10px; line-height: 1.45;">
+                                {g.get('description') or 'SMART career objective aligned with milestone trajectory.'}
+                            </div>
+                            <div style="background: #E2E8F0; border-radius: 9999px; height: 8px; overflow: hidden; margin-bottom: 8px;">
+                                <div style="background: linear-gradient(90deg, #2563EB 0%, #10B981 100%); width: {g_prog}%; height: 100%;"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #64748B;">
+                                <span>Target Completion Date: <b>{t_date}</b></span>
+                                <span>Category: <b>{g.get('category', 'Technical Skills')}</b></span>
+                            </div>
+                        </div>
+                        """
+                    )
+            else:
+                st.info("No active career goals recorded yet. Set career goals under Growth Progress to track your milestones.")
+
+            # Section 3: Verified Skills & Role Readiness Breakdown
+            render_html(
+                f"""
+                <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.5rem 0 0.85rem 0;">
+                    {get_svg_icon("sparkles", size=20, color="#8B5CF6")} Verified Competencies &amp; Target Role Readiness
+                </div>
+                """
+            )
+            c_sk1, c_sk2 = st.columns(2)
+            with c_sk1:
+                st.markdown(f"**Verified Skill Portfolio ({len(my_skills)} Cataloged)**")
+                if my_skills:
+                    for s in my_skills:
+                        s_name = s.get("name") or s.get("skill_name") or "Skill"
+                        s_prof = s.get("proficiency") or s.get("proficiency_level") or "Intermediate"
+                        s_exp = s.get("years_experience") or 1.0
+                        s_cat = s.get("category") or "Technical"
+                        render_html(
+                            f"""
+                            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <span style="font-weight: 700; color: #0F172A; font-size: 0.92rem;">{s_name}</span>
+                                    <span style="font-size: 0.78rem; color: #64748B; margin-left: 8px;">{s_cat} · {s_exp:g} yrs</span>
+                                </div>
+                                <span style="font-size: 0.75rem; font-weight: 700; background: #EEF2FF; color: #2563EB; padding: 3px 8px; border-radius: 9999px;">
+                                    {s_prof}
+                                </span>
+                            </div>
+                            """
+                        )
+                else:
+                    st.info("No skills verified yet. Add skills in Skills & Assessment.")
+            with c_sk2:
+                if has_target_role:
+                    matched_ct = sum(1 for g in gaps if g.get("gap", 0) == 0)
+                    total_req = len(gaps)
+                    st.markdown(f"**Competency Fit for Target Role ({target_role}) &mdash; {matched_ct} of {total_req} Matched ({match_score}%)**")
+                    if gaps:
+                        fit_rows = []
+                        for g in gaps:
+                            is_m = (g.get("gap", 0) == 0)
+                            fit_rows.append({
+                                "Competency": g["skill"],
+                                "Required Level": f"Level {g['required']}",
+                                "Current Level": f"Level {g['current']}",
+                                "Match Status": "✅ MATCHED" if is_m else f"❌ GAP (-{g['gap']})",
+                                "Priority": g["priority"]
+                            })
+                        gap_df = pd.DataFrame(fit_rows)
+                        st.dataframe(gap_df, use_container_width=True, hide_index=True)
+                    else:
+                        st.success(f"All competencies for **{target_role}** are fully met or exceeded!")
+                else:
+                    st.markdown("**Competency Fit for Target Role**")
+                    st.info("🎯 **Choose a target role from the dropdown above** to evaluate your competency fit and see which skills match.")
+
+        with tab_emp_pdf:
+            st.markdown("#### Download Career & Performance Report")
+            st.caption(f"Download your publication-grade PDF talent dossier incorporating verified skills, gap metrics, goal milestones, and performance reviews for <b>{user.get('name', 'Employee')}</b>.")
+
+            render_html(
+                f"""
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; margin: 12px 0 20px 0;">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; margin-bottom: 6px;">
+                        {user.get('name', 'Employee')} ({my_emp_id})
+                    </div>
+                    <div style="font-size: 0.85rem; color: #64748B; margin-bottom: 12px;">
+                        Department: <b>{my_profile.get('department', 'Engineering')}</b> · Target Role: <b>{target_role}</b> · Organization: <b>{org_name}</b>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <span style="background: #EFF6FF; color: #2563EB; font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">
+                            Readiness Alignment: {a.get('match', 0)}%
+                        </span>
+                        <span style="background: #ECFDF5; color: #059669; font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">
+                            Rating: {rating_text}
+                        </span>
+                        <span style="background: #FAF5FF; color: #8B5CF6; font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">
+                            Verified Skills: {len(my_skills)}
+                        </span>
+                        <span style="background: #FFFBEB; color: #D97706; font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">
+                            Career Goals: {len(my_goals)}
+                        </span>
+                    </div>
+                </div>
+                """
+            )
+
+            if has_target_role and pdf_bytes:
+                st.download_button(
+                    f"Download Report ({user.get('name', 'Employee')})",
+                    pdf_bytes,
+                    file_name=f"talent_growth_report_{my_emp_id}_{safe_name}.pdf",
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True,
+                    key="btn_emp_full_pdf_dl"
+                )
+            elif not has_target_role:
+                st.warning("⚠️ **Target Role Required for Report:** Please choose a target role from the dropdown above to evaluate competency matches and generate your tailored talent dossier.")
+            else:
+                st.error("Could not compile PDF dossier at this time. Please ensure your profile information is filled out.")
+
+    else:
+        # ----------------------------------------------------------------------
+        # HR ADMINISTRATOR EXECUTIVE REPORTS & INDIVIDUAL DOSSIER CENTER
+        # ----------------------------------------------------------------------
+        render_html(
+            f"""
+            <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #EEF2FF 60%, #F0F9FF 100%); border-left: 6px solid #4F46E5;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div class="hero-icon-container" style="background: linear-gradient(135deg, #4F46E5 0%, #2563EB 100%);">
+                        {get_svg_icon("reports", size=24, color="#FFFFFF")}
+                    </div>
+                    <div>
+                        <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                            Executive Reports &amp; Data Center
+                        </div>
+                        <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                            Enterprise workforce analytics, company-wide performance benchmarks, and individual employee talent dossiers.
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <span class="hero-badge-pill" style="background: linear-gradient(135deg, #4F46E5, #2563EB);">
+                        HR EXECUTIVE ENGINE
+                    </span>
+                </div>
+            </div>
+            """
+        )
+
+        employees = get_employees(org_id=org_id)
+        reviews = get_performance_reviews(org_id=org_id)
+        goals = get_goals(org_id=org_id)
+        dept_summary = get_department_performance_summary(org_id=org_id)
+        tab_rep_overview, tab_rep_pdf = st.tabs(["Analytics Overview", "Individual & Org PDF Dossiers"])
+
+        with tab_rep_overview:
+            render_html(
+                f"""
+                <div style="font-size: 1.15rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 0.5rem 0 0.85rem 0;">
+                    {get_svg_icon("briefcase", size=20, color="#2563EB")} Department Workforce &amp; Performance Breakdown
+                </div>
+                """
+            )
+            if dept_summary:
+                render_html(render_colored_dept_summary_table(dept_summary))
+
+            if employees:
+                df_status = pd.DataFrame(employees)["employment_status"].value_counts().reset_index()
+                df_status.columns = ["Status", "Count"]
+                c_p1, c_p2 = st.columns(2)
+                with c_p1:
+                    fig_st = px.pie(
+                        df_status, values="Count", names="Status", title="Employment Status Distribution",
+                        hole=0.35, color_discrete_sequence=['#10B981', '#F59E0B', '#64748B']
+                    )
+                    fig_st = apply_saas_chart_theme(fig_st, height=300, title="Employment Status Distribution")
+                    st.plotly_chart(fig_st, use_container_width=True)
+                with c_p2:
+                    if reviews:
+                        df_rev = pd.DataFrame(reviews)
+                        df_rev["performance_score"] = pd.to_numeric(df_rev["performance_score"], errors="coerce")
+                        has_multiple_periods = "review_period" in df_rev.columns and df_rev["review_period"].dropna().nunique() > 1
+                        fig_hist = px.histogram(
+                            df_rev,
+                            x="performance_score",
+                            y="department",
+                            color="review_period" if has_multiple_periods else None,
+                            histfunc="avg",
+                            orientation="h",
+                            barmode="group",
+                            text_auto=".1f",
+                            title="Performance Ratings across Departments",
+                            labels={"performance_score": "Rating (1-5)", "department": "Department", "review_period": "Review Cycle"},
+                            color_discrete_sequence=['#2563EB', '#10B981', '#F59E0B', '#8B5CF6']
+                        )
+                        fig_hist = apply_saas_chart_theme(fig_hist, height=300, title="Performance Ratings across Departments")
+                        fig_hist.update_traces(
+                            marker_cornerradius=5,
+                            textposition="outside",
+                            textfont=dict(size=11, color="#1E293B")
+                        )
+                        fig_hist.update_xaxes(range=[0, 5.3], dtick=1, title_text="Avg Rating (1–5)")
+                        fig_hist.update_yaxes(title_text="")
+                        fig_hist.update_layout(bargap=0.25, bargroupgap=0.1)
+                        st.plotly_chart(fig_hist, use_container_width=True)
+
+        with tab_rep_pdf:
+            st.markdown("#### Generate Individual Employee Talent Dossier (PDF)")
+            st.caption("Select any individual employee from the roster to generate and download their publication-grade career and performance dossier.")
+
+            if employees:
+                emp_map = {
+                    f"{e['name']} ({e['employee_id']} — {e.get('department', 'General')} · {e.get('designation', 'Staff')})": e
+                    for e in employees
+                }
+                sel_emp_label = st.selectbox("Select Employee from Roster", list(emp_map.keys()), key="hr_sel_emp_dossier")
+                sel_emp = emp_map[sel_emp_label]
+                sel_uid = sel_emp.get("user_id")
+                sel_emp_id = sel_emp.get("employee_id")
+
+                # Preview card
+                render_html(
+                    f"""
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 18px 20px; margin: 10px 0 16px 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 1.1rem; font-weight: 800; color: #0F172A;">
+                                    {sel_emp.get('name')} <span style="font-size: 0.85rem; font-weight: 600; color: #64748B;">({sel_emp_id})</span>
+                                </div>
+                                <div style="font-size: 0.85rem; color: #475569; margin-top: 3px;">
+                                    Department: <b>{sel_emp.get('department', 'General')}</b> · Designation: <b>{sel_emp.get('designation', 'Staff')}</b> · Experience: <b>{sel_emp.get('years_experience', 0)} yrs</b>
+                                </div>
+                            </div>
+                            <div>
+                                <span style="font-size: 0.78rem; font-weight: 700; background: #ECFDF5; color: #059669; padding: 4px 10px; border-radius: 9999px;">
+                                    {sel_emp.get('employment_status', 'Active').upper()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    """
+                )
+
+                if sel_uid:
+                    sel_prof = dict(get_profile(sel_uid))
+                    sel_prof["name"] = sel_emp.get("name")
+                    sel_prof["email"] = sel_emp.get("email") or ""
+                    sel_prof["employee_id"] = sel_emp_id
+                    sel_skills = list_skills(sel_uid)
+                    sel_goals = get_goals(user_id=sel_uid, org_id=org_id)
+                    sel_assess = get_assessments(uid=sel_uid, employee_id=sel_emp_id, org_id=org_id)
+                    sel_prog = get_progress(sel_uid)
+                else:
+                    sel_prof = {
+                        "name": sel_emp.get("name"),
+                        "email": sel_emp.get("email") or "",
+                        "employee_id": sel_emp_id,
+                        "job_title": sel_emp.get("designation") or "Staff",
+                        "department": sel_emp.get("department") or "General",
+                        "years_experience": sel_emp.get("years_experience") or 0,
+                        "company": org_name,
+                        "target_role": sel_emp.get("designation") or "Senior Software Engineer"
+                    }
+                    sel_skills = []
+                    if sel_emp.get("primary_skills"):
+                        for s_name in sel_emp["primary_skills"].split(","):
+                            if s_name.strip():
+                                sel_skills.append({"name": s_name.strip(), "skill_name": s_name.strip(), "proficiency": "Intermediate", "years_experience": 2})
+                    sel_goals = []
+                    sel_assess = []
+                    sel_prog = []
+
+                sel_reviews = get_performance_reviews(employee_id=sel_emp_id, org_id=org_id)
+                hr_roles_list = ["-- Choose Benchmark Target Role --"] + list(ROLE_CATALOG.keys())
+                hr_saved_target = sel_prof.get("target_role") or ""
+                hr_def_idx = (hr_roles_list.index(hr_saved_target)) if hr_saved_target in ROLE_CATALOG else 0
+                sel_target_role = st.selectbox("Benchmark Target Role for Employee Dossier:", hr_roles_list, index=hr_def_idx, key="hr_dossier_bench_role")
+
+                has_hr_target_role = (sel_target_role != "-- Choose Benchmark Target Role --")
+                if has_hr_target_role:
+                    sel_prof["target_role"] = sel_target_role
+                    sel_gaps = gap_analysis(sel_target_role, sel_skills)
+                    sel_recs = recommendations(sel_prof, sel_skills)
+                    try:
+                        sel_analysis = profile_analysis(sel_prof, sel_skills)
+                    except Exception:
+                        sel_analysis = {}
+
+                    sel_pdf_bytes = create_report(
+                        profile=sel_prof,
+                        skills=sel_skills,
+                        analysis=sel_analysis,
+                        gaps=sel_gaps,
+                        recommendations=sel_recs,
+                        assessments=sel_assess,
+                        progress=sel_prog,
+                        goals=sel_goals,
+                        reviews=sel_reviews,
+                        org_id=org_id
+                    )
+                else:
+                    sel_pdf_bytes = None
+
+                safe_sel_name = re.sub(r"[^a-zA-Z0-9_]", "_", sel_emp.get("name", "Employee"))
+                col_hr_dl1, col_hr_dl2 = st.columns(2)
+                with col_hr_dl1:
+                    if has_hr_target_role and sel_pdf_bytes:
+                        st.download_button(
+                            f"Download PDF Dossier for {sel_emp.get('name')}",
+                            sel_pdf_bytes,
+                            file_name=f"talent_growth_dossier_{sel_emp_id}_{safe_sel_name}.pdf",
+                            mime="application/pdf",
+                            type="primary",
+                            use_container_width=True
+                        )
+                    elif not has_hr_target_role:
+                        st.warning("⚠️ **Target Role Required:** Select a benchmark target role above to evaluate matches and download the talent dossier.")
+                    else:
+                        st.error("Could not compile dossier at this time.")
+                with col_hr_dl2:
+                    if sel_reviews:
+                        csv_sel_rev = pd.DataFrame(sel_reviews).to_csv(index=False).encode("utf-8")
+                        st.download_button(
+                            f"Download {sel_emp.get('name')}'s Reviews (CSV)",
+                            csv_sel_rev,
+                            file_name=f"talent_growth_reviews_{sel_emp_id}.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                    elif sel_skills:
+                        csv_sel_sk = pd.DataFrame(sel_skills).to_csv(index=False).encode("utf-8")
+                        st.download_button(
+                            f"Download {sel_emp.get('name')}'s Skills (CSV)",
+                            csv_sel_sk,
+                            file_name=f"talent_growth_skills_{sel_emp_id}.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                    else:
+                        st.info("No separate reviews to export as CSV for this employee.")
+            else:
+                st.info("No employees found in organization roster.")
+
+# ==============================================================================
+# 8. MY PROFILE
+# ==============================================================================
+elif page == "My Profile":
+    render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #FAF5FF 60%, #F5F3FF 100%); border-left: 6px solid #8B5CF6;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%);">
+                    {get_svg_icon("profile", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        Professional Profile &amp; Career Dossier
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Manage contact coordinates, company affiliation, industry background, education, and portfolio links.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #8B5CF6, #6366F1);">
+                    PROFILE CREDENTIALS
+                </span>
+            </div>
+        </div>
+        """
+    )
+
+    if is_individual:
+        org_display_name = "Independent Professional"
+        org_display_id = "INDIVIDUAL"
+    else:
+        org_display_name = user.get("org_name") or profile.get("company") or "Talent Growth Technologies"
+        org_display_id = user.get("org_id", "ORG-TALENT-01")
+    render_html(
+        f"""
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 18px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 38px; height: 38px; border-radius: 10px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1);">
+                    {get_svg_icon("building" if not is_individual else "user", size=20, color="#4F46E5")}
+                </div>
+                <div>
+                    <div style="font-size: 0.72rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">{'Career Membership Status' if is_individual else 'Organization Membership'}</div>
+                    <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A;">{org_display_name}</div>
+                </div>
+            </div>
+            <div style="font-size: 0.8rem; font-family: monospace; font-weight: 700; color: #1E40AF; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 4px 10px; border-radius: 6px;">
+                {org_display_id}
+            </div>
+        </div>
+        """
+    )
+
+    with st.form("my_profile_form"):
+        # Section 1: Personal & Contact Information
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("user", size=18, color="#2563EB")} Personal &amp; Contact Details
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Verified identity, phone number, and physical office/remote location.
+                </div>
+            """
+        )
+        col_c1, col_c2 = st.columns(2, gap="large")
+        with col_c1:
+            st.text_input("Full Name", value=user.get("name", ""), disabled=True, help="Name is locked to authenticated identity.")
+            phone = st.text_input("Contact Phone Number", value=profile.get("phone", ""), placeholder="+1 (555) 000-0000")
+        with col_c2:
+            location = st.text_input("Work Location", value=profile.get("location", ""), placeholder="e.g. San Francisco, CA (Hybrid)")
+        render_html("</div>")
+
+        # Section 2: Current Corporate Role & Department
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("briefcase", size=18, color="#0D9488")} Current Role &amp; Organization Placement
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Corporate title, organizational business unit, and industry domain.
+                </div>
+            """
+        )
+        col_r1, col_r2 = st.columns(2, gap="large")
+        with col_r1:
+            job = st.text_input("Current Job Title", value=profile.get("job_title", ""), placeholder="e.g. Lead Software Engineer")
+            company = st.text_input("Company / Organization", value=profile.get("company", org_display_name), placeholder="e.g. Talent Growth Technologies")
+        with col_r2:
+            department = st.text_input("Department / Business Unit", value=profile.get("department", ""), placeholder="e.g. Engineering & Product")
+            industry = st.text_input("Industry Domain", value=profile.get("industry", ""), placeholder="e.g. Enterprise Software / SaaS")
+        render_html("</div>")
+
+        # Section 3: Employment Details & Experience Boundary
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("award", size=18, color="#7C3AED")} Employment Status &amp; Experience
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Contract type and cumulative professional career tenure.
+                </div>
+            """
+        )
+        col_e1, col_e2 = st.columns(2, gap="large")
+        with col_e1:
+            emp_types = ["Full-time", "Part-time", "Contract", "Internship", "Freelance", "Other"]
+            curr_emp = profile.get("employment_type")
+            emp_idx = emp_types.index(curr_emp) if curr_emp in emp_types else 0
+            employment = st.selectbox("Employment Type", emp_types, index=emp_idx)
+        with col_e2:
+            years = st.number_input("Years of Professional Experience", min_value=0.0, max_value=60.0, value=float(profile.get("years_experience") or 0.0), step=0.5, format="%.2f")
+        render_html("</div>")
+
+        # Section 4: Professional Links & Online Presence
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("external_link", size=18, color="#2563EB")} Professional Links &amp; Online Portfolios
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Public repository, verified portfolio, and professional networking profiles.
+                </div>
+            """
+        )
+        col_l1, col_l2, col_l3 = st.columns(3, gap="medium")
+        with col_l1:
+            linkedin = st.text_input("LinkedIn Profile URL", value=profile.get("linkedin", ""), placeholder="https://linkedin.com/in/username")
+        with col_l2:
+            github = st.text_input("GitHub Profile URL", value=profile.get("github", ""), placeholder="https://github.com/username")
+        with col_l3:
+            portfolio = st.text_input("Portfolio / Website URL", value=profile.get("portfolio", ""), placeholder="https://yourportfolio.dev")
+        render_html("</div>")
+
+        # Section 5: Education & Certifications
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("sparkles", size=18, color="#F59E0B")} Academic Background &amp; Certifications
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Degrees, university credentials, and industry-recognized certifications.
+                </div>
+            """
+        )
+        col_ed1, col_ed2 = st.columns(2, gap="large")
+        with col_ed1:
+            education = st.text_area("Higher Education & Degrees", value=profile.get("education", ""), placeholder="Degree - Institution - Graduation Year (e.g. B.S. Computer Science - State University, 2022)", height=100)
+        with col_ed2:
+            certifications = st.text_area("Professional Certifications", value=profile.get("certifications", ""), placeholder="Credential Name - Issuing Body - Year (e.g. AWS Solutions Architect Associate, 2024)", height=100)
+        render_html("</div>")
+
+        # Section 6: Comprehensive Career Summary & Work History
+        render_html(
+            f"""
+            <div style="background: #FFFFFF; border: 1px solid #DCE5F1; border-radius: 14px; padding: 20px 22px; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(30, 64, 175, 0.03);">
+                <div style="font-size: 1.05rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    {get_svg_icon("clipboard", size=18, color="#4F46E5")} Professional Summary &amp; Career Impact
+                </div>
+                <div style="font-size: 0.82rem; color: #64748B; margin-bottom: 14px;">
+                    Executive summary, notable achievements, and comprehensive employment track record.
+                </div>
+            """
+        )
+        summary = st.text_area("Executive Professional Summary", value=profile.get("summary", ""), placeholder="Brief 3-4 sentence overview of your domain expertise, technical leadership, and core accomplishments.", height=95)
+        experience = st.text_area("Detailed Work Experience & Impact", value=profile.get("experience", ""), placeholder="Roles, responsibilities, quantifiable achievements, and technology stacks used across previous positions.", height=110)
+        projects = st.text_area("Key Projects & Significant Deliverables", value=profile.get("projects", ""), placeholder="Major engineering or organizational projects delivered, including architecture, outcomes, and metrics.", height=95)
+        render_html("</div>")
+
+        submitted_prof = st.form_submit_button("Save profile", type="primary")
+
+        if submitted_prof:
+            save_profile(uid, {
+                "phone": phone, "location": location, "job_title": job, "company": company,
+                "department": department, "industry": industry, "employment_type": employment,
+                "years_experience": years, "linkedin": linkedin, "github": github,
+                "portfolio": portfolio, "education": education, "certifications": certifications,
+                "summary": summary, "experience": experience, "projects": projects
+            })
+            st.success("Profile saved successfully!")
+            st.rerun()
+
+    completion, missing = profile_completion(profile, skills)
+    st.markdown(f"<div style='font-size: 0.88rem; font-weight: 600; color: #475569; margin-top: 1rem;'>Profile completion {completion}%</div>", unsafe_allow_html=True)
+    st.progress(completion / 100)
+
+    standard_missing_msg = "Phone and location, Current role and employer, Professional summary, Education, Skills, Experience, Certifications, Projects, Career goal and target role, Professional link, Resume content"
+    active_missing_msg = ", ".join(missing) if missing else "All essential sections complete!"
+    st.caption(f"Still to add: {active_missing_msg if missing else standard_missing_msg}")
+
+
+elif page == "ATS Resume Studio" or page == "Resume Studio":
+    render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #FDF2F8 60%, #F5F3FF 100%); border-left: 6px solid #EC4899;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%);">
+                    {get_svg_icon("reports", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        ATS Resume Studio &amp; Dossier Builder
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Create, audit, and optimize your ATS-ready resume with real-time keyword screening, STAR bullet rewrites, and PDF export.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #EC4899, #8B5CF6);">
+                    ATS OPTIMIZATION
+                </span>
+            </div>
+        </div>
+        """
+    )
+
+    # --------------------------------------------------------------------------
+    # HR ADMINISTRATOR vs EMPLOYEE MODE
+    # --------------------------------------------------------------------------
+    active_target_uid = uid
+    active_target_user = user
+    active_target_profile = profile
+
+    if is_admin:
+        org_employees = get_employees(org_id=org_id)
+        render_html(
+            f"""
+            <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 12px 16px; margin-bottom: 1.2rem; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <strong style="color: #1E40AF; font-size: 0.95rem;">HR Administration Mode &bull; Candidate Resume Review</strong>
+                    <div style="color: #3B82F6; font-size: 0.83rem;">Select an employee in {org_name} to inspect their resume, review ATS alignment, or download their dossier.</div>
+                </div>
+                <span class="badge-status badge-active" style="background: #DBEAFE; color: #1E40AF; border-color: #93C5FD;">HR ACCESS</span>
+            </div>
+            """
+        )
+        if not org_employees:
+            st.info("No employee accounts registered under your organization yet.")
+            st.stop()
+
+        emp_options = {f"{e['name']} ({e['employee_id']} - {e.get('designation', 'Staff')})": e for e in org_employees}
+        selected_emp_label = st.selectbox("Select Employee Candidate", list(emp_options.keys()), key="hr_resume_emp_selector")
+        selected_emp = emp_options[selected_emp_label]
+        
+        # Resolve target user id
+        target_uid_resolved = selected_emp.get("user_id")
+        if not target_uid_resolved:
+            # Query user ID by employee_id or email
+            u_cand = get_user_by_id(selected_emp.get("id"))
+            target_uid_resolved = u_cand.get("id") if u_cand else uid
+
+        active_target_uid = target_uid_resolved
+        active_target_user = {
+            "id": active_target_uid,
+            "name": selected_emp["name"],
+            "email": selected_emp.get("email", ""),
+            "employee_id": selected_emp["employee_id"],
+            "org_id": org_id,
+            "org_name": org_name
+        }
+        active_target_profile = get_profile(active_target_uid)
+
+    # --------------------------------------------------------------------------
+    # RESUME DATA STATE MANAGEMENT
+    # --------------------------------------------------------------------------
+    res_session_key = f"resume_data_{active_target_uid}"
+    if res_session_key not in st.session_state:
+        db_resume = get_resume(active_target_uid, org_id=org_id)
+        st.session_state[res_session_key] = db_resume if db_resume else {}
+
+    res_data = st.session_state[res_session_key]
+
+    # Metrics Summary Row
+    summary_txt = res_data.get("summary", "")
+    skills_list = res_data.get("skills", [])
+    exp_list = res_data.get("experience", [])
+    edu_list = res_data.get("education", [])
+    certs_list = res_data.get("certifications", [])
+    projs_list = res_data.get("projects", [])
+    links_list = res_data.get("links", [])
+
+    render_html(
+        f"""
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; margin-bottom: 1.4rem;">
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 10px 14px; border-radius: 10px;">
+                <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Professional Summary</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: {'#10B981' if summary_txt else '#F59E0B'};">{'Ready' if summary_txt else 'Pending'}</div>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 10px 14px; border-radius: 10px;">
+                <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Core Skills</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #2563EB;">{len(skills_list)} Skills</div>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 10px 14px; border-radius: 10px;">
+                <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Work Experience</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #0F172A;">{len(exp_list)} Roles</div>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 10px 14px; border-radius: 10px;">
+                <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Projects &amp; Certs</div>
+                <div style="font-size: 1.15rem; font-weight: 800; color: #7C3AED;">{len(projs_list) + len(certs_list)} Items</div>
+            </div>
+        </div>
+        """
+    )
+
+    # --------------------------------------------------------------------------
+    # TAB SELECTION: Editor, Live Preview & Export, AI ATS Screener
+    # --------------------------------------------------------------------------
+    if is_admin:
+        tab_preview, tab_screener = st.tabs(["ATS Resume Preview & PDF", "AI ATS Screener & Candidate Audit"])
+        tab_editor = None
+    else:
+        tab_editor, tab_preview, tab_screener = st.tabs(["Interactive Resume Editor", "ATS Resume Preview & PDF", "AI ATS Screener & Bullet Optimizer"])
+
+    # ==========================================================================
+    # TAB 1: INTERACTIVE RESUME EDITOR (EMPLOYEE ONLY)
+    # ==========================================================================
+    if tab_editor is not None:
+        with tab_editor:
+            st.markdown("<h3 style='font-size: 1.25rem; font-weight: 800; color: #0F172A; margin: 0.5rem 0 1rem 0;'>Edit Your Resume Sections</h3>", unsafe_allow_html=True)
+            
+            # --- SECTION A: PROFESSIONAL SUMMARY ---
+            with st.expander("Section A &bull; Professional Summary", expanded=False):
+                st.caption("Write a 2-4 sentence executive summary highlighting your domain focus, key technologies, and career trajectory.")
+                current_sum = res_data.get("summary", "")
+                new_summary = st.text_area(
+                    "Professional Summary",
+                    value=current_sum,
+                    height=100,
+                    key=f"rs_summary_area_{active_target_uid}",
+                    placeholder="Full stack engineer passionate about scalable cloud systems, microservices, and React frontends."
+                )
+                res_data["summary"] = new_summary
+
+                col_sum_act1, col_sum_act2, _ = st.columns([2, 2, 4])
+                with col_sum_act1:
+                    if st.button("Use Recommended Template", key="btn_rs_sum_template"):
+                        res_data["summary"] = "Full stack engineer passionate about scalable cloud systems, microservices, and React frontends."
+                        st.session_state[res_session_key] = res_data
+                        st.rerun()
+                with col_sum_act2:
+                    if st.button("Clear Summary", key="btn_rs_sum_clear"):
+                        res_data["summary"] = ""
+                        st.session_state[res_session_key] = res_data
+                        st.rerun()
+
+            # --- SECTION B: SKILLS & COMPETENCIES ---
+            with st.expander(f"Section B &bull; Core Competencies & Skills ({len(skills_list)} added)", expanded=False):
+                st.caption("Add technical proficiencies and domain skills. You can also import verified skills from your Skills & Assessment module.")
+                
+                # Render existing skills as tags
+                if skills_list:
+                    st.write("**Current Skills:**")
+                    cols_skills = st.columns(min(4, max(1, len(skills_list))))
+                    for idx, s in enumerate(skills_list):
+                        col_idx = idx % len(cols_skills)
+                        with cols_skills[col_idx]:
+                            s_name = s.get("name", "")
+                            s_prof = s.get("proficiency", "Intermediate")
+                            c_tag, c_del = st.columns([3, 1])
+                            with c_tag:
+                                st.markdown(
+                                    f"""
+                                    <div style="background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 6px; padding: 4px 8px; font-size: 0.82rem; font-weight: 700; color: #1E293B;">
+                                        {s_name} <span style="font-size: 0.72rem; color: #2563EB; font-weight: 600;">({s_prof})</span>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                            with c_del:
+                                if st.button("", icon=":material/close:", key=f"btn_rs_del_skill_{idx}_{active_target_uid}", help=f"Remove {s_name}"):
+                                    res_data["skills"].pop(idx)
+                                    st.session_state[res_session_key] = res_data
+                                    st.rerun()
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                col_add_sname, col_add_sprof, col_add_sbtn = st.columns([3, 2, 2])
+                with col_add_sname:
+                    new_skill_name = st.text_input("Skill Name", key="rs_new_skill_input", placeholder="e.g. Python, SQL, React")
+                with col_add_sprof:
+                    new_skill_prof = st.selectbox("Proficiency", list(LEVELS.keys()), index=1, key="rs_new_skill_prof")
+                with col_add_sbtn:
+                    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                    if st.button("+ Add Skill", key="btn_rs_add_skill", type="secondary", use_container_width=True):
+                        if new_skill_name.strip():
+                            existing_names = [s["name"].lower() for s in res_data.get("skills", [])]
+                            if new_skill_name.strip().lower() in existing_names:
+                                st.warning(f"Skill '{new_skill_name.strip()}' is already in your resume.")
+                            else:
+                                if "skills" not in res_data:
+                                    res_data["skills"] = []
+                                res_data["skills"].append({"name": new_skill_name.strip(), "proficiency": new_skill_prof})
+                                st.session_state[res_session_key] = res_data
+                                st.success(f"Added '{new_skill_name.strip()}'")
+                                st.rerun()
+                        else:
+                            st.warning("Please enter a skill name.")
+
+                # Integration with Skills & Assessment
+                st.markdown("<div style='margin-top: 0.75rem; border-top: 1px dashed #E2E8F0; padding-top: 0.75rem;'></div>", unsafe_allow_html=True)
+                col_imp_btn, col_imp_info = st.columns([2.5, 5.5])
+                with col_imp_btn:
+                    if st.button("+ Import from Skills & Assessment", key="btn_rs_import_skills", type="secondary", use_container_width=True):
+                        updated_skills = import_skills_to_resume(active_target_uid, res_data.get("skills", []), org_id=org_id)
+                        added_count = len(updated_skills) - len(res_data.get("skills", []))
+                        res_data["skills"] = updated_skills
+                        st.session_state[res_session_key] = res_data
+                        st.success(f"Successfully synchronized {added_count} new skills from your Skills & Assessment profile!")
+                        st.rerun()
+                with col_imp_info:
+                    st.caption("Imports your verified employee competencies without overwriting existing manually created resume entries.")
+
+            # --- SECTION C: WORK EXPERIENCE ---
+            with st.expander(f"Section C &bull; Work Experience ({len(exp_list)} entries)", expanded=False):
+                st.caption("Chronological employment history with measurable outcomes, responsibilities, and leadership impact.")
+
+                if exp_list:
+                    for idx, e in enumerate(exp_list):
+                        with st.container(border=True):
+                            col_exp_head, col_exp_ctrl = st.columns([5, 2])
+                            with col_exp_head:
+                                date_badge = f"{e.get('start_date', '')} – {e.get('end_date', 'Present')}"
+                                st.markdown(
+                                    f"""
+                                    <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">{e.get('job_title', 'Role')} &mdash; <span style="color: #2563EB;">{e.get('company', 'Company')}</span></div>
+                                    <div style="font-size: 0.83rem; color: #64748B;">{e.get('location', '')} &bull; {e.get('employment_type', 'Full-time')} &bull; <strong>{date_badge}</strong></div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                            with col_exp_ctrl:
+                                c_up, c_down, c_del = st.columns(3)
+                                with c_up:
+                                    if idx > 0 and st.button("↑", key=f"btn_exp_up_{idx}", help="Move Up"):
+                                        exp_list[idx - 1], exp_list[idx] = exp_list[idx], exp_list[idx - 1]
+                                        res_data["experience"] = exp_list
+                                        st.session_state[res_session_key] = res_data
+                                        st.rerun()
+                                with c_down:
+                                    if idx < len(exp_list) - 1 and st.button("↓", key=f"btn_exp_down_{idx}", help="Move Down"):
+                                        exp_list[idx + 1], exp_list[idx] = exp_list[idx], exp_list[idx + 1]
+                                        res_data["experience"] = exp_list
+                                        st.session_state[res_session_key] = res_data
+                                        st.rerun()
+                                with c_del:
+                                    if st.button("", icon=":material/close:", key=f"btn_exp_del_{idx}", help="Delete Entry"):
+                                        exp_list.pop(idx)
+                                        res_data["experience"] = exp_list
+                                        st.session_state[res_session_key] = res_data
+                                        st.rerun()
+
+                            desc_val = e.get("description", "")
+                            if desc_val:
+                                st.markdown(f"<div style='font-size: 0.88rem; color: #334155; margin-top: 6px; line-height: 1.5;'>{desc_val}</div>", unsafe_allow_html=True)
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                with st.expander("+ Add Work Experience Entry", expanded=False):
+                    with st.form("form_add_experience"):
+                        col_e1, col_e2 = st.columns(2)
+                        with col_e1:
+                            new_e_title = st.text_input("Job Title*", placeholder="Senior Software Engineer")
+                            new_e_comp = st.text_input("Company Name*", placeholder="Tech Innovations Inc.")
+                            new_e_type = st.selectbox("Employment Type", ["Full-time", "Part-time", "Contract", "Internship", "Freelance"])
+                        with col_e2:
+                            new_e_loc = st.text_input("Location", placeholder="Bangalore, India or Remote")
+                            new_e_start = st.text_input("Start Date* (YYYY-MM or YYYY)", placeholder="2023-01")
+                            new_e_curr = st.checkbox("Currently working in this role", value=True)
+                            new_e_end = st.text_input("End Date (YYYY-MM or YYYY)", placeholder="2024-06", disabled=new_e_curr)
+
+                        new_e_desc = st.text_area("Job Description & Measurable Achievements", placeholder="Architected scalable microservices, reduced latency by 35%, and led a team of 4 engineers.", height=90)
+                        btn_submit_exp = st.form_submit_button("+ Add Experience Record", type="primary")
+
+                        if btn_submit_exp:
+                            if not new_e_title.strip() or not new_e_comp.strip() or not new_e_start.strip():
+                                st.error("Job title, company name, and start date are required.")
+                            else:
+                                end_val = "Present" if new_e_curr else new_e_end.strip()
+                                ok_dt, err_dt = validate_date_range(new_e_start.strip(), end_val, new_e_curr)
+                                if not ok_dt:
+                                    st.error(err_dt)
+                                else:
+                                    if "experience" not in res_data:
+                                        res_data["experience"] = []
+                                    res_data["experience"].append({
+                                        "id": f"exp_{len(res_data['experience']) + 1}",
+                                        "job_title": new_e_title.strip(),
+                                        "company": new_e_comp.strip(),
+                                        "employment_type": new_e_type,
+                                        "location": new_e_loc.strip(),
+                                        "start_date": new_e_start.strip(),
+                                        "end_date": end_val,
+                                        "is_current": new_e_curr,
+                                        "description": new_e_desc.strip()
+                                    })
+                                    st.session_state[res_session_key] = res_data
+                                    st.success(f"Added '{new_e_title.strip()}' at '{new_e_comp.strip()}'")
+                                    st.rerun()
+
+            # --- SECTION D: EDUCATION ---
+            with st.expander(f"Section D &bull; Education ({len(edu_list)} entries)", expanded=False):
+                st.caption("Academic degrees, university education, fields of study, and honors.")
+                
+                if edu_list:
+                    for idx, ed in enumerate(edu_list):
+                        with st.container(border=True):
+                            col_edu_head, col_edu_ctrl = st.columns([5, 1])
+                            with col_edu_head:
+                                date_str = f"{ed.get('start_date', '')} – {ed.get('end_date', '')}"
+                                st.markdown(
+                                    f"""
+                                    <div style="font-weight: 800; font-size: 1.05rem; color: #0F172A;">{ed.get('degree', 'Degree')} &mdash; <span style="color: #2563EB;">{ed.get('institution', 'Institution')}</span></div>
+                                    <div style="font-size: 0.83rem; color: #64748B;">{ed.get('field_of_study', '')} &bull; <strong>{date_str}</strong></div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                if ed.get("details"):
+                                    st.markdown(f"<div style='font-size: 0.86rem; color: #334155; margin-top: 4px;'>{ed['details']}</div>", unsafe_allow_html=True)
+                            with col_edu_ctrl:
+                                if st.button("", icon=":material/close:", key=f"btn_edu_del_{idx}", help="Delete Entry"):
+                                    edu_list.pop(idx)
+                                    res_data["education"] = edu_list
+                                    st.session_state[res_session_key] = res_data
+                                    st.rerun()
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                with st.expander("+ Add Education Entry", expanded=False):
+                    with st.form("form_add_education"):
+                        col_ed1, col_ed2 = st.columns(2)
+                        with col_ed1:
+                            new_ed_degree = st.text_input("Degree / Qualification*", placeholder="B.Tech in Computer Science")
+                            new_ed_inst = st.text_input("Institution / University*", placeholder="National Institute of Technology")
+                            new_ed_field = st.text_input("Field of Study", placeholder="Computer Science & Engineering")
+                        with col_ed2:
+                            new_ed_start = st.text_input("Start Year / Date", placeholder="2019")
+                            new_ed_end = st.text_input("End Year / Graduation Date", placeholder="2023")
+                            new_ed_details = st.text_area("Relevant Details (GPA, Honors)", placeholder="Graduated with First Class Honors, GPA 8.9/10", height=68)
+
+                        btn_submit_edu = st.form_submit_button("+ Add Education Record", type="primary")
+                        if btn_submit_edu:
+                            if not new_ed_degree.strip() or not new_ed_inst.strip():
+                                st.error("Degree and Institution are required.")
+                            else:
+                                ok_edt, err_edt = validate_date_range(new_ed_start.strip(), new_ed_end.strip())
+                                if not ok_edt:
+                                    st.error(err_edt)
+                                else:
+                                    if "education" not in res_data:
+                                        res_data["education"] = []
+                                    res_data["education"].append({
+                                        "id": f"edu_{len(res_data['education']) + 1}",
+                                        "degree": new_ed_degree.strip(),
+                                        "institution": new_ed_inst.strip(),
+                                        "field_of_study": new_ed_field.strip(),
+                                        "start_date": new_ed_start.strip(),
+                                        "end_date": new_ed_end.strip(),
+                                        "details": new_ed_details.strip()
+                                    })
+                                    st.session_state[res_session_key] = res_data
+                                    st.success(f"Added '{new_ed_degree.strip()}'")
+                                    st.rerun()
+
+            # --- SECTION E: CERTIFICATIONS ---
+            with st.expander(f"Section E &bull; Certifications & Credentials ({len(certs_list)} entries)", expanded=False):
+                st.caption("Professional licenses, vendor credentials, and technical accreditations.")
+
+                if certs_list:
+                    for idx, c in enumerate(certs_list):
+                        with st.container(border=True):
+                            col_c_head, col_c_ctrl = st.columns([5, 1])
+                            with col_c_head:
+                                st.markdown(
+                                    f"""
+                                    <div style="font-weight: 800; font-size: 1.0rem; color: #0F172A;">{c.get('name', 'Certification')} &mdash; <span style="color: #2563EB;">{c.get('issuing_org', '')}</span></div>
+                                    <div style="font-size: 0.83rem; color: #64748B;">Issued: {c.get('issue_date', 'N/A')} &bull; ID: {c.get('credential_id', 'N/A')}</div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                if c.get("credential_url"):
+                                    st.markdown(f"<a href='{c['credential_url']}' target='_blank' style='font-size: 0.82rem; color: #2563EB;'>Verify Credential</a>", unsafe_allow_html=True)
+                            with col_c_ctrl:
+                                if st.button("", icon=":material/close:", key=f"btn_cert_del_{idx}", help="Delete Certification"):
+                                    certs_list.pop(idx)
+                                    res_data["certifications"] = certs_list
+                                    st.session_state[res_session_key] = res_data
+                                    st.rerun()
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                with st.expander("+ Add Certification Record", expanded=False):
+                    with st.form("form_add_certification"):
+                        col_c1, col_c2 = st.columns(2)
+                        with col_c1:
+                            new_c_name = st.text_input("Certification Name*", placeholder="AWS Certified Solutions Architect")
+                            new_c_org = st.text_input("Issuing Organization*", placeholder="Amazon Web Services")
+                            new_c_id = st.text_input("Credential ID", placeholder="AWS-892174")
+                        with col_c2:
+                            new_c_issue = st.text_input("Issue Date (YYYY-MM)", placeholder="2024-03")
+                            new_c_noexp = st.checkbox("No Expiration", value=True)
+                            new_c_exp = st.text_input("Expiry Date (YYYY-MM)", placeholder="2027-03", disabled=new_c_noexp)
+                            new_c_url = st.text_input("Credential Verification URL", placeholder="https://aws.amazon.com/verify")
+
+                        btn_submit_cert = st.form_submit_button("+ Add Certification", type="primary")
+                        if btn_submit_cert:
+                            if not new_c_name.strip() or not new_c_org.strip():
+                                st.error("Certification name and issuing organization are required.")
+                            elif new_c_url.strip() and not validate_url(new_c_url.strip()):
+                                st.error(f"Invalid verification URL format: '{new_c_url.strip()}'.")
+                            else:
+                                if "certifications" not in res_data:
+                                    res_data["certifications"] = []
+                                res_data["certifications"].append({
+                                    "id": f"cert_{len(res_data['certifications']) + 1}",
+                                    "name": new_c_name.strip(),
+                                    "issuing_org": new_c_org.strip(),
+                                    "issue_date": new_c_issue.strip(),
+                                    "expiry_date": "" if new_c_noexp else new_c_exp.strip(),
+                                    "no_expiry": new_c_noexp,
+                                    "credential_id": new_c_id.strip(),
+                                    "credential_url": new_c_url.strip()
+                                })
+                                st.session_state[res_session_key] = res_data
+                                st.success(f"Added certification '{new_c_name.strip()}'")
+                                st.rerun()
+
+            # --- SECTION F: PROJECTS ---
+            with st.expander(f"Section F &bull; Projects & Key Achievements ({len(projs_list)} entries)", expanded=False):
+                st.caption("Showcase major engineering deliverables, open-source work, and system designs.")
+
+                if projs_list:
+                    for idx, p in enumerate(projs_list):
+                        with st.container(border=True):
+                            col_p_head, col_p_ctrl = st.columns([5, 1])
+                            with col_p_head:
+                                role_lbl = f" ({p.get('role', '')})" if p.get('role') else ""
+                                st.markdown(
+                                    f"""
+                                    <div style="font-weight: 800; font-size: 1.02rem; color: #0F172A;">{p.get('title', 'Project')}{role_lbl}</div>
+                                    <div style="font-size: 0.83rem; color: #2563EB; font-weight: 600;">Tech: {p.get('technologies', 'N/A')}</div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                if p.get("description"):
+                                    st.markdown(f"<div style='font-size: 0.87rem; color: #334155; margin-top: 4px; line-height: 1.45;'>{p['description']}</div>", unsafe_allow_html=True)
+                                
+                                p_urls = []
+                                if p.get("project_url"):
+                                    p_urls.append(f"<a href='{p['project_url']}' target='_blank' style='color: #2563EB;'>Live Demo</a>")
+                                if p.get("github_url"):
+                                    p_urls.append(f"<a href='{p['github_url']}' target='_blank' style='color: #2563EB;'>Source Code</a>")
+                                if p_urls:
+                                    st.markdown(f"<div style='font-size: 0.82rem; margin-top: 4px;'>{' &bull; '.join(p_urls)}</div>", unsafe_allow_html=True)
+                            with col_p_ctrl:
+                                if st.button("", icon=":material/close:", key=f"btn_proj_del_{idx}", help="Delete Project"):
+                                    projs_list.pop(idx)
+                                    res_data["projects"] = projs_list
+                                    st.session_state[res_session_key] = res_data
+                                    st.rerun()
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                with st.expander("+ Add Project Entry", expanded=False):
+                    with st.form("form_add_project"):
+                        col_pr1, col_pr2 = st.columns(2)
+                        with col_pr1:
+                            new_p_title = st.text_input("Project Title*", placeholder="Cloud-Native Talent Platform")
+                            new_p_role = st.text_input("Your Role", placeholder="Lead Architect / Developer")
+                            new_p_tech = st.text_input("Technologies Used*", placeholder="Python, React, SQLite, Docker")
+                        with col_pr2:
+                            new_p_purl = st.text_input("Project / Demo URL", placeholder="https://example.com/demo")
+                            new_p_ghurl = st.text_input("GitHub URL", placeholder="https://github.com/example/project")
+
+                        new_p_desc = st.text_area("Project Description", placeholder="Engineered multi-tenant isolation, automated welcome email delivery, and ATS resume scoring.", height=85)
+                        btn_submit_proj = st.form_submit_button("+ Add Project", type="primary")
+
+                        if btn_submit_proj:
+                            if not new_p_title.strip() or not new_p_tech.strip():
+                                st.error("Project title and technologies used are required.")
+                            elif new_p_purl.strip() and not validate_url(new_p_purl.strip()):
+                                st.error(f"Invalid Project URL format: '{new_p_purl.strip()}'.")
+                            elif new_p_ghurl.strip() and not validate_url(new_p_ghurl.strip()):
+                                st.error(f"Invalid GitHub URL format: '{new_p_ghurl.strip()}'.")
+                            else:
+                                if "projects" not in res_data:
+                                    res_data["projects"] = []
+                                res_data["projects"].append({
+                                    "id": f"proj_{len(res_data['projects']) + 1}",
+                                    "title": new_p_title.strip(),
+                                    "role": new_p_role.strip(),
+                                    "technologies": new_p_tech.strip(),
+                                    "project_url": new_p_purl.strip(),
+                                    "github_url": new_p_ghurl.strip(),
+                                    "description": new_p_desc.strip()
+                                })
+                                st.session_state[res_session_key] = res_data
+                                st.success(f"Added project '{new_p_title.strip()}'")
+                                st.rerun()
+
+            # --- SECTION G: PROFESSIONAL LINKS ---
+            with st.expander(f"Section G &bull; Professional Links ({len(links_list)} links)", expanded=False):
+                st.caption("Public portfolio, LinkedIn profile, GitHub repositories, or technical blog.")
+
+                if links_list:
+                    for idx, l in enumerate(links_list):
+                        col_l_lbl, col_l_url, col_l_del = st.columns([2, 5, 1])
+                        with col_l_lbl:
+                            st.markdown(f"**{l.get('label', 'Link')}**")
+                        with col_l_url:
+                            l_target = l.get('url', '')
+                            href = l_target if l_target.startswith('http') else f"https://{l_target}"
+                            st.markdown(f"<a href='{href}' target='_blank' style='color: #2563EB;'>{l_target}</a>", unsafe_allow_html=True)
+                        with col_l_del:
+                            if st.button("", icon=":material/close:", key=f"btn_link_del_{idx}", help="Remove Link"):
+                                links_list.pop(idx)
+                                res_data["links"] = links_list
+                                st.session_state[res_session_key] = res_data
+                                st.rerun()
+
+                st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
+                with st.expander("+ Add Professional Link", expanded=False):
+                    with st.form("form_add_link"):
+                        col_lk1, col_lk2 = st.columns([2.5, 4.5])
+                        with col_lk1:
+                            new_l_label = st.selectbox("Platform / Label", ["LinkedIn", "GitHub", "Portfolio", "Personal Website", "Blog", "Other"])
+                        with col_lk2:
+                            new_l_url = st.text_input("URL Address*", placeholder="https://linkedin.com/in/username")
+
+                        btn_submit_link = st.form_submit_button("+ Add Link", type="primary")
+                        if btn_submit_link:
+                            if not new_l_url.strip():
+                                st.error("Please enter a web URL.")
+                            elif not validate_url(new_l_url.strip()):
+                                st.error(f"Invalid URL format: '{new_l_url.strip()}'. Must be a valid HTTP/HTTPS address or domain.")
+                            else:
+                                if "links" not in res_data:
+                                    res_data["links"] = []
+                                res_data["links"].append({
+                                    "id": f"link_{len(res_data['links']) + 1}",
+                                    "label": new_l_label,
+                                    "url": new_l_url.strip()
+                                })
+                                st.session_state[res_session_key] = res_data
+                                st.success(f"Added link '{new_l_label}'")
+                                st.rerun()
+
+            # --- GLOBAL SAVE ACTION BAR ---
+            st.markdown("<div style='border-top: 2px solid #E2E8F0; margin: 2rem 0 1.25rem 0;'></div>", unsafe_allow_html=True)
+            col_save_btn, col_cancel_btn, _ = st.columns([3, 2, 4])
+            with col_save_btn:
+                if st.button("Save All Resume Changes", icon=":material/save:", key="btn_rs_save_all", type="primary", use_container_width=True):
+                    ok_save, msg_save = save_resume(active_target_uid, res_data, org_id=org_id)
+                    if ok_save:
+                        st.session_state[res_session_key] = get_resume(active_target_uid, org_id=org_id) or {}
+                        # Refresh global profile and skills
+                        st.session_state.profile = get_profile(active_target_uid)
+                        st.session_state.skills = list_skills(active_target_uid)
+                        st.success("All resume changes successfully persisted to database!")
+                        st.rerun()
+                    else:
+                        st.error(f"Save failed: {msg_save}")
+            with col_cancel_btn:
+                if st.button("Cancel & Revert", key="btn_rs_cancel_changes", type="secondary", use_container_width=True):
+                    st.session_state[res_session_key] = get_resume(active_target_uid, org_id=org_id) or {}
+                    st.info("Reverted unsaved changes to previously saved database state.")
+                    st.rerun()
+
+    # ==========================================================================
+    # TAB 2: ATS RESUME PREVIEW & PDF EXPORT
+    # ==========================================================================
+    with tab_preview:
+        col_prev_head, col_prev_pdf = st.columns([5, 3])
+        with col_prev_head:
+            st.markdown("<h3 style='font-size: 1.25rem; font-weight: 800; color: #0F172A; margin: 0.5rem 0 0.2rem 0;'>ATS Resume Live Preview</h3>", unsafe_allow_html=True)
+            st.caption("Structured, applicant-tracking-system compliant layout generated from your saved resume database records.")
+        with col_prev_pdf:
+            pdf_bytes = generate_resume_pdf(
+                res_data,
+                {
+                    "name": active_target_user.get("name", "User"),
+                    "email": active_target_user.get("email", ""),
+                    "phone": active_target_profile.get("phone", ""),
+                    "location": active_target_profile.get("location", "")
+                }
+            )
+            st.download_button(
+                "Download ATS Resume PDF",
+                pdf_bytes,
+                file_name=f"talent_growth_resume_{active_target_user.get('employee_id', active_target_uid)}.pdf",
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True,
+                key=f"btn_dl_resume_pdf_{active_target_uid}"
+            )
+
+        # Contact Links string
+        preview_links_list = [f'<a href="{l["url"] if l["url"].startswith("http") else "https://" + l["url"]}" class="ts-resume-contact-link" target="_blank">{l["label"]}</a>' for l in links_list]
+        contact_line_parts = []
+        if active_target_user.get("email"):
+            contact_line_parts.append(f'<a href="mailto:{active_target_user.get("email")}" class="ts-resume-contact-link">{active_target_user.get("email")}</a>')
+        if active_target_profile.get("phone"):
+            contact_line_parts.append(f"<span>{active_target_profile.get('phone', '')}</span>")
+        if active_target_profile.get("location"):
+            contact_line_parts.append(f"<span>{active_target_profile.get('location', '')}</span>")
+        contact_line_parts.extend(preview_links_list)
+
+        # ATS Paper Render
+        render_html(
+            f"""
+            <div class="ts-resume-paper">
+                <div class="ts-resume-header-name">{active_target_user.get('name', 'User')}</div>
+                <div style="font-size: 0.92rem; color: #475569; margin-bottom: 1.25rem;">
+                    {' &nbsp;&bull;&nbsp; '.join(contact_line_parts)}
+                </div>
+
+                {f'''
+                <div class="ts-resume-section-heading">Professional Summary</div>
+                <div class="ts-resume-section-text">{summary_txt}</div>
+                ''' if summary_txt else ''}
+
+                {f'''
+                <div class="ts-resume-section-heading">Core Competencies &amp; Skills</div>
+                <div class="ts-resume-section-text">{', '.join(f"<strong>{s['name']}</strong> ({s.get('proficiency', 'Proficient')})" for s in skills_list)}</div>
+                ''' if skills_list else ''}
+
+                {f'''
+                <div class="ts-resume-section-heading">Professional Experience</div>
+                ''' if exp_list else ''}
+                {''.join([f'''
+                <div style="margin-bottom: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; color: #0F172A; font-size: 0.98rem;">
+                        <span>{e.get('job_title', 'Role')} &mdash; <span style="color: #2563EB;">{e.get('company', 'Company')}</span></span>
+                        <span style="font-size: 0.84rem; color: #64748B;">{e.get('start_date', '')} &ndash; {e.get('end_date', 'Present')}</span>
+                    </div>
+                    {f'<div style="font-size: 0.82rem; color: #64748B; margin-bottom: 2px;">{e.get("location")}</div>' if e.get("location") else ''}
+                    <div class="ts-resume-section-text" style="margin-top: 2px;">{e.get('description', '')}</div>
+                </div>
+                ''' for e in exp_list])}
+
+                {f'''
+                <div class="ts-resume-section-heading">Education</div>
+                ''' if edu_list else ''}
+                {''.join([f'''
+                <div style="margin-bottom: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; color: #0F172A; font-size: 0.96rem;">
+                        <span>{ed.get('degree', 'Degree')} &mdash; {ed.get('institution', 'Institution')}</span>
+                        <span style="font-size: 0.84rem; color: #64748B;">{ed.get('start_date', '')} &ndash; {ed.get('end_date', '')}</span>
+                    </div>
+                    {f'<div class="ts-resume-section-text">{ed.get("details")}</div>' if ed.get("details") else ''}
+                </div>
+                ''' for ed in edu_list])}
+
+                {f'''
+                <div class="ts-resume-section-heading">Certifications &amp; Credentials</div>
+                ''' if certs_list else ''}
+                {''.join([f'''
+                <div style="font-size: 0.9rem; color: #334155; margin-bottom: 4px;">
+                    &bull; <strong>{c.get('name', '')}</strong> &mdash; {c.get('issuing_org', '')} ({c.get('issue_date', '')})
+                    {f' [ID: {c.get("credential_id")}]' if c.get("credential_id") else ''}
+                </div>
+                ''' for c in certs_list])}
+
+                {f'''
+                <div class="ts-resume-section-heading">Projects &amp; Achievements</div>
+                ''' if projs_list else ''}
+                {''.join([f'''
+                <div style="margin-bottom: 0.85rem;">
+                    <div style="font-weight: 700; color: #0F172A; font-size: 0.96rem;">{p.get('title', 'Project')} {f"({p.get('role')})" if p.get('role') else ""}</div>
+                    {f'<div style="font-size: 0.82rem; color: #2563EB; font-weight: 600;">Technologies: {p.get("technologies")}</div>' if p.get("technologies") else ''}
+                    <div class="ts-resume-section-text" style="margin-top: 2px;">{p.get('description', '')}</div>
+                </div>
+                ''' for p in projs_list])}
+            </div>
+            """
+        )
+
+        # Upload existing resume text import for alignment evaluation
+        st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+        with st.expander("Import Existing PDF or DOCX Resume (Text Extractor)", expanded=False):
+            upload = st.file_uploader("Import a PDF or DOCX resume file", type=["pdf", "docx"], key=f"rs_uploader_{active_target_uid}")
+            if upload:
+                try:
+                    if upload.name.lower().endswith(".pdf"):
+                        extracted_txt = "\n".join(p.extract_text() or "" for p in PdfReader(upload).pages)
+                    else:
+                        extracted_txt = "\n".join(p.text for p in Document(upload).paragraphs)
+                    save_profile(active_target_uid, {"resume_text": extracted_txt})
+                    st.success("Resume text extracted and saved for ATS alignment audits.")
+                except Exception as exc:
+                    st.error(f"Could not read file: {exc}")
+
+    # ==========================================================================
+    # TAB 3: AI ATS SCREENER & BULLET OPTIMIZER
+    # ==========================================================================
+    with tab_screener:
+        render_html(
+            f"""
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.1rem 1.4rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-size: 1.2rem; font-weight: 800; color: #0F172A; display: flex; align-items: center; gap: 8px;">
+                        {get_svg_icon("sparkles", size=20, color="#2563EB")} AI Resume Auditor & Bullet Rewriter (Gemini & Heuristic)
+                    </div>
+                    <div style="color: #64748B; font-size: 0.88rem; margin-top: 3px;">
+                        Deep ATS screening, passive voice detection, and Google XYZ / STAR format bullet rewriting.
+                    </div>
+                </div>
+                <div>
+                    <span class="badge-status badge-active">AI OPTIMIZER</span>
+                </div>
+            </div>
+            """
+        )
+
+        col_audit_btn, col_audit_opt = st.columns([2.5, 3.5])
+        with col_audit_btn:
+            audit_clicked = st.button("Run Deep AI Resume & Bullet Audit", type="primary", use_container_width=True, key=f"btn_run_ai_audit_{active_target_uid}")
+        with col_audit_opt:
+            audit_source = st.radio("Audit Content Source", ["Structured Resume Editor Content", "Uploaded Resume File Text"], horizontal=True, key=f"rs_audit_source_radio_{active_target_uid}")
+
+        if audit_clicked:
+            if audit_source == "Structured Resume Editor Content":
+                resume_source_text = format_resume_as_text(res_data, active_target_user)
+            else:
+                resume_source_text = active_target_profile.get("resume_text", "")
+                if not resume_source_text.strip():
+                    resume_source_text = format_resume_as_text(res_data, active_target_user)
+
+            if not resume_source_text.strip():
+                st.warning("Please populate your resume in the editor or upload an existing resume file to run the audit.")
+            else:
+                target_role = active_target_profile.get("target_role", "Senior Software Engineer")
+                target_skills_list = list(ROLE_CATALOG.get(target_role, {}).get("skills", {}).keys())
+
+                with st.spinner("Running deep AI ATS audit and STAR bullet optimization..."):
+                    audit_res = analyze_resume_with_ai(
+                        resume_text=resume_source_text,
+                        target_role=target_role,
+                        target_skills=target_skills_list,
+                        profile=active_target_profile,
+                        api_key=st.session_state.get("gemini_user_key")
+                    )
+                    st.session_state[f"last_resume_audit_{active_target_uid}"] = audit_res
+
+        audit_key = f"last_resume_audit_{active_target_uid}"
+        if audit_key in st.session_state:
+            res = st.session_state[audit_key]
+            ats_score = res.get("ats_score", 75)
+            score_color = "#10B981" if ats_score >= 80 else ("#F59E0B" if ats_score >= 60 else "#EF4444")
+
+            render_html(
+                f"""
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem; margin: 1.25rem 0 1rem 0;">
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">ATS Match Score</div>
+                        <div style="font-size: 1.6rem; font-weight: 800; color: {score_color};">{ats_score} / 100</div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Keywords Matched</div>
+                        <div style="font-size: 1.6rem; font-weight: 800; color: #2563EB;">{len(res.get("detected_keywords", []))} Detected</div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Keywords Missing</div>
+                        <div style="font-size: 1.6rem; font-weight: 800; color: #EF4444;">{len(res.get("missing_keywords", []))} High Priority</div>
+                    </div>
+                    <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 12px 14px; border-radius: 10px;">
+                        <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Action Verbs</div>
+                        <div style="font-size: 1.6rem; font-weight: 800; color: #10B981;">{len(res.get("strong_action_verbs_found", []))} Strong</div>
+                    </div>
+                </div>
+                """
+            )
+
+            with st.container(border=True):
+                st.markdown(f"**Executive Recruiter Summary:**\n\n{res.get('alignment_summary', '')}")
+
+            bullets = res.get("bullet_optimizations", [])
+            if bullets:
+                render_html(
+                    f"""
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
+                        {get_svg_icon("target", size=18, color="#2563EB")} AI Rewritten Bullet Points (STAR Format)
+                    </div>
+                    """
+                )
+                for b_idx, b in enumerate(bullets, 1):
+                    with st.container(border=True):
+                        col_orig, col_opt = st.columns(2)
+                        with col_orig:
+                            st.markdown(f"**Original Bullet #{b_idx}:**")
+                            st.markdown(f"> *{b.get('original_bullet', '')}*")
+                        with col_opt:
+                            st.markdown(f"**High-Impact STAR Rewrite:**")
+                            st.markdown(f"> **{b.get('rewritten_bullet', '')}**")
+                        if b.get("improvement_reason"):
+                            st.caption(f"Reasoning: {b.get('improvement_reason')}")
+
+            weak_phrases = res.get("weak_phrases_to_replace", [])
+            if weak_phrases:
+                with st.expander("Weak & Passive Phrases to Upgrade", expanded=True):
+                    for wp in weak_phrases:
+                        c_old, c_new = st.columns(2)
+                        c_old.markdown(f'<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #FEE2E2; color: #991B1B; font-weight: 700; font-size: 0.74rem; margin-right: 6px;">WEAK</span> *"{wp.get("original", "")}"*', unsafe_allow_html=True)
+                        c_new.markdown(f'<span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background: #DCFCE7; color: #166534; font-weight: 700; font-size: 0.74rem; margin-right: 6px;">RECOMMENDED</span> **"{wp.get("suggested", "")}"**', unsafe_allow_html=True)
+
+            recs = res.get("top_recommendations", [])
+            if recs:
+                render_html(
+                    f"""
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
+                        {get_svg_icon("clipboard", size=18, color="#2563EB")} High-Leverage Resume Optimizations
+                    </div>
+                    """
+                )
+                for r in recs:
+                    st.markdown(f"- {r}")
+
+            if res.get("source") == "gemini":
+                st.success(f"AI Resume Audit generated live via Google Gemini (`{res.get('model')}`).")
+            else:
+                st.info("Audit generated via deterministic heuristic engine. Add Gemini API Key for dynamic neural audits.")
+
+
+# ==============================================================================
+# 10. CAREER DIRECTION & AI COACH
+# ==============================================================================
+elif page in ["Career Direction", "Career Direction & Gaps"]:
+    render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 60%, #ECFEFF 100%); border-left: 6px solid #10B981;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #10B981 0%, #06B6D4 100%);">
+                    {get_svg_icon("target", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        Career Direction &amp; Designation Strategy
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Define target benchmark roles, promotional timelines, leadership ambitions, and core career vision.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #10B981, #06B6D4);">
+                    CAREER ARCHITECTURE
+                </span>
+            </div>
+        </div>
+        """
+    )
+
+    with st.form("career_direction_form"):
+        current = st.text_input("Current role", value=profile.get("job_title", ""), placeholder="e.g. Software Engineer")
+        roles_list = ["-- Choose Target Role --"] + list(ROLE_CATALOG.keys())
+        saved_role = profile.get("target_role") or ""
+        curr_role_idx = (roles_list.index(saved_role)) if saved_role in ROLE_CATALOG else 0
+        target = st.selectbox("Target role *", roles_list, index=curr_role_idx)
+
+        levels = ["-- Choose Target Level --", "Senior", "Lead", "Manager", "Director", "Principal", "Individual contributor"]
+        saved_lvl = profile.get("target_level") or ""
+        curr_lvl_idx = (levels.index(saved_lvl)) if saved_lvl in levels else 0
+        level = st.selectbox("Target level *", levels, index=curr_lvl_idx)
+
+        timelines = ["-- Choose Target Timeline --", "3–6 months", "6–12 months", "1–2 years", "Exploring"]
+        saved_time = profile.get("timeline") or ""
+        curr_time_idx = (timelines.index(saved_time)) if saved_time in timelines else 0
+        timeline = st.selectbox("Target timeline *", timelines, index=curr_time_idx)
+
+        industry = st.text_input("Target industry", value=profile.get("target_industry", ""), placeholder="e.g. Technology & Software Solutions")
+        goal = st.text_area("What does career growth mean to you?", value=profile.get("career_goal", ""), height=100)
+
+        submit_dir = st.form_submit_button("Save career direction", type="primary")
+
+        if submit_dir:
+            if target == "-- Choose Target Role --":
+                st.error("Please choose a target benchmark role.")
+            elif level == "-- Choose Target Level --":
+                st.error("Please choose a target level.")
+            elif timeline == "-- Choose Target Timeline --":
+                st.error("Please choose a target timeline.")
+            else:
+                save_profile(uid, {
+                    "job_title": current,
+                    "target_role": target,
+                    "target_level": level,
+                    "timeline": timeline,
+                    "target_industry": industry,
+                    "career_goal": goal
+                })
+                st.success("Career direction saved successfully!")
+                st.rerun()
+
+    if profile.get("target_role") and profile.get("target_role") in ROLE_CATALOG:
+        st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+        st.info(f"**Benchmark Standard Criteria for {profile['target_role']}:** {ROLE_CATALOG[profile['target_role']]['criteria']}")
+
+elif page in ["Career Coach", "AI Career Coach"]:
+    # Permanent Gemini API configuration is active; settings panel is kept completely hidden
+    current_key = get_gemini_api_key(st.session_state.get("gemini_user_key"))
+    has_gemini = bool(current_key)
+    badge_label = "GEMINI LIVE AI ACTIVE" if has_gemini else "AI EXECUTIVE HEURISTIC ACTIVE"
+
+    render_html(
+        f"""
+        <div class="colorful-page-hero" style="background: linear-gradient(135deg, #FFFFFF 0%, #F5F3FF 60%, #EEF2FF 100%); border-left: 6px solid #7C3AED;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div class="hero-icon-container" style="background: linear-gradient(135deg, #7C3AED 0%, #2563EB 100%);">
+                    {get_svg_icon("coach", size=24, color="#FFFFFF")}
+                </div>
+                <div>
+                    <div style="font-size: 1.65rem; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">
+                        AI Career Strategy Coach &amp; Executive Advisor
+                    </div>
+                    <div style="color: #475569; font-size: 0.94rem; margin-top: 3px; font-weight: 500;">
+                        Data-driven career guidance evaluating competency matrix gaps, promotion trajectories, and role readiness.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <span class="hero-badge-pill" style="background: linear-gradient(135deg, #7C3AED, #2563EB);">
+                    {badge_label}
+                </span>
+            </div>
+        </div>
+        """
+    )
+
+    render_html(
+        f"""
+        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; margin: 1.25rem 0 0.75rem 0;">
+            {get_svg_icon("lightbulb", size=18, color="#6366F1")} Quick Strategy Prompts (1-Click Analysis)
+        </div>
+        """
+    )
+    cp1, cp2, cp3, cp4 = st.columns(4)
+    with cp1:
+        if st.button("Lead Role Roadmap", icon=":material/explore:", use_container_width=True, key="btn_coach_lead"):
+            st.session_state.coach_prompt_val = "What precise strategic roadmap should I follow to advance into a Lead / Principal designation over the next 12 months?"
+    with cp2:
+        if st.button("Cloud & Architecture", icon=":material/cloud:", use_container_width=True, key="btn_coach_cloud"):
+            st.session_state.coach_prompt_val = "Which high-leverage cloud and distributed architecture skills will maximize my competency valuation?"
+    with cp3:
+        if st.button("Promotion Blueprint", icon=":material/trending_up:", use_container_width=True, key="btn_coach_promo"):
+            st.session_state.coach_prompt_val = "How should I structure my achievements and metrics for our upcoming annual performance review cycle?"
+    with cp4:
+        if st.button("90-Day Action Plan", icon=":material/speed:", use_container_width=True, key="btn_coach_sprint"):
+            st.session_state.coach_prompt_val = "Generate a prioritized 90-day developmental sprint to close my most pressing skill gap."
+
+    default_q = st.session_state.get("coach_prompt_val", "")
+    question = st.text_area("Your Career Strategy Question:", value=default_q, placeholder="e.g. What specific competencies should I master to transition into a Lead Cloud Architect position?")
+    
+    if st.button("Generate Career Strategy Guidance", type="primary", use_container_width=True):
+        if not question.strip():
+            st.warning("Please select a quick prompt above or enter your career question.")
+        else:
+            a = analysis_bundle()
+            gaps_info = gap_analysis(profile.get("target_role", "Software Engineer"), skills)
+            target_role = profile.get("target_role", "Senior Engineer")
+            
+            with st.spinner("Generating clear, fast AI career guidance..."):
+                advice_res = generate_ai_coaching_guidance(
+                    user_name=user.get("name", "User"),
+                    question=question,
+                    profile=profile,
+                    skills=skills,
+                    target_role=target_role,
+                    gap_data=gaps_info,
+                    api_key=st.session_state.get("gemini_user_key")
+                )
+                st.session_state["last_career_advice"] = {
+                    "advice": advice_res,
+                    "analysis": a,
+                    "gaps": gaps_info
+                }
+
+    stored_advice = st.session_state.get("last_career_advice")
+    if stored_advice:
+        advice_res = stored_advice["advice"]
+        a = stored_advice["analysis"]
+        gaps_info = stored_advice["gaps"]
+
+        # Metrics Row
+        render_html(
+            f"""
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0 1rem 0;">
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 14px 18px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Profile Strength</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #2563EB;">{a['score']} / 100</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 14px 18px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Target Role Alignment</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #10B981;">{a['match']}%</div>
+                </div>
+                <div style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 14px 18px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="font-size: 0.72rem; color: #64748B; font-weight: 700; text-transform: uppercase;">Identified Competency Gaps</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #F59E0B;">{len(gaps_info)} Competencies</div>
+                </div>
+            </div>
+            """
+        )
+
+        # Advice Header Bar
+        content_text = advice_res.get("content", "")
+
+        render_html(
+            f"""
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 16px; margin: 1.25rem 0 0.75rem 0; display: flex; align-items: center;">
+                <div style="font-size: 0.88rem; font-weight: 700; color: #1E293B; display: flex; align-items: center; gap: 8px;">
+                    {get_svg_icon("check", size=16, color="#10B981")}
+                    <span>AI Career Guidance &amp; Action Plan</span>
+                </div>
+            </div>
+            """
+        )
+
+        # Advice Body (Concise, Simple & Clear Action Plan)
+        with st.container(border=True):
+            st.markdown(content_text)
+
+        # Export & Download Capabilities
+        safe_name = "".join(c for c in user.get('name', 'career_plan') if c.isalnum() or c in (' ', '_')).rstrip().replace(' ', '_').lower()
+        st.download_button(
+            label="Download Action Plan (.md)", icon=":material/download:",
+            data=content_text,
+            file_name=f"career_action_plan_{safe_name}.md",
+            mime="text/markdown"
+        )
+# ==============================================================================
+# 11. SETTINGS & SYSTEM
+# ==============================================================================
+elif page in ["Settings", "Settings & System", "Settings & Privacy"]:
+    from services.settings_ui import render_settings_module
+    render_settings_module(user=user, is_admin=is_admin, is_individual=is_individual, org_id=org_id)
+

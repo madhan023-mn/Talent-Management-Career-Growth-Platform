@@ -1,10 +1,13 @@
+# Files to ignore on Vercel so it deploys purely as static portal
+app.py
+streamlit_app.py
+requirements.txt
+services/
+data/
+tests/
+style.py
+pytest.ini
+.streamlit/
 .env*
 .venv/
 __pycache__/
-*.pyc
-tests/
-.pytest_cache/
-*.sqlite3
-data/*.db
-data/backups/
-scripts/

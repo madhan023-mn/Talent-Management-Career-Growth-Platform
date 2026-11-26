@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: talent-growth-platform
+    env: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon
+    plan: starter # $7/mo 24/7 Always-On (Never sleeps)
+    healthCheckPath: /_stcore/health
+    disk:
+      name: talent-growth-persistent-storage
+      mountPath: /app/data
+      sizeGB: 1 # $0.25-$1.00/mo persistent SSD storage for SQLite database & snapshots
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DATABASE_PATH
+        value: /app/data/talentsphere.db
+      - key: APP_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: SMTP_USE_TLS
+        value: "true"

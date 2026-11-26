@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <title>Talent Growth — Talent Management Platform</title>
+  <meta name="description" content="Talent Management Platform for Employee Performance and Career Growth." />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="apple-touch-icon" href="favicon.png" />
+  <meta name="app-backend-url" content="https://talent-growth.streamlit.app" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      background: #F8FAFC;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* Full-viewport wrapper with overflow hidden */
+    .app-viewport {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      background: #F8FAFC;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* 
+      Iframe occupies full screen width and extends 46px below the viewport.
+      Because .app-viewport has overflow: hidden, the bottom 46px
+      (which hosts the 'Built with Streamlit 🎈 Fullscreen' bar) is pushed off-screen and cropped!
+    */
+    iframe {
+      width: 100%;
+      height: calc(100vh + 46px);
+      height: calc(100dvh + 46px);
+      border: none;
+      display: block;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Sleek loading screen that fades away once iframe is ready */
+    .loading-screen {
+      position: fixed;
+      inset: 0;
+      background: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 99999;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .loading-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .spinner {
+      width: 38px;
+      height: 38px;
+      border: 3.5px solid #E2E8F0;
+      border-top-color: #2563EB;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #334155;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Splash -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spinner"></div>
+    <p class="loading-text">Loading Talent Growth Platform...</p>
+  </div>
+
+  <!-- Pure Edge-to-Edge Container -->
+  <div class="app-viewport">
+    <iframe
+      id="mainFrame"
+      src="https://talent-growth.streamlit.app/?embed=true"
+      allow="accelerometer; autoplay; camera; encrypted-media; geolocation; gyroscope; microphone; clipboard-read; clipboard-write"
+      allowfullscreen
+    ></iframe>
+  </div>
+
+  <script>
+    const frame = document.getElementById("mainFrame");
+    const loader = document.getElementById("loadingScreen");
+
+    // Allow dynamic override via ?app= query param or app-backend-url meta tag
+    const metaBackend = document.querySelector('meta[name="app-backend-url"]');
+    const defaultBackend = (metaBackend ? metaBackend.getAttribute("content") : "https://talent-growth.streamlit.app").replace(/\/$/, "");
+    const params = new URLSearchParams(window.location.search);
+    const targetUrl = params.get("app") ? params.get("app").replace(/\/$/, "") : defaultBackend;
+    const embedUrl = targetUrl.includes("?") ? `${targetUrl}&embed=true` : `${targetUrl}/?embed=true`;
+    if (frame.src !== embedUrl) {
+      frame.src = embedUrl;
+    }
+
+    // Dismiss loader once iframe loads
+    frame.onload = () => {
+      loader.classList.add("hidden");
+    };
+    // Fallback: dismiss loader after 4 seconds
+    setTimeout(() => {
+      loader.classList.add("hidden");
+    }, 4000);
+  </script>
+</body>
+</html>
