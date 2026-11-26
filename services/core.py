@@ -337,8 +337,14 @@ def _safe_add_column(cursor: Any, table_name: str, col_name: str, col_def: str) 
     except Exception:
         pass
 
-def init_db() -> None:
-    _db_init_db()
+_core_db_initialized = False
+
+
+def init_db(force: bool = False) -> None:
+    global _core_db_initialized
+    if _core_db_initialized and not force:
+        return
+    _db_init_db(force=force)
     conn = get_connection()
     with conn:
         cursor = conn.cursor()
@@ -667,6 +673,7 @@ def init_db() -> None:
         # Ensure all initial and migration data is checkpointed to disk
         checkpoint_db(conn)
     conn.close()
+    _core_db_initialized = True
 
 # ----------------- Organization Management -----------------
 
@@ -3079,6 +3086,21 @@ def get_profile(uid: Optional[int] = None, user_id: Optional[int] = None) -> Dic
             "years_experience": 1.5 if target_id == 3 else 3.5
         }
 
+
+def _invalidate_user_cache(uid: int) -> None:
+    try:
+        import streamlit as st
+        if hasattr(st, "session_state"):
+            if st.session_state.get("_cached_skills_uid") == uid:
+                st.session_state.pop("skills", None)
+                st.session_state.pop("_cached_skills_uid", None)
+            if st.session_state.get("_cached_profile_uid") == uid:
+                st.session_state.pop("profile", None)
+                st.session_state.pop("_cached_profile_uid", None)
+    except Exception:
+        pass
+
+
 def save_profile(uid: Optional[int] = None, data: Optional[Dict[str, Any]] = None, user_id: Optional[int] = None) -> bool:
     target_id = uid if uid is not None else user_id
     if target_id is None:
@@ -3116,6 +3138,7 @@ def save_profile(uid: Optional[int] = None, data: Optional[Dict[str, Any]] = Non
                     f"UPDATE profiles SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
                     values
                 )
+        _invalidate_user_cache(target_id)
         return True
     finally:
         conn.close()
@@ -3173,6 +3196,7 @@ def add_skill(uid: int, name: str, category: str, proficiency: str, years: float
                 "INSERT INTO skills (user_id, name, category, proficiency, years, description) VALUES (?, ?, ?, ?, ?, ?)",
                 (uid, name, category, proficiency, years, description)
             )
+        _invalidate_user_cache(uid)
         return True, f"Skill '{name}' added successfully."
     except Exception as e:
         return False, f"Error saving skill: {e}"
@@ -3206,6 +3230,7 @@ def update_skill(uid: int, skill_id: int, proficiency: str, years: float, catego
             cursor.execute(query, vals)
             if cursor.rowcount == 0:
                 return False, "Skill not found or access denied."
+        _invalidate_user_cache(uid)
         return True, "Skill updated successfully."
     except Exception as e:
         return False, f"Error updating skill: {e}"
@@ -3217,6 +3242,7 @@ def delete_skill(uid: int, skill_id: int) -> bool:
     try:
         with conn:
             conn.execute("DELETE FROM skills WHERE id = ? AND user_id = ?", (skill_id, uid))
+        _invalidate_user_cache(uid)
         return True
     finally:
         conn.close()
@@ -3346,6 +3372,7 @@ def save_progress(uid: int, item: str, percent: float) -> bool:
                     "INSERT INTO progress (user_id, item, percent, status) VALUES (?, ?, ?, ?)",
                     (uid, item, percent, status)
                 )
+        _invalidate_user_cache(target_id)
         return True
     finally:
         conn.close()

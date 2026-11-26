@@ -249,7 +249,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize database schema and ensure migrations on application startup
+# Initialize database schema and ensure migrations on application startup (cached across sessions)
+@st.cache_resource(show_spinner=False)
 def ensure_database_ready() -> bool:
     try:
         init_db()
@@ -376,6 +377,7 @@ def get_svg_icon(name: str, size: int = 18, color: str = "#4F46E5", extra_style:
 # MODERN CORPORATE DESIGN SYSTEM & TOKENS (TalentManager / TalentPro Theme)
 # ------------------------------------------------------------------------------
 load_css()
+render_html('<div class="page-reload-progress-bar"><div class="page-reload-progress-glow"></div></div>')
 
 # ------------------------------------------------------------------------------
 # TABLE COLORATION & BADGE UTILITIES
@@ -2083,8 +2085,17 @@ is_pending_hr = bool(is_authenticated and user.get("role") == "admin" and user.g
 emp_id = user.get("employee_id") or f"EMP{uid:03d}"
 org_id = user.get("org_id") or ("" if is_individual else "ORG-TALENT-01")
 org_name = user.get("org_name") or ("" if is_individual else "Talent Growth Technologies")
-profile = get_profile(uid)
-skills = list_skills(uid)
+
+# In-memory session state cache to eliminate redundant database calls on page interactions
+if "profile" not in st.session_state or st.session_state.get("_cached_profile_uid") != uid:
+    st.session_state.profile = get_profile(uid)
+    st.session_state._cached_profile_uid = uid
+profile = st.session_state.profile
+
+if "skills" not in st.session_state or st.session_state.get("_cached_skills_uid") != uid:
+    st.session_state.skills = list_skills(uid)
+    st.session_state._cached_skills_uid = uid
+skills = st.session_state.skills
 
 # Initials for avatar
 name_parts = (user.get("name") or "User").strip().split()

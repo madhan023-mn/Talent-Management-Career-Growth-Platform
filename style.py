@@ -18,18 +18,24 @@ __all__ = [
     "get_css",
 ]
 
-def get_css() -> str:
-    """Reads and returns the custom CSS string from assets/style.css."""
-    if CSS_PATH.is_file():
-        with open(CSS_PATH, "r", encoding="utf-8") as f:
+@st.cache_data
+def _read_css_cached(file_path_str: str) -> str:
+    p = Path(file_path_str)
+    if p.is_file():
+        with open(p, "r", encoding="utf-8") as f:
             return f.read()
     return ""
+
+
+def get_css() -> str:
+    """Reads and returns the custom CSS string from assets/style.css with caching."""
+    return _read_css_cached(str(CSS_PATH))
+
 
 def load_css(custom_path: Path | str | None = None) -> None:
     """Injects custom CSS into the Streamlit application."""
     if custom_path:
-        p = Path(custom_path)
-        css = p.read_text(encoding="utf-8") if p.is_file() else ""
+        css = _read_css_cached(str(custom_path))
     else:
         css = get_css()
 

@@ -299,12 +299,19 @@ def _seed_mock_database(db: Any) -> None:
         logger.warning(f"Error seeding mock database: {exc}")
 
 
-def ensure_demo_hr_data(db: Optional[Any] = None) -> None:
+_demo_hr_data_ensured = False
+
+
+def ensure_demo_hr_data(db: Optional[Any] = None, force: bool = False) -> None:
     """
     Ensures that the HR Administrator demo account (admin@talentgrowth.com / ORG-TALENT-01)
     has at least 5 realistic employees with full competencies, performance ratings, and career goals.
-    Idempotent and safe to execute across MongoDB Atlas or mock databases.
+    Idempotent, highly optimized, and safe to execute across MongoDB Atlas or mock databases.
     """
+    global _demo_hr_data_ensured
+    if _demo_hr_data_ensured and not force:
+        return
+
     if db is None:
         try:
             db = get_db()
@@ -312,6 +319,16 @@ def ensure_demo_hr_data(db: Optional[Any] = None) -> None:
             return
 
     try:
+        # Fast exit check: if 5 or more demo employees already exist, skip redundant heavy network upserts
+        if not force and hasattr(db, "employees"):
+            try:
+                emp_count = db.employees.count_documents({"org_id": "ORG-TALENT-01"})
+                if emp_count >= 5:
+                    _demo_hr_data_ensured = True
+                    return
+            except Exception:
+                pass
+
         # 1. Ensure ORG-TALENT-01 organization
         if not db.organizations.find_one({"org_id": "ORG-TALENT-01"}):
             db.organizations.insert_one({
@@ -635,6 +652,7 @@ def ensure_demo_hr_data(db: Optional[Any] = None) -> None:
                     }},
                     upsert=True
                 )
+        _demo_hr_data_ensured = True
     except Exception as exc:
         logger.warning(f"Notice: ensure_demo_hr_data: {exc}")
 
@@ -923,14 +941,21 @@ def _ensure_indexes(db: Any) -> None:
         logger.debug(f"Index creation note: {e}")
 
 
-def init_db() -> None:
-    """Initializes the MongoDB Atlas environment and guarantees all indexes exist."""
+_mongo_db_initialized = False
+
+
+def init_db(force: bool = False) -> None:
+    """Initializes the MongoDB Atlas environment and guarantees all indexes exist once per process."""
+    global _mongo_db_initialized
+    if _mongo_db_initialized and not force:
+        return
     db = get_db()
     _ensure_indexes(db)
     try:
-        ensure_demo_hr_data(db)
+        ensure_demo_hr_data(db, force=force)
     except Exception as exc:
         logger.warning(f"Notice: init_db ensure_demo_hr_data: {exc}")
+    _mongo_db_initialized = True
 
 
 # ------------------------------------------------------------------------------
