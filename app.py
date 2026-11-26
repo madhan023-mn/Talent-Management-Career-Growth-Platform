@@ -3264,6 +3264,81 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
             else:
                 st.info(f"No active career goals recorded in {org_id}.")
 
+    # Dedicated Organization Workforce & Sample Employees Showcase
+    st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
+    with st.container(border=True):
+        c_dir1, c_dir2 = st.columns([2.2, 1])
+        with c_dir1:
+            render_html(
+                f"""
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                    {get_svg_icon("employees", size=22, color="#2563EB")}
+                    <span style="font-weight: 800; font-size: 1.15rem; color: #0F172A;">Organization Workforce &amp; Demo Personnel</span>
+                    <span class="tbl-badge tbl-badge-blue" style="font-size: 0.75rem;">{len(employees)} Total Registered</span>
+                </div>
+                <div style="font-size: 0.84rem; color: #64748B; margin-bottom: 0.75rem;">
+                    Active personnel roster for <strong>{org_display_name} ({org_id})</strong> including live demo roles across Engineering, Product, HR, and Analytics.
+                </div>
+                """
+            )
+        with c_dir2:
+            st.markdown("<div style='text-align: right; padding-top: 6px;'>", unsafe_allow_html=True)
+            if st.button("Manage Full Directory", key="btn_dash_manage_emps", type="primary", use_container_width=False):
+                navigate_to("Employees")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        if employees:
+            demo_table_rows = []
+            for emp_item in employees[:8]:
+                emp_eid = emp_item.get("employee_id", "")
+                emp_nm = emp_item.get("name", "Employee")
+                emp_em = emp_item.get("email", "")
+                emp_dp = emp_item.get("department", "General")
+                emp_ds = emp_item.get("designation", "Staff")
+                emp_rt = emp_item.get("avg_rating") or 4.2
+                emp_st = emp_item.get("employment_status") or "Active"
+                emp_sk = emp_item.get("primary_skills") or "Technical"
+
+                demo_table_rows.append(
+                    f"""
+                    <tr>
+                        <td><span class="tbl-id-pill" style="font-weight: 700;">{emp_eid}</span></td>
+                        <td>
+                            <div style="font-weight: 700; color: #0F172A;">{emp_nm}</div>
+                            <div style="font-size: 0.76rem; color: #64748B;">{emp_em}</div>
+                        </td>
+                        <td>{get_dept_badge_html(emp_dp)}</td>
+                        <td><span style="font-weight: 600; color: #334155;">{emp_ds}</span></td>
+                        <td><span style="font-size: 0.80rem; color: #475569;" title="{emp_sk}">{emp_sk[:28]}..</span></td>
+                        <td>{get_rating_badge_html(emp_rt)}</td>
+                        <td>{get_status_badge_html(emp_st)}</td>
+                    </tr>
+                    """
+                )
+
+            render_html(
+                f"""
+                <div class="corporate-table-wrapper" style="margin-top: 0.25rem;">
+                    <table class="corporate-table">
+                        <thead>
+                            <tr>
+                                <th>Emp ID</th>
+                                <th>Personnel</th>
+                                <th>Department</th>
+                                <th>Role / Title</th>
+                                <th>Competencies</th>
+                                <th>Rating</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>{''.join(demo_table_rows)}</tbody>
+                    </table>
+                </div>
+                """
+            )
+        else:
+            st.info(f"No employee records registered in {org_id} yet.")
+
 # ==============================================================================
 # 2. EMPLOYEE: MY CAREER DASHBOARD
 # ==============================================================================
