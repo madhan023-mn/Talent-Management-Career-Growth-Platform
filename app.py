@@ -33,10 +33,9 @@ from docx import Document
 
 logger = logging.getLogger("talent_growth")
 
-# Evict stale cached in-memory services modules during hot reload
-if "services.core" in sys.modules and not hasattr(sys.modules["services.core"], "register_individual"):
-    for _m in [k for k in list(sys.modules.keys()) if k.startswith("services")]:
-        sys.modules.pop(_m, None)
+# Evict stale cached in-memory services modules during hot reload so updates take effect immediately
+for _m in [k for k in list(sys.modules.keys()) if k.startswith("services.")]:
+    sys.modules.pop(_m, None)
 
 try:
     from services.core import (
@@ -3255,8 +3254,11 @@ if (page in ["Dashboard", "Executive Dashboard"] and is_admin):
                 for s in skills_dist[:4]:
                     s_name = s.get("skill_name") or s.get("name") or "Skill"
                     s_cnt = s.get("count", 0)
-                    s_avg = s.get("avg_level", 2)
-                    pct = int(min(100, (s_avg / 4.0) * 100))
+                    try:
+                        s_avg = float(s.get("avg_level") or 2.0)
+                    except (ValueError, TypeError):
+                        s_avg = 2.0
+                    pct = int(min(100, max(0, (s_avg / 4.0) * 100)))
                     sk_rows_html += f"""
                     <div class="progress-widget-row" style="margin-bottom: 9px;">
                         <span class="progress-widget-name" style="font-size: 0.82rem; min-width: 95px;">{s_name} ({s_cnt})</span>
@@ -4005,9 +4007,10 @@ elif page in ["Employees", "Employee Management"]:
         )
 
         # Section 7: Workforce Statistics (4 Modern Cards)
-        active_cnt = sum(1 for e in emp_results if e.get("employment_status") == "Active")
-        avg_exp_val = round(sum(e['years_experience'] for e in emp_results)/len(emp_results), 1) if emp_results else 0.0
-        ratings_list = [e['avg_rating'] for e in emp_results if e.get('avg_rating')]
+        active_cnt = sum(1 for e in emp_results if (e.get("employment_status") or "Active") == "Active")
+        exp_list = [float(e.get('years_experience') or 0.0) for e in emp_results]
+        avg_exp_val = round(sum(exp_list)/len(exp_list), 1) if exp_list else 0.0
+        ratings_list = [float(e['avg_rating']) for e in emp_results if e.get('avg_rating') is not None]
         avg_rtg_val = round(sum(ratings_list)/len(ratings_list), 2) if ratings_list else None
         avg_rtg_str = f"{avg_rtg_val} / 5.0" if avg_rtg_val else "N/A"
 

@@ -2551,7 +2551,7 @@ def add_employee_skill(
             cursor = conn.cursor()
             cursor.execute("SELECT id, org_id, user_id FROM employees WHERE employee_id = ?", (employee_id,))
             emp = cursor.fetchone()
-            resolved_org = (org_id or (emp["org_id"] if emp else "INDIVIDUAL")).strip().upper()
+            resolved_org = str(org_id or (emp["org_id"] if (emp and emp["org_id"]) else "") or "INDIVIDUAL").strip().upper()
             resolved_uid = user_id or (emp["user_id"] if emp else None)
 
             cursor.execute(
@@ -2787,11 +2787,11 @@ def add_goal(
                 if urow and urow["org_id"]:
                     resolved_org = urow["org_id"]
                 elif employee_id:
-                    cursor.execute("SELECT org_id FROM employees WHERE employee_id = ?", (employee_id.strip().upper(),))
+                    cursor.execute("SELECT org_id FROM employees WHERE employee_id = ?", (str(employee_id).strip().upper(),))
                     erow = cursor.fetchone()
                     if erow and erow["org_id"]:
                         resolved_org = erow["org_id"]
-            resolved_org = (resolved_org or "ORG-TALENT-01").strip().upper()
+            resolved_org = str(resolved_org or "ORG-TALENT-01").strip().upper()
 
             cursor.execute(
                 """
@@ -2837,11 +2837,11 @@ def get_goals(
             params.append(user_id)
         elif employee_id is not None:
             query += " AND employee_id = ?"
-            params.append(employee_id.strip().upper())
+            params.append(str(employee_id).strip().upper())
 
         if org_id:
             query += " AND org_id = ?"
-            params.append(org_id.strip().upper())
+            params.append(str(org_id).strip().upper())
 
         if status_filter and status_filter != "All Statuses":
             query += " AND status = ?"
@@ -3034,7 +3034,7 @@ def add_training_record(
                 erow = cursor.fetchone()
                 if erow and erow["org_id"]:
                     resolved_org = erow["org_id"]
-            resolved_org = (resolved_org or "ORG-TALENT-01").strip().upper()
+            resolved_org = str(resolved_org or "ORG-TALENT-01").strip().upper()
 
             cursor.execute(
                 """
@@ -3699,7 +3699,14 @@ def get_org_dashboard_stats(org_id: str) -> Dict[str, Any]:
     except Exception:
         all_goals = []
     total_goals = len(all_goals) if all_goals else total_employees
-    completed_goals = sum(1 for g in all_goals if (g.get("status") or "").lower() == "completed" or (float(g.get("progress") or 0) >= 100))
+    def _is_completed(g: Dict[str, Any]) -> bool:
+        if (g.get("status") or "").lower() == "completed":
+            return True
+        try:
+            return float(g.get("progress") or 0) >= 100.0
+        except (ValueError, TypeError):
+            return False
+    completed_goals = sum(1 for g in all_goals if _is_completed(g))
     goal_completion_rate = round((completed_goals / max(1, total_goals)) * 100) if total_goals else (75 if total_employees > 0 else 0)
 
     # Assessments
