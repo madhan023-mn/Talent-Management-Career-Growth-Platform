@@ -258,8 +258,351 @@ def _seed_mock_database(db: Any) -> None:
             {"id": 1004, "user_id": 1002, "name": "Python", "category": "Technical", "proficiency": "Advanced", "years": 3.5},
             {"id": 1005, "user_id": 1002, "name": "React", "category": "Technical", "proficiency": "Intermediate", "years": 2.0}
         ])
+
+        # Also guarantee the 5 HR demo employees are seeded
+        ensure_demo_hr_data(db)
     except Exception as exc:
         logger.warning(f"Error seeding mock database: {exc}")
+
+
+def ensure_demo_hr_data(db: Optional[Any] = None) -> None:
+    """
+    Ensures that the HR Administrator demo account (admin@talentgrowth.com / ORG-TALENT-01)
+    has at least 5 realistic employees with full competencies, performance ratings, and career goals.
+    Idempotent and safe to execute across MongoDB Atlas or mock databases.
+    """
+    if db is None:
+        try:
+            db = get_db()
+        except Exception:
+            return
+
+    try:
+        # 1. Ensure ORG-TALENT-01 organization
+        if not db.organizations.find_one({"org_id": "ORG-TALENT-01"}):
+            db.organizations.insert_one({
+                "id": 1,
+                "org_id": "ORG-TALENT-01",
+                "name": "Talent Growth Technologies",
+                "official_email": "contact@talentgrowth.com",
+                "contact_number": "+1-555-0100",
+                "status": "Active"
+            })
+
+        # Password hashing for demo employees
+        import bcrypt
+        try:
+            emp_salt = bcrypt.gensalt().decode("utf-8")
+            emp_hash = bcrypt.hashpw("Password123".encode("utf-8"), emp_salt.encode("utf-8")).decode("utf-8")
+        except Exception:
+            emp_salt = "demo_salt"
+            emp_hash = "demo_hash"
+
+        # 2. Ensure HR Admin user
+        admin_user = db.users.find_one({"email": "admin@talentgrowth.com"})
+        if not admin_user:
+            try:
+                admin_salt = bcrypt.gensalt().decode("utf-8")
+                admin_hash = bcrypt.hashpw("Admin@12345".encode("utf-8"), admin_salt.encode("utf-8")).decode("utf-8")
+            except Exception:
+                admin_salt = "admin_salt"
+                admin_hash = "admin_hash"
+            db.users.insert_one({
+                "id": 1001,
+                "name": "HR Administrator",
+                "email": "admin@talentgrowth.com",
+                "password_hash": admin_hash,
+                "salt": admin_salt,
+                "role": "admin",
+                "employee_id": "EMP001",
+                "org_id": "ORG-TALENT-01",
+                "account_type": "Organization",
+                "department": "Human Resources",
+                "job_title": "VP of Human Resources",
+                "status": "Active"
+            })
+            db.employees.update_one(
+                {"employee_id": "EMP001", "org_id": "ORG-TALENT-01"},
+                {"$set": {
+                    "id": 1001,
+                    "employee_id": "EMP001",
+                    "name": "HR Administrator",
+                    "email": "admin@talentgrowth.com",
+                    "department": "Human Resources",
+                    "designation": "VP of Human Resources",
+                    "org_id": "ORG-TALENT-01",
+                    "status": "Active",
+                    "employment_status": "Active",
+                    "account_status": "Active",
+                    "user_id": 1001,
+                    "joining_date": "2021-01-15",
+                    "years_experience": 10.0,
+                    "primary_skills": "Talent Strategy, Organizational Development, Leadership"
+                }},
+                upsert=True
+            )
+
+        # 3. Define the 5 sample employees for HR demo
+        demo_employees = [
+            {
+                "id": 1012,
+                "employee_id": "EMP002",
+                "name": "Priya Sharma",
+                "email": "priya.sharma@talentgrowth.com",
+                "phone": "+1-555-0102",
+                "department": "Engineering",
+                "designation": "Senior Frontend Engineer",
+                "target_role": "Staff Frontend Engineer",
+                "years_experience": 4.5,
+                "joining_date": "2023-02-15",
+                "primary_skills": "React, TypeScript, Next.js, Redux, Tailwind CSS",
+                "performance_score": 4.6,
+                "achievements": "Led design system migration reducing UI regression bugs by 40%.",
+                "strengths": "Deep React ecosystem knowledge, modular component architecture.",
+                "improvements": "System performance profiling and Web Vitals optimization.",
+                "goal_title": "Lead Frontend Architecture Migration to Next.js 14",
+                "goal_progress": 75,
+                "goal_status": "In Progress",
+                "skills": [
+                    {"name": "React", "category": "Technical", "proficiency": "Expert", "years": 4.5},
+                    {"name": "TypeScript", "category": "Technical", "proficiency": "Advanced", "years": 4.0},
+                    {"name": "Next.js", "category": "Technical", "proficiency": "Advanced", "years": 3.0},
+                    {"name": "UI/UX Design", "category": "Domain", "proficiency": "Advanced", "years": 3.5},
+                    {"name": "Tailwind CSS", "category": "Technical", "proficiency": "Expert", "years": 4.0}
+                ]
+            },
+            {
+                "id": 1013,
+                "employee_id": "EMP003",
+                "name": "Marcus Chen",
+                "email": "marcus.chen@talentgrowth.com",
+                "phone": "+1-555-0103",
+                "department": "Engineering",
+                "designation": "Senior Cloud & DevOps Engineer",
+                "target_role": "Lead Cloud Architect",
+                "years_experience": 5.5,
+                "joining_date": "2022-09-01",
+                "primary_skills": "AWS, Kubernetes, Docker, Terraform, CI/CD, Python",
+                "performance_score": 4.4,
+                "achievements": "Architected multi-region failover and cut monthly AWS spend by 28%.",
+                "strengths": "Container orchestration, infrastructure-as-code, high-availability architecture.",
+                "improvements": "Expanding automation testing coverage for Terraform modules.",
+                "goal_title": "Implement Multi-Region Disaster Recovery on AWS",
+                "goal_progress": 100,
+                "goal_status": "Completed",
+                "skills": [
+                    {"name": "AWS", "category": "Cloud & DevOps", "proficiency": "Expert", "years": 5.5},
+                    {"name": "Kubernetes", "category": "Cloud & DevOps", "proficiency": "Expert", "years": 4.0},
+                    {"name": "Docker", "category": "Cloud & DevOps", "proficiency": "Expert", "years": 5.0},
+                    {"name": "Terraform", "category": "Cloud & DevOps", "proficiency": "Advanced", "years": 3.5},
+                    {"name": "CI/CD", "category": "Technical", "proficiency": "Expert", "years": 4.5}
+                ]
+            },
+            {
+                "id": 1014,
+                "employee_id": "EMP004",
+                "name": "Elena Rostova",
+                "email": "elena.rostova@talentgrowth.com",
+                "phone": "+1-555-0104",
+                "department": "Product Management",
+                "designation": "Senior Product Manager",
+                "target_role": "Director of Product",
+                "years_experience": 6.0,
+                "joining_date": "2022-04-10",
+                "primary_skills": "Product Strategy, Agile / Scrum, User Research, Roadmapping, Data Analytics",
+                "performance_score": 4.3,
+                "achievements": "Launched SaaS self-service onboarding flow resulting in 35% growth in MAU.",
+                "strengths": "Customer empathy, cross-functional stakeholder alignment, OKR execution.",
+                "improvements": "Deeper technical fluency with cloud backend architectures.",
+                "goal_title": "Launch Enterprise Analytics Dashboard V2",
+                "goal_progress": 100,
+                "goal_status": "Completed",
+                "skills": [
+                    {"name": "Product Strategy", "category": "Domain", "proficiency": "Expert", "years": 6.0},
+                    {"name": "Agile / Scrum", "category": "Soft Skills", "proficiency": "Expert", "years": 5.0},
+                    {"name": "User Research", "category": "Domain", "proficiency": "Advanced", "years": 4.0},
+                    {"name": "Roadmapping", "category": "Domain", "proficiency": "Expert", "years": 5.0},
+                    {"name": "Data Analytics", "category": "Technical", "proficiency": "Advanced", "years": 3.5}
+                ]
+            },
+            {
+                "id": 1015,
+                "employee_id": "EMP005",
+                "name": "David Kim",
+                "email": "david.kim@talentgrowth.com",
+                "phone": "+1-555-0105",
+                "department": "Data & Analytics",
+                "designation": "Data Analytics Lead",
+                "target_role": "Head of Data Science",
+                "years_experience": 5.0,
+                "joining_date": "2023-06-20",
+                "primary_skills": "Python, SQL, PostgreSQL, Tableau, Machine Learning",
+                "performance_score": 4.1,
+                "achievements": "Built automated executive business intelligence pipeline serving 50+ leaders.",
+                "strengths": "Complex SQL modeling, predictive modeling, data pipeline orchestration.",
+                "improvements": "Expanding deep learning and GenAI prompt engineering expertise.",
+                "goal_title": "Automate Executive Talent Reporting Pipeline",
+                "goal_progress": 85,
+                "goal_status": "In Progress",
+                "skills": [
+                    {"name": "Python", "category": "Technical", "proficiency": "Expert", "years": 5.0},
+                    {"name": "SQL", "category": "Technical", "proficiency": "Expert", "years": 5.0},
+                    {"name": "Tableau", "category": "Tools", "proficiency": "Advanced", "years": 4.0},
+                    {"name": "Machine Learning", "category": "Technical", "proficiency": "Intermediate", "years": 2.5},
+                    {"name": "PostgreSQL", "category": "Technical", "proficiency": "Expert", "years": 4.5}
+                ]
+            },
+            {
+                "id": 1016,
+                "employee_id": "EMP006",
+                "name": "Sarah Jenkins",
+                "email": "sarah.jenkins@talentgrowth.com",
+                "phone": "+1-555-0106",
+                "department": "Human Resources",
+                "designation": "Talent Development Specialist",
+                "target_role": "People Operations Manager",
+                "years_experience": 3.5,
+                "joining_date": "2024-01-08",
+                "primary_skills": "Talent Acquisition, Employee Engagement, Learning & Development, HRIS",
+                "performance_score": 3.9,
+                "achievements": "Revamped company-wide 90-day onboarding boosting 6-month retention by 22%.",
+                "strengths": "Empathy, culture building, structured onboarding workflows, HR compliance.",
+                "improvements": "Advanced people analytics and predictive headcount forecasting.",
+                "goal_title": "Overhaul New Hire 30-60-90 Day Onboarding",
+                "goal_progress": 100,
+                "goal_status": "Completed",
+                "skills": [
+                    {"name": "Talent Acquisition", "category": "Domain", "proficiency": "Advanced", "years": 3.5},
+                    {"name": "Employee Engagement", "category": "Soft Skills", "proficiency": "Expert", "years": 3.5},
+                    {"name": "Learning & Development", "category": "Domain", "proficiency": "Advanced", "years": 3.0},
+                    {"name": "HRIS", "category": "Tools", "proficiency": "Advanced", "years": 3.0},
+                    {"name": "Onboarding", "category": "Domain", "proficiency": "Expert", "years": 3.5}
+                ]
+            }
+        ]
+
+        for item in demo_employees:
+            emp_id = item["employee_id"]
+            uid = item["id"]
+            # Upsert employee
+            db.employees.update_one(
+                {"employee_id": emp_id, "org_id": "ORG-TALENT-01"},
+                {"$set": {
+                    "id": uid,
+                    "employee_id": emp_id,
+                    "name": item["name"],
+                    "email": item["email"],
+                    "phone": item["phone"],
+                    "department": item["department"],
+                    "designation": item["designation"],
+                    "org_id": "ORG-TALENT-01",
+                    "status": "Active",
+                    "employment_status": "Active",
+                    "account_status": "Active",
+                    "user_id": uid,
+                    "years_experience": item["years_experience"],
+                    "primary_skills": item["primary_skills"],
+                    "joining_date": item["joining_date"]
+                }},
+                upsert=True
+            )
+            # Upsert user
+            db.users.update_one(
+                {"email": item["email"]},
+                {"$set": {
+                    "id": uid,
+                    "name": item["name"],
+                    "email": item["email"],
+                    "password_hash": emp_hash,
+                    "salt": emp_salt,
+                    "role": "employee",
+                    "employee_id": emp_id,
+                    "org_id": "ORG-TALENT-01",
+                    "account_type": "Organization",
+                    "department": item["department"],
+                    "job_title": item["designation"],
+                    "status": "Active"
+                }},
+                upsert=True
+            )
+            # Upsert profile
+            db.profiles.update_one(
+                {"user_id": uid},
+                {"$set": {
+                    "id": uid,
+                    "user_id": uid,
+                    "job_title": item["designation"],
+                    "department": item["department"],
+                    "target_role": item["target_role"],
+                    "years_experience": item["years_experience"]
+                }},
+                upsert=True
+            )
+            # Upsert performance review
+            db.performance_reviews.update_one(
+                {"employee_id": emp_id, "review_period": "Q3 2024"},
+                {"$set": {
+                    "id": uid,
+                    "employee_id": emp_id,
+                    "org_id": "ORG-TALENT-01",
+                    "review_period": "Q3 2024",
+                    "performance_score": item["performance_score"],
+                    "achievements": item["achievements"],
+                    "strengths": item["strengths"],
+                    "improvements": item["improvements"],
+                    "manager_feedback": f"Strong consistent execution and leadership in {item['department']}.",
+                    "reviewer_id": 1001
+                }},
+                upsert=True
+            )
+            # Upsert career goal
+            db.career_goals.update_one(
+                {"employee_id": emp_id, "title": item["goal_title"]},
+                {"$set": {
+                    "id": uid,
+                    "user_id": uid,
+                    "employee_id": emp_id,
+                    "org_id": "ORG-TALENT-01",
+                    "title": item["goal_title"],
+                    "target_designation": item["target_role"],
+                    "description": f"Quarterly milestone targeting transition into {item['target_role']}.",
+                    "target_date": "2025-06-30",
+                    "progress": item["goal_progress"],
+                    "status": item["goal_status"]
+                }},
+                upsert=True
+            )
+            # Upsert skills
+            for s_idx, sk in enumerate(item["skills"]):
+                sk_id = uid * 10 + s_idx
+                db.employee_skills.update_one(
+                    {"employee_id": emp_id, "skill_name": sk["name"]},
+                    {"$set": {
+                        "id": sk_id,
+                        "employee_id": emp_id,
+                        "org_id": "ORG-TALENT-01",
+                        "user_id": uid,
+                        "skill_name": sk["name"],
+                        "category": sk["category"],
+                        "proficiency_level": sk["proficiency"],
+                        "years_exp": sk["years"]
+                    }},
+                    upsert=True
+                )
+                db.skills.update_one(
+                    {"user_id": uid, "name": sk["name"]},
+                    {"$set": {
+                        "id": sk_id,
+                        "user_id": uid,
+                        "name": sk["name"],
+                        "category": sk["category"],
+                        "proficiency": sk["proficiency"],
+                        "years": sk["years"]
+                    }},
+                    upsert=True
+                )
+    except Exception as exc:
+        logger.warning(f"Notice: ensure_demo_hr_data: {exc}")
 
 
 def _create_memory_mock_client() -> Any:
@@ -550,6 +893,10 @@ def init_db() -> None:
     """Initializes the MongoDB Atlas environment and guarantees all indexes exist."""
     db = get_db()
     _ensure_indexes(db)
+    try:
+        ensure_demo_hr_data(db)
+    except Exception as exc:
+        logger.warning(f"Notice: init_db ensure_demo_hr_data: {exc}")
 
 
 # ------------------------------------------------------------------------------

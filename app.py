@@ -345,6 +345,8 @@ _SVG_RAW_PATHS = {
     "refresh": '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>',
     "check_circle": '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
     "x_circle": '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+    "x": '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    "minus": '<line x1="5" y1="12" x2="19" y2="12"/>',
 }
 
 @st.cache_data
@@ -656,11 +658,11 @@ def render_colored_gaps_table(gaps_list: List[Dict[str, Any]], levels_str: Dict[
     for g in gaps_list:
         gap_val = g.get("gap", 0)
         if gap_val == 0:
-            match_badge = '<span class="tbl-badge" style="background: #ECFDF5; color: #059669; font-weight: 700; border: 1px solid #A7F3D0;">✅ MATCHED (Met)</span>'
+            match_badge = f'<span class="tbl-badge" style="background: #ECFDF5; color: #059669; font-weight: 700; border: 1px solid #A7F3D0; display: inline-flex; align-items: center; gap: 4px;">{get_svg_icon("check_circle", size=13, color="#059669")} MATCHED (Met)</span>'
         elif gap_val == 1:
-            match_badge = '<span class="tbl-badge" style="background: #FEF3C7; color: #D97706; font-weight: 700; border: 1px solid #FDE68A;">❌ GAP (-1 Level)</span>'
+            match_badge = f'<span class="tbl-badge" style="background: #FEF3C7; color: #D97706; font-weight: 700; border: 1px solid #FDE68A; display: inline-flex; align-items: center; gap: 4px;">{get_svg_icon("x_circle", size=13, color="#D97706")} GAP (-1 Level)</span>'
         else:
-            match_badge = f'<span class="tbl-badge" style="background: #FEF2F2; color: #DC2626; font-weight: 700; border: 1px solid #FECACA;">❌ GAP (-{gap_val} Levels)</span>'
+            match_badge = f'<span class="tbl-badge" style="background: #FEF2F2; color: #DC2626; font-weight: 700; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px;">{get_svg_icon("x_circle", size=13, color="#DC2626")} GAP (-{gap_val} Levels)</span>'
         curr_lvl = levels_str.get(g.get("current_level", 0), str(g.get("current_level", 0)))
         req_lvl = levels_str.get(g.get("required_level", 0), str(g.get("required_level", 0)))
         rows.append(
@@ -1335,9 +1337,9 @@ def render_database_diagnostics_panel(key_suffix: str = ""):
             if st.button("⚡ Test MySQL Database Connection", key=f"btn_test_mysql_{key_suffix}", use_container_width=True):
                 test_res = test_mysql_connection()
                 if test_res.get("success"):
-                    st.success(f"✅ {test_res.get('message')}")
+                    st.success(test_res.get('message', 'Connection successful'))
                 else:
-                    st.error(f"❌ {test_res.get('message')}")
+                    st.error(test_res.get('message', 'Connection failed'))
 
         last_v = st.session_state.get("last_registered_verification")
         if last_v:
@@ -6565,18 +6567,42 @@ elif page in ["Career Report", "Reports", "Reports & Analytics", "Career Growth 
                     total_req = len(gaps)
                     st.markdown(f"**Competency Fit for Target Role ({target_role}) &mdash; {matched_ct} of {total_req} Matched ({match_score}%)**")
                     if gaps:
-                        fit_rows = []
+                        rows_html = []
                         for g in gaps:
-                            is_m = (g.get("gap", 0) == 0)
-                            fit_rows.append({
-                                "Competency": g["skill"],
-                                "Required Level": f"Level {g['required']}",
-                                "Current Level": f"Level {g['current']}",
-                                "Match Status": "✅ MATCHED" if is_m else f"❌ GAP (-{g['gap']})",
-                                "Priority": g["priority"]
-                            })
-                        gap_df = pd.DataFrame(fit_rows)
-                        st.dataframe(gap_df, use_container_width=True, hide_index=True)
+                            gap_val = g.get("gap", 0)
+                            is_m = (gap_val == 0)
+                            if is_m:
+                                status_badge = f'<span class="tbl-badge" style="background: #ECFDF5; color: #059669; font-weight: 700; border: 1px solid #A7F3D0; display: inline-flex; align-items: center; gap: 4px;">{get_svg_icon("check_circle", size=13, color="#059669")} MATCHED</span>'
+                            else:
+                                status_badge = f'<span class="tbl-badge" style="background: #FEF2F2; color: #DC2626; font-weight: 700; border: 1px solid #FECACA; display: inline-flex; align-items: center; gap: 4px;">{get_svg_icon("x_circle", size=13, color="#DC2626")} GAP (-{gap_val})</span>'
+                            req_lvl = f"Level {g.get('required', '')}"
+                            cur_lvl = f"Level {g.get('current', '')}"
+                            rows_html.append(f"""<tr>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 7px;">
+                                        {get_svg_icon("target", size=14, color="#2563EB")}
+                                        <span style="font-weight: 600; color: #0F172A;">{g.get('skill', '')}</span>
+                                    </div>
+                                </td>
+                                <td>{get_prof_badge_html(req_lvl)}</td>
+                                <td>{get_prof_badge_html(cur_lvl)}</td>
+                                <td>{status_badge}</td>
+                                <td>{get_priority_badge_html(g.get('priority', 'Medium'))}</td>
+                            </tr>""")
+                        render_html(f"""<div class="corporate-table-wrapper" style="margin-top: 0.5rem;">
+                            <table class="corporate-table">
+                                <thead>
+                                    <tr>
+                                        <th>Competency</th>
+                                        <th>Required Level</th>
+                                        <th>Current Level</th>
+                                        <th>Match Status</th>
+                                        <th>Priority</th>
+                                    </tr>
+                                </thead>
+                                <tbody>{''.join(rows_html)}</tbody>
+                            </table>
+                        </div>""")
                     else:
                         st.success(f"All competencies for **{target_role}** are fully met or exceeded!")
                 else:

@@ -2214,6 +2214,12 @@ def get_employees(
     created_by: Optional[int] = None,
     org_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:
+    if org_id and org_id.strip().upper() == "ORG-TALENT-01":
+        try:
+            from services.db import ensure_demo_hr_data
+            ensure_demo_hr_data()
+        except Exception:
+            pass
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -2592,7 +2598,9 @@ def get_employee_skills(employee_id: Optional[str] = None, org_id: Optional[str]
         if org_id and emp_id_clean:
             cursor.execute("SELECT org_id FROM employees WHERE employee_id = ?", (emp_id_clean,))
             emp = cursor.fetchone()
-            if not emp or emp["org_id"].upper() != org_id.strip().upper():
+            emp_org = (emp.get("org_id") or "").strip().upper() if emp else ""
+            req_org = (org_id or "").strip().upper()
+            if not emp or (emp_org and req_org and emp_org != req_org):
                 return []
 
         rows = []
@@ -2634,6 +2642,14 @@ def get_employee_skills(employee_id: Optional[str] = None, org_id: Optional[str]
                 )
                 rows = [dict(r) for r in cursor.fetchall()]
         return rows
+    except Exception as exc:
+        logger.warning(f"Error in get_employee_skills({employee_id}, {org_id}, {user_id}): {exc}")
+        if user_id:
+            try:
+                return list_skills(user_id)
+            except Exception:
+                pass
+        return []
     finally:
         conn.close()
 
@@ -2786,6 +2802,12 @@ def get_goals(
     status_filter: Optional[str] = None,
     org_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:
+    if org_id and org_id.strip().upper() == "ORG-TALENT-01":
+        try:
+            from services.db import ensure_demo_hr_data
+            ensure_demo_hr_data()
+        except Exception:
+            pass
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -3266,6 +3288,12 @@ def get_assessments(
     employee_id: Optional[str] = None,
     org_id: Optional[str] = None
 ) -> List[Dict[str, Any]]:
+    if org_id and org_id.strip().upper() == "ORG-TALENT-01":
+        try:
+            from services.db import ensure_demo_hr_data
+            ensure_demo_hr_data()
+        except Exception:
+            pass
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -3759,16 +3787,43 @@ def get_employee_dashboard_data(user_id: int, employee_id: Optional[str] = None,
     resolved_org = org_id or (user.get("org_id") if user else "ORG-TALENT-01")
     resolved_emp_id = employee_id or (user.get("employee_id") if user else None)
 
-    profile = get_profile(user_id)
-    employee = get_employee_by_id(resolved_emp_id, org_id=resolved_org) if resolved_emp_id else None
-    skills = get_employee_skills(resolved_emp_id, org_id=resolved_org) if resolved_emp_id else []
-    assessments = get_assessments(uid=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
-    goals = get_goals(user_id=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
-    goal_stats = get_goal_stats(user_id=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
-    reviews = get_performance_reviews(employee_id=resolved_emp_id, org_id=resolved_org) if resolved_emp_id else []
-    trainings = get_training_records(employee_id=resolved_emp_id, org_id=resolved_org) if resolved_emp_id else []
+    try:
+        profile = get_profile(user_id)
+    except Exception:
+        profile = {}
+    try:
+        employee = get_employee_by_id(resolved_emp_id, org_id=resolved_org) if resolved_emp_id else None
+    except Exception:
+        employee = None
+    try:
+        skills = get_employee_skills(resolved_emp_id, org_id=resolved_org, user_id=user_id) if resolved_emp_id else []
+    except Exception:
+        skills = []
+    try:
+        assessments = get_assessments(uid=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
+    except Exception:
+        assessments = []
+    try:
+        goals = get_goals(user_id=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
+    except Exception:
+        goals = []
+    try:
+        goal_stats = get_goal_stats(user_id=user_id, employee_id=resolved_emp_id, org_id=resolved_org)
+    except Exception:
+        goal_stats = {"total": 0, "completed": 0, "in_progress": 0, "not_started": 0, "overdue": 0}
+    try:
+        reviews = get_performance_reviews(employee_id=resolved_emp_id, org_id=resolved_org) if resolved_emp_id else []
+    except Exception:
+        reviews = []
+    try:
+        trainings = get_training_records(employee_id=resolved_emp_id, org_id=resolved_org) if resolved_emp_id else []
+    except Exception:
+        trainings = []
 
-    legacy_skills = list_skills(user_id)
+    try:
+        legacy_skills = list_skills(user_id)
+    except Exception:
+        legacy_skills = []
     if skills:
         all_skills_formatted = [
             {
@@ -3791,9 +3846,15 @@ def get_employee_dashboard_data(user_id: int, employee_id: Optional[str] = None,
         ]
     comp_skills = [{"name": s.get("skill_name") or s.get("name"), "proficiency": s.get("proficiency_level") or s.get("proficiency")} for s in all_skills_formatted]
 
-    completion, missing = profile_completion(profile, comp_skills)
-    target_role = profile.get("target_role") or (employee.get("designation") if employee else "Senior Software Engineer")
-    skill_gaps = get_employee_skill_gaps(resolved_emp_id, target_role, org_id=resolved_org) if resolved_emp_id else {"gaps": [], "match_percentage": 0}
+    try:
+        completion, missing = profile_completion(profile, comp_skills)
+    except Exception:
+        completion, missing = 0, []
+    target_role = (profile.get("target_role") if isinstance(profile, dict) else "") or (employee.get("designation") if employee else "Senior Software Engineer")
+    try:
+        skill_gaps = get_employee_skill_gaps(resolved_emp_id, target_role, org_id=resolved_org, user_id=user_id) if resolved_emp_id else {"gaps": [], "match_percentage": 0}
+    except Exception:
+        skill_gaps = {"gaps": [], "match_percentage": 0}
 
     return {
         "user": user,
