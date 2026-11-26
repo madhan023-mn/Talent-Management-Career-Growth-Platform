@@ -1,0 +1,1 @@
+"""Talent Growth Django App"""

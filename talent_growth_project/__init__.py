@@ -1,0 +1,1 @@
+"""Talent Growth Project Configuration"""

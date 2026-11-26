@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sign In — Talent Growth{% endblock %}
+
+{% block content %}
+<div style="max-width: 460px; margin: 40px auto;">
+    <div class="saas-card" style="padding: 36px;">
+        <div style="text-align: center; margin-bottom: 28px;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 14px; background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%); margin-bottom: 14px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);">
+                <img src="{% static 'img/talent_growth_icon_thumb.png' %}" alt="Logo" style="width: 34px; height: 34px;">
+            </div>
+            <h2 style="font-size: 1.55rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0;">Welcome Back</h2>
+            <p style="font-size: 0.88rem; color: #64748B; margin: 0;">Sign in to your Talent Growth workspace</p>
+        </div>
+
+        <form method="POST" action="/login/">
+            {% csrf_token %}
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Work or Personal Email</label>
+                <input type="email" name="email" id="login_email" required placeholder="name@company.com" 
+                    style="width: 100%; box-sizing: border-box; padding: 11px 14px; border-radius: 10px; border: 1px solid #CBD5E1; font-size: 0.92rem; outline: none; transition: border-color 0.15s ease;"
+                    onfocus="this.style.borderColor='#2563EB'" onblur="this.style.borderColor='#CBD5E1'">
+            </div>
+
+            <div style="margin-bottom: 22px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <label style="font-size: 0.84rem; font-weight: 600; color: #334155;">Password</label>
+                </div>
+                <input type="password" name="password" id="login_password" required placeholder="••••••••••••" 
+                    style="width: 100%; box-sizing: border-box; padding: 11px 14px; border-radius: 10px; border: 1px solid #CBD5E1; font-size: 0.92rem; outline: none; transition: border-color 0.15s ease;"
+                    onfocus="this.style.borderColor='#2563EB'" onblur="this.style.borderColor='#CBD5E1'">
+            </div>
+
+            <button type="submit" class="btn-saas btn-saas-primary" style="width: 100%; padding: 12px; font-size: 0.95rem; border-radius: 10px;">
+                Sign In
+            </button>
+        </form>
+
+        <!-- Quick Demo Credentials Helper -->
+        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #F1F5F9;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; margin-bottom: 10px; text-align: center;">Quick Demo Credentials</div>
+            <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn-saas btn-saas-secondary" style="flex: 1; font-size: 0.78rem; padding: 6px;"
+                    onclick="document.getElementById('login_email').value='admin@talentgrowth.com'; document.getElementById('login_password').value='Admin@12345';">
+                    HR Admin Demo
+                </button>
+                <button type="button" class="btn-saas btn-saas-secondary" style="flex: 1; font-size: 0.78rem; padding: 6px;"
+                    onclick="document.getElementById('login_email').value='alex@company.com'; document.getElementById('login_password').value='Password123';">
+                    Employee Demo
+                </button>
+            </div>
+        </div>
+
+        <div style="margin-top: 24px; text-align: center; font-size: 0.86rem; color: #64748B;">
+            Don't have an account? <a href="/register/" style="color: #2563EB; font-weight: 600; text-decoration: none;">Create Account</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

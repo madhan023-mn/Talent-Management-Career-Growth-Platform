@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% load static custom_tags %}
+
+{% block title %}ATS Resume Studio — Talent Growth{% endblock %}
+
+{% block content %}
+<div style="max-width: 1100px; margin: 0 auto;">
+
+    <!-- TOP HEADER -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <h1 style="font-size: 1.8rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">ATS Resume Studio</h1>
+            <p style="font-size: 0.90rem; color: #64748B; margin: 0;">Automated translation of competency data into publication-ready, ATS-compliant resumes</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="/resume-studio/export/" class="btn-saas btn-saas-primary">📥 Download Official Resume PDF</a>
+            <form method="POST" action="/resume-studio/sync-skills/" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-saas btn-saas-secondary">⚡ Import Assessed Skills</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN RESUME STUDIO CARD -->
+    <div class="saas-card" style="padding: 32px;">
+        <form method="POST" action="/resume-studio/">
+            {% csrf_token %}
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #F1F5F9; padding-bottom: 14px; margin-bottom: 20px;">
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0;">Structured Resume Profile</h3>
+                <span style="font-size: 0.78rem; font-weight: 700; color: #16A34A; background: #F0FDF4; border: 1px solid #BBF7D0; padding: 2px 10px; border-radius: 9999px;">
+                    ✓ ATS Compliance Verified
+                </span>
+            </div>
+
+            <!-- Executive Summary -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Executive Career Summary</label>
+                <textarea name="summary" rows="4" placeholder="High-impact career summary highlighting technical depth, leadership scope, and business outcomes..." style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.90rem;">{{ resume.summary|default:profile.summary|default:'' }}</textarea>
+            </div>
+
+            <!-- Skills List Tag Cloud -->
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Core Competency Tags (Comma-separated)</label>
+                <input type="text" name="skills_str" value="{{ skills_str|default:'' }}" placeholder="Python, Django, React, AWS, Microservices, CI/CD, System Architecture" style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.90rem;">
+            </div>
+
+            <!-- Experience & Education JSON / Text Blocks -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+                <div>
+                    <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Work Experience Highlights</label>
+                    <textarea name="experience_text" rows="6" placeholder="• Senior Engineer at TechCorp (2023 - Present)&#10;• Led team of 8 engineers delivering enterprise cloud microservices&#10;• Reduced latency by 45% using distributed caching" style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; font-family: monospace;">{{ resume.experience_text|default:'' }}</textarea>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Education & Certifications</label>
+                    <textarea name="education_text" rows="6" placeholder="• B.S. in Computer Science, University of Technology (2018 - 2022)&#10;• AWS Certified Solutions Architect Professional (2024)" style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; font-family: monospace;">{{ resume.education_text|default:'' }}</textarea>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button type="submit" class="btn-saas btn-saas-primary" style="padding: 10px 24px;">Save Resume Content</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

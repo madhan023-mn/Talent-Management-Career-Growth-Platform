@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% load static custom_tags %}
+
+{% block title %}Settings & Organization — Talent Growth{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+
+    <!-- TOP HEADER -->
+    <div style="margin-bottom: 24px;">
+        <h1 style="font-size: 1.8rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">Settings & Workspace Administration</h1>
+        <p style="font-size: 0.90rem; color: #64748B; margin: 0;">Manage organization credentials, access tokens, and infrastructure connectivity</p>
+    </div>
+
+    <!-- DATABASE HEALTH TELEMETRY CARD -->
+    <div class="saas-card" style="padding: 24px; margin-bottom: 24px; border-left: 4px solid #16A34A;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="font-size: 1.05rem; font-weight: 700; color: #0F172A; margin: 0;">Single Database Engine: MongoDB Atlas</h3>
+            <span style="font-size: 0.74rem; font-weight: 700; color: #16A34A; background: #F0FDF4; border: 1px solid #BBF7D0; padding: 2px 10px; border-radius: 9999px;">
+                ● Connected & Healthy
+            </span>
+        </div>
+        <div style="font-size: 0.86rem; color: #475569; line-height: 1.5;">
+            Cluster: <strong>cluster0.rewpdrw.mongodb.net</strong> | Database: <strong>talent_management</strong><br>
+            All application data, employee profiles, assessment records, and user credentials read and write exclusively to this persistent cloud database.
+        </div>
+    </div>
+
+    {% if is_admin %}
+    <!-- HR ADMIN: INVITATION CODE GENERATOR -->
+    <div class="saas-card" style="padding: 28px; margin-bottom: 24px;">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0 0 14px 0;">Generate Employee Invitation Code</h3>
+        <p style="font-size: 0.86rem; color: #64748B; margin: 0 0 18px 0;">Generate single-use or multi-use invitation tokens to onboard employees to <strong>{{ org_name }}</strong></p>
+
+        <form method="POST" action="/settings/invite/" style="display: flex; gap: 14px; flex-wrap: wrap;">
+            {% csrf_token %}
+            <div style="flex: 1; min-width: 140px;">
+                <label style="display: block; font-size: 0.80rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Max Uses</label>
+                <input type="number" min="1" max="100" name="max_uses" value="1" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+            </div>
+            <div style="flex: 1; min-width: 140px;">
+                <label style="display: block; font-size: 0.80rem; font-weight: 600; color: #334155; margin-bottom: 4px;">Expiry Days</label>
+                <input type="number" min="1" max="90" name="days" value="14" style="width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+            </div>
+            <div style="align-self: flex-end;">
+                <button type="submit" class="btn-saas btn-saas-primary" style="padding: 9px 18px;">+ Generate Code</button>
+            </div>
+        </form>
+
+        {% if generated_code %}
+        <div style="margin-top: 16px; padding: 12px 16px; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 0.86rem; color: #065F46;">New Invitation Code: <strong style="font-family: monospace; font-size: 1rem; color: #065F46;">{{ generated_code }}</strong></div>
+            <span style="font-size: 0.76rem; color: #065F46;">Share with employee</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if is_individual %}
+    <!-- INDIVIDUAL: JOIN AN ORGANIZATION -->
+    <div class="saas-card" style="padding: 28px;">
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0 0 14px 0;">Join an Enterprise Organization</h3>
+        <p style="font-size: 0.86rem; color: #64748B; margin: 0 0 18px 0;">Enter an invitation code provided by your employer to link your personal account with your company workspace.</p>
+
+        <form method="POST" action="/join-organization/" style="display: flex; gap: 14px; max-width: 500px;">
+            {% csrf_token %}
+            <input type="text" name="code" required placeholder="INV-XXXX-XXXX" style="flex: 1; padding: 9px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.90rem;">
+            <button type="submit" class="btn-saas btn-saas-primary">Link Organization</button>
+        </form>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

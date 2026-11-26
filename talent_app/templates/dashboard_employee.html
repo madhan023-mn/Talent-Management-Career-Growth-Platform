@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static custom_tags %}
+
+{% block title %}Personal Career Intelligence Dashboard — Talent Growth{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+
+    <!-- TOP HEADER -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; font-weight: 700; color: #16A34A; background: #F0FDF4; border: 1px solid #BBF7D0; padding: 2px 10px; border-radius: 9999px; margin-bottom: 8px;">
+                ● Personal Career Intelligence
+            </div>
+            <h1 style="font-size: 1.85rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">Welcome, {{ current_user.name }}</h1>
+            <p style="font-size: 0.90rem; color: #64748B; margin: 0;">Target Career Path: <strong style="color: #2563EB;">{{ profile.target_role|default:"Software Engineer" }}</strong> ({{ profile.target_level|default:"Senior" }})</p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="/resume-studio/" class="btn-saas btn-saas-primary">ATS Resume Studio</a>
+            <a href="/skills/" class="btn-saas btn-saas-secondary">+ Add Skill</a>
+        </div>
+    </div>
+
+    <!-- CAREER READINESS & BENCHMARK HERO CARD -->
+    <div class="saas-card" style="background: linear-gradient(135deg, #1E1B4B 0%, #31104B 60%, #0F172A 100%); color: #FFFFFF; border: none; padding: 32px; margin-bottom: 28px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px;">
+            <div style="max-width: 580px;">
+                <div style="font-size: 0.80rem; font-weight: 700; color: #C084FC; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Target Competency Readiness</div>
+                <h2 style="font-size: 1.75rem; font-weight: 800; margin: 0 0 10px 0;">{{ profile.target_role|default:"Senior Full Stack Engineer" }}</h2>
+                <p style="font-size: 0.92rem; color: #CBD5E1; line-height: 1.5; margin: 0 0 20px 0;">
+                    Your assessed skills cover <strong>{{ match.match_score|default:"75" }}%</strong> of the target competencies required for this role benchmark.
+                </p>
+                <div style="display: flex; gap: 12px;">
+                    <a href="/role-match/" class="btn-saas" style="background: #FFFFFF; color: #1E1B4B; padding: 8px 18px; font-size: 0.86rem; border-radius: 8px;">Explore Competency Gaps →</a>
+                    <a href="/career-coach/" class="btn-saas" style="background: rgba(255,255,255,0.15); color: #FFF; padding: 8px 18px; font-size: 0.86rem; border-radius: 8px;">AI Career Coaching</a>
+                </div>
+            </div>
+
+            <!-- Readiness Score Circular Gauge -->
+            <div style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 24px 36px; text-align: center;">
+                <div style="font-size: 0.78rem; font-weight: 700; color: #E2E8F0; text-transform: uppercase; margin-bottom: 4px;">Role Match</div>
+                <div style="font-size: 3.2rem; font-weight: 900; color: #60A5FA; line-height: 1;">{{ match.match_score|default:"75" }}<span style="font-size: 1.8rem;">%</span></div>
+                <div style="font-size: 0.78rem; color: #A7F3D0; font-weight: 600; margin-top: 6px;">● High Readiness Tier</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CORE METRICS & ROADMAP GRID -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
+        <!-- MY SKILLS INVENTORY -->
+        <div class="saas-card" style="margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0; color: #0F172A;">Assessed Skills Inventory</h3>
+                <a href="/skills/" style="font-size: 0.84rem; color: #2563EB; font-weight: 600; text-decoration: none;">View All ({{ skills|length }}) →</a>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                {% for s in skills|slice:":5" %}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;">
+                    <div>
+                        <div style="font-size: 0.90rem; font-weight: 600; color: #0F172A;">{{ s.name|default:s.skill_name }}</div>
+                        <div style="font-size: 0.74rem; color: #64748B;">{{ s.category|default:"Technical" }}</div>
+                    </div>
+                    <span style="font-size: 0.74rem; font-weight: 700; padding: 3px 9px; border-radius: 6px; 
+                        {% if s.proficiency == 'Expert' or s.proficiency_level == 'Expert' %}background: #EDE9FE; color: #6D28D9;
+                        {% elif s.proficiency == 'Advanced' or s.proficiency_level == 'Advanced' %}background: #EFF6FF; color: #1D4ED8;
+                        {% elif s.proficiency == 'Intermediate' or s.proficiency_level == 'Intermediate' %}background: #F0FDF4; color: #15803D;
+                        {% else %}background: #FFFBEB; color: #B45309;{% endif %}">
+                        {{ s.proficiency|default:s.proficiency_level|default:"Intermediate" }}
+                    </span>
+                </div>
+                {% empty %}
+                <div style="padding: 24px; text-align: center; color: #94A3B8;">No skills added yet. Add your first skill to begin benchmarking.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ACTIVE CAREER GOALS -->
+        <div class="saas-card" style="margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0; color: #0F172A;">Active Career Goals</h3>
+                <a href="/goals/" style="font-size: 0.84rem; color: #2563EB; font-weight: 600; text-decoration: none;">Roadmap View →</a>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                {% for g in goals|slice:":4" %}
+                <div style="padding: 12px 14px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                        <div style="font-size: 0.88rem; font-weight: 600; color: #0F172A;">{{ g.title }}</div>
+                        <span style="font-size: 0.72rem; font-weight: 700; color: #2563EB;">{{ g.progress|default:0 }}%</span>
+                    </div>
+                    <div style="background: #E2E8F0; border-radius: 9999px; height: 6px; overflow: hidden; margin-bottom: 6px;">
+                        <div style="width: {{ g.progress|default:0 }}%; background: linear-gradient(90deg, #2563EB, #7C3AED); height: 100%;"></div>
+                    </div>
+                    <div style="font-size: 0.72rem; color: #64748B;">Target Date: {{ g.target_date }}</div>
+                </div>
+                {% empty %}
+                <div style="padding: 24px; text-align: center; color: #94A3B8;">No career goals active. Define your career targets in Growth Progress.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Talent Growth — AI-Powered Workforce Performance & Career Acceleration{% endblock %}
+
+{% block content %}
+<div style="max-width: 1100px; margin: 0 auto; padding: 20px 0;">
+
+    <!-- HERO SECTION -->
+    <div style="background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 45%, #31104B 80%, #0F172A 100%); border-radius: 24px; padding: 56px 48px; color: #FFFFFF; position: relative; overflow: hidden; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15); margin-bottom: 36px;">
+        <div style="position: absolute; top: -50px; right: -50px; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(124, 58, 237, 0.3) 0%, rgba(0,0,0,0) 70%);"></div>
+        <div style="position: absolute; bottom: -80px; left: 10%; width: 250px; height: 250px; border-radius: 50%; background: radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, rgba(0,0,0,0) 70%);"></div>
+
+        <div style="position: relative; z-index: 2; max-width: 720px;">
+            <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); padding: 5px 14px; border-radius: 9999px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.05em; color: #DDD6FE; margin-bottom: 20px; text-transform: uppercase;">
+                ✨ Next-Gen Talent Management & Career Growth Engine
+            </div>
+
+            <h1 style="font-size: 2.85rem; font-weight: 900; line-height: 1.15; margin: 0 0 18px 0; letter-spacing: -0.02em;">
+                Build Exceptional Teams, <br>
+                <span style="background: linear-gradient(135deg, #60A5FA 0%, #C084FC 50%, #F472B6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Accelerate Careers</span>
+            </h1>
+
+            <p style="font-size: 1.08rem; color: #CBD5E1; line-height: 1.6; margin: 0 0 32px 0;">
+                The enterprise workforce intelligence platform connecting personalized skill mastery, automated role benchmarks, performance analytics, and dynamic ATS resume engineering.
+            </p>
+
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <a href="/register/" class="btn-saas btn-saas-primary" style="padding: 12px 28px; font-size: 1rem; border-radius: 12px;">Get Started Free →</a>
+                <a href="/login/" class="btn-saas" style="background: rgba(255, 255, 255, 0.12); color: #FFFFFF; border: 1px solid rgba(255, 255, 255, 0.25); padding: 12px 24px; font-size: 0.95rem; border-radius: 12px;">Sign In to Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- VALUE PROPOSITIONS -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 40px;">
+        <div class="saas-card" style="margin-bottom: 0;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; color: #2563EB; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 700; margin-bottom: 16px;">
+                🎯
+            </div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0 0 8px 0; color: #0F172A;">Competency & Skill Matrices</h3>
+            <p style="font-size: 0.90rem; color: #64748B; line-height: 1.5; margin: 0;">
+                Benchmark individual competencies against target designations. Real-time gap analysis and structured proficiency ratings from Beginner to Expert.
+            </p>
+        </div>
+
+        <div class="saas-card" style="margin-bottom: 0;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: #F5F3FF; color: #7C3AED; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 700; margin-bottom: 16px;">
+                📊
+            </div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0 0 8px 0; color: #0F172A;">Executive Performance Intelligence</h3>
+            <p style="font-size: 0.90rem; color: #64748B; line-height: 1.5; margin: 0;">
+                Comprehensive department reviews, goal tracking, and workforce distributions. Data-backed reviews aligned with enterprise business objectives.
+            </p>
+        </div>
+
+        <div class="saas-card" style="margin-bottom: 0;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: #F0FDF4; color: #16A34A; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 700; margin-bottom: 16px;">
+                📄
+            </div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; margin: 0 0 8px 0; color: #0F172A;">ATS Resume Studio</h3>
+            <p style="font-size: 0.90rem; color: #64748B; line-height: 1.5; margin: 0;">
+                Automatically translate assessed workforce skills and career achievements into publication-grade ATS-optimized resumes with 1-click PDF export.
+            </p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

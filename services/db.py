@@ -349,7 +349,7 @@ def ensure_demo_hr_data(db: Optional[Any] = None, force: bool = False) -> None:
             emp_salt = "demo_salt"
             emp_hash = "demo_hash"
 
-        # 2. Ensure HR Admin user
+        # 2. Ensure HR Admin user & employee record
         admin_user = db.users.find_one({"email": "admin@talentgrowth.com"})
         if not admin_user:
             try:
@@ -372,26 +372,26 @@ def ensure_demo_hr_data(db: Optional[Any] = None, force: bool = False) -> None:
                 "job_title": "VP of Human Resources",
                 "status": "Active"
             })
-            db.employees.update_one(
-                {"employee_id": "EMP001", "org_id": "ORG-TALENT-01"},
-                {"$set": {
-                    "id": 1001,
-                    "employee_id": "EMP001",
-                    "name": "HR Administrator",
-                    "email": "admin@talentgrowth.com",
-                    "department": "Human Resources",
-                    "designation": "VP of Human Resources",
-                    "org_id": "ORG-TALENT-01",
-                    "status": "Active",
-                    "employment_status": "Active",
-                    "account_status": "Active",
-                    "user_id": 1001,
-                    "joining_date": "2021-01-15",
-                    "years_experience": 10.0,
-                    "primary_skills": "Talent Strategy, Organizational Development, Leadership"
-                }},
-                upsert=True
-            )
+        db.employees.update_one(
+            {"employee_id": "EMP001", "org_id": "ORG-TALENT-01"},
+            {"$set": {
+                "id": 1001,
+                "employee_id": "EMP001",
+                "name": "HR Administrator",
+                "email": "admin@talentgrowth.com",
+                "department": "Human Resources",
+                "designation": "VP of Human Resources",
+                "org_id": "ORG-TALENT-01",
+                "status": "Active",
+                "employment_status": "Active",
+                "account_status": "Active",
+                "user_id": 1001,
+                "joining_date": "2021-01-15",
+                "years_experience": 10.0,
+                "primary_skills": "Talent Strategy, Organizational Development, Leadership"
+            }},
+            upsert=True
+        )
 
         # 3. Define the 5 sample employees for HR demo
         demo_employees = [
@@ -652,6 +652,37 @@ def ensure_demo_hr_data(db: Optional[Any] = None, force: bool = False) -> None:
                     }},
                     upsert=True
                 )
+
+        # 4. Synchronize all registered users to the employees collection so every account appears in the employee table
+        try:
+            for u in db.users.find({}):
+                u_email = u.get("email")
+                if u_email and not db.employees.find_one({"email": u_email}):
+                    u_emp_id = u.get("employee_id") or f"EMP{u.get('id', 1000):03d}"
+                    db.employees.update_one(
+                        {"email": u_email},
+                        {"$set": {
+                            "id": u.get("id"),
+                            "employee_id": u_emp_id,
+                            "org_id": u.get("org_id") or "ORG-TALENT-01",
+                            "user_id": u.get("id"),
+                            "name": u.get("name", "Staff Member"),
+                            "email": u_email,
+                            "phone": u.get("phone", ""),
+                            "department": u.get("department") or "General",
+                            "designation": u.get("job_title") or "Team Member",
+                            "joining_date": u.get("date_joined") or date.today().isoformat(),
+                            "employment_status": "Active",
+                            "account_status": "Active",
+                            "years_experience": float(u.get("years_experience") or 1.0),
+                            "primary_skills": u.get("primary_skills") or "Problem Solving",
+                            "created_by": u.get("id")
+                        }},
+                        upsert=True
+                    )
+        except Exception:
+            pass
+
         _demo_hr_data_ensured = True
     except Exception as exc:
         logger.warning(f"Notice: ensure_demo_hr_data: {exc}")

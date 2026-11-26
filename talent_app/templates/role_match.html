@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% load static custom_tags %}
+
+{% block title %}Role Match & Competency Gap Analysis — Talent Growth{% endblock %}
+
+{% block content %}
+<div style="max-width: 1100px; margin: 0 auto;">
+
+    <!-- TOP HEADER -->
+    <div style="margin-bottom: 24px;">
+        <h1 style="font-size: 1.8rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">Role Match & Competency Gap Analysis</h1>
+        <p style="font-size: 0.90rem; color: #64748B; margin: 0;">Benchmark your current evaluated skills against industry standard job role profiles</p>
+    </div>
+
+    <!-- ROLE SELECTION FORM -->
+    <div class="saas-card" style="padding: 20px 24px; margin-bottom: 24px;">
+        <form method="GET" action="/role-match/" style="display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;">
+            <div style="flex: 2; min-width: 260px;">
+                <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Target Career Role</label>
+                <select name="role" style="width: 100%; box-sizing: border-box; padding: 10px 14px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.90rem; background: #FFF;">
+                    {% for r in role_catalog %}
+                        <option value="{{ r }}" {% if selected_role == r %}selected{% endif %}>{{ r }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="btn-saas btn-saas-primary" style="padding: 10px 20px;">Analyze Readiness</button>
+        </form>
+    </div>
+
+    <!-- MATCH SCORE CARD -->
+    <div class="saas-card" style="background: linear-gradient(135deg, #1E1B4B 0%, #2E1065 60%, #0F172A 100%); color: #FFFFFF; border: none; padding: 28px 32px; margin-bottom: 28px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <div style="font-size: 0.78rem; font-weight: 700; color: #C084FC; text-transform: uppercase; margin-bottom: 6px;">Evaluation Result</div>
+                <h2 style="font-size: 1.6rem; font-weight: 800; margin: 0 0 8px 0;">{{ selected_role }}</h2>
+                <p style="font-size: 0.90rem; color: #CBD5E1; margin: 0;">
+                    You hold <strong>{{ matched_skills|length }}</strong> of the <strong>{{ total_required|default:"6" }}</strong> required skills for this profile.
+                </p>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18); border-radius: 16px; padding: 16px 28px; text-align: center;">
+                <div style="font-size: 2.8rem; font-weight: 900; color: #60A5FA; line-height: 1;">{{ match_score|default:"75" }}%</div>
+                <div style="font-size: 0.76rem; color: #A7F3D0; font-weight: 600; margin-top: 4px;">Readiness Score</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPETENCY BREAKDOWN: MATCHED VS GAPS -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
+        <!-- MATCHED SKILLS -->
+        <div class="saas-card" style="margin-bottom: 0; border-top: 4px solid #10B981;">
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0 0 16px 0; color: #0F172A; display: flex; align-items: center; gap: 8px;">
+                <span style="color: #10B981;">✓</span> Acquired Competencies ({{ matched_skills|length }})
+            </h3>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                {% for s in matched_skills %}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #065F46; font-size: 0.88rem;">{{ s }}</div>
+                    <span style="font-size: 0.72rem; font-weight: 700; color: #16A34A;">MATCHED</span>
+                </div>
+                {% empty %}
+                <div style="padding: 20px; text-align: center; color: #94A3B8;">No direct competency matches yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- MISSING SKILL GAPS -->
+        <div class="saas-card" style="margin-bottom: 0; border-top: 4px solid #F59E0B;">
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin: 0 0 16px 0; color: #0F172A; display: flex; align-items: center; gap: 8px;">
+                <span style="color: #F59E0B;">⚠</span> Competency Gaps to Acquire ({{ missing_skills|length }})
+            </h3>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                {% for s in missing_skills %}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #92400E; font-size: 0.88rem;">{{ s }}</div>
+                    <span style="font-size: 0.72rem; font-weight: 700; color: #D97706;">GAP</span>
+                </div>
+                {% empty %}
+                <div style="padding: 20px; text-align: center; color: #10B981; font-weight: 600;">Full competency alignment achieved!</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load static custom_tags %}
+
+{% block title %}Career Goals & Growth Progress — Talent Growth{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+
+    <!-- TOP HEADER -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <h1 style="font-size: 1.8rem; font-weight: 800; color: #0F172A; margin: 0 0 4px 0;">Career Goals & Growth Milestones</h1>
+            <p style="font-size: 0.90rem; color: #64748B; margin: 0;">Define quarterly milestones, promotion targets, and track measurable career advancement</p>
+        </div>
+        <div>
+            <button type="button" class="btn-saas btn-saas-primary" onclick="openModal('addGoalModal')">+ Add Career Goal</button>
+        </div>
+    </div>
+
+    <!-- ROADMAP GRID -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px;">
+        {% for g in goals %}
+        <div class="saas-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                    <span style="font-size: 0.74rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px;
+                        {% if g.status == 'Completed' %}background: #ECFDF5; color: #065F46;
+                        {% elif g.status == 'In Progress' %}background: #EFF6FF; color: #1D4ED8;
+                        {% elif g.status == 'Overdue' %}background: #FEF2F2; color: #991B1B;
+                        {% else %}background: #F1F5F9; color: #475569;{% endif %}">
+                        {{ g.status|default:"Not Started" }}
+                    </span>
+                    <span style="font-size: 0.82rem; font-weight: 800; color: #2563EB;">{{ g.progress|default:0 }}%</span>
+                </div>
+
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: #0F172A; margin: 0 0 6px 0;">{{ g.title }}</h3>
+                {% if g.target_designation %}
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #7C3AED; margin-bottom: 6px;">Target: {{ g.target_designation }}</div>
+                {% endif %}
+                <p style="font-size: 0.86rem; color: #64748B; line-height: 1.4; margin: 0 0 16px 0;">{{ g.description|default:"No description provided." }}</p>
+            </div>
+
+            <div>
+                <!-- PROGRESS BAR -->
+                <div style="background: #E2E8F0; border-radius: 9999px; height: 8px; overflow: hidden; margin-bottom: 12px;">
+                    <div style="width: {{ g.progress|default:0 }}%; background: linear-gradient(90deg, #2563EB, #7C3AED); height: 100%; transition: width 0.3s ease;"></div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: #64748B;">
+                    <span>Target: {{ g.target_date }}</span>
+                    <div style="display: flex; gap: 8px;">
+                        <form method="POST" action="/goals/{{ g.id }}/update/" style="display: inline-flex; align-items: center; gap: 4px;">
+                            {% csrf_token %}
+                            <select name="progress" onchange="this.form.submit()" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 6px; border: 1px solid #CBD5E1; background: #FFF;">
+                                <option value="0" {% if g.progress == 0 %}selected{% endif %}>0%</option>
+                                <option value="25" {% if g.progress == 25 %}selected{% endif %}>25%</option>
+                                <option value="50" {% if g.progress == 50 %}selected{% endif %}>50%</option>
+                                <option value="75" {% if g.progress == 75 %}selected{% endif %}>75%</option>
+                                <option value="100" {% if g.progress == 100 %}selected{% endif %}>100%</option>
+                            </select>
+                        </form>
+                        <a href="/goals/{{ g.id }}/delete/" onclick="return confirm('Delete this goal?');" style="color: #DC2626; text-decoration: none; font-weight: 600;">×</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="saas-card" style="grid-column: 1 / -1; padding: 48px; text-align: center; color: #94A3B8;">
+            No career goals currently set. Click "+ Add Career Goal" above to define your next milestones.
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<!-- ADD GOAL MODAL -->
+<div id="addGoalModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+    <div class="saas-card" style="max-width: 500px; width: 100%; margin: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+            <h3 style="font-size: 1.25rem; font-weight: 800; color: #0F172A; margin: 0;">Create Career Goal</h3>
+            <button type="button" onclick="closeModal('addGoalModal')" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #64748B;">×</button>
+        </div>
+
+        <form method="POST" action="/goals/add/">
+            {% csrf_token %}
+            <div style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Goal Title *</label>
+                <input type="text" name="title" required placeholder="e.g. Lead Cloud Migration Architecture" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+            </div>
+
+            <div style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Target Designation</label>
+                <input type="text" name="target_designation" placeholder="e.g. Principal Architect" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                <div>
+                    <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Target Date *</label>
+                    <input type="date" name="target_date" required style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Initial Progress</label>
+                    <select name="progress" style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem; background: #FFF;">
+                        <option value="0">0% Not Started</option>
+                        <option value="25">25% In Progress</option>
+                        <option value="50">50% Halfway</option>
+                        <option value="75">75% Nearing Completion</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 0.84rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Action Plan & Details</label>
+                <textarea name="description" rows="3" placeholder="Milestones and certifications required to complete this goal..." style="width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid #CBD5E1; font-size: 0.88rem;"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="btn-saas btn-saas-secondary" onclick="closeModal('addGoalModal')">Cancel</button>
+                <button type="submit" class="btn-saas btn-saas-primary">Create Goal</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
