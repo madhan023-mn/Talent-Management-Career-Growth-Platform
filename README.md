@@ -75,7 +75,7 @@ infosys_project/
 ├── .env.example            # Environment template (DATABASE_PATH override)
 ├── services/
 │   ├── __init__.py         # Services package initialization
-│   ├── core.py             # Database engine, Auth/RBAC, Employee CRUD, Reviews, Goals, Gaps
+│   ├── core.py             # SQLite persistence, Auth/RBAC, Employee CRUD, Reviews, Goals, Gaps
 │   └── reports.py          # ReportLab PDF report generation
 ├── tests/
 │   ├── __init__.py
@@ -150,6 +150,8 @@ All 13 automated test suites verify:
 ---
 
 ## 💾 Database Schema (SQLite)
+
+SQLite is the application's only database. The default file is `data/talentsphere.db`; set `DATABASE_PATH` only when you need a different SQLite file. Legacy MySQL/MongoDB settings are ignored, and data in those systems is not automatically copied or deleted.
 
 - `users` (id, name, email, password_hash, salt, role, employee_id, created_at)
 - `employees` (id, employee_id, name, email, phone, department, designation, joining_date, employment_status, years_experience, primary_skills, created_by, created_at, updated_at)

@@ -56,7 +56,6 @@ try:
         generate_invitation_code, list_invitation_codes, revoke_invitation_code, validate_invitation_code,
         get_db_path, check_db_health, get_database_diagnostics, verify_user_in_db, checkpoint_db,
         list_stored_users, list_stored_employees_all, get_recent_email_logs,
-        test_mysql_connection, is_mysql_expected,
         get_resume, save_resume, import_skills_to_resume, format_resume_as_text, generate_resume_pdf,
         validate_url, validate_date_range,
         create_membership_request, get_membership_requests,
@@ -160,8 +159,6 @@ except Exception as _core_err:
         list_stored_users = getattr(_core_mod, 'list_stored_users', lambda search="", limit=200: [])
         list_stored_employees_all = getattr(_core_mod, 'list_stored_employees_all', lambda limit=200: [])
         get_recent_email_logs = getattr(_core_mod, 'get_recent_email_logs', lambda limit=50: [])
-        test_mysql_connection = getattr(_core_mod, 'test_mysql_connection', lambda: {"success": False, "message": "Test unavailable"})
-        is_mysql_expected = getattr(_core_mod, 'is_mysql_expected', lambda: False)
     except Exception as _retry_err:
         import traceback
         st.error(f"### Critical Startup Error: Failed to load services.core\n\n**Error:** `{_retry_err}`")
@@ -470,6 +467,12 @@ def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
         org_label = emp.get("org_name") or emp.get("org_id") or "Talent Growth"
         acc_status = emp.get("account_status") or "Active"
         acc_status_badge = get_status_badge_html(acc_status)
+        has_login_account = bool(emp.get("has_login_account"))
+        login_account_badge = (
+            '<span style="display:inline-flex; padding:3px 8px; border-radius:9999px; background:#DCFCE7; color:#166534; font-size:0.74rem; font-weight:700;">Linked</span>'
+            if has_login_account
+            else '<span style="display:inline-flex; padding:3px 8px; border-radius:9999px; background:#F1F5F9; color:#64748B; font-size:0.74rem; font-weight:700;">No account</span>'
+        )
 
         rows.append(
             f"""<tr>
@@ -490,6 +493,7 @@ def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
                 <td><span style="font-weight: 600; color: #334155;">{emp.get('designation', '')}</span></td>
                 <td><span style="font-size: 0.82rem; color: #64748B;">{date_joined}</span></td>
                 <td><span style="font-size: 0.82rem; color: #2563EB; font-weight: 500;" title="{emp.get('primary_skills', '')}">{skills_summary}</span></td>
+                <td>{login_account_badge}</td>
                 <td>
                     <div class="tbl-progress-container">
                         <div class="tbl-progress-track">
@@ -512,6 +516,7 @@ def render_colored_employee_table(emp_results: List[Dict[str, Any]]) -> str:
                     <th>Job Title</th>
                     <th>Date Joined</th>
                     <th>Skills Summary</th>
+                    <th>Login Account</th>
                     <th>Performance</th>
                     <th>Account Status</th>
                 </tr>
@@ -1233,7 +1238,7 @@ def landing_webpage():
             <div style="display: flex; gap: 18px;">
                 <span>Security &amp; Governance</span>
                 <span>Role Benchmarks</span>
-                <span>Enterprise Relational DB</span>
+                <span>SQLite Database</span>
                 <span>MIT Licensed</span>
             </div>
         </div>
@@ -1301,14 +1306,6 @@ def render_database_diagnostics_panel(key_suffix: str = ""):
             </div>
             """
         )
-
-        if is_mysql_expected() or diag.get("engine") == "MySQL":
-            if st.button("⚡ Test MySQL Database Connection", key=f"btn_test_mysql_{key_suffix}", use_container_width=True):
-                test_res = test_mysql_connection()
-                if test_res.get("success"):
-                    st.success(f"✅ {test_res.get('message')}")
-                else:
-                    st.error(f"❌ {test_res.get('message')}")
 
         last_v = st.session_state.get("last_registered_verification")
         if last_v:
@@ -1941,17 +1938,14 @@ def register_page():
                             db_diag = get_database_diagnostics()
                             db_engine = db_diag.get('engine', 'Database')
                             db_fname = db_diag.get('database_name') or db_diag.get('filename', 'talent_growth')
-                            if is_mysql_expected() and db_engine != "MySQL":
-                                st.error(f"Configuration warning: Expected MySQL database persistence, but active engine reported {db_engine}.")
-                            else:
-                                st.session_state["last_registered_verification"] = verified
-                                emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
-                                st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname})! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
-                                st.session_state["prefill_email"] = clean_email
-                                st.session_state.user = None
-                                st.session_state.auth_view = "login"
-                                st.session_state.current_page = "Dashboard"
-                                st.rerun()
+                            st.session_state["last_registered_verification"] = verified
+                            emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
+                            st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname})! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
+                            st.session_state["prefill_email"] = clean_email
+                            st.session_state.user = None
+                            st.session_state.auth_view = "login"
+                            st.session_state.current_page = "Dashboard"
+                            st.rerun()
                     else:
                         st.error(msg)
                 else:
@@ -1995,18 +1989,15 @@ def register_page():
                             db_diag = get_database_diagnostics()
                             db_engine = db_diag.get('engine', 'Database')
                             db_fname = db_diag.get('database_name') or db_diag.get('filename', 'talent_growth')
-                            if is_mysql_expected() and db_engine != "MySQL":
-                                st.error(f"Configuration warning: Expected MySQL database persistence, but active engine reported {db_engine}.")
-                            else:
-                                st.session_state["last_registered_verification"] = verified
-                                org_role_desc = "organization administrator" if role == "admin" else "employee"
-                                emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
-                                st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname}) for {clean_name} as {org_role_desc}! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
-                                st.session_state["prefill_email"] = clean_email
-                                st.session_state.user = None
-                                st.session_state.auth_view = "login"
-                                st.session_state.current_page = "Dashboard"
-                                st.rerun()
+                            st.session_state["last_registered_verification"] = verified
+                            org_role_desc = "organization administrator" if role == "admin" else "employee"
+                            emp_badge = f" (Employee ID: {verified.get('employee_id')})" if verified.get('employee_id') else ""
+                            st.session_state["reg_success_msg"] = f"Account created and verified in {db_engine} ({db_fname}) for {clean_name} as {org_role_desc}! User ID: {verified.get('id')}{emp_badge}. Please sign in below."
+                            st.session_state["prefill_email"] = clean_email
+                            st.session_state.user = None
+                            st.session_state.auth_view = "login"
+                            st.session_state.current_page = "Dashboard"
+                            st.rerun()
                     else:
                         st.error(msg)
 

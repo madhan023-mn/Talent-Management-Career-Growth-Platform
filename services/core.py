@@ -155,7 +155,7 @@ def get_db_path() -> Path:
     return _db_get_db_path()
 
 def check_db_health() -> Dict[str, Any]:
-    """Inspects the active database (MySQL or SQLite) connection, size, integrity, and record counts."""
+    """Inspects the SQLite connection, file size, integrity, and record counts."""
     if is_mysql_mode():
         cfg = get_mysql_config()
         info: Dict[str, Any] = {
@@ -227,9 +227,7 @@ def get_connection():
     return _db_get_connection()
 
 def checkpoint_db(conn: Optional[Any] = None) -> Tuple[int, int, int]:
-    """
-    Forces SQLite WAL checkpoint. In MySQL InnoDB mode, commits are immediately durable so this is a safe no-op.
-    """
+    """Flushes pending SQLite WAL data to the database file."""
     if is_mysql_mode():
         return (0, 0, 0)
     should_close = False
@@ -249,8 +247,8 @@ def checkpoint_db(conn: Optional[Any] = None) -> Tuple[int, int, int]:
 
 def get_database_diagnostics() -> Dict[str, Any]:
     """
-    Returns sanitized diagnostic metrics regarding the active database (MySQL or SQLite):
-    database name, location/host, size, connection integrity status,
+    Returns sanitized diagnostic metrics for the SQLite database:
+    file name, location, size, connection integrity status,
     record counts, and recently created accounts (without sensitive credentials).
     """
     if is_mysql_mode():
@@ -483,9 +481,12 @@ def list_stored_employees_all(limit: int = 200) -> List[Dict[str, Any]]:
                    e.org_id, COALESCE(o.name, e.org_id) AS org_name,
                    e.department, e.designation, COALESCE(e.phone, '') AS phone,
                    e.employment_status, e.years_experience, e.primary_skills,
-                   e.joining_date, e.created_at
+                   e.joining_date, e.created_at,
+                   CASE WHEN u.id IS NULL THEN 0 ELSE 1 END AS has_login_account,
+                   COALESCE(u.role, '') AS login_role
             FROM employees e
             LEFT JOIN organizations o ON e.org_id = o.org_id
+            LEFT JOIN users u ON u.id = e.user_id
             ORDER BY e.id DESC
             LIMIT ?
             """,
@@ -496,7 +497,7 @@ def list_stored_employees_all(limit: int = 200) -> List[Dict[str, Any]]:
         conn.close()
 
 def _safe_add_column(cursor: Any, table_name: str, col_name: str, col_def: str) -> None:
-    """Safely adds a column to an existing table if it does not already exist (MySQL & SQLite)."""
+    """Safely adds a column to an existing SQLite table if it does not already exist."""
     try:
         cursor.execute(f"PRAGMA table_info({table_name})")
         existing = {row["name"] for row in cursor.fetchall()}
@@ -2101,28 +2102,6 @@ def register_individual(
         # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
         checkpoint_db(conn)
 
-        # Cross-engine database sync: ensure both SQLite and MySQL contain the registered user details
-        _mirror_account(
-            user_id=user_id,
-            name=name,
-            email=email,
-            pwd_hash=pwd_hash,
-            salt=salt,
-            role="employee",
-            employee_id=final_emp_id,
-            org_id=assigned_org_id,
-            account_type="Individual",
-            department=clean_dept,
-            job_title=clean_title,
-            phone=phone,
-            years_experience=years_experience,
-            primary_skills=primary_skills,
-            educational_qualification=educational_qualification,
-            professional_interests=professional_interests,
-            target_role=target_role_val,
-            user_status="Active"
-        )
-
         try:
             send_welcome_email(
                 to_email=email,
@@ -2465,28 +2444,6 @@ def register(
 
         # Flush WAL to talentsphere.db so SQLite Viewer extensions immediately see the row
         checkpoint_db(conn)
-
-        # Cross-engine database sync: ensure both SQLite and MySQL contain the registered user details
-        _mirror_account(
-            user_id=user_id,
-            name=name,
-            email=email,
-            pwd_hash=pwd_hash,
-            salt=salt,
-            role=role,
-            employee_id=final_emp_id,
-            org_id=resolved_org_id,
-            account_type=account_type_val,
-            department=department,
-            job_title=job_title,
-            phone=clean_contact_number,
-            years_experience=years_experience,
-            primary_skills=primary_skills,
-            educational_qualification=education or "",
-            professional_interests=interests or "",
-            target_role=job_title,
-            user_status=user_status
-        )
 
         # Trigger welcome email safely outside the database write transaction
         try:
@@ -2951,10 +2908,13 @@ def get_employees(
                    e.joining_date, e.employment_status, e.years_experience, e.primary_skills,
                    e.account_status, e.created_by, e.created_at, e.updated_at,
                    COALESCE(o.name, 'Talent Growth Technologies') as org_name,
+                   CASE WHEN u.id IS NULL THEN 0 ELSE 1 END AS has_login_account,
+                   COALESCE(u.role, '') AS login_role,
                    ROUND(AVG(pr.performance_score), 2) as avg_rating,
                    COUNT(pr.id) as review_count
             FROM employees e
             LEFT JOIN organizations o ON e.org_id = o.org_id
+            LEFT JOIN users u ON u.id = e.user_id
             LEFT JOIN performance_reviews pr ON e.employee_id = pr.employee_id
             WHERE 1=1
         """

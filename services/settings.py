@@ -25,7 +25,7 @@ from services.db import is_mysql_mode, MYSQL_SETTINGS_SCHEMA_STATEMENTS
 # DATABASE SCHEMA INITIALIZATION FOR SETTINGS
 # ------------------------------------------------------------------------------
 def init_settings_tables() -> None:
-    """Initializes all settings tables and safe column migrations (MySQL & SQLite)."""
+    """Initializes settings tables and safe SQLite column migrations."""
     conn = get_connection()
     try:
         with conn:

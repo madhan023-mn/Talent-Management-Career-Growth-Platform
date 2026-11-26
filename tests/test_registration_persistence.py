@@ -18,6 +18,7 @@ from services.core import (
     register,
     register_individual,
     login,
+    get_employees,
     verify_user_in_db,
     get_database_diagnostics,
     checkpoint_db,
@@ -69,6 +70,21 @@ def test_active_database_resolution(monkeypatch):
     assert default_path == BASE_DIR / "data" / "talentsphere.db"
 
 
+def test_mysql_environment_settings_cannot_switch_from_sqlite(isolated_test_db, monkeypatch):
+    monkeypatch.setenv("DB_ENGINE", "mysql")
+    monkeypatch.setenv("DB_HOST", "db.example.invalid")
+    monkeypatch.setenv("DB_USER", "unused")
+    monkeypatch.setenv("DB_PASSWORD", "unused")
+    monkeypatch.setenv("DB_NAME", "unused")
+
+    conn = get_connection()
+    try:
+        assert isinstance(conn, sqlite3.Connection)
+        assert get_database_diagnostics()["engine"] == "SQLite"
+    finally:
+        conn.close()
+
+
 def test_individual_registration_all_13_fields(isolated_test_db):
     """Verify individual registration populates all 13 required fields and commits to database."""
     test_email = "individual.user@testdomain.com"
@@ -107,7 +123,6 @@ def test_individual_registration_all_13_fields(isolated_test_db):
     assert row_dict["status"] == "Active"
     assert len(row_dict["password_hash"]) > 20
     assert len(row_dict["salt"]) > 10
-
 
 def test_new_organization_registration_hr_admin_all_13_fields(isolated_test_db):
     """Verify new organization registration creates HR Admin with all 13 fields and links to org."""
@@ -181,6 +196,13 @@ def test_existing_organization_employee_registration(isolated_test_db):
     emp_row = cur.fetchone()
     conn.close()
     assert emp_row is not None, "Employee was not found in employees table"
+
+    employee = next(
+        (row for row in get_employees(org_id="ORG-TALENT-01") if row["email"] == emp_email),
+        None,
+    )
+    assert employee is not None, "Registered employee was not shown in the employee directory"
+    assert employee["has_login_account"] == 1
 
 
 def test_duplicate_email_registration_prevention(isolated_test_db):
