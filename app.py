@@ -2682,7 +2682,6 @@ def render_app_sidebar(is_admin: bool, user: dict, active_pages: list) -> str:
                     {get_svg_icon("brand_logo", size=32)}
                     <div style="display: flex; flex-direction: column; line-height: 1.15;">
                         <span style="font-weight: 800; font-size: 1.15rem; color: #FFFFFF; letter-spacing: -0.01em;">Talent Growth</span>
-                        <span style="font-size: 0.72rem; font-weight: 600; color: #38BDF8; letter-spacing: 0.02em;">Enterprise SaaS</span>
                     </div>
                 </div>
             </div>
