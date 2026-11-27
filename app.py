@@ -1869,9 +1869,7 @@ def register_page():
                 key="reg_title"
             )
 
-            c_sk1, c_sk2 = st.columns([2, 1])
-            skills_val = c_sk1.text_input("Primary Skills (Comma-separated) *", placeholder="e.g. Python, SQL, React", key="reg_skills")
-            exp_val = c_sk2.number_input("Years Experience", min_value=0.0, max_value=50.0, value=0.0, step=0.5, key="reg_exp")
+            skills_val = st.text_input("Primary Skills (Comma-separated) *", placeholder="e.g. Python, SQL, React", key="reg_skills")
 
             terms = st.checkbox("I agree to the Enterprise Talent Governance Terms", value=True, key="reg_terms")
             if is_individual:
@@ -1926,7 +1924,6 @@ def register_page():
                         confirm_password=clean_confirm_pwd,
                         phone=clean_phone,
                         primary_skills=clean_skills,
-                        years_experience=exp_val,
                         department=dept_val,
                         job_title=clean_title
                     )
@@ -1975,7 +1972,6 @@ def register_page():
                         department=dept_val,
                         job_title=clean_title,
                         primary_skills=clean_skills,
-                        years_experience=exp_val,
                         contact_number=clean_phone,
                         is_new_org=is_new_org,
                         hr_verification_code="HR2026" if role == "admin" else None,

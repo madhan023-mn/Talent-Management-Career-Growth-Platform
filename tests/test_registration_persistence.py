@@ -104,6 +104,8 @@ def test_individual_registration_all_13_fields(isolated_test_db):
     cur = conn.cursor()
     cur.execute("SELECT * FROM users WHERE LOWER(email) = ?", (test_email.lower(),))
     row = cur.fetchone()
+    cur.execute("SELECT * FROM employees WHERE email = ?", (test_email.lower(),))
+    employee_row = cur.fetchone()
     conn.close()
 
     assert row is not None, "User record was not found in users table"
@@ -117,12 +119,18 @@ def test_individual_registration_all_13_fields(isolated_test_db):
     assert row_dict["email"] == test_email.lower()
     assert row_dict["role"] == "employee"
     assert row_dict["account_type"] == "Individual"
-    assert row_dict["org_id"] is None
+    assert row_dict["org_id"] == "ORG-TALENT-01"
     assert row_dict["department"] == "Engineering"
     assert row_dict["job_title"] == "Data Engineer"
     assert row_dict["status"] == "Active"
     assert len(row_dict["password_hash"]) > 20
     assert len(row_dict["salt"]) > 10
+    assert employee_row is not None, "Individual account was not stored in employees"
+    assert employee_row["user_id"] == row_dict["id"]
+    assert employee_row["department"] == "Engineering"
+    assert employee_row["designation"] == "Data Engineer"
+    assert employee_row["primary_skills"] == "Python, SQL, Streamlit"
+    assert employee_row["years_experience"] == 3.5
 
 def test_new_organization_registration_hr_admin_all_13_fields(isolated_test_db):
     """Verify new organization registration creates HR Admin with all 13 fields and links to org."""
@@ -144,6 +152,8 @@ def test_new_organization_registration_hr_admin_all_13_fields(isolated_test_db):
     cur = conn.cursor()
     cur.execute("SELECT * FROM users WHERE LOWER(email) = ?", (admin_email.lower(),))
     row = cur.fetchone()
+    cur.execute("SELECT * FROM employees WHERE email = ?", (admin_email.lower(),))
+    employee_row = cur.fetchone()
     conn.close()
 
     assert row is not None, "HR Admin user was not found in users table"
@@ -158,6 +168,10 @@ def test_new_organization_registration_hr_admin_all_13_fields(isolated_test_db):
     assert row_dict["account_type"] == "Organization"
     assert row_dict["org_id"] is not None and row_dict["org_id"].startswith("ORG-")
     assert row_dict["status"] == "Active"
+    assert employee_row is not None, "HR admin account was not stored in employees"
+    assert employee_row["user_id"] == row_dict["id"]
+    assert employee_row["department"] == "Human Resources"
+    assert employee_row["designation"] == "Head of People"
 
 
 def test_existing_organization_employee_registration(isolated_test_db):
